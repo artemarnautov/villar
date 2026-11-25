@@ -26,14 +26,14 @@ export function createSheet({ el, scrim, shell, stage, store, packName, onOpen, 
   grip.addEventListener('click', () => api.close());
   scrim?.addEventListener('click', () => api.close());
 
-  function qtyOf(slotType) { return store.placed().filter((p) => p.slotType === slotType).length || 1; }
+  function qtyOf(c) { return store.qty(c.slotId || c.slotType) || 1; }
 
   function render({ keepScroll = false } = {}) {
     if (!cur) return;
-    const item = store.selected(cur.slotType) || cur.item;
+    const item = store.selected(cur.slotId || cur.slotType) || cur.item;
     if (!item) return;
-    const qty = qtyOf(cur.slotType);
-    const options = store.options(cur.slotType);
+    const qty = qtyOf(cur);
+    const options = store.options(cur.slotId || cur.slotType);
 
     tile.style.setProperty('--c', colorHex(item));
     type.textContent = qty > 1 ? `${typeLabel(cur.slotType)} · ${qty} шт. в квартире` : typeLabel(cur.slotType);
@@ -71,7 +71,7 @@ export function createSheet({ el, scrim, shell, stage, store, packName, onOpen, 
               ? h('span', { class: 'opt-delta is-cur', html: `${icon('check')}<span>Сейчас</span>` })
               : h('span', { class: `opt-delta${delta < 0 ? ' is-down' : ''}` }, delta === 0 ? 'Та же цена' : fmtDelta(delta))),
         );
-        if (!isCur) btn.addEventListener('click', () => store.select(cur.slotType, opt.id));
+        if (!isCur) btn.addEventListener('click', () => store.select(cur.slotId || cur.slotType, opt.id));
         list.append(h('li', null, btn));
       }
       kids.push(list);
@@ -121,7 +121,7 @@ export function createSheet({ el, scrim, shell, stage, store, packName, onOpen, 
     refresh() { render({ keepScroll: true }); },
   };
 
-  store.on('change', ({ slotType }) => { if (cur && cur.slotType === slotType) render({ keepScroll: true }); });
+  store.on('change', ({ slotType, slots }) => { if (cur && (slots ? slots.includes(cur.slotId) : cur.slotType === slotType)) render({ keepScroll: true }); });
 
   // Click outside (stage clicks are handled by the engine's select event).
   document.addEventListener('pointerdown', (e) => {

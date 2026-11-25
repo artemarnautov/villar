@@ -9,9 +9,10 @@ import { rng } from '../textures.js';
 
 export { boxProjectUVs };
 export const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
-export const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+export const clamp = (x, a, b) => Math.max(a, Math.min(b, x === x ? x : a));
 export const lerp = (a, b, t) => a + (b - a) * t;
-export const cm = (v, d) => (v == null || isNaN(v) ? d : Number(v) / 100);
+/** Length param → metres. Catalog lengths are metres (≤ 3); larger numbers are read as centimetres. */
+export const cm = (v, d) => { if (v == null || v === '' || isNaN(v)) return d; const n = Number(v); return n > 3 ? n / 100 : n; };
 
 // ---------------------------------------------------------------- soft box
 

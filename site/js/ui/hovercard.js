@@ -13,10 +13,10 @@ export function createHoverCard({ el, store }) {
   let visible = false;
 
   function render(p) {
-    const item = p.item || store.selected(p.slotType);
+    const item = p.item || store.selected(p.slotId || p.slotType);
     if (!item) return false;
-    const qty = store.placed().filter((x) => x.slotType === p.slotType).length;
-    const opts = store.options(p.slotType).length;
+    const qty = store.qty(p.slotId || p.slotType);
+    const opts = store.options(p.slotId || p.slotType).length;
     el.replaceChildren(
       h('div', { class: 'hc-type' }, typeLabel(p.slotType || item.type)),
       h('div', { class: 'hc-name' }, nameOf(item)),
@@ -43,7 +43,7 @@ export function createHoverCard({ el, store }) {
     raf = 0;
     const p = pending;
     if (!p) return;
-    const k = `${p.slotId}|${(p.item || store.selected(p.slotType))?.id}`;
+    const k = `${p.slotId}|${(p.item || store.selected(p.slotId || p.slotType))?.id}`;
     if (k !== key) {
       if (!render(p)) return hide();
       key = k;

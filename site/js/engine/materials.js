@@ -202,6 +202,20 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     return c;
   };
   const pendingFix = [];
+  /**
+   * Shift a full-colour albedo texture so its average matches a catalogue hex (e.g. woodColor,
+   * topColor). strength 0..1 (photo-estimated colours are trusted at 75 %).
+   */
+  const matchColor = (m, bundle, hex, strength = 0.75) => {
+    if (!hex || !bundle) return m;
+    const apply = (b) => {
+      const t = new THREE.Color(hex); const mr = b.meanRGB || [b.mean, b.mean, b.mean];
+      const k = [t.r / Math.max(1e-3, mr[0]), t.g / Math.max(1e-3, mr[1]), t.b / Math.max(1e-3, mr[2])].map((x) => 1 + (Math.min(3, x) - 1) * strength);
+      m.color.setRGB(k[0], k[1], k[2]);
+    };
+    if (bundle.done) apply(bundle); else bundle.onReady(apply);
+    return m;
+  };
 
   const physical = (p) => new THREE.MeshPhysicalMaterial(p);
   const standard = (p) => new THREE.MeshStandardMaterial(p);
@@ -215,12 +229,14 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
 
   // --- builders -------------------------------------------------
   const wood = (species, o, extra = {}) => {
-    const b = scaled(tex('wood:' + species, () => T.woodTextures(species, T.hashStr(species) % 97 + 3)), o.scale || 1);
+    const b0 = tex('wood:' + species, () => T.woodTextures(species, T.hashStr(species) % 97 + 3));
+    const b = scaled(b0, o.scale || 1);
     const m = physical({
       ...withTex(b, 0.55), color: o.tint ? col(o.tint) : 0xffffff, roughness: o.roughness ?? 1, metalness: 0,
       clearcoat: o.clearcoat ?? extra.clearcoat ?? 0.18, clearcoatRoughness: extra.clearcoatRoughness ?? 0.42,
       specularIntensity: 0.6,
     });
+    if (o.match) matchColor(m, b0, o.match, o.matchStrength ?? 0.75);
     return m;
   };
 
@@ -333,12 +349,12 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     'mirror': (o) => standard({ color: col(o.color, '#f4f6f6'), roughness: 0.015, metalness: 1 }),
     // stone & ceramic ----------------------------------------
     'marble-white': (o) => {
-      const b = scaled(tex('marble', () => T.marbleTextures()), o.scale || 1);
-      return physical({ ...withTex(b, 0.3), roughness: o.roughness ?? 1, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.1, specularIntensity: 0.8 });
+      const b0 = tex('marble', () => T.marbleTextures()); const b = scaled(b0, o.scale || 1);
+      return matchColor(physical({ ...withTex(b, 0.3), roughness: o.roughness ?? 1, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.1, specularIntensity: 0.8 }), b0, o.match, 0.6);
     },
     'travertine': (o) => {
-      const b = scaled(tex('travertine', () => T.travertineTextures()), o.scale || 1);
-      return physical({ ...withTex(b, 0.6), roughness: 1, metalness: 0, specularIntensity: 0.6 });
+      const b0 = tex('travertine', () => T.travertineTextures()); const b = scaled(b0, o.scale || 1);
+      return matchColor(physical({ ...withTex(b, 0.6), roughness: 1, metalness: 0, specularIntensity: 0.6 }), b0, o.match, 0.6);
     },
     'stone-worktop': (o) => {
       const b = scaled(tex('quartz', () => T.quartzTextures()), o.scale || 1);
@@ -447,6 +463,7 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       else if (k.includes('natural') || k.includes('smoked')) o.species = 'oak-natural';
     }
     if (typeof o.color === 'number') o.color = '#' + o.color.toString(16).padStart(6, '0');
+    for (const ck of ['color', 'tint', 'patternColor', 'match']) if (o[ck] != null && !(typeof o[ck] === 'string' && /^(#[0-9a-f]{3}([0-9a-f]{3})?|rgb\(.*\)|hsl\(.*\)|[a-z]+)$/i.test(o[ck].trim()) && (o[ck][0] === '#' || o[ck].startsWith('rgb') || o[ck].startsWith('hsl') || o[ck].toLowerCase() in THREE.Color.NAMES))) delete o[ck];
     const ck = keyOf(canon, o);
     let m = matCache.get(ck);
     if (!m) {

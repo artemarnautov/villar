@@ -95,6 +95,13 @@ export async function createVillar({
   if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
   container.appendChild(canvas);
   RectAreaLightUniformsLib.init();
+  let phase = 'init';
+  canvas.addEventListener('webglcontextlost', () => { console.warn(`[villar] WebGL context lost during ${phase}`); });
+  canvas.addEventListener('webglcontextrestored', () => {
+    console.warn('[villar] WebGL context restored — rebuilding lighting');
+    renderer.shadowMap.needsUpdate = true;
+    if (typeof invalidate === 'function') { invalidate(3); scheduleEnvironment(100, { fresh: true, bounces: 1 }); }
+  });
 
   const maxDpr = () => Math.min(window.devicePixelRatio || 1, QUALITY[Q].maxDpr, 2);
   let dpr = maxDpr();
@@ -194,6 +201,7 @@ export async function createVillar({
   }
 
   function refreshEnvironment(passes = 1) {
+    phase = 'env-capture';
     renderer.shadowMap.needsUpdate = true;
     const wasCut = cutaway;
     if (wasCut) { arch.setCutaway(false); }
@@ -405,7 +413,7 @@ export async function createVillar({
       if (!photo.done || photoNeedsRender) { photo.render(); photoNeedsRender = false; }
       return;
     }
-    if (renderer.shadowMap.needsUpdate) { /* consumed by this render */ }
+    phase = 'render';
     post.render(0.016);
     const dt = (now - lastRenderAt) / 1000;
     if (lastRenderAt && dt < 0.25) adapt(dt);
@@ -429,7 +437,7 @@ export async function createVillar({
       invalidate(1);
     }
     if (moving) invalidate(2);
-    if (probes.baking && !photo.active) probes.step(moving || controls.isDragging() ? 4 : 10);
+    if (probes.baking && !photo.active) { phase = 'probe-bake'; probes.step(moving || controls.isDragging() ? 4 : 10); }
     if (photo.active) { render(now); return; }
     if (framesToRender > 0) {
       framesToRender--;
@@ -514,6 +522,7 @@ export async function createVillar({
   resize();
   controls.setView(VIEWS.includes(view) ? view : 'eye', { instant: true });
   setTimeOfDay(currentTime);
+  phase = 'compile';
   if (renderer.extensions.has('KHR_parallel_shader_compile')) {
     try { await renderer.compileAsync(scene, camera); } catch { /* compile on first frame */ }
   }

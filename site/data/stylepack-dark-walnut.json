@@ -1,140 +1,205 @@
 {
  "id": "dark-walnut",
  "name": "Тёмный орех",
- "tagline": "Глубокий орех, тёплый молочный, олива и терракота.",
- "description": "Заглушка — будет заменена реальным стилевым паком.",
+ "tagline": "Тёмный орех. Тёплый лён. Ничего лишнего.",
+ "description": "Спокойная студия, собранная вокруг тёмного ореха: молочные и овсяные ткани, травертин, сатинированная латунь и одно коньячное кресло. Олива и терракота — малыми дозами. Каждый предмет реален и доступен к покупке.",
  "palette": "palette-dark-walnut.json",
  "architecture": {
+  "walls": "#ECE7DE",
+  "ceiling": "#F2EFE8",
   "floor": "oak-light",
-  "walls": "#EDE7DE",
-  "ceiling": "#F5F2EC",
-  "kitchenFronts": "#D8D0C4",
-  "worktop": "travertine"
+  "floorTone": "#C6A984",
+  "kitchenFronts": "#D6CFBF",
+  "worktop": "travertine",
+  "doorFinish": "walnut-dark",
+  "windowFrame": "metal-black"
  },
  "slots": {
   "sofa": {
-   "default": "sofa-ph-a",
+   "default": "sofa-lansbury-3",
    "options": [
-    "sofa-ph-a",
-    "sofa-ph-b"
+    "sofa-lansbury-3",
+    "sofa-hadley-3",
+    "sofa-lockwood-2",
+    "sofa-engler-3",
+    "sofa-doree-3",
+    "sofa-anders-3"
    ]
   },
   "cushions": {
-   "default": "cushions-ph-a",
+   "default": "cushions-linen-olive-rust",
    "options": [
-    "cushions-ph-a"
+    "cushions-linen-olive-rust",
+    "cushions-linen-clay",
+    "cushions-oat-velvet-olive"
    ]
   },
   "coffee_table": {
-   "default": "coffee-ph-a",
+   "default": "coffee-baku-low",
    "options": [
-    "coffee-ph-a",
-    "coffee-ph-b"
+    "coffee-baku-low",
+    "coffee-moxie",
+    "coffee-arras",
+    "coffee-baku-high"
    ]
   },
   "decor_set": {
-   "default": "decor-ph-a",
+   "default": "decor-sand-travertine-walnut",
    "options": [
-    "decor-ph-a"
+    "decor-sand-travertine-walnut",
+    "decor-terracotta",
+    "decor-white-ceramic"
    ]
   },
   "rug": {
-   "default": "rug-ph-a",
+   "default": "rug-heaton-200x290",
    "options": [
-    "rug-ph-a"
+    "rug-heaton-200x290",
+    "rug-dione-200x290",
+    "rug-pulara-160x230",
+    "rug-marlow-200x290"
    ]
   },
   "tv_unit": {
-   "default": "tv-ph-a",
+   "default": "tv-jasper",
    "options": [
-    "tv-ph-a"
+    "tv-jasper",
+    "tv-hege",
+    "tv-espresso",
+    "tv-eden"
    ]
   },
   "side_table": {
-   "default": "side-ph-a",
+   "default": "side-moxie",
    "options": [
-    "side-ph-a"
+    "side-moxie",
+    "side-tom",
+    "side-arras"
    ]
   },
   "armchair": {
-   "default": "armchair-ph-a",
+   "default": "armchair-luna-leather",
    "options": [
-    "armchair-ph-a"
+    "armchair-luna-leather",
+    "armchair-clyde-leather",
+    "armchair-luna-fabric",
+    "armchair-pebble"
    ]
   },
   "floor_lamp": {
-   "default": "floorlamp-ph-a",
+   "default": "floorlamp-sable",
    "options": [
-    "floorlamp-ph-a"
+    "floorlamp-sable",
+    "floorlamp-austen",
+    "floorlamp-frosty"
    ]
   },
   "bed": {
-   "default": "bed-ph-a",
+   "default": "bed-cloud-160",
    "options": [
-    "bed-ph-a"
+    "bed-cloud-160",
+    "bed-nazario-160",
+    "bed-maison-160"
    ]
   },
   "mattress": {
-   "default": "mattress-ph-a",
+   "default": "mattress-rejuvenate-160",
    "options": [
-    "mattress-ph-a"
+    "mattress-rejuvenate-160",
+    "mattress-bliss-gel-160"
    ]
   },
   "bedding": {
-   "default": "bedding-ph-a",
+   "default": "bedding-white-oat-clay",
    "options": [
-    "bedding-ph-a"
+    "bedding-white-oat-clay",
+    "bedding-white-oat-olive",
+    "bedding-oat-rust"
    ]
   },
   "nightstand": {
-   "default": "nightstand-ph-a",
+   "default": "nightstand-suri",
    "options": [
-    "nightstand-ph-a"
+    "nightstand-suri",
+    "nightstand-nazario",
+    "nightstand-verve"
    ]
   },
   "table_lamp": {
-   "default": "tablelamp-ph-a",
+   "default": "tablelamp-crosby",
    "options": [
-    "tablelamp-ph-a"
+    "tablelamp-crosby",
+    "tablelamp-tolima",
+    "tablelamp-frosty",
+    "tablelamp-dania"
    ]
   },
   "dining_table": {
-   "default": "dining-ph-a",
+   "default": "dining-kentana-100",
    "options": [
-    "dining-ph-a"
+    "dining-kentana-100",
+    "dining-mahmayi-80"
    ]
   },
   "dining_chair": {
-   "default": "chair-ph-a",
+   "default": "chair-linden",
    "options": [
-    "chair-ph-a"
+    "chair-linden",
+    "chair-viona",
+    "chair-alfred",
+    "chair-wishbone",
+    "chair-pebble"
    ]
   },
   "pendant_lamp": {
-   "default": "pendant-ph-a",
+   "default": "pendant-cosme",
    "options": [
-    "pendant-ph-a"
+    "pendant-cosme",
+    "pendant-dexter",
+    "pendant-tobin",
+    "pendant-naturel",
+    "pendant-accorsa"
    ]
   },
   "wall_art": {
-   "default": "art-ph-a",
+   "default": "art-zuri-80",
    "options": [
-    "art-ph-a"
+    "art-zuri-80",
+    "art-sylvan-60x90",
+    "art-aquarelle-53x80",
+    "art-ember-90x60",
+    "art-vaseo-53x80",
+    "art-nyla-50x70"
    ]
   },
   "plant": {
-   "default": "plant-ph-a",
+   "default": "plant-olive-themis",
    "options": [
-    "plant-ph-a"
+    "plant-olive-themis",
+    "plant-olive-urbano",
+    "plant-olive-homekode"
    ]
   },
   "curtains": {
-   "default": "curtains-ph-a",
+   "default": "curtains-sullivan-layered",
    "options": [
-    "curtains-ph-a"
+    "curtains-sullivan-layered",
+    "curtains-sullivan-sheer",
+    "curtains-khor-sheer"
    ]
   }
  },
- "rules": [],
- "placeholder": true
+ "rules": [
+  "Дерево мебели — только тёмный орех (#3F2C21–#6B4B35, ΔE ≤ 10 от #553C2C); второй тон — светлый дуб пола.",
+  "Рыжие и красные породы, венге и белёное дерево не используются.",
+  "Диван, ковёр, шторы и постель — тёплые светлые нейтрали (L* ≥ 70), без холодного серого.",
+  "Акценты — олива и терракота; охра и индиго допустимы только в искусстве.",
+  "Коньячная кожа — один тип предметов: по умолчанию кресло, не диван и не стулья.",
+  "Металл — сатинированная латунь; матовый чёрный только тонкими линиями. Хрома нет.",
+  "Не больше четырёх крупных тёмных масс на студию; между ними — светлый слой.",
+  "Приставной столик контрастирует с журнальным по материалу: орех ↔ травертин.",
+  "Букле — не больше одного предмета на студию.",
+  "Свет 2700 K; абажуры из льна, бумаги, ротанга или опала.",
+  "Каждый вариант укладывается в габариты своего места в планировке."
+ ]
 }

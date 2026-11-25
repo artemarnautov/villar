@@ -36,7 +36,7 @@ export const isMetal = (k) => /metal|brass|chrome|iron|steel|gold|nickel|black/.
  * type: wood-taper | wood-short | wood-block | metal | metal-hairpin | metal-square | bun | splayed | none
  * legs hang from y = top down to 0.
  */
-export function addLegs(b, c, { type = 'wood-taper', w, d, top, inset = 0.05, mat, metalMat, middle = false, middleInset = null, splay = 0 }) {
+export function addLegs(b, c, { type = 'wood-taper', w, d, top, inset = 0.05, mat, metalMat, middle = false, middleInset = null, splay = 0, cx = 0, cz = 0 }) {
   if (!type || type === 'none' || top <= 0.002) return;
   const t = String(type).toLowerCase();
   const xs = [-(w / 2 - inset), w / 2 - inset];
@@ -45,8 +45,9 @@ export function addLegs(b, c, { type = 'wood-taper', w, d, top, inset = 0.05, ma
   for (const x of xs) for (const z of zs) pts.push([x, z]);
   if (middle) { const mz = middleInset != null ? d / 2 - middleInset : d / 2 - inset; pts.push([0, -mz], [0, mz]); }
   const h = top;
-  for (const [x, z] of pts) {
-    const sx = Math.sign(x) || 0, sz = Math.sign(z) || 0;
+  for (const [x0, z0] of pts) {
+    const sx = Math.sign(x0) || 0, sz = Math.sign(z0) || 0;
+    const x = x0 + cx, z = z0 + cz;
     if (t.includes('hairpin')) {
       // classic 2-rod hairpin: a rod bent in a tight U at the floor, both ends welded to a top plate
       const r = 0.0055, s2 = 0.05;
@@ -56,8 +57,24 @@ export function addLegs(b, c, { type = 'wood-taper', w, d, top, inset = 0.05, ma
       b.add(softBox(0.09, 0.004, 0.06, { r: 0.0015, seg: 1 }), metalMat || mat, { pos: [x, h - 0.002, z] });
       continue;
     }
+    if (t.includes('slim') && (t.includes('metal') || t.includes('brass'))) {
+      // thin tapered round metal leg
+      const g = roundLeg(0.011, 0.0065, h, 12);
+      g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(sz * 0.06, 0, -sx * 0.06)));
+      b.add(g, metalMat || mat, { pos: [x, h, z], axis: 'y' });
+      continue;
+    }
     if (t.includes('metal') || t.includes('square-metal') || t.includes('iron')) {
       b.add(squareLeg(0.022, 0.018, h, 0.002), metalMat || mat, { pos: [x, h, z], axis: 'y' });
+      continue;
+    }
+    if (t.includes('sled')) {
+      // sled runner per side (only emit once per side, from the front leg)
+      if (sz > 0) {
+        const L = d + 0.02;
+        b.add(softBox(0.028, 0.022, L, { r: 0.008, seg: 2 }), mat, { pos: [x, 0.011, cz], axis: 'z' });
+        for (const zz of [z, cz - (z - cz)]) b.add(squareLeg(0.03, 0.03, h - 0.02, 0.006), mat, { pos: [x, h, zz], axis: 'y' });
+      }
       continue;
     }
     if (t.includes('bun')) {

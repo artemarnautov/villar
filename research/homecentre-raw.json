@@ -1,0 +1,5422 @@
+{
+ "source": "Home Centre UAE (homecentre.com/ae/en)",
+ "collectedAt": "2026-11-25",
+ "currency": "AED",
+ "pricingRule": "public price = round(regular list price × 1.2); regular = listing wasPrice / price_range[0], not the temporary sale price",
+ "method": "Category listings decoded from __NEXT_DATA__ initialState (all pages via ?p=N); product pages read for Weight & Dimensions / Material; photos reviewed visually for wood tone and shape",
+ "products": [
+  {
+   "pid": "169195826",
+   "sku": "169195826",
+   "title": "Lockwood 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/169195826",
+   "regularPrice": 4999,
+   "salePrice": 3499,
+   "dimsCm": {
+    "w": 244,
+    "d": 96,
+    "h": 85
+   },
+   "materials": "frame solid wood; legs wooden; fabric",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT width 244>240; rattan side panels",
+   "status": "rejected",
+   "reason": "REJECT width 244>240; rattan side panels"
+  },
+  {
+   "pid": "166008877",
+   "sku": "166008877",
+   "title": "Lansbury 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/buy-lansbury-3seater-fabric-sofa/p/166008877",
+   "regularPrice": 2499,
+   "salePrice": 1749,
+   "dimsCm": {
+    "w": 211,
+    "d": 88,
+    "h": 86
+   },
+   "materials": "frame solid wood; leg wooden; fabric; pocket spring",
+   "colour": "Beige",
+   "category": "Sofas & Sofa Sets",
+   "image": "https://media.homecentre.com/i/homecentre/166008877-166008877-HC15122023_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "dark walnut base rail + legs, straight track arms, removable cushions (dup listing 169693528)",
+   "status": "accepted",
+   "reason": "Used in: sofa-lansbury-3"
+  },
+  {
+   "pid": "166913947",
+   "sku": "166913947",
+   "title": "Hadley 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/buy-hadley-3seater-fabric-sofa/p/166913947",
+   "regularPrice": 2499,
+   "salePrice": 1749,
+   "dimsCm": {
+    "w": 213,
+    "d": 92,
+    "h": 88
+   },
+   "materials": "frame solid wood; leg wooden; fabric",
+   "colour": "Beige",
+   "category": "Sofas & Sofa Sets",
+   "image": "https://media.homecentre.com/i/homecentre/166913947-166913947-HC06062024_01-2100.jpg?v=2",
+   "inStock": true,
+   "notes": "cream, dark walnut base + block legs, straight arms",
+   "status": "accepted",
+   "reason": "Used in: sofa-hadley-3"
+  },
+  {
+   "pid": "168708283",
+   "sku": "168708283",
+   "title": "Brighton 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/buy-brighton-3seater-fabric-sofa/p/168708283",
+   "regularPrice": 2999,
+   "salePrice": 2099,
+   "dimsCm": {
+    "w": 222,
+    "d": 90,
+    "h": 82
+   },
+   "materials": "frame solid wood; leg wooden; fabric",
+   "colour": "Brown",
+   "category": "Sofas & Sofa Sets",
+   "image": "https://media.homecentre.com/i/homecentre/168708283-166892999-HC05092024_01-2100.jpg?v=2",
+   "inStock": true,
+   "notes": "taupe/greige, dark walnut legs, curved arms, 2 scatter cushions",
+   "status": "review",
+   "reason": "Taupe/greige upholstery reads N3 (light taupe); rules allow N3 only with an N1 rug — kept out of options"
+  },
+  {
+   "pid": "168211181",
+   "sku": "168211181",
+   "title": "Selvino 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/buy-selvino-3seater-fabric-sofa/p/168211181",
+   "regularPrice": 2499,
+   "salePrice": 1749,
+   "dimsCm": {
+    "w": 213,
+    "d": 89,
+    "h": 84
+   },
+   "materials": "frame solid wood; leg wooden; fabric",
+   "colour": "Beige",
+   "category": "Sofas & Sofa Sets",
+   "image": "https://media.homecentre.com/i/homecentre/168211181-168211181-HC13102025_01-2100.jpg",
+   "inStock": true,
+   "notes": "cream tufted back, dark wood taper legs, curved arms",
+   "status": "rejected",
+   "reason": "Button-tufted back = capitonné, forbidden for sofas by stylepack rules"
+  },
+  {
+   "pid": "169195825",
+   "sku": "169195825",
+   "title": "Lockwood 2-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/buy-lockwood-2seater-fabric-sofa/p/169195825",
+   "regularPrice": 3999,
+   "salePrice": 2799,
+   "dimsCm": {
+    "w": 194,
+    "d": 96,
+    "h": 85
+   },
+   "materials": "frame solid wood; legs wooden; fabric; rattan side panels",
+   "colour": "Beige",
+   "category": "Sofas & Sofa Sets",
+   "image": "https://media.homecentre.com/i/homecentre/169195825-169195825-HC20072026_01-2100.jpg",
+   "inStock": true,
+   "notes": "ivory body, dark walnut frame + rattan side panels",
+   "status": "accepted",
+   "reason": "Used in: sofa-lockwood-2"
+  },
+  {
+   "pid": "168743849",
+   "sku": "168743849",
+   "title": "Palermo 3-Seater Full Leather Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/168743849",
+   "regularPrice": 6499,
+   "salePrice": 4549,
+   "dimsCm": {
+    "w": 242,
+    "d": 110,
+    "h": 80
+   },
+   "materials": "leather; ABS legs",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT 242x110 > slot",
+   "status": "rejected",
+   "reason": "REJECT 242x110 > slot"
+  },
+  {
+   "pid": "167008988",
+   "sku": "167008988",
+   "title": "Cero 3-Seater Full Leather Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/167008988",
+   "regularPrice": 8499,
+   "salePrice": 5949,
+   "dimsCm": {
+    "w": 259,
+    "d": 110,
+    "h": 80
+   },
+   "materials": "leather",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT too big",
+   "status": "rejected",
+   "reason": "REJECT too big"
+  },
+  {
+   "pid": "165463765",
+   "sku": "165463765",
+   "title": "Hester 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/165463765",
+   "regularPrice": 4299,
+   "salePrice": 2999,
+   "dimsCm": {
+    "w": 245,
+    "d": 114,
+    "h": 87
+   },
+   "materials": "fabric",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT too big",
+   "status": "rejected",
+   "reason": "REJECT too big"
+  },
+  {
+   "pid": "167540047",
+   "sku": "167540047",
+   "title": "Kaizer 3-Seater Full Leather Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/buy-kaizer-3seater-full-leather-sofa/p/167540047",
+   "regularPrice": 8999,
+   "salePrice": 6299,
+   "dimsCm": {
+    "w": 225,
+    "d": 90,
+    "h": 84
+   },
+   "materials": "full leather; metal legs; solid wood frame",
+   "colour": "Brown",
+   "category": "Sofas & Sofa Sets",
+   "image": "https://media.homecentre.com/i/homecentre/167540047-167540047-HC01052025_01-2100.jpg",
+   "inStock": true,
+   "notes": "cognac tufted leather, black metal legs",
+   "status": "rejected",
+   "reason": "Leather sofa forbidden (rules: no leather sofas; cognac reserved for one item type); also black metal legs"
+  },
+  {
+   "pid": "169195605",
+   "sku": "169195605",
+   "title": "Gloria 3-Seater Full Leather Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/169195605",
+   "regularPrice": 6999,
+   "salePrice": 4899,
+   "dimsCm": {
+    "w": 232,
+    "d": 107,
+    "h": 78
+   },
+   "materials": "leather",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT depth 107>105",
+   "status": "rejected",
+   "reason": "REJECT depth 107>105"
+  },
+  {
+   "pid": "169278833",
+   "sku": "169278833",
+   "title": "Ostro 3-Seater Leather Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/169278833",
+   "regularPrice": 5499,
+   "salePrice": 3849,
+   "dimsCm": {
+    "w": 261,
+    "d": 97,
+    "h": 94
+   },
+   "materials": "leather metal legs",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT width",
+   "status": "rejected",
+   "reason": "REJECT width"
+  },
+  {
+   "pid": "167070108",
+   "sku": "167070108",
+   "title": "Regius 3-Seater Half Leather Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/buy-regius-3seater-half-leather-sofa/p/167070108",
+   "regularPrice": 4499,
+   "salePrice": 3149,
+   "dimsCm": {
+    "w": 207,
+    "d": 93,
+    "h": 85
+   },
+   "materials": "half leather; metal legs",
+   "colour": "Brown",
+   "category": "Sofas & Sofa Sets",
+   "image": "https://media.homecentre.com/i/homecentre/167070108-167070108-HC22102024_01-2100.jpg",
+   "inStock": true,
+   "notes": "cognac",
+   "status": "rejected",
+   "reason": "Leather sofa forbidden by rules"
+  },
+  {
+   "pid": "165214580",
+   "sku": "165214580",
+   "title": "Luna Leather Armchair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/buy-luna-leather-armchair/p/165214580",
+   "regularPrice": 2499,
+   "salePrice": 1749,
+   "dimsCm": {
+    "w": 74,
+    "d": 80,
+    "h": 83
+   },
+   "materials": "solid wood frame; wooden legs; genuine leather",
+   "colour": "Brown",
+   "category": "Armchairs",
+   "image": "https://media.homecentre.com/i/homecentre/165214580-165214580-HC22022023_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "cognac leather, walnut mid-century frame",
+   "status": "accepted",
+   "reason": "Used in: armchair-luna-leather"
+  },
+  {
+   "pid": "166776595",
+   "sku": "166776595",
+   "title": "Luna Fabric Chair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/buy-luna-fabric-chair/p/166776595",
+   "regularPrice": 1499,
+   "salePrice": 1049,
+   "dimsCm": {
+    "w": 76,
+    "d": 77,
+    "h": 78
+   },
+   "materials": "solid wood frame; wooden legs; fabric",
+   "colour": "Brown",
+   "category": "Armchairs",
+   "image": "https://media.homecentre.com/i/homecentre/166776595-166776595-HC19082024_01-2100.jpg?v=2",
+   "inStock": true,
+   "notes": "cream cushions on walnut frame, accent chair",
+   "status": "accepted",
+   "reason": "Used in: armchair-luna-fabric"
+  },
+  {
+   "pid": "169195824",
+   "sku": "169195824",
+   "title": "Lockwood Fabric Armchair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/buy-lockwood-fabric-armchair/p/169195824",
+   "regularPrice": 2999,
+   "salePrice": 2099,
+   "dimsCm": {
+    "w": 77,
+    "d": 96,
+    "h": 85
+   },
+   "materials": "solid wood frame; wooden; fabric; rattan",
+   "colour": "Beige",
+   "category": "Armchairs",
+   "image": "https://media.homecentre.com/i/homecentre/169195824-169195824-HC20072026_01-2100.jpg",
+   "inStock": true,
+   "notes": "dark walnut frame + rattan side + cream; depth 96 > 95 max!",
+   "status": "rejected",
+   "reason": "Depth 96 > slot max 95 (by 1 cm); otherwise ideal walnut + rattan armchair"
+  },
+  {
+   "pid": "169195833",
+   "sku": "169195833",
+   "title": "Clyde Leather Armchair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/buy-clyde-leather-armchair/p/169195833",
+   "regularPrice": 2499,
+   "salePrice": 1749,
+   "dimsCm": {
+    "w": 84,
+    "d": 76,
+    "h": 72
+   },
+   "materials": "solid wood frame; wooden legs; genuine leather",
+   "colour": "Brown",
+   "category": "Armchairs",
+   "image": "https://media.homecentre.com/i/homecentre/169195833-169195833-HC01072026_01-2100.jpg",
+   "inStock": true,
+   "notes": "cognac leather barrel/club, dark wood legs",
+   "status": "accepted",
+   "reason": "Used in: armchair-clyde-leather"
+  },
+  {
+   "pid": "169294872",
+   "sku": "169294872",
+   "title": "Dania Leather Armchair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/buy-dania-leather-armchair/p/169294872",
+   "regularPrice": 1799,
+   "salePrice": 1259,
+   "dimsCm": {
+    "w": 67,
+    "d": 81,
+    "h": 77
+   },
+   "materials": "solid wood frame; wooden legs; leather",
+   "colour": "Brown",
+   "category": "Armchairs",
+   "image": "https://media.homecentre.com/i/homecentre/169294872-169294872-HC24082026_01-2100.jpg",
+   "inStock": true,
+   "notes": "cream/ivory leather seat+back on walnut frame",
+   "status": "rejected",
+   "reason": "Ivory/white leather — white leather armchairs forbidden by rules"
+  },
+  {
+   "pid": "169693526",
+   "sku": "169693526",
+   "title": "Lansbury Fabric Armchair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/p/169693526",
+   "regularPrice": 1399,
+   "salePrice": 979,
+   "dimsCm": {
+    "w": 110,
+    "d": 88,
+    "h": 86
+   },
+   "materials": "fabric",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT width 110>95",
+   "status": "rejected",
+   "reason": "REJECT width 110>95"
+  },
+  {
+   "pid": "166597944",
+   "sku": "166597944",
+   "title": "Pebble Fabric Chair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/buy-pebble-fabric-chair/p/166597944",
+   "regularPrice": 1499,
+   "salePrice": 1049,
+   "dimsCm": {
+    "w": 75,
+    "d": 82,
+    "h": 77
+   },
+   "materials": "solid wood frame; wooden base; fabric (boucle look)",
+   "colour": "Beige",
+   "category": "Armchairs",
+   "image": "https://media.homecentre.com/i/homecentre/166597944-166597944-HC28052024_01-2100.jpg",
+   "inStock": true,
+   "notes": "ivory boucle slipper chair on dark brown wooden sled base",
+   "status": "accepted",
+   "reason": "Used in: armchair-pebble"
+  },
+  {
+   "pid": "168901452",
+   "sku": "168901452",
+   "title": "Pendle Leather Chair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/p/168901452",
+   "regularPrice": 2999,
+   "salePrice": 2099,
+   "dimsCm": {
+    "w": 108,
+    "d": 108,
+    "h": 73
+   },
+   "materials": "full leather",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT 108>95",
+   "status": "rejected",
+   "reason": "REJECT 108>95"
+  },
+  {
+   "pid": "166548162",
+   "sku": "166548162",
+   "title": "Baku Coffee Table - Low",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/buy-baku-coffee-table-low/p/166548162",
+   "regularPrice": 1249,
+   "salePrice": 869,
+   "dimsCm": {
+    "w": 106,
+    "d": 88,
+    "h": 27
+   },
+   "materials": "engineered wood, walnut veneer top + legs",
+   "colour": "Brown",
+   "category": "Coffee Tables",
+   "image": "https://media.homecentre.com/i/homecentre/166548162-166548162-HC10062024_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "dark walnut organic oval/pebble top on 4 cylinder legs, low 27cm",
+   "status": "accepted",
+   "reason": "Used in: coffee-baku-low"
+  },
+  {
+   "pid": "166548161",
+   "sku": "166548161",
+   "title": "Baku Coffee Table - High",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/buy-baku-coffee-table-high/p/166548161",
+   "regularPrice": 1129,
+   "salePrice": 789,
+   "dimsCm": {
+    "w": 96,
+    "d": 78,
+    "h": 32
+   },
+   "materials": "engineered wood veneer",
+   "colour": "Brown",
+   "category": "Coffee Tables",
+   "image": "https://media.homecentre.com/i/homecentre/166548161-166548161-HC10062024_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "dark walnut pebble top, cylinder legs",
+   "status": "accepted",
+   "reason": "Used in: coffee-baku-high"
+  },
+  {
+   "pid": "169441675",
+   "sku": "169441675",
+   "title": "Moxie Travertine Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/buy-moxie-travertine-coffee-table/p/169441675",
+   "regularPrice": 2229,
+   "salePrice": 1481,
+   "dimsCm": {
+    "w": 130,
+    "d": 70,
+    "h": 40
+   },
+   "materials": "travertine top; polyresin legs (dark brown)",
+   "colour": "Brown",
+   "category": "Coffee Tables",
+   "image": "https://media.homecentre.com/i/homecentre/169441675-169441675-HC14082026_01-2100.jpg",
+   "inStock": true,
+   "notes": "oval travertine top on 2 dark brown block pedestals",
+   "status": "accepted",
+   "reason": "Used in: coffee-moxie"
+  },
+  {
+   "pid": "169441685",
+   "sku": "169441685",
+   "title": "Elodie Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/p/169441685",
+   "regularPrice": 1119,
+   "salePrice": 779,
+   "dimsCm": {
+    "w": 100,
+    "d": 100,
+    "h": 40
+   },
+   "materials": "veneer fluted drum; stainless steel legs (gold)",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT D100 > 90 slot",
+   "status": "rejected",
+   "reason": "REJECT D100 > 90 slot"
+  },
+  {
+   "pid": "168196892",
+   "sku": "168196892",
+   "title": "Arras Travertine Top Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/buy-arras-travertine-top-coffee-table/p/168196892",
+   "regularPrice": 2129,
+   "salePrice": 1414,
+   "dimsCm": {
+    "w": 90,
+    "d": 90,
+    "h": 45
+   },
+   "materials": "travertine top; resin base",
+   "colour": "Brown",
+   "category": "Coffee Tables",
+   "image": "https://media.homecentre.com/i/homecentre/168196892-168196892-HC16092025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "round travertine top on dark brown sculpted ball pedestal",
+   "status": "accepted",
+   "reason": "Used in: coffee-arras"
+  },
+  {
+   "pid": "166086742",
+   "sku": "166086742",
+   "title": "Travertine Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/buy-travertine-coffee-table/p/166086742",
+   "regularPrice": 1799,
+   "salePrice": 1799,
+   "dimsCm": {
+    "w": 70,
+    "d": 70,
+    "h": 40
+   },
+   "materials": "travertine top + travertine legs, matte",
+   "colour": "Beige",
+   "category": "Coffee Tables",
+   "image": "https://cdn.media.amplience.net/i/lmg/166086742-166086742-HC18092023_01-2100.jpg",
+   "inStock": true,
+   "notes": "round travertine pedestal drum; brand Lilacs (marketplace)",
+   "status": "review",
+   "reason": "Diameter 70 < rule 80–100 for coffee tables; marketplace brand (Lilacs)"
+  },
+  {
+   "pid": "167999154",
+   "sku": "167999154",
+   "title": "Drafton Travertine Top Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/p/167999154",
+   "regularPrice": 3199,
+   "salePrice": 2127,
+   "dimsCm": {
+    "w": 150,
+    "d": 80,
+    "h": 35
+   },
+   "materials": "travertine",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT W150>130",
+   "status": "rejected",
+   "reason": "REJECT W150>130"
+  },
+  {
+   "pid": "169793843",
+   "sku": "169793843",
+   "title": "Lyra Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/buy-lyra-coffee-table/p/169793843",
+   "regularPrice": 1749,
+   "salePrice": 1219,
+   "dimsCm": {
+    "w": 130,
+    "d": 70,
+    "h": 40
+   },
+   "materials": "engineered wood walnut veneer; solid rubberwood legs",
+   "colour": "Brown",
+   "category": "Coffee Tables",
+   "image": "https://media.homecentre.com/i/homecentre/169793843-169793843-HC25092026_01-2100.jpg",
+   "inStock": true,
+   "notes": "medium-dark walnut rect, drawer/shelf, tapered legs",
+   "status": "review",
+   "reason": "Medium walnut, estimated ~#75523A (dE76 ~13 from #553C2C > 10) — lighter than the W1 band"
+  },
+  {
+   "pid": "168492408",
+   "sku": "168492408",
+   "title": "Munchi Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/p/168492408",
+   "regularPrice": 659,
+   "salePrice": 459,
+   "dimsCm": {
+    "w": 120,
+    "d": 60,
+    "h": 47
+   },
+   "materials": "engineered wood; metal legs (black)",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "dark walnut fluted front, black legs - not chosen (black metal)",
+   "status": "not-selected",
+   "reason": "Black metal legs on a large walnut piece; enough walnut coffee options"
+  },
+  {
+   "pid": "168492326",
+   "sku": "168492326",
+   "title": "Tom Side Table",
+   "slotType": "side_table",
+   "url": "https://www.homecentre.com/ae/en/buy-tom-side-table/p/168492326",
+   "regularPrice": 769,
+   "salePrice": 502,
+   "dimsCm": {
+    "w": 50,
+    "d": 50,
+    "h": 50
+   },
+   "materials": "MDF fluted pedestal; faux marble (travertine-look) top",
+   "colour": "Brown",
+   "category": "Side & End Tables",
+   "image": "https://media.homecentre.com/i/homecentre/168492326-167207498-HC26122024_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "round travertine-look top on dark fluted walnut-tone pedestal",
+   "status": "accepted",
+   "reason": "Used in: side-tom"
+  },
+  {
+   "pid": "169441678",
+   "sku": "169441678",
+   "title": "Moxie Travertine Top Side Table",
+   "slotType": "side_table",
+   "url": "https://www.homecentre.com/ae/en/buy-moxie-travertine-top-side-table/p/169441678",
+   "regularPrice": 999,
+   "salePrice": 664,
+   "dimsCm": {
+    "w": 50,
+    "d": 50,
+    "h": 50
+   },
+   "materials": "travertine top; polyresin base",
+   "colour": "Brown",
+   "category": "Side & End Tables",
+   "image": "https://media.homecentre.com/i/homecentre/169441678-169441678-HC14082026_01-2100.jpg",
+   "inStock": true,
+   "notes": "round travertine top, dark brown block base",
+   "status": "accepted",
+   "reason": "Used in: side-moxie"
+  },
+  {
+   "pid": "168196895",
+   "sku": "168196895",
+   "title": "Arras Travertine Top Side Table",
+   "slotType": "side_table",
+   "url": "https://www.homecentre.com/ae/en/buy-arras-travertine-top-side-table/p/168196895",
+   "regularPrice": 1079,
+   "salePrice": 711,
+   "dimsCm": {
+    "w": 50,
+    "d": 50,
+    "h": 50
+   },
+   "materials": "travertine top; resin base",
+   "colour": "Brown",
+   "category": "Side & End Tables",
+   "image": "https://media.homecentre.com/i/homecentre/168196895-168196895-HC16092025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "round travertine top, dark turned pedestal",
+   "status": "accepted",
+   "reason": "Used in: side-arras"
+  },
+  {
+   "pid": "169294905",
+   "sku": "169294905",
+   "title": "Natura Side Table",
+   "slotType": "side_table",
+   "url": "https://www.homecentre.com/ae/en/buy-natura-side-table/p/169294905",
+   "regularPrice": 949,
+   "salePrice": 659,
+   "dimsCm": {
+    "w": 50,
+    "d": 50,
+    "h": 50
+   },
+   "materials": "engineered wood",
+   "colour": "Brown",
+   "category": "Side & End Tables",
+   "image": "https://media.homecentre.com/i/homecentre/169294905-169294905-HC06042026_02-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "medium walnut round 2-tier with cut-out base",
+   "status": "review",
+   "reason": "Medium walnut, lighter than W1 band (dE > 10 est.)"
+  },
+  {
+   "pid": "169441686",
+   "sku": "169441686",
+   "title": "Elodie Side Table",
+   "slotType": "side_table",
+   "url": "https://www.homecentre.com/ae/en/buy-elodie-side-table/p/169441686",
+   "regularPrice": 549,
+   "salePrice": 379,
+   "dimsCm": {
+    "w": 50,
+    "d": 50,
+    "h": 50
+   },
+   "materials": "walnut veneer fluted; stainless steel legs gold",
+   "colour": "Brown",
+   "category": "Side & End Tables",
+   "image": "https://media.homecentre.com/i/homecentre/169441686-169441686-HC30082026_01-2100.jpg",
+   "inStock": true,
+   "notes": "fluted walnut drum top, brass-tone legs",
+   "status": "review",
+   "reason": "Fluted veneer reads reddish-medium in photos; tone borderline vs W1 — excluded"
+  },
+  {
+   "pid": "169793844",
+   "sku": "169793844",
+   "title": "Lyra Side Table",
+   "slotType": "side_table",
+   "url": "https://www.homecentre.com/ae/en/buy-lyra-side-table/p/169793844",
+   "regularPrice": 769,
+   "salePrice": 529,
+   "dimsCm": {
+    "w": 50,
+    "d": 50,
+    "h": 50
+   },
+   "materials": "engineered wood veneer; rubberwood legs",
+   "colour": "Brown",
+   "category": "Side & End Tables",
+   "image": "https://media.homecentre.com/i/homecentre/169793844-169793844-HC25092026_01-2100.jpg",
+   "inStock": true,
+   "notes": "medium walnut, drawer+shelf, splayed legs",
+   "status": "review",
+   "reason": "Medium walnut, lighter than W1 band (dE > 10 est.)"
+  },
+  {
+   "pid": "168492476",
+   "sku": "168492476",
+   "title": "Herald TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/p/168492476",
+   "regularPrice": 2499,
+   "salePrice": 1749,
+   "dimsCm": {
+    "w": 200,
+    "d": 45,
+    "h": 45
+   },
+   "materials": "engineered wood; ceramic top",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT W200>190",
+   "status": "rejected",
+   "reason": "REJECT W200>190"
+  },
+  {
+   "pid": "169793842",
+   "sku": "169793842",
+   "title": "Lyra TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/p/169793842",
+   "regularPrice": 2449,
+   "salePrice": 1709,
+   "dimsCm": {
+    "w": 200,
+    "d": 50,
+    "h": 59
+   },
+   "materials": "engineered wood lacquered",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT W200>190",
+   "status": "rejected",
+   "reason": "REJECT W200>190"
+  },
+  {
+   "pid": "164575270",
+   "sku": "164575270",
+   "title": "Fenton TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/p/164575270",
+   "regularPrice": 1999,
+   "salePrice": 1999,
+   "dimsCm": {
+    "w": 201,
+    "d": 45,
+    "h": 45
+   },
+   "materials": "engineered wood melamine; metal legs",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT W201>190",
+   "status": "rejected",
+   "reason": "REJECT W201>190"
+  },
+  {
+   "pid": "166170461",
+   "sku": "166170461",
+   "title": "Raleigh TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/buy-raleigh-tv-unit/p/166170461",
+   "regularPrice": 2229,
+   "salePrice": 2229,
+   "dimsCm": {
+    "w": 180,
+    "d": 40,
+    "h": 45
+   },
+   "materials": "engineered wood; marble top",
+   "colour": "Brown",
+   "category": "TV & Media Units",
+   "image": "https://media.homecentre.com/i/homecentre/166170461-166170461-HC20112023_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "medium walnut, 2 doors + open centre shelf, light marble top",
+   "status": "review",
+   "reason": "Medium walnut, est. ~#75563D (dE ~13); white marble top — excluded on wood tone"
+  },
+  {
+   "pid": "169294904",
+   "sku": "169294904",
+   "title": "Natura TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/buy-natura-tv-unit/p/169294904",
+   "regularPrice": 2799,
+   "salePrice": 1959,
+   "dimsCm": {
+    "w": 180,
+    "d": 45,
+    "h": 55
+   },
+   "materials": "engineered wood",
+   "colour": "Brown",
+   "category": "TV & Media Units",
+   "image": "https://media.homecentre.com/i/homecentre/169294904-169294904-HC06042026_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "medium walnut, 2 doors 2 drawers 1 shelf, plinth/short legs",
+   "status": "review",
+   "reason": "Medium/orange-leaning walnut, est. ~#7A5538 (dE ~15) — lighter than W1"
+  },
+  {
+   "pid": "168492403",
+   "sku": "168492403",
+   "title": "Hege TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/buy-hege-tv-unit/p/168492403",
+   "regularPrice": 799,
+   "salePrice": 559,
+   "dimsCm": {
+    "w": 180,
+    "d": 40,
+    "h": 57
+   },
+   "materials": "engineered wood",
+   "colour": "Brown",
+   "category": "TV & Media Units",
+   "image": "https://media.homecentre.com/i/homecentre/168492403-168492403-HC07102025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "walnut, slatted (fluted) doors, open shelf, splayed legs",
+   "status": "accepted",
+   "reason": "Used in: tv-hege"
+  },
+  {
+   "pid": "169859748",
+   "sku": "169859748",
+   "title": "Jasper TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/buy-jasper-tv-unit/p/169859748",
+   "regularPrice": 849,
+   "salePrice": 589,
+   "dimsCm": {
+    "w": 185,
+    "d": 45,
+    "h": 60
+   },
+   "materials": "engineered wood; metal legs (gold)",
+   "colour": "Brown",
+   "category": "TV & Media Units",
+   "image": "https://media.homecentre.com/i/homecentre/169859748-169859748-HC24082026_01-2100.jpg",
+   "inStock": true,
+   "notes": "dark walnut, 2 doors 2 drawers, flat fronts, slim brass legs, soft-close",
+   "status": "accepted",
+   "reason": "Used in: tv-jasper"
+  },
+  {
+   "pid": "165660335",
+   "sku": "165660335",
+   "title": "Eden TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/buy-eden-tv-unit/p/165660335",
+   "regularPrice": 799,
+   "salePrice": 559,
+   "dimsCm": {
+    "w": 180,
+    "d": 40,
+    "h": 55
+   },
+   "materials": "engineered wood; metal legs (black)",
+   "colour": "Brown",
+   "category": "TV & Media Units",
+   "image": "https://media.homecentre.com/i/homecentre/165660335-165660335-HC06102023_01-2100.jpg",
+   "inStock": true,
+   "notes": "dark walnut, 2 doors 3 shelves, black hairpin-ish legs",
+   "status": "accepted",
+   "reason": "Used in: tv-eden"
+  },
+  {
+   "pid": "165358428",
+   "sku": "165358428",
+   "title": "Espresso TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/buy-espresso-tv-unit/p/165358428",
+   "regularPrice": 849,
+   "salePrice": 589,
+   "dimsCm": {
+    "w": 180,
+    "d": 40,
+    "h": 55
+   },
+   "materials": "engineered wood",
+   "colour": "Brown",
+   "category": "TV & Media Units",
+   "image": "https://media.homecentre.com/i/homecentre/165358428-165358428-HC10022023_01-2100.jpg",
+   "inStock": true,
+   "notes": "dark walnut, 4 drawers + shelf, wood legs",
+   "status": "accepted",
+   "reason": "Used in: tv-espresso"
+  },
+  {
+   "pid": "170032421",
+   "sku": "170032421",
+   "title": "Blenheim Queen Bed - 160x200 cm (Cream)",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/170032421",
+   "regularPrice": 4649,
+   "salePrice": 3749,
+   "dimsCm": {
+    "w": 180,
+    "d": 220,
+    "h": 135
+   },
+   "materials": "engineered wood; velvet",
+   "colour": "Cream",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT H135>125",
+   "status": "rejected",
+   "reason": "REJECT H135>125"
+  },
+  {
+   "pid": "168534073",
+   "sku": "168534073",
+   "title": "Forren Queen Bed - 160x200 cm",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/buy-forren-queen-bed-160x200-cm/p/168534073",
+   "regularPrice": 1299,
+   "salePrice": 909,
+   "dimsCm": {
+    "w": 170,
+    "d": 207,
+    "h": 100
+   },
+   "materials": "engineered wood (walnut-look), wooden slats",
+   "colour": "Brown",
+   "category": "Queen Beds",
+   "image": "https://media.homecentre.com/i/homecentre/168534073-168534073-HC01102025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "medium-dark walnut platform, wood panel headboard, short wood legs",
+   "status": "rejected",
+   "reason": "Wood reads medium/light walnut (est. #7C5C42, dE ~15); matching nightstand photographs as light oak"
+  },
+  {
+   "pid": "165857224",
+   "sku": "165857224",
+   "title": "Anders Queen Bed - 160x200 cm",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/165857224",
+   "regularPrice": 1849,
+   "salePrice": 1289,
+   "dimsCm": {
+    "w": 186,
+    "d": 216,
+    "h": 140
+   },
+   "materials": "fabric, metal legs",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT H140",
+   "status": "rejected",
+   "reason": "REJECT H140"
+  },
+  {
+   "pid": "169321915",
+   "sku": "169321915",
+   "title": "Natura Queen Bed - 160x200 cm",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/169321915",
+   "regularPrice": 3499,
+   "salePrice": 2449,
+   "dimsCm": {
+    "w": 232,
+    "d": 245,
+    "h": 100
+   },
+   "materials": "fabric",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT W232",
+   "status": "rejected",
+   "reason": "REJECT W232"
+  },
+  {
+   "pid": "168541482",
+   "sku": "168541482",
+   "title": "Cloud Queen Bed - 160x200 cm",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/buy-cloud-queen-bed-160x200-cm/p/168541482",
+   "regularPrice": 1799,
+   "salePrice": 1259,
+   "dimsCm": {
+    "w": 182,
+    "d": 224,
+    "h": 114
+   },
+   "materials": "engineered wood frame; fabric upholstery; wooden slats",
+   "colour": "Beige",
+   "category": "Queen Beds",
+   "image": "https://media.homecentre.com/i/homecentre/168541482-168541482-HC04112025_01-2100.jpg",
+   "inStock": true,
+   "notes": "beige upholstered, button-tufted cushion headboard, upholstered base",
+   "status": "accepted",
+   "reason": "Used in: bed-cloud-160"
+  },
+  {
+   "pid": "170038378",
+   "sku": "170038378",
+   "title": "Mysa Queen Bed",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/170038378",
+   "regularPrice": 1599,
+   "salePrice": 1119,
+   "dimsCm": {
+    "w": 196,
+    "d": 228,
+    "h": 110
+   },
+   "materials": "fabric",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT W196",
+   "status": "rejected",
+   "reason": "REJECT W196"
+  },
+  {
+   "pid": "167382607",
+   "sku": "167382607",
+   "title": "Studio Obliq Luna Queen Bed",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/167382607",
+   "regularPrice": 5999,
+   "salePrice": 4499,
+   "dimsCm": {
+    "w": 200,
+    "d": 220,
+    "h": 100
+   },
+   "materials": "solid wood; fabric",
+   "colour": "Off White",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT W200",
+   "status": "rejected",
+   "reason": "REJECT W200"
+  },
+  {
+   "pid": "168468139",
+   "sku": "168468139",
+   "title": "Elm Queen Bed",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/168468139",
+   "regularPrice": 3299,
+   "salePrice": 2309,
+   "dimsCm": {
+    "w": 198,
+    "d": 230,
+    "h": 108
+   },
+   "materials": "fabric",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT",
+   "status": "rejected",
+   "reason": "REJECT"
+  },
+  {
+   "pid": "169868261",
+   "sku": "169868261",
+   "title": "Marcella Queen Bed",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/169868261",
+   "regularPrice": 3299,
+   "salePrice": 3299,
+   "dimsCm": {
+    "w": 225,
+    "d": 214,
+    "h": 105
+   },
+   "materials": "fabric",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT",
+   "status": "rejected",
+   "reason": "REJECT"
+  },
+  {
+   "pid": "170032451",
+   "sku": "170032451",
+   "title": "Westbury Queen Bed",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/170032451",
+   "regularPrice": 4399,
+   "salePrice": 4399,
+   "dimsCm": {
+    "w": 180,
+    "d": 220,
+    "h": 135
+   },
+   "materials": "velvet",
+   "colour": "Cream",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT H",
+   "status": "rejected",
+   "reason": "REJECT H"
+  },
+  {
+   "pid": "168860625",
+   "sku": "168860625",
+   "title": "Jasper Velvet Queen Bed",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/168860625",
+   "regularPrice": 3099,
+   "salePrice": 2649,
+   "dimsCm": {
+    "w": 170,
+    "d": 215,
+    "h": 135
+   },
+   "materials": "velvet",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT H",
+   "status": "rejected",
+   "reason": "REJECT H"
+  },
+  {
+   "pid": "170038411",
+   "sku": "170038411",
+   "title": "Layan Queen Bed",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/170038411",
+   "regularPrice": 1799,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 187,
+    "d": 238,
+    "h": 94
+   },
+   "materials": "engineered wood",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT D238",
+   "status": "rejected",
+   "reason": "REJECT D238"
+  },
+  {
+   "pid": "170032442",
+   "sku": "170032442",
+   "title": "Kenswick Queen Bed",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/170032442",
+   "regularPrice": 4999,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 180,
+    "d": 220,
+    "h": 150
+   },
+   "materials": "velvet",
+   "colour": "Cream",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT H",
+   "status": "rejected",
+   "reason": "REJECT H"
+  },
+  {
+   "pid": "164619133",
+   "sku": "164619133",
+   "title": "Nazario Queen Bed - 160x200 cm",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/buy-nazario-queen-bed-160x200-cm/p/164619133",
+   "regularPrice": 1099,
+   "salePrice": 769,
+   "dimsCm": {
+    "w": 169,
+    "d": 225,
+    "h": 119
+   },
+   "materials": "engineered wood, wooden finish",
+   "colour": "Brown",
+   "category": "Queen Beds",
+   "image": "https://media.homecentre.com/i/homecentre/164619133-164619133-HC16012023_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "medium walnut, wood panel headboard with top rail, footboard",
+   "status": "accepted",
+   "reason": "Used in: bed-nazario-160"
+  },
+  {
+   "pid": "169040813",
+   "sku": "169040813",
+   "title": "Leopold Upholstered Queen Bed with Storage",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/169040813",
+   "regularPrice": 3299,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 167,
+    "d": 216,
+    "h": 140
+   },
+   "materials": "solid wood; fabric",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT H140 (looked ideal: cream headboard + walnut frame)",
+   "status": "rejected",
+   "reason": "REJECT H140 (looked ideal: cream headboard + walnut frame)"
+  },
+  {
+   "pid": "169792385",
+   "sku": "169792385",
+   "title": "Melissa Arc Queen Bed",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/169792385",
+   "regularPrice": 3099,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 275,
+    "d": 209,
+    "h": 120
+   },
+   "materials": "fabric",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT W",
+   "status": "rejected",
+   "reason": "REJECT W"
+  },
+  {
+   "pid": "168860604",
+   "sku": "168860604",
+   "title": "Aurora Queen Bed",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/168860604",
+   "regularPrice": 3199,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 170,
+    "d": 215,
+    "h": 135
+   },
+   "materials": "velvet",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT H",
+   "status": "rejected",
+   "reason": "REJECT H"
+  },
+  {
+   "pid": "165937013",
+   "sku": "165937013",
+   "title": "Maison Queen Bed with Guide Lights - 160x200 cm",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/buy-maison-queen-bed-with-guide-lights-160x200-cm/p/165937013",
+   "regularPrice": 2399,
+   "salePrice": 1679,
+   "dimsCm": {
+    "w": 167,
+    "d": 213,
+    "h": 110
+   },
+   "materials": "engineered wood; fabric; metal legs",
+   "colour": "Beige",
+   "category": "Queen Beds",
+   "image": "https://media.homecentre.com/i/homecentre/165937013-165937013-HC12122023_02-2100.jpg?v=2",
+   "inStock": true,
+   "notes": "beige vertical channel headboard, LED guide lights under frame",
+   "status": "accepted",
+   "reason": "Used in: bed-maison-160"
+  },
+  {
+   "pid": "169868278",
+   "sku": "169868278",
+   "title": "Warner Wing Queen Bed",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/169868278",
+   "regularPrice": 3999,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 203,
+    "d": 218,
+    "h": 120
+   },
+   "materials": "fabric",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT W",
+   "status": "rejected",
+   "reason": "REJECT W"
+  },
+  {
+   "pid": "168860622",
+   "sku": "168860622",
+   "title": "Galaxy Velvet Queen Bed",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/p/168860622",
+   "regularPrice": 3099,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 170,
+    "d": 215,
+    "h": 135
+   },
+   "materials": "velvet",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT H",
+   "status": "rejected",
+   "reason": "REJECT H"
+  },
+  {
+   "pid": "167797832",
+   "sku": "167797832",
+   "title": "Mondo Queen Bed - 160x200 cm",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/buy-mondo-queen-bed-160x200-cm/p/167797832",
+   "regularPrice": 1549,
+   "salePrice": 1549,
+   "dimsCm": {
+    "w": 188,
+    "d": 216,
+    "h": 120
+   },
+   "materials": "engineered wood; fabric",
+   "colour": "Brown",
+   "category": "Queen Beds",
+   "image": "https://media.homecentre.com/i/homecentre/167797832-167797832-HC28042025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "greige upholstered panel headboard",
+   "status": "rejected",
+   "reason": "Headboard upholstery reads taupe-grey; grey headboard textile forbidden"
+  },
+  {
+   "pid": "166645317",
+   "sku": "166645317",
+   "title": "Somerton Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/166645317",
+   "regularPrice": 1099,
+   "salePrice": 769,
+   "dimsCm": {
+    "w": 51,
+    "d": 45,
+    "h": 51
+   },
+   "materials": "veneer; glass top",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT W51>50 (1cm)",
+   "status": "rejected",
+   "reason": "REJECT W51>50 (1cm)"
+  },
+  {
+   "pid": "169987052",
+   "sku": "169987052",
+   "title": "Vogue Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/169987052",
+   "regularPrice": 999,
+   "salePrice": 999,
+   "dimsCm": {
+    "w": 60,
+    "d": 45,
+    "h": 50
+   },
+   "materials": "-",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT W60",
+   "status": "rejected",
+   "reason": "REJECT W60"
+  },
+  {
+   "pid": "169334866",
+   "sku": "169334866",
+   "title": "Natura Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/169334866",
+   "regularPrice": 849,
+   "salePrice": 589,
+   "dimsCm": {
+    "w": 60,
+    "d": 46,
+    "h": 55.5
+   },
+   "materials": "-",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT",
+   "status": "rejected",
+   "reason": "REJECT"
+  },
+  {
+   "pid": "158515545",
+   "sku": "158515545",
+   "title": "Lyra Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/158515545",
+   "regularPrice": 999,
+   "salePrice": 699,
+   "dimsCm": {
+    "w": 76,
+    "d": 43.5,
+    "h": 74
+   },
+   "materials": "-",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT",
+   "status": "rejected",
+   "reason": "REJECT"
+  },
+  {
+   "pid": "168534067",
+   "sku": "168534067",
+   "title": "Forren Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/168534067",
+   "regularPrice": 349,
+   "salePrice": 239,
+   "dimsCm": {
+    "w": 45,
+    "d": 40,
+    "h": 52
+   },
+   "materials": "engineered wood",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT tone: reads light oak in photo",
+   "status": "rejected",
+   "reason": "REJECT tone: reads light oak in photo"
+  },
+  {
+   "pid": "162645652",
+   "sku": "162645652",
+   "title": "Nazario Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/buy-nazario-nightstand/p/162645652",
+   "regularPrice": 299,
+   "salePrice": 209,
+   "dimsCm": {
+    "w": 48,
+    "d": 40,
+    "h": 60
+   },
+   "materials": "engineered wood",
+   "colour": "Brown",
+   "category": "Nightstands",
+   "image": "https://media.homecentre.com/i/homecentre/162645652-162645652-HC25102020_01-2100.jpg?v=2",
+   "inStock": true,
+   "notes": "medium walnut, open niche top + drawer(s), plinth",
+   "status": "accepted",
+   "reason": "Used in: nightstand-nazario"
+  },
+  {
+   "pid": "168390457",
+   "sku": "168390457",
+   "title": "Solena Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/168390457",
+   "regularPrice": 899,
+   "salePrice": 449,
+   "dimsCm": {
+    "w": 60,
+    "d": 45,
+    "h": 55
+   },
+   "materials": "-",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT",
+   "status": "rejected",
+   "reason": "REJECT"
+  },
+  {
+   "pid": "164398822",
+   "sku": "164398822",
+   "title": "Medley Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/164398822",
+   "regularPrice": 299,
+   "salePrice": 299,
+   "dimsCm": {
+    "w": 60,
+    "d": 46,
+    "h": 54
+   },
+   "materials": "-",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT",
+   "status": "rejected",
+   "reason": "REJECT"
+  },
+  {
+   "pid": "169494930",
+   "sku": "169494930",
+   "title": "Jade Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/169494930",
+   "regularPrice": 1899,
+   "salePrice": 1899,
+   "dimsCm": {
+    "w": 50,
+    "d": 40,
+    "h": 60
+   },
+   "materials": "bone inlay turquoise",
+   "colour": "-",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT colour",
+   "status": "rejected",
+   "reason": "REJECT colour"
+  },
+  {
+   "pid": "168036633",
+   "sku": "168036633",
+   "title": "Wood Culture Suri Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/buy-wood-culture-suri-nightstand/p/168036633",
+   "regularPrice": 1939,
+   "salePrice": 1459,
+   "dimsCm": {
+    "w": 45,
+    "d": 40,
+    "h": 56
+   },
+   "materials": "solid wood",
+   "colour": "Brown",
+   "category": "Nightstands",
+   "image": "https://cdn.media.amplience.net/i/lmg/168036633-168036633-HC11032053_01-2100.jpg",
+   "inStock": true,
+   "notes": "reddish dark walnut, fully fluted front, 2 drawers, short block legs",
+   "status": "accepted",
+   "reason": "Used in: nightstand-suri"
+  },
+  {
+   "pid": "168064952",
+   "sku": "168064952",
+   "title": "Mona Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/168064952",
+   "regularPrice": 399,
+   "salePrice": 279,
+   "dimsCm": {
+    "w": 50,
+    "d": 45,
+    "h": 55
+   },
+   "materials": "engineered wood",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT colour taupe/grey",
+   "status": "rejected",
+   "reason": "REJECT colour taupe/grey"
+  },
+  {
+   "pid": "170306275",
+   "sku": "170306275",
+   "title": "Bounce Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/170306275",
+   "regularPrice": 1809,
+   "salePrice": 1809,
+   "dimsCm": {
+    "w": 45,
+    "d": 40,
+    "h": 50
+   },
+   "materials": "plaster finish black",
+   "colour": "-",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT colour",
+   "status": "rejected",
+   "reason": "REJECT colour"
+  },
+  {
+   "pid": "166839165",
+   "sku": "166839165",
+   "title": "Leopold Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/166839165",
+   "regularPrice": 1199,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 70,
+    "d": 44,
+    "h": 65
+   },
+   "materials": "solid wood",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT W",
+   "status": "rejected",
+   "reason": "REJECT W"
+  },
+  {
+   "pid": "169278861",
+   "sku": "169278861",
+   "title": "Evelyn Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/169278861",
+   "regularPrice": 435,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 45,
+    "d": 46,
+    "h": 51
+   },
+   "materials": "-",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT D46",
+   "status": "rejected",
+   "reason": "REJECT D46"
+  },
+  {
+   "pid": "164375194",
+   "sku": "164375194",
+   "title": "Cloudie Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/164375194",
+   "regularPrice": 415,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 45,
+    "d": 39,
+    "h": 50
+   },
+   "materials": "-",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT kids",
+   "status": "rejected",
+   "reason": "REJECT kids"
+  },
+  {
+   "pid": "166547889",
+   "sku": "166547889",
+   "title": "Maxillar Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/166547889",
+   "regularPrice": 315,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 50,
+    "d": 40,
+    "h": 50
+   },
+   "materials": "-",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT kids white/oak",
+   "status": "rejected",
+   "reason": "REJECT kids white/oak"
+  },
+  {
+   "pid": "169487751",
+   "sku": "169487751",
+   "title": "Art and Craft Verve Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/buy-art-and-craft-verve-nightstand/p/169487751",
+   "regularPrice": 1669,
+   "salePrice": 1429,
+   "dimsCm": {
+    "w": 40,
+    "d": 38,
+    "h": 50
+   },
+   "materials": "solid wood; metal legs",
+   "colour": "Brown",
+   "category": "Nightstands",
+   "image": "https://cdn.media.amplience.net/i/lmg/169487751-169487751-HC16022026_01-2100.jpg",
+   "inStock": true,
+   "notes": "dark walnut herringbone door, black metal legs",
+   "status": "accepted",
+   "reason": "Used in: nightstand-verve"
+  },
+  {
+   "pid": "170215656",
+   "sku": "170215656",
+   "title": "Art and Craft Mangoluxe Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/170215656",
+   "regularPrice": 1549,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 50,
+    "d": 40,
+    "h": 60
+   },
+   "materials": "solid mango; metal legs",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT tone: honey/amber mango, brass legs",
+   "status": "rejected",
+   "reason": "REJECT tone: honey/amber mango, brass legs"
+  },
+  {
+   "pid": "168036692",
+   "sku": "168036692",
+   "title": "Kentana 2-Seater Marble Top Dining Table",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/buy-kentana-2seater-marble-top-dining-table/p/168036692",
+   "regularPrice": 3659,
+   "salePrice": 2749,
+   "dimsCm": {
+    "w": 100,
+    "d": 100,
+    "h": 73
+   },
+   "materials": "marble top; solid wood slatted drum pedestal",
+   "colour": "Brown",
+   "category": "Dining Tables",
+   "image": "https://cdn.media.amplience.net/i/lmg/168036692-168036692-HC11032160_01-2100.jpg",
+   "inStock": true,
+   "notes": "round light marble top on slatted walnut drum pedestal (Wood Culture)",
+   "status": "accepted",
+   "reason": "Used in: dining-kentana-100"
+  },
+  {
+   "pid": "169745120",
+   "sku": "169745120",
+   "title": "Mahmayi 2-Seater Dining Table (walnut)",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/buy-mahmayi-2seater-dining-table/p/169745120",
+   "regularPrice": 979,
+   "salePrice": 629,
+   "dimsCm": {
+    "w": 80,
+    "d": 80,
+    "h": 75
+   },
+   "materials": "engineered wood, matte",
+   "colour": "Brown",
+   "category": "Dining Tables",
+   "image": "https://cdn.media.amplience.net/i/lmg/169745120-169745120-HC10042026_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "square parsons table, medium walnut",
+   "status": "accepted",
+   "reason": "Used in: dining-mahmayi-80"
+  },
+  {
+   "pid": "169745123",
+   "sku": "169745123",
+   "title": "Mahmayi 2-Seater Dining Table (dark)",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/buy-mahmayi-2seater-dining-table/p/169745123",
+   "regularPrice": 979,
+   "salePrice": 629,
+   "dimsCm": {
+    "w": 80,
+    "d": 80,
+    "h": 75
+   },
+   "materials": "engineered wood, matte",
+   "colour": "Brown",
+   "category": "Dining Tables",
+   "image": "https://cdn.media.amplience.net/i/lmg/169745123-169745123-HC10042026_01-2100.jpg",
+   "inStock": true,
+   "notes": "square parsons, darker smoked walnut",
+   "status": "rejected",
+   "reason": "Smoked grey-brown finish reads grey-washed (C* < 9 risk)"
+  },
+  {
+   "pid": "165850107",
+   "sku": "165850107",
+   "title": "Keira 4-Seater Wooden Top Dining Table",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/165850107",
+   "regularPrice": 699,
+   "salePrice": 449,
+   "dimsCm": {
+    "w": 100,
+    "d": 100,
+    "h": 77
+   },
+   "materials": "solid wood",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT tone: light oak/ash",
+   "status": "rejected",
+   "reason": "REJECT tone: light oak/ash"
+  },
+  {
+   "pid": "167753064",
+   "sku": "167753064",
+   "title": "Solo 4-Seater",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/167753064",
+   "regularPrice": 1399,
+   "salePrice": 979,
+   "dimsCm": {
+    "w": 120,
+    "d": 120,
+    "h": 76
+   },
+   "materials": "-",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT size",
+   "status": "rejected",
+   "reason": "REJECT size"
+  },
+  {
+   "pid": "167207489",
+   "sku": "167207489",
+   "title": "Tom 4-Seater Faux Marble Top",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/167207489",
+   "regularPrice": 1699,
+   "salePrice": 1129,
+   "dimsCm": {
+    "w": 120,
+    "d": 120,
+    "h": 75
+   },
+   "materials": "-",
+   "colour": "Black",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT size",
+   "status": "rejected",
+   "reason": "REJECT size"
+  },
+  {
+   "pid": "163351664",
+   "sku": "163351664",
+   "title": "Sam 2-Seater",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/163351664",
+   "regularPrice": 749,
+   "salePrice": 519,
+   "dimsCm": {
+    "w": 80,
+    "d": 80,
+    "h": 75
+   },
+   "materials": "solid wood top, metal pedestal",
+   "colour": "Black",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT colour black",
+   "status": "rejected",
+   "reason": "REJECT colour black"
+  },
+  {
+   "pid": "170403682",
+   "sku": "170403682",
+   "title": "Willow 4-Seater",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/170403682",
+   "regularPrice": 3999,
+   "salePrice": 3199,
+   "dimsCm": {
+    "w": 120,
+    "d": 120,
+    "h": 75
+   },
+   "materials": "-",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT size",
+   "status": "rejected",
+   "reason": "REJECT size"
+  },
+  {
+   "pid": "169011695",
+   "sku": "169011695",
+   "title": "Studio Obliq Lino 4-Seater",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/169011695",
+   "regularPrice": 3789,
+   "salePrice": 2849,
+   "dimsCm": {
+    "w": 120,
+    "d": 120,
+    "h": 75
+   },
+   "materials": "-",
+   "colour": "Cream",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT size",
+   "status": "rejected",
+   "reason": "REJECT size"
+  },
+  {
+   "pid": "168405064",
+   "sku": "168405064",
+   "title": "Ballito 4-Seater",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/168405064",
+   "regularPrice": 999,
+   "salePrice": 699,
+   "dimsCm": {
+    "w": 120,
+    "d": 120,
+    "h": 75
+   },
+   "materials": "-",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT size",
+   "status": "rejected",
+   "reason": "REJECT size"
+  },
+  {
+   "pid": "166973693",
+   "sku": "166973693",
+   "title": "Sven 4-Seater",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/166973693",
+   "regularPrice": 1549,
+   "salePrice": 999,
+   "dimsCm": {
+    "w": 120,
+    "d": 120,
+    "h": 76
+   },
+   "materials": "-",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT size",
+   "status": "rejected",
+   "reason": "REJECT size"
+  },
+  {
+   "pid": "910010230-HC23102024",
+   "sku": "910010230-HC23102024",
+   "title": "Heaven 4 Seater Dining Table - Dark Walnut",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/910010230-HC23102024",
+   "regularPrice": 1058,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 120,
+    "d": 120,
+    "h": 72
+   },
+   "materials": "-",
+   "colour": "-",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT size (marketplace)",
+   "status": "rejected",
+   "reason": "REJECT size (marketplace)"
+  },
+  {
+   "pid": "166813853",
+   "sku": "166813853",
+   "title": "Renton 4-Seater",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/166813853",
+   "regularPrice": 579,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 110,
+    "d": 110,
+    "h": 75
+   },
+   "materials": "-",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT size",
+   "status": "rejected",
+   "reason": "REJECT size"
+  },
+  {
+   "pid": "168257409",
+   "sku": "168257409",
+   "title": "Ranger 4-Seater Marble Top",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/168257409",
+   "regularPrice": 2199,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 120,
+    "d": 120,
+    "h": 76
+   },
+   "materials": "-",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT size",
+   "status": "rejected",
+   "reason": "REJECT size"
+  },
+  {
+   "pid": "158671351",
+   "sku": "158671351",
+   "title": "Lazy Saturday 2-Seater Foldable",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/158671351",
+   "regularPrice": 449,
+   "salePrice": 309,
+   "dimsCm": {
+    "w": 70,
+    "d": 70,
+    "h": 74
+   },
+   "materials": "solid acacia",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT outdoor, light acacia",
+   "status": "rejected",
+   "reason": "REJECT outdoor, light acacia"
+  },
+  {
+   "pid": "170184034",
+   "sku": "170184034",
+   "title": "Art and Craft Danish 4-Seater",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/170184034",
+   "regularPrice": 2199,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 120,
+    "d": 120,
+    "h": 76
+   },
+   "materials": "-",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT size",
+   "status": "rejected",
+   "reason": "REJECT size"
+  },
+  {
+   "pid": "169741919",
+   "sku": "169741919",
+   "title": "Elysian 4-Seater Marble Top",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/169741919",
+   "regularPrice": 2799,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 110,
+    "d": 100,
+    "h": 76
+   },
+   "materials": "marble; aluminium",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT size",
+   "status": "rejected",
+   "reason": "REJECT size"
+  },
+  {
+   "pid": "170702967",
+   "sku": "170702967",
+   "title": "Onesto 4-Seater",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/170702967",
+   "regularPrice": 3959,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 118,
+    "d": 118,
+    "h": 75
+   },
+   "materials": "-",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT size",
+   "status": "rejected",
+   "reason": "REJECT size"
+  },
+  {
+   "pid": "169123965",
+   "sku": "169123965",
+   "title": "Linden Fabric Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/buy-linden-fabric-dining-chair/p/169123965",
+   "regularPrice": 649,
+   "salePrice": 449,
+   "dimsCm": {
+    "w": 51,
+    "d": 53,
+    "h": 81
+   },
+   "materials": "solid wood frame; fabric seat",
+   "colour": "Brown",
+   "category": "Chairs & Benches",
+   "image": "https://media.homecentre.com/i/homecentre/169123965-169123965-HC01072026_01-2100.jpg",
+   "inStock": true,
+   "notes": "walnut wishbone/curved-back frame, oat cushion seat",
+   "status": "accepted",
+   "reason": "Used in: chair-linden"
+  },
+  {
+   "pid": "166523813",
+   "sku": "166523813",
+   "title": "Pebble Fabric Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/buy-pebble-fabric-dining-chair/p/166523813",
+   "regularPrice": 849,
+   "salePrice": 589,
+   "dimsCm": {
+    "w": 59,
+    "d": 53,
+    "h": 84
+   },
+   "materials": "rubberwood legs; fabric",
+   "colour": "Beige",
+   "category": "Chairs & Benches",
+   "image": "https://media.homecentre.com/i/homecentre/166523813-166523813-HC28052024_01-2100.jpg",
+   "inStock": true,
+   "notes": "greige upholstered shell seat+back on dark walnut-stained legs",
+   "status": "accepted",
+   "reason": "Used in: chair-pebble"
+  },
+  {
+   "pid": "170215771",
+   "sku": "170215771",
+   "title": "Art and Craft Canovia Fabric Dining Chair (1199)",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/p/170215771",
+   "regularPrice": 1199,
+   "salePrice": 1039,
+   "dimsCm": {
+    "w": 58,
+    "d": 61,
+    "h": 87
+   },
+   "materials": "solid wood; fabric",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT D61>60",
+   "status": "rejected",
+   "reason": "REJECT D61>60"
+  },
+  {
+   "pid": "170215778",
+   "sku": "170215778",
+   "title": "Art and Craft Canovia Fabric Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/buy-art-and-craft-canovia-fabric-dining-chair/p/170215778",
+   "regularPrice": 849,
+   "salePrice": 809,
+   "dimsCm": {
+    "w": 40,
+    "d": 40,
+    "h": 87
+   },
+   "materials": "solid wood; cane back; fabric seat",
+   "colour": "Brown",
+   "category": "Chairs & Benches",
+   "image": "https://cdn.media.amplience.net/i/lmg/170215778-170215778-HC31072026_01-2100.jpg",
+   "inStock": true,
+   "notes": "dark walnut frame, cane back panel, cream seat; NOTE dims 40x40 look like seat size",
+   "status": "review",
+   "reason": "Listed dims 40x40x87 look like seat size, not overall footprint — unreliable data, excluded"
+  },
+  {
+   "pid": "168036638",
+   "sku": "168036638",
+   "title": "Wood Culture Viona Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/buy-wood-culture-viona-dining-chair/p/168036638",
+   "regularPrice": 2039,
+   "salePrice": 1529,
+   "dimsCm": {
+    "w": 59,
+    "d": 55,
+    "h": 80
+   },
+   "materials": "solid wood; upholstered",
+   "colour": "Brown",
+   "category": "Chairs & Benches",
+   "image": "https://cdn.media.amplience.net/i/lmg/168036638-168036638-HC11032147_01-2100.jpg",
+   "inStock": true,
+   "notes": "dark walnut frame w/ curved back, cream upholstered seat+back pad",
+   "status": "accepted",
+   "reason": "Used in: chair-viona"
+  },
+  {
+   "pid": "168036539",
+   "sku": "168036539",
+   "title": "Wood Culture Alfred Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/buy-wood-culture-alfred-dining-chair/p/168036539",
+   "regularPrice": 1349,
+   "salePrice": 1019,
+   "dimsCm": {
+    "w": 49,
+    "d": 52,
+    "h": 87
+   },
+   "materials": "solid wood; cane",
+   "colour": "Brown",
+   "category": "Chairs & Benches",
+   "image": "https://cdn.media.amplience.net/i/lmg/168036539-168036539-HC11032113_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "walnut frame, cane back, cream seat pad",
+   "status": "accepted",
+   "reason": "Used in: chair-alfred"
+  },
+  {
+   "pid": "168036558",
+   "sku": "168036558",
+   "title": "Wood Culture Wishbone Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/buy-wood-culture-wishbone-dining-chair/p/168036558",
+   "regularPrice": 1069,
+   "salePrice": 809,
+   "dimsCm": {
+    "w": 55,
+    "d": 54,
+    "h": 74
+   },
+   "materials": "solid wood; paper cord seat",
+   "colour": "Brown",
+   "category": "Chairs & Benches",
+   "image": "https://cdn.media.amplience.net/i/lmg/168036558-168036558-HC11032149_01-2100.jpg",
+   "inStock": true,
+   "notes": "walnut wishbone (Y-back), natural cord seat",
+   "status": "accepted",
+   "reason": "Used in: chair-wishbone"
+  },
+  {
+   "pid": "165452450",
+   "sku": "165452450",
+   "title": "Gallant Wooden Floor Lamp - 158 cm",
+   "slotType": "floor_lamp",
+   "url": "https://www.homecentre.com/ae/en/p/165452450",
+   "regularPrice": 599,
+   "salePrice": 419,
+   "dimsCm": {
+    "w": 48.5,
+    "d": 55,
+    "h": 158
+   },
+   "materials": "wood tripod; fabric shade",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT footprint 55>50",
+   "status": "rejected",
+   "reason": "REJECT footprint 55>50"
+  },
+  {
+   "pid": "168337814",
+   "sku": "168337814",
+   "title": "Monty Metal Floor Lamp - 162 cm",
+   "slotType": "floor_lamp",
+   "url": "https://www.homecentre.com/ae/en/p/168337814",
+   "regularPrice": 349,
+   "salePrice": 349,
+   "dimsCm": {
+    "w": 35,
+    "d": 60,
+    "h": 162
+   },
+   "materials": "metal; linen",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT footprint 60>50 (angled arm)",
+   "status": "rejected",
+   "reason": "REJECT footprint 60>50 (angled arm)"
+  },
+  {
+   "pid": "168337813",
+   "sku": "168337813",
+   "title": "Frosty Wooden Floor Lamp - 154 cm",
+   "slotType": "floor_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-frosty-wooden-floor-lamp-154-cm/p/168337813",
+   "regularPrice": 449,
+   "salePrice": 449,
+   "dimsCm": {
+    "w": 50,
+    "d": 50,
+    "h": 154
+   },
+   "materials": "wood stem+base; linen pleated shade",
+   "colour": "Brown",
+   "category": "Floor Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/168337813-168337813-HC07142025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "walnut turned stem, pleated cream shade",
+   "status": "accepted",
+   "reason": "Used in: floorlamp-frosty"
+  },
+  {
+   "pid": "168429617",
+   "sku": "168429617",
+   "title": "Fern Ceramic Floor Lamp - 145 cm",
+   "slotType": "floor_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-fern-ceramic-floor-lamp-145-cm/p/168429617",
+   "regularPrice": 399,
+   "salePrice": 399,
+   "dimsCm": {
+    "w": 33,
+    "d": 33,
+    "h": 145
+   },
+   "materials": "ceramic column; linen shade",
+   "colour": "Beige",
+   "category": "Floor Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/168429617-168429617-HC07142025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "sand/travertine-look ceramic column, cylinder linen shade",
+   "status": "review",
+   "reason": "Height 145 < rule 150–175 for floor lamps"
+  },
+  {
+   "pid": "168514888",
+   "sku": "168514888",
+   "title": "Austen Metal Floor Lamp - 150 cm",
+   "slotType": "floor_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-austen-metal-floor-lamp-150-cm/p/168514888",
+   "regularPrice": 399,
+   "salePrice": 279,
+   "dimsCm": {
+    "w": 40,
+    "d": 40,
+    "h": 150
+   },
+   "materials": "metal (brass finish); polyresin shade",
+   "colour": "Gold",
+   "category": "Floor Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/168514888-168514888-HC09012025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "brass stem+disc base, white mushroom/dome shade",
+   "status": "accepted",
+   "reason": "Used in: floorlamp-austen"
+  },
+  {
+   "pid": "168514889",
+   "sku": "168514889",
+   "title": "Sable Metal Floor Lamp - 162 cm",
+   "slotType": "floor_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-sable-metal-floor-lamp-162-cm/p/168514889",
+   "regularPrice": 399,
+   "salePrice": 279,
+   "dimsCm": {
+    "w": 40,
+    "d": 40,
+    "h": 162
+   },
+   "materials": "metal (brass finish); fabric shade",
+   "colour": "Gold",
+   "category": "Floor Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/168514889-168514889-HC09012025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "brass stem with swing joint, tapered linen shade, round brass base",
+   "status": "accepted",
+   "reason": "Used in: floorlamp-sable"
+  },
+  {
+   "pid": "166895135",
+   "sku": "166895135",
+   "title": "Tango Metal Floor Lamp - 162 cm",
+   "slotType": "floor_lamp",
+   "url": "https://www.homecentre.com/ae/en/p/166895135",
+   "regularPrice": 399,
+   "salePrice": 279,
+   "dimsCm": {
+    "w": 25,
+    "d": 14,
+    "h": 162
+   },
+   "materials": "metal base; fabric shade",
+   "colour": "Gold",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "not used (dims unclear)",
+   "status": "not-selected",
+   "reason": "Listed dims (25x14) unclear for a floor lamp"
+  },
+  {
+   "pid": "168337818",
+   "sku": "168337818",
+   "title": "Frosty Wooden Table Lamp - 50 cm",
+   "slotType": "table_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-frosty-wooden-table-lamp-50-cm/p/168337818",
+   "regularPrice": 249,
+   "salePrice": 249,
+   "dimsCm": {
+    "w": 32,
+    "d": 32,
+    "h": 50
+   },
+   "materials": "wood base; linen scalloped/pleated shade",
+   "colour": "Brown",
+   "category": "Table & Desk Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/168337818-168337818-HC07142025_01-2100.jpg?v=2",
+   "inStock": true,
+   "notes": "walnut turned stem on round base, scalloped cream linen shade",
+   "status": "accepted",
+   "reason": "Used in: tablelamp-frosty"
+  },
+  {
+   "pid": "167808764",
+   "sku": "167808764",
+   "title": "Barley Ceramic Table Lamp - 48 cm (Cream)",
+   "slotType": "table_lamp",
+   "url": "https://www.homecentre.com/ae/en/p/167808764",
+   "regularPrice": 299,
+   "salePrice": 209,
+   "dimsCm": {
+    "w": 50,
+    "d": 50,
+    "h": 48
+   },
+   "materials": "ceramic; linen",
+   "colour": "Cream",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT shade 50 > rule 25-40 (overhangs nightstand)",
+   "status": "rejected",
+   "reason": "REJECT shade 50 > rule 25-40 (overhangs nightstand)"
+  },
+  {
+   "pid": "167808765",
+   "sku": "167808765",
+   "title": "Barley Ceramic Table Lamp - 48 cm (Brown)",
+   "slotType": "table_lamp",
+   "url": "https://www.homecentre.com/ae/en/p/167808765",
+   "regularPrice": 299,
+   "salePrice": 209,
+   "dimsCm": {
+    "w": 50,
+    "d": 50,
+    "h": 48
+   },
+   "materials": "ceramic; linen",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT shade 50",
+   "status": "rejected",
+   "reason": "REJECT shade 50"
+  },
+  {
+   "pid": "166689599",
+   "sku": "166689599",
+   "title": "Tolima Ceramic Table Lamp - 44 cm",
+   "slotType": "table_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-tolima-ceramic-table-lamp-44-cm/p/166689599",
+   "regularPrice": 179,
+   "salePrice": 179,
+   "dimsCm": {
+    "w": 40,
+    "d": 35,
+    "h": 46
+   },
+   "materials": "ceramic; linen shade",
+   "colour": "Beige",
+   "category": "Table & Desk Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/166689599-166689599-HC03152024_01-2100.jpg",
+   "inStock": true,
+   "notes": "cream ribbed ceramic gourd + linen coolie shade",
+   "status": "accepted",
+   "reason": "Used in: tablelamp-tolima"
+  },
+  {
+   "pid": "168429630",
+   "sku": "168429630",
+   "title": "Crosby Ceramic Table Lamp - 49.5 cm",
+   "slotType": "table_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-crosby-ceramic-table-lamp-495-cm/p/168429630",
+   "regularPrice": 149,
+   "salePrice": 103,
+   "dimsCm": {
+    "w": 30,
+    "d": 30,
+    "h": 49.5
+   },
+   "materials": "ceramic; fabric shade",
+   "colour": "White",
+   "category": "Table & Desk Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/168429630-168429630-HC09012025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "cream matte double-gourd + oatmeal drum shade",
+   "status": "accepted",
+   "reason": "Used in: tablelamp-crosby"
+  },
+  {
+   "pid": "168112162",
+   "sku": "168112162",
+   "title": "Dania Metal Table Lamp - 45 cm",
+   "slotType": "table_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-dania-metal-table-lamp-45-cm/p/168112162",
+   "regularPrice": 199,
+   "salePrice": 139,
+   "dimsCm": {
+    "w": 30,
+    "d": 30,
+    "h": 45
+   },
+   "materials": "metal (brass finish); resin (alabaster-look) shade",
+   "colour": "Gold",
+   "category": "Table & Desk Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/168112162-168112162-HC04112025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "brass column + alabaster dome mushroom",
+   "status": "accepted",
+   "reason": "Used in: tablelamp-dania"
+  },
+  {
+   "pid": "168337817",
+   "sku": "168337817",
+   "title": "Dexter Linen Pendant Lamp",
+   "slotType": "pendant_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-dexter-linen-pendant-lamp/p/168337817",
+   "regularPrice": 299,
+   "salePrice": 299,
+   "dimsCm": {
+    "w": 45,
+    "d": 45,
+    "h": 150
+   },
+   "materials": "linen; iron",
+   "colour": "Brown",
+   "category": "Pendant Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/168337817-168337817-HC07142025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "cream linen tiered/scalloped drum; H150 = overall incl. suspension; shade body ~40 (estimated from photo)",
+   "status": "accepted",
+   "reason": "Used in: pendant-dexter"
+  },
+  {
+   "pid": "168337812",
+   "sku": "168337812",
+   "title": "Cosme Linen Pendant Lamp",
+   "slotType": "pendant_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-cosme-linen-pendant-lamp/p/168337812",
+   "regularPrice": 179,
+   "salePrice": 125,
+   "dimsCm": {
+    "w": 45,
+    "d": 45,
+    "h": 28
+   },
+   "materials": "fabric; linen",
+   "colour": "Brown",
+   "category": "Pendant Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/168337812-168337812-HC07142025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "cream linen drum with natural stitched rim",
+   "status": "accepted",
+   "reason": "Used in: pendant-cosme"
+  },
+  {
+   "pid": "161885277",
+   "sku": "161885277",
+   "title": "Naturel Water Hyacinth Pendant Lamp - 60 cm",
+   "slotType": "pendant_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-naturel-water-hyacinth-pendant-lamp-60-cm/p/161885277",
+   "regularPrice": 349,
+   "salePrice": 239,
+   "dimsCm": {
+    "w": 60,
+    "d": 60,
+    "h": 29.5
+   },
+   "materials": "water hyacinth (rattan family)",
+   "colour": "Beige",
+   "category": "Pendant Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/161885277-161885277-HC220919_01-2100.jpg?v=2",
+   "inStock": true,
+   "notes": "natural woven oval/saucer",
+   "status": "accepted",
+   "reason": "Used in: pendant-naturel"
+  },
+  {
+   "pid": "167811523",
+   "sku": "167811523",
+   "title": "Tobin Rattan Ceiling Lamp",
+   "slotType": "pendant_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-tobin-rattan-ceiling-lamp/p/167811523",
+   "regularPrice": 299,
+   "salePrice": 209,
+   "dimsCm": {
+    "w": 57,
+    "d": 57,
+    "h": 40.5
+   },
+   "materials": "rattan; iron",
+   "colour": "Brown",
+   "category": "Pendant Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/167811523-167811523-HC01272025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "natural rattan dome",
+   "status": "accepted",
+   "reason": "Used in: pendant-tobin"
+  },
+  {
+   "pid": "165855189",
+   "sku": "165855189",
+   "title": "Accorsa Rattan Pendant Lamp - 31 cm",
+   "slotType": "pendant_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-accorsa-rattan-pendant-lamp-31-cm/p/165855189",
+   "regularPrice": 229,
+   "salePrice": 159,
+   "dimsCm": {
+    "w": 52,
+    "d": 54,
+    "h": 30.5
+   },
+   "materials": "rattan; iron",
+   "colour": "Brown",
+   "category": "Pendant Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/165855189-165855189-HC10172023_01-2100.jpg",
+   "inStock": true,
+   "notes": "organic wavy rattan shade",
+   "status": "accepted",
+   "reason": "Used in: pendant-accorsa"
+  },
+  {
+   "pid": "168535211",
+   "sku": "168535211",
+   "title": "Weiss Rattan Pendant Lamp",
+   "slotType": "pendant_lamp",
+   "url": "https://www.homecentre.com/ae/en/p/168535211",
+   "regularPrice": 249,
+   "salePrice": 169,
+   "dimsCm": {
+    "w": 45,
+    "d": 45,
+    "h": 45
+   },
+   "materials": "rattan; iron",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "cream drum with rattan band - not used",
+   "status": "not-selected",
+   "reason": "Enough pendant options; drum with contrasting band"
+  },
+  {
+   "pid": "165204346",
+   "sku": "165204346",
+   "title": "Heaton Woollen Rug - 200x290 cm",
+   "slotType": "rug",
+   "url": "https://www.homecentre.com/ae/en/buy-heaton-woollen-rug-200x290-cm/p/165204346",
+   "regularPrice": 1649,
+   "salePrice": 1149,
+   "dimsCm": {
+    "w": 290,
+    "d": 200,
+    "h": 1.5
+   },
+   "materials": "wool; cotton; handwoven",
+   "colour": "Cream",
+   "category": "Rugs",
+   "image": "https://media.homecentre.com/i/homecentre/165204346-165204346-HC21122022_01-2100.jpg",
+   "inStock": true,
+   "notes": "oatmeal plain flat-weave with fine texture",
+   "status": "accepted",
+   "reason": "Used in: rug-heaton-200x290"
+  },
+  {
+   "pid": "168271528",
+   "sku": "168271528",
+   "title": "Dione Handmade Woollen Rug - 200x290 cm",
+   "slotType": "rug",
+   "url": "https://www.homecentre.com/ae/en/buy-dione-handmade-woollen-rug-200x290-cm/p/168271528",
+   "regularPrice": 1099,
+   "salePrice": 769,
+   "dimsCm": {
+    "w": 290,
+    "d": 200,
+    "h": 1.5
+   },
+   "materials": "wool; handmade",
+   "colour": "Beige",
+   "category": "Rugs",
+   "image": "https://media.homecentre.com/i/homecentre/168271528-168271528-HC09102025_01-2100.jpg",
+   "inStock": true,
+   "notes": "cream with low-contrast sand abstract waves",
+   "status": "accepted",
+   "reason": "Used in: rug-dione-200x290"
+  },
+  {
+   "pid": "169808857",
+   "sku": "169808857",
+   "title": "Linea Handtufted Woollen Rug - 200x290 cm",
+   "slotType": "rug",
+   "url": "https://www.homecentre.com/ae/en/buy-linea-handtufted-woollen-rug-200x290-cm/p/169808857",
+   "regularPrice": 1099,
+   "salePrice": 1099,
+   "dimsCm": {
+    "w": 290,
+    "d": 200,
+    "h": 1.5
+   },
+   "materials": "wool handtufted",
+   "colour": "White",
+   "category": "Rugs",
+   "image": "https://media.homecentre.com/i/homecentre/169808857-169808857-HC06022026_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "REVIEW: cream with thin dark brown vertical lines (contrast > rule dL 25) - not in options",
+   "status": "review",
+   "reason": "Thin dark-brown stripes on cream exceed low-contrast rule (dL* > 25)"
+  },
+  {
+   "pid": "168407218",
+   "sku": "168407218",
+   "title": "Pulara Handmade Woollen and Jute Dhurrie - 160x230 cm",
+   "slotType": "rug",
+   "url": "https://www.homecentre.com/ae/en/buy-pulara-handmade-woollen-and-jute-dhurrie-160x230-cm/p/168407218",
+   "regularPrice": 649,
+   "salePrice": 649,
+   "dimsCm": {
+    "w": 230,
+    "d": 160,
+    "h": 1
+   },
+   "materials": "wool; jute; handmade",
+   "colour": "Beige",
+   "category": "Rugs",
+   "image": "https://media.homecentre.com/i/homecentre/168407218-168407218-HC09102025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "natural/cream flat dhurrie with subtle stripes",
+   "status": "accepted",
+   "reason": "Used in: rug-pulara-160x230"
+  },
+  {
+   "pid": "170024146",
+   "sku": "170024146",
+   "title": "Marlow Alpaca Rug - 200x290 cm",
+   "slotType": "rug",
+   "url": "https://www.homecentre.com/ae/en/buy-marlow-alpaca-rug-200x290-cm/p/170024146",
+   "regularPrice": 749,
+   "salePrice": 749,
+   "dimsCm": {
+    "w": 290,
+    "d": 200,
+    "h": 1.5
+   },
+   "materials": "polypropylene; polyester; machine made",
+   "colour": "Beige",
+   "category": "Rugs",
+   "image": "https://media.homecentre.com/i/homecentre/170024146-170024146-HC14092026_01-2100.jpg",
+   "inStock": true,
+   "notes": "beige with tone-on-tone border (matte synthetic)",
+   "status": "accepted",
+   "reason": "Used in: rug-marlow-200x290"
+  },
+  {
+   "pid": "170024140",
+   "sku": "170024140",
+   "title": "Dune Alpaca Rug - 200x290 cm",
+   "slotType": "rug",
+   "url": "https://www.homecentre.com/ae/en/p/170024140",
+   "regularPrice": 749,
+   "salePrice": 749,
+   "dimsCm": {
+    "w": 290,
+    "d": 200,
+    "h": 1.5
+   },
+   "materials": "polypropylene; polyester",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "beige with fine grid - not used",
+   "status": "not-selected",
+   "reason": "Polypropylene grid rug — Marlow chosen as the single synthetic budget option"
+  },
+  {
+   "pid": "165177420",
+   "sku": "165177420",
+   "title": "Bailey Handwoven Rug - 200x290 cm",
+   "slotType": "rug",
+   "url": "https://www.homecentre.com/ae/en/p/165177420",
+   "regularPrice": 2299,
+   "salePrice": 1609,
+   "dimsCm": {
+    "w": 290,
+    "d": 200,
+    "h": 1.5
+   },
+   "materials": "viscose power loomed",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT viscose sheen",
+   "status": "rejected",
+   "reason": "REJECT viscose sheen"
+  },
+  {
+   "pid": "166575741",
+   "sku": "166575741",
+   "title": "Noah Handtufted Rug",
+   "slotType": "rug",
+   "url": "https://www.homecentre.com/ae/en/p/166575741",
+   "regularPrice": 1099,
+   "salePrice": 769,
+   "dimsCm": {
+    "w": 290,
+    "d": 200,
+    "h": null
+   },
+   "materials": "-",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT greige with sheen",
+   "status": "rejected",
+   "reason": "REJECT greige with sheen"
+  },
+  {
+   "pid": "168765589",
+   "sku": "168765589",
+   "title": "Arvia Woollen Handwoven Rug",
+   "slotType": "rug",
+   "url": "https://www.homecentre.com/ae/en/p/168765589",
+   "regularPrice": 1099,
+   "salePrice": 769,
+   "dimsCm": {
+    "w": 290,
+    "d": 200,
+    "h": null
+   },
+   "materials": "wool",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT too dark (L*<65)",
+   "status": "rejected",
+   "reason": "REJECT too dark (L*<65)"
+  },
+  {
+   "pid": "167088596",
+   "sku": "167088596",
+   "title": "Paradise Luxe Rug",
+   "slotType": "rug",
+   "url": "https://www.homecentre.com/ae/en/p/167088596",
+   "regularPrice": 1099,
+   "salePrice": 1099,
+   "dimsCm": {
+    "w": 290,
+    "d": 200,
+    "h": null
+   },
+   "materials": "shaggy",
+   "colour": "White",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT shaggy bright white",
+   "status": "rejected",
+   "reason": "REJECT shaggy bright white"
+  },
+  {
+   "pid": "167629421",
+   "sku": "167629421",
+   "title": "Eliana Jute Handmade Rug",
+   "slotType": "rug",
+   "url": "https://www.homecentre.com/ae/en/p/167629421",
+   "regularPrice": 599,
+   "salePrice": 419,
+   "dimsCm": {
+    "w": 290,
+    "d": 200,
+    "h": null
+   },
+   "materials": "jute",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT too close to oak floor tone",
+   "status": "rejected",
+   "reason": "REJECT too close to oak floor tone"
+  },
+  {
+   "pid": "165279975",
+   "sku": "165279975",
+   "title": "Sullivan 2-Piece Sheer Curtain Set - 135x300 cm",
+   "slotType": "curtains",
+   "url": "https://www.homecentre.com/ae/en/buy-sullivan-2piece-sheer-curtain-set-135x300-cm/p/165279975",
+   "regularPrice": 199,
+   "salePrice": 199,
+   "dimsCm": {
+    "w": 135,
+    "d": null,
+    "h": 300
+   },
+   "materials": "polyester sheer; grommet header",
+   "colour": "White",
+   "category": "Curtains",
+   "image": "https://media.homecentre.com/i/homecentre/165279975-165279975-HC08022023_01-2100.jpg",
+   "inStock": true,
+   "notes": "plain warm-white sheer; per set 2 panels 135x300",
+   "status": "accepted",
+   "reason": "Used in: curtains-sullivan-layered, curtains-sullivan-sheer"
+  },
+  {
+   "pid": "166840461",
+   "sku": "166840461",
+   "title": "Sullivan 2-Piece Blackout Curtain Set - 140x300 cm",
+   "slotType": "curtains",
+   "url": "https://www.homecentre.com/ae/en/buy-sullivan-2piece-blackout-curtain-set-140x300-cm/p/166840461",
+   "regularPrice": 249,
+   "salePrice": 169,
+   "dimsCm": {
+    "w": 140,
+    "d": null,
+    "h": 300
+   },
+   "materials": "polyester+viscose, textured, full blackout; grommet",
+   "colour": "Beige",
+   "category": "Curtains",
+   "image": "https://media.homecentre.com/i/homecentre/166840461-166840461-HC07102024_01-2100.jpg",
+   "inStock": true,
+   "notes": "light greige linen-look blackout; per set 2 panels",
+   "status": "accepted",
+   "reason": "Used in: curtains-sullivan-layered"
+  },
+  {
+   "pid": "166008879",
+   "sku": "166008879",
+   "title": "Khor 2-Piece Sheer Curtain Set - 135x300 cm",
+   "slotType": "curtains",
+   "url": "https://www.homecentre.com/ae/en/buy-khor-2piece-sheer-curtain-set-135x300-cm/p/166008879",
+   "regularPrice": 149,
+   "salePrice": 103,
+   "dimsCm": {
+    "w": 135,
+    "d": null,
+    "h": 300
+   },
+   "materials": "polyester sheer (assumed); grommet",
+   "colour": "White",
+   "category": "Curtains",
+   "image": "https://media.homecentre.com/i/homecentre/166008879-166008879-HC11272023_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "plain white sheer",
+   "status": "accepted",
+   "reason": "Used in: curtains-khor-sheer"
+  },
+  {
+   "pid": "165424819",
+   "sku": "165424819",
+   "title": "Lian 2-Piece Curtain Set - 140x300 cm",
+   "slotType": "curtains",
+   "url": "https://www.homecentre.com/ae/en/p/165424819",
+   "regularPrice": 129,
+   "salePrice": 83,
+   "dimsCm": {
+    "w": 140,
+    "d": null,
+    "h": 300
+   },
+   "materials": "polyester; striped pattern",
+   "colour": "White",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT pattern",
+   "status": "rejected",
+   "reason": "REJECT pattern"
+  },
+  {
+   "pid": "169395069",
+   "sku": "169395069",
+   "title": "Fiora Sheer 140x300",
+   "slotType": "curtains",
+   "url": "https://www.homecentre.com/ae/en/p/169395069",
+   "regularPrice": 149,
+   "salePrice": 149,
+   "dimsCm": {
+    "w": 140,
+    "d": null,
+    "h": 300
+   },
+   "materials": "embroidered sheer",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT pattern",
+   "status": "rejected",
+   "reason": "REJECT pattern"
+  },
+  {
+   "pid": "165210522",
+   "sku": "165210522",
+   "title": "Hollyrock 135x300",
+   "slotType": "curtains",
+   "url": "https://www.homecentre.com/ae/en/p/165210522",
+   "regularPrice": 179,
+   "salePrice": 125,
+   "dimsCm": {
+    "w": 135,
+    "d": null,
+    "h": 300
+   },
+   "materials": "embroidered",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT pattern",
+   "status": "rejected",
+   "reason": "REJECT pattern"
+  },
+  {
+   "pid": "168540074",
+   "sku": "168540074",
+   "title": "Sylvan Framed Canvas Wall Art - 60x90 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/buy-sylvan-framed-canvas-wall-art-60x90-cm/p/168540074",
+   "regularPrice": 79,
+   "salePrice": 79,
+   "dimsCm": {
+    "w": 60,
+    "d": 1.7,
+    "h": 90
+   },
+   "materials": "canvas; polystyrene arch frame (walnut-look)",
+   "colour": "Multi",
+   "category": "Wall Art",
+   "image": "https://media.homecentre.com/i/homecentre/168540074-168540074-HC09092025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "arched dark-walnut frame, desert palms landscape in terracotta/sand/cream",
+   "status": "accepted",
+   "reason": "Used in: art-sylvan-60x90"
+  },
+  {
+   "pid": "168528348",
+   "sku": "168528348",
+   "title": "Aquarelle Unframed 3D Wall Art - 53x80 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/buy-aquarelle-unframed-3d-wall-art-53x80-cm/p/168528348",
+   "regularPrice": 199,
+   "salePrice": 113,
+   "dimsCm": {
+    "w": 53,
+    "d": 3,
+    "h": 80
+   },
+   "materials": "MDF, ink-painted relief",
+   "colour": "Brown",
+   "category": "Wall Art",
+   "image": "https://media.homecentre.com/i/homecentre/168528348-168528348-HC09092025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "terracotta vase silhouette on sage-green panel (cut-out relief)",
+   "status": "accepted",
+   "reason": "Used in: art-aquarelle-53x80"
+  },
+  {
+   "pid": "168528349",
+   "sku": "168528349",
+   "title": "Vaseo Unframed 3D Wall Art - 53x80 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/buy-vaseo-unframed-3d-wall-art-53x80-cm/p/168528349",
+   "regularPrice": 199,
+   "salePrice": 113,
+   "dimsCm": {
+    "w": 53,
+    "d": 3,
+    "h": 80
+   },
+   "materials": "MDF relief (assumed same collection)",
+   "colour": "Brown",
+   "category": "Wall Art",
+   "image": "https://media.homecentre.com/i/homecentre/168528349-168528349-HC09092025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "sand/terracotta amphora relief on cream panel",
+   "status": "accepted",
+   "reason": "Used in: art-vaseo-53x80"
+  },
+  {
+   "pid": "170064364",
+   "sku": "170064364",
+   "title": "Zuri Framed Canvas Wall Art - 80x80 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/buy-zuri-framed-canvas-wall-art-80x80-cm/p/170064364",
+   "regularPrice": 249,
+   "salePrice": 249,
+   "dimsCm": {
+    "w": 80,
+    "d": 2.9,
+    "h": 80
+   },
+   "materials": "canvas mixed media; polystyrene frame",
+   "colour": "Cream",
+   "category": "Wall Art",
+   "image": "https://media.homecentre.com/i/homecentre/170064364-170064364-HC03092026_01-2100.jpg",
+   "inStock": true,
+   "notes": "textured cream with fine gold-brown crackle lines, natural frame",
+   "status": "accepted",
+   "reason": "Used in: art-zuri-80"
+  },
+  {
+   "pid": "168481783",
+   "sku": "168481783",
+   "title": "Ember Oil Painting Framed Canvas Wall Art - 90x60 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/buy-ember-oil-painting-framed-canvas-wall-art-90x60-cm/p/168481783",
+   "regularPrice": 379,
+   "salePrice": 213,
+   "dimsCm": {
+    "w": 90,
+    "d": 3,
+    "h": 60
+   },
+   "materials": "oil on canvas, framed (depth est.)",
+   "colour": "White",
+   "category": "Wall Art",
+   "image": "https://media.homecentre.com/i/homecentre/168481783-168481783-HC09092025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "white textured botanical relief, light frame",
+   "status": "accepted",
+   "reason": "Used in: art-ember-90x60"
+  },
+  {
+   "pid": "170064362",
+   "sku": "170064362",
+   "title": "Nyla Framed Canvas Wall Art - 50x70 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/buy-nyla-framed-canvas-wall-art-50x70-cm/p/170064362",
+   "regularPrice": 129,
+   "salePrice": 129,
+   "dimsCm": {
+    "w": 50,
+    "d": 3,
+    "h": 70
+   },
+   "materials": "canvas (depth est.)",
+   "colour": "Beige",
+   "category": "Wall Art",
+   "image": "https://media.homecentre.com/i/homecentre/170064362-170064362-HC03092026_01-2100.jpg",
+   "inStock": true,
+   "notes": "beige textured leaf relief, light wood frame",
+   "status": "accepted",
+   "reason": "Used in: art-nyla-50x70"
+  },
+  {
+   "pid": "169910445",
+   "sku": "169910445",
+   "title": "Mairead 60x80",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/p/169910445",
+   "regularPrice": 249,
+   "salePrice": 249,
+   "dimsCm": {
+    "w": 60,
+    "d": null,
+    "h": 80
+   },
+   "materials": "canvas",
+   "colour": "Multi",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT pink/red/blue blocks",
+   "status": "rejected",
+   "reason": "REJECT pink/red/blue blocks"
+  },
+  {
+   "pid": "169910446",
+   "sku": "169910446",
+   "title": "Shadan 60x80",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/p/169910446",
+   "regularPrice": 249,
+   "salePrice": 249,
+   "dimsCm": {
+    "w": 60,
+    "d": null,
+    "h": 80
+   },
+   "materials": "canvas",
+   "colour": "Multi",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT blue/teal",
+   "status": "rejected",
+   "reason": "REJECT blue/teal"
+  },
+  {
+   "pid": "168518574",
+   "sku": "168518574",
+   "title": "Olive Tree - 175 cm",
+   "slotType": "plant",
+   "url": "https://www.homecentre.com/ae/en/buy-olive-tree-175-cm/p/168518574",
+   "regularPrice": 399,
+   "salePrice": 279,
+   "dimsCm": {
+    "w": 60,
+    "d": 60,
+    "h": 175
+   },
+   "materials": "plastic/polyester foliage",
+   "colour": "Green",
+   "category": "Trees",
+   "image": "https://media.homecentre.com/i/homecentre/168518574-168518574-HC30092025_01-2100.jpg",
+   "inStock": true,
+   "notes": "artificial olive tree in small white nursery pot; listed W/L 175 = data error, canopy ~60 est. from photo",
+   "status": "accepted",
+   "reason": "Used in: plant-olive-themis"
+  },
+  {
+   "pid": "167557633",
+   "sku": "167557633",
+   "title": "Themis Speckled Ceramic Planter - 32 cm",
+   "slotType": "plant(planter)",
+   "url": "https://www.homecentre.com/ae/en/buy-themis-speckled-ceramic-planter-32-cm/p/167557633",
+   "regularPrice": 179,
+   "salePrice": 125,
+   "dimsCm": {
+    "w": 32,
+    "d": 32,
+    "h": 32
+   },
+   "materials": "ceramic speckled matte",
+   "colour": "Beige",
+   "category": "Planters",
+   "image": "https://media.homecentre.com/i/homecentre/167557633-167557633-HC19022025_01-2100.jpg",
+   "inStock": true,
+   "notes": "cream speckled planter used with Olive Tree 175 as a set",
+   "status": "accepted",
+   "reason": "Used in: plant-olive-themis"
+  },
+  {
+   "pid": "169868215",
+   "sku": "169868215",
+   "title": "Urbano Blanc Olive Greek Tree in Pot - 150 cm",
+   "slotType": "plant",
+   "url": "https://www.homecentre.com/ae/en/buy-urbano-blanc-olive-greek-tree-in-pot-150-cm/p/169868215",
+   "regularPrice": 349,
+   "salePrice": 349,
+   "dimsCm": {
+    "w": 60,
+    "d": 60,
+    "h": 150
+   },
+   "materials": "wood trunk; polyester leaves; moulded pot",
+   "colour": "Green",
+   "category": "Trees",
+   "image": "https://media.homecentre.com/i/homecentre/169868215-169868215-HC03062026_01-2100.jpg",
+   "inStock": true,
+   "notes": "olive tree in cream moulded pot; width not listed, canopy ~60 est.",
+   "status": "accepted",
+   "reason": "Used in: plant-olive-urbano"
+  },
+  {
+   "pid": "166898008",
+   "sku": "166898008",
+   "title": "HomeKode Olive Tree - 180 cm",
+   "slotType": "plant",
+   "url": "https://www.homecentre.com/ae/en/buy-homekode-olive-tree-180-cm/p/166898008",
+   "regularPrice": 929,
+   "salePrice": 545,
+   "dimsCm": {
+    "w": 60,
+    "d": 60,
+    "h": 180
+   },
+   "materials": "-",
+   "colour": "Green",
+   "category": "Trees",
+   "image": "https://cdn.media.amplience.net/i/lmg/166898008-166898008-HC15052024_01-2100.jpg",
+   "inStock": true,
+   "notes": "slim olive in white pot (dims est.)",
+   "status": "accepted",
+   "reason": "Used in: plant-olive-homekode"
+  },
+  {
+   "pid": "166936344",
+   "sku": "166936344",
+   "title": "Strelitzia Nicolai Tree - 160 cm",
+   "slotType": "plant",
+   "url": "https://www.homecentre.com/ae/en/p/166936344",
+   "regularPrice": 629,
+   "salePrice": 440,
+   "dimsCm": {
+    "w": 90,
+    "d": 90,
+    "h": 160
+   },
+   "materials": "plastic",
+   "colour": "Green",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT spread 90 > 70",
+   "status": "rejected",
+   "reason": "REJECT spread 90 > 70"
+  },
+  {
+   "pid": "165439601",
+   "sku": "165439601",
+   "title": "Fiddle Tree - 183 cm",
+   "slotType": "plant",
+   "url": "https://www.homecentre.com/ae/en/p/165439601",
+   "regularPrice": 299,
+   "salePrice": 209,
+   "dimsCm": {
+    "w": null,
+    "d": null,
+    "h": 183
+   },
+   "materials": "-",
+   "colour": "Green",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "not used (black nursery pot, dims missing)",
+   "status": "not-selected",
+   "reason": "Black nursery pot, no footprint dims"
+  },
+  {
+   "pid": "170140863",
+   "sku": "170140863",
+   "title": "Aelia Linen Filled Cushion - 50x50 cm",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-aelia-linen-filled-cushion-50x50-cm/p/170140863",
+   "regularPrice": 219,
+   "salePrice": 179,
+   "dimsCm": {
+    "w": 50,
+    "d": 15,
+    "h": 50
+   },
+   "materials": "linen",
+   "colour": "White",
+   "category": "Decorative Cushions",
+   "image": "https://cdn.media.amplience.net/i/lmg/170140863-170140863-HC13072026_01-2100.jpg",
+   "inStock": true,
+   "notes": "ivory linen with self piping",
+   "status": "accepted",
+   "reason": "Used in: cushions-linen-olive-rust, cushions-linen-clay"
+  },
+  {
+   "pid": "170140895",
+   "sku": "170140895",
+   "title": "Emmett Olive Filled Cushion - 50x50 cm",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-emmett-olive-filled-cushion-50x50-cm/p/170140895",
+   "regularPrice": 329,
+   "salePrice": 289,
+   "dimsCm": {
+    "w": 50,
+    "d": 15,
+    "h": 50
+   },
+   "materials": "textured woven",
+   "colour": "Grey(olive)",
+   "category": "Decorative Cushions",
+   "image": "https://cdn.media.amplience.net/i/lmg/170140895-170140895-HC13072026_01-2100.jpg",
+   "inStock": true,
+   "notes": "deep olive/khaki textured",
+   "status": "accepted",
+   "reason": "Used in: bedding-white-oat-olive, cushions-linen-olive-rust, cushions-oat-velvet-olive"
+  },
+  {
+   "pid": "170140966",
+   "sku": "170140966",
+   "title": "Siena Rust Filled Cushion - 50x50 cm",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-siena-rust-filled-cushion-50x50-cm/p/170140966",
+   "regularPrice": 299,
+   "salePrice": 259,
+   "dimsCm": {
+    "w": 50,
+    "d": 15,
+    "h": 50
+   },
+   "materials": "linen-look",
+   "colour": "Brown",
+   "category": "Decorative Cushions",
+   "image": "https://cdn.media.amplience.net/i/lmg/170140966-170140966-HC13072026_01-2100.jpg",
+   "inStock": true,
+   "notes": "terracotta rust",
+   "status": "accepted",
+   "reason": "Used in: cushions-linen-olive-rust, cushions-linen-clay"
+  },
+  {
+   "pid": "170140856",
+   "sku": "170140856",
+   "title": "Aelia Clay II Filled Cushion - 30x50 cm",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-aelia-clay-ii-filled-cushion-30x50-cm/p/170140856",
+   "regularPrice": 169,
+   "salePrice": 149,
+   "dimsCm": {
+    "w": 50,
+    "d": 12,
+    "h": 30
+   },
+   "materials": "linen-look",
+   "colour": "Brown",
+   "category": "Decorative Cushions",
+   "image": "https://cdn.media.amplience.net/i/lmg/170140856-170140856-HC13072026_01-2100.jpg",
+   "inStock": true,
+   "notes": "clay/terracotta lumbar",
+   "status": "accepted",
+   "reason": "Used in: bedding-white-oat-clay, cushions-linen-clay"
+  },
+  {
+   "pid": "170140987",
+   "sku": "170140987",
+   "title": "Zoe Laurent Linen Filled Cushion - 50x50 cm",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-zoe-laurent-linen-filled-cushion-50x50-cm/p/170140987",
+   "regularPrice": 339,
+   "salePrice": 299,
+   "dimsCm": {
+    "w": 50,
+    "d": 15,
+    "h": 50
+   },
+   "materials": "linen",
+   "colour": "Beige",
+   "category": "Decorative Cushions",
+   "image": "https://cdn.media.amplience.net/i/lmg/170140987-170140987-HC13072026_01-2100.jpg",
+   "inStock": true,
+   "notes": "oat linen with fine stripe",
+   "status": "accepted",
+   "reason": "Used in: cushions-oat-velvet-olive"
+  },
+  {
+   "pid": "168176915",
+   "sku": "168176915",
+   "title": "Alessandra Rust Velvet Filled Cushion - 50x50 cm",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-alessandra-rust-velvet-filled-cushion-50x50-cm/p/168176915",
+   "regularPrice": 379,
+   "salePrice": 339,
+   "dimsCm": {
+    "w": 50,
+    "d": 15,
+    "h": 50
+   },
+   "materials": "matte velvet",
+   "colour": "Orange",
+   "category": "Decorative Cushions",
+   "image": "https://cdn.media.amplience.net/i/lmg/168176915-168176915-HC23042025_01-2100.jpg",
+   "inStock": true,
+   "notes": "rust velvet with self flange",
+   "status": "accepted",
+   "reason": "Used in: cushions-oat-velvet-olive"
+  },
+  {
+   "pid": "168176984",
+   "sku": "168176984",
+   "title": "Oliver Sage Textured 50x50",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/p/168176984",
+   "regularPrice": 279,
+   "salePrice": 199,
+   "dimsCm": {
+    "w": 50,
+    "d": null,
+    "h": 50
+   },
+   "materials": "-",
+   "colour": "Green",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT reads teal/mint",
+   "status": "rejected",
+   "reason": "REJECT reads teal/mint"
+  },
+  {
+   "pid": "170096965",
+   "sku": "170096965",
+   "title": "Sheldon 45x45 (brown)",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/p/170096965",
+   "regularPrice": 49,
+   "salePrice": 49,
+   "dimsCm": {
+    "w": 45,
+    "d": null,
+    "h": 45
+   },
+   "materials": "satin-look",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT sheen",
+   "status": "rejected",
+   "reason": "REJECT sheen"
+  },
+  {
+   "pid": "170140917",
+   "sku": "170140917",
+   "title": "Izzy Olive 50x50",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/p/170140917",
+   "regularPrice": 299,
+   "salePrice": 279,
+   "dimsCm": {
+    "w": 50,
+    "d": null,
+    "h": 50
+   },
+   "materials": "striped",
+   "colour": "Green",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "not used (reads brown stripe)",
+   "status": "not-selected",
+   "reason": "Reads brown stripe rather than olive"
+  },
+  {
+   "pid": "164824383",
+   "sku": "164824383",
+   "title": "Sable Sand Ceramic Vase - 40 cm",
+   "slotType": "decor(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-sable-sand-ceramic-vase-40-cm/p/164824383",
+   "regularPrice": 179,
+   "salePrice": 179,
+   "dimsCm": {
+    "w": 22,
+    "d": 22,
+    "h": 40
+   },
+   "materials": "ceramic matte textured",
+   "colour": "Beige",
+   "category": "Vases & Bowls",
+   "image": "https://media.homecentre.com/i/homecentre/164824383-164824383-HC28042023_01-2100.jpg",
+   "inStock": true,
+   "notes": "cream sand stone-look ovoid vase (diameter est.)",
+   "status": "accepted",
+   "reason": "Used in: decor-sand-travertine-walnut"
+  },
+  {
+   "pid": "164824384",
+   "sku": "164824384",
+   "title": "Sable Sand Ceramic Vase - 33 cm",
+   "slotType": "decor(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-sable-sand-ceramic-vase-33-cm/p/164824384",
+   "regularPrice": 129,
+   "salePrice": 129,
+   "dimsCm": {
+    "w": 18,
+    "d": 18,
+    "h": 33
+   },
+   "materials": "ceramic",
+   "colour": "Beige",
+   "category": "Vases & Bowls",
+   "image": "https://media.homecentre.com/i/homecentre/164824384-164824384-HC28042023_01-2100.jpg",
+   "inStock": true,
+   "notes": "same, smaller",
+   "status": "accepted",
+   "reason": "Used in: decor-terracotta"
+  },
+  {
+   "pid": "169037988",
+   "sku": "169037988",
+   "title": "Touche Deco Travertine Decorative Bowl - 17 cm",
+   "slotType": "decor(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-touche-deco-travertine-decorative-bowl-17-cm/p/169037988",
+   "regularPrice": 179,
+   "salePrice": 179,
+   "dimsCm": {
+    "w": 17,
+    "d": 17,
+    "h": 8
+   },
+   "materials": "travertine",
+   "colour": "Beige",
+   "category": "Vases & Bowls",
+   "image": "https://cdn.media.amplience.net/i/lmg/169037988-169037988-HC18112025_01-2100.jpg",
+   "inStock": true,
+   "notes": "footed travertine bowl",
+   "status": "accepted",
+   "reason": "Used in: decor-sand-travertine-walnut"
+  },
+  {
+   "pid": "169440274",
+   "sku": "169440274",
+   "title": "Loft Natura Nico Oblong Wooden Vase - 17 cm",
+   "slotType": "decor(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-loft-natura-nico-oblong-wooden-vase-17-cm/p/169440274",
+   "regularPrice": 79,
+   "salePrice": 79,
+   "dimsCm": {
+    "w": 10,
+    "d": 10,
+    "h": 17
+   },
+   "materials": "wood",
+   "colour": "Brown",
+   "category": "Vases & Bowls",
+   "image": "https://media.homecentre.com/i/homecentre/169440274-169440274-HC27042026_01-2100.jpg?v=2",
+   "inStock": true,
+   "notes": "dark warm wood ovoid vase",
+   "status": "accepted",
+   "reason": "Used in: decor-sand-travertine-walnut"
+  },
+  {
+   "pid": "169440275",
+   "sku": "169440275",
+   "title": "Loft Natura Nico Oblong Wooden Vase - 26 cm",
+   "slotType": "decor(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-loft-natura-nico-oblong-wooden-vase-26-cm/p/169440275",
+   "regularPrice": 179,
+   "salePrice": 179,
+   "dimsCm": {
+    "w": 14,
+    "d": 14,
+    "h": 26
+   },
+   "materials": "wood",
+   "colour": "Brown",
+   "category": "Vases & Bowls",
+   "image": "https://media.homecentre.com/i/homecentre/169440275-169440275-HC27042026_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "same, taller",
+   "status": "accepted",
+   "reason": "Used in: decor-white-ceramic"
+  },
+  {
+   "pid": "170590024",
+   "sku": "170590024",
+   "title": "Nuva Terra Clay Decorative Bowl - 16 cm",
+   "slotType": "decor(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-nuva-terra-clay-decorative-bowl-16-cm/p/170590024",
+   "regularPrice": 199,
+   "salePrice": 139,
+   "dimsCm": {
+    "w": 22,
+    "d": 22,
+    "h": 16
+   },
+   "materials": "terracotta clay",
+   "colour": "Brown",
+   "category": "Vases & Bowls",
+   "image": "https://cdn.media.amplience.net/i/lmg/170590024-170590024-HC08102026_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "footed terracotta bowl",
+   "status": "accepted",
+   "reason": "Used in: decor-terracotta"
+  },
+  {
+   "pid": "165839001",
+   "sku": "165839001",
+   "title": "Maya Ceramic Vase - 29 cm",
+   "slotType": "decor(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-maya-ceramic-vase-29-cm/p/165839001",
+   "regularPrice": 149,
+   "salePrice": 149,
+   "dimsCm": {
+    "w": 20,
+    "d": 20,
+    "h": 29
+   },
+   "materials": "ceramic matte",
+   "colour": "White",
+   "category": "Vases & Bowls",
+   "image": "https://media.homecentre.com/i/homecentre/165839001-165839001-HC10112023_01-2100.jpg",
+   "inStock": true,
+   "notes": "cream textured round vase",
+   "status": "accepted",
+   "reason": "Used in: decor-terracotta"
+  },
+  {
+   "pid": "169767116",
+   "sku": "169767116",
+   "title": "Monolith Luxe Ceramic Vase - 29 cm",
+   "slotType": "decor(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-monolith-luxe-ceramic-vase-29-cm/p/169767116",
+   "regularPrice": 99,
+   "salePrice": 99,
+   "dimsCm": {
+    "w": 25,
+    "d": 10,
+    "h": 29
+   },
+   "materials": "ceramic",
+   "colour": "White",
+   "category": "Vases & Bowls",
+   "image": "https://media.homecentre.com/i/homecentre/169767116-169767116-HC13102026_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "white sculptural disc vase",
+   "status": "accepted",
+   "reason": "Used in: decor-white-ceramic"
+  },
+  {
+   "pid": "165839004",
+   "sku": "165839004",
+   "title": "Cora Ceramic Decorative Bowl - 30 cm",
+   "slotType": "decor(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-cora-ceramic-decorative-bowl-30-cm/p/165839004",
+   "regularPrice": 99,
+   "salePrice": 99,
+   "dimsCm": {
+    "w": 30,
+    "d": 30,
+    "h": 10
+   },
+   "materials": "ceramic",
+   "colour": "White",
+   "category": "Vases & Bowls",
+   "image": "https://media.homecentre.com/i/homecentre/165839004-165839004-HC10112023_01-2100.jpg",
+   "inStock": true,
+   "notes": "white textured low bowl",
+   "status": "accepted",
+   "reason": "Used in: decor-white-ceramic"
+  },
+  {
+   "pid": "170590033",
+   "sku": "170590033",
+   "title": "Zyra Terra Clay Vase",
+   "slotType": "decor(unit)",
+   "url": "https://www.homecentre.com/ae/en/p/170590033",
+   "regularPrice": 249,
+   "salePrice": 169,
+   "dimsCm": {
+    "w": null,
+    "d": null,
+    "h": 16
+   },
+   "materials": "-",
+   "colour": "Black",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT black stripes",
+   "status": "rejected",
+   "reason": "REJECT black stripes"
+  },
+  {
+   "pid": "169767127",
+   "sku": "169767127",
+   "title": "Monolith Luxe 40",
+   "slotType": "decor(unit)",
+   "url": "https://www.homecentre.com/ae/en/p/169767127",
+   "regularPrice": 99,
+   "salePrice": 99,
+   "dimsCm": {
+    "w": null,
+    "d": null,
+    "h": 40
+   },
+   "materials": "-",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT metallic grey",
+   "status": "rejected",
+   "reason": "REJECT metallic grey"
+  },
+  {
+   "pid": "167025199",
+   "sku": "167025199",
+   "title": "Rejuvenate Pocket Spring Queen Mattress - 160x200 cm",
+   "slotType": "mattress",
+   "url": "https://www.homecentre.com/ae/en/buy-rejuvenate-pocket-spring-queen-mattress-160x200-cm/p/167025199",
+   "regularPrice": 1129,
+   "salePrice": 669,
+   "dimsCm": {
+    "w": 160,
+    "d": 200,
+    "h": 25
+   },
+   "materials": "pocket spring; HD foam; knitted cover",
+   "colour": "White",
+   "category": "Queen Mattresses",
+   "image": "https://media.homecentre.com/i/homecentre/167025199-167025199-HC26112024_01-2100.jpg?v=6",
+   "inStock": true,
+   "notes": "white knitted cover, soft",
+   "status": "accepted",
+   "reason": "Used in: mattress-rejuvenate-160"
+  },
+  {
+   "pid": "170118972",
+   "sku": "170118972",
+   "title": "Bliss Gel Pocket Spring Queen Mattress - 160x200 cm",
+   "slotType": "mattress",
+   "url": "https://www.homecentre.com/ae/en/buy-bliss-gel-pocket-spring-queen-mattress-160x200-cm/p/170118972",
+   "regularPrice": 1499,
+   "salePrice": 1049,
+   "dimsCm": {
+    "w": 160,
+    "d": 200,
+    "h": 25
+   },
+   "materials": "pocket spring; gel foam; knitted cover",
+   "colour": "White",
+   "category": "Queen Mattresses",
+   "image": "https://media.homecentre.com/i/homecentre/170118972-170118972-HC08072026_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "white knitted cover, soft",
+   "status": "accepted",
+   "reason": "Used in: mattress-bliss-gel-160"
+  },
+  {
+   "pid": "166047242",
+   "sku": "166047242",
+   "title": "Simmons DeepSleep MemoryLux Spring Queen Mattress - 160x200 cm",
+   "slotType": "mattress",
+   "url": "https://www.homecentre.com/ae/en/p/166047242",
+   "regularPrice": 4199,
+   "salePrice": 2899,
+   "dimsCm": {
+    "w": 160,
+    "d": 200,
+    "h": 31
+   },
+   "materials": "pocket spring; memory foam",
+   "colour": "White",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REVIEW thickness 31 > rule 20-30, not in options",
+   "status": "review",
+   "reason": "Thickness 31 > rule 20–30"
+  },
+  {
+   "pid": "161124290",
+   "sku": "161124290",
+   "title": "Eternity Cotton Percale 325 TC 3-Piece Queen Duvet Cover Set - 200x200 cm (White)",
+   "slotType": "bedding(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-eternity-cotton-percale-325-thread-count-3piece-queen-duvet-cover-set-200x200-cm/p/161124290",
+   "regularPrice": 229,
+   "salePrice": 159,
+   "dimsCm": {
+    "w": 200,
+    "d": 200,
+    "h": null
+   },
+   "materials": "cotton percale 325TC",
+   "colour": "White",
+   "category": "Duvet Covers",
+   "image": "https://media.homecentre.com/i/homecentre/161124290-161124284-HC091218_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "duvet cover + 2 pillowcases, warm white",
+   "status": "accepted",
+   "reason": "Used in: bedding-white-oat-clay"
+  },
+  {
+   "pid": "165322100",
+   "sku": "165322100",
+   "title": "Eternity Cotton Percale 325 TC 3-Piece Queen Duvet Cover Set - 200x200 cm (Beige)",
+   "slotType": "bedding(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-eternity-cotton-percale-325-thread-count-3piece-queen-duvet-cover-set-200x200-cm/p/165322100",
+   "regularPrice": 229,
+   "salePrice": 229,
+   "dimsCm": {
+    "w": 200,
+    "d": 200,
+    "h": null
+   },
+   "materials": "cotton percale",
+   "colour": "Beige",
+   "category": "Duvet Covers",
+   "image": "https://media.homecentre.com/i/homecentre/165322100-165322099-HC13032023_01-2100.jpg",
+   "inStock": true,
+   "notes": "oat beige",
+   "status": "accepted",
+   "reason": "Used in: bedding-oat-rust"
+  },
+  {
+   "pid": "166835106",
+   "sku": "166835106",
+   "title": "Oasis Cotton Sateen 200 TC 3-Piece Queen Duvet Cover Set - 200x200 cm (White)",
+   "slotType": "bedding(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-oasis-cotton-sateen-200-thread-count-3piece-queen-duvet-cover-set-200x200-cm/p/166835106",
+   "regularPrice": 179,
+   "salePrice": 125,
+   "dimsCm": {
+    "w": 200,
+    "d": 200,
+    "h": null
+   },
+   "materials": "cotton sateen",
+   "colour": "White",
+   "category": "Duvet Covers",
+   "image": "https://media.homecentre.com/i/homecentre/166835106-166835106-HC09062024_01-2100.jpg",
+   "inStock": true,
+   "notes": "white",
+   "status": "accepted",
+   "reason": "Used in: bedding-white-oat-olive"
+  },
+  {
+   "pid": "164494890",
+   "sku": "164494890",
+   "title": "Olivia Cotton Throw - 150x200 cm",
+   "slotType": "bedding(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-olivia-cotton-throw-150x200-cm/p/164494890",
+   "regularPrice": 229,
+   "salePrice": 159,
+   "dimsCm": {
+    "w": 150,
+    "d": 200,
+    "h": null
+   },
+   "materials": "cotton",
+   "colour": "Beige",
+   "category": "Throws",
+   "image": "https://media.homecentre.com/i/homecentre/164494890-164494890-HC20220427_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "oat fringed throw",
+   "status": "accepted",
+   "reason": "Used in: bedding-white-oat-clay"
+  },
+  {
+   "pid": "166836255",
+   "sku": "166836255",
+   "title": "Boras Cotton Throw - 130x170 cm",
+   "slotType": "bedding(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-boras-cotton-throw-130x170-cm/p/166836255",
+   "regularPrice": 129,
+   "salePrice": 90,
+   "dimsCm": {
+    "w": 130,
+    "d": 170,
+    "h": null
+   },
+   "materials": "cotton",
+   "colour": "Brown",
+   "category": "Throws",
+   "image": "https://media.homecentre.com/i/homecentre/166836255-166836255-HC07272024_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "oat/cream fringed throw",
+   "status": "accepted",
+   "reason": "Used in: bedding-white-oat-olive"
+  },
+  {
+   "pid": "168125153",
+   "sku": "168125153",
+   "title": "Vayu Waffle Cable Throw - 130x170 cm",
+   "slotType": "bedding(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-vayu-waffle-cable-throw-130x170-cm/p/168125153",
+   "regularPrice": 99,
+   "salePrice": 69,
+   "dimsCm": {
+    "w": 130,
+    "d": 170,
+    "h": null
+   },
+   "materials": "cotton waffle",
+   "colour": "Brown",
+   "category": "Throws",
+   "image": "https://media.homecentre.com/i/homecentre/168125153-168125152-HC06262025_01-2100.jpg",
+   "inStock": true,
+   "notes": "rust/terracotta throw",
+   "status": "accepted",
+   "reason": "Used in: bedding-oat-rust"
+  },
+  {
+   "pid": "167289519",
+   "sku": "167289519",
+   "title": "Doree 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/buy-doree-3seater-fabric-sofa/p/167289519",
+   "regularPrice": 3999,
+   "salePrice": 2799,
+   "dimsCm": {
+    "w": 240,
+    "d": 102,
+    "h": 79
+   },
+   "materials": "frame solid wood; legs ABS (hidden); fabric (chenille-look)",
+   "colour": "Beige",
+   "category": "Sofas & Sofa Sets",
+   "image": "https://media.homecentre.com/i/homecentre/167289519-167289519-HC16102024_01-2100.jpg",
+   "inStock": true,
+   "notes": "beige low lounge sofa on recessed plinth, track arms; W240 = slot max",
+   "status": "accepted",
+   "reason": "Used in: sofa-doree-3"
+  },
+  {
+   "pid": "168565651",
+   "sku": "168565651",
+   "title": "Engler 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/buy-engler-3seater-fabric-sofa/p/168565651",
+   "regularPrice": 2299,
+   "salePrice": 1379,
+   "dimsCm": {
+    "w": 228,
+    "d": 95,
+    "h": 92
+   },
+   "materials": "frame solid wood; legs wooden; fabric",
+   "colour": "Beige",
+   "category": "Sofas & Sofa Sets",
+   "image": "https://media.homecentre.com/i/homecentre/168565651-168565651-HC20112025_01-2100.jpg",
+   "inStock": true,
+   "notes": "ivory, straight arms, dark tapered wood legs, horizontal channel stitch on back (not button tufting)",
+   "status": "accepted",
+   "reason": "Used in: sofa-engler-3"
+  },
+  {
+   "pid": "165049640",
+   "sku": "165049640",
+   "title": "Anders Fabric 3-Seater Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/buy-anders-fabric-3seater-sofa/p/165049640",
+   "regularPrice": 1799,
+   "salePrice": 1259,
+   "dimsCm": {
+    "w": 200,
+    "d": 88,
+    "h": 90
+   },
+   "materials": "frame solid wood; legs metal (slim black); fabric",
+   "colour": "Beige",
+   "category": "Sofas & Sofa Sets",
+   "image": "https://media.homecentre.com/i/homecentre/165049640-165049640-HC14122022_01-2100.jpg",
+   "inStock": true,
+   "notes": "cream track-arm sofa on slim matte-black legs",
+   "status": "accepted",
+   "reason": "Used in: sofa-anders-3"
+  }
+ ],
+ "catalogItems": [
+  {
+   "id": "sofa-lansbury-3",
+   "type": "sofa",
+   "components": [
+    {
+     "pid": "166008877",
+     "qty": 1,
+     "regular": 2499,
+     "sale": 1749
+    }
+   ],
+   "regularTotal": 2499,
+   "publicPrice": 2999,
+   "note": ""
+  },
+  {
+   "id": "sofa-hadley-3",
+   "type": "sofa",
+   "components": [
+    {
+     "pid": "166913947",
+     "qty": 1,
+     "regular": 2499,
+     "sale": 1749
+    }
+   ],
+   "regularTotal": 2499,
+   "publicPrice": 2999,
+   "note": ""
+  },
+  {
+   "id": "sofa-doree-3",
+   "type": "sofa",
+   "components": [
+    {
+     "pid": "167289519",
+     "qty": 1,
+     "regular": 3999,
+     "sale": 2799
+    }
+   ],
+   "regularTotal": 3999,
+   "publicPrice": 4799,
+   "note": ""
+  },
+  {
+   "id": "sofa-engler-3",
+   "type": "sofa",
+   "components": [
+    {
+     "pid": "168565651",
+     "qty": 1,
+     "regular": 2299,
+     "sale": 1379
+    }
+   ],
+   "regularTotal": 2299,
+   "publicPrice": 2759,
+   "note": ""
+  },
+  {
+   "id": "sofa-lockwood-2",
+   "type": "sofa",
+   "components": [
+    {
+     "pid": "169195825",
+     "qty": 1,
+     "regular": 3999,
+     "sale": 2799
+    }
+   ],
+   "regularTotal": 3999,
+   "publicPrice": 4799,
+   "note": ""
+  },
+  {
+   "id": "sofa-anders-3",
+   "type": "sofa",
+   "components": [
+    {
+     "pid": "165049640",
+     "qty": 1,
+     "regular": 1799,
+     "sale": 1259
+    }
+   ],
+   "regularTotal": 1799,
+   "publicPrice": 2159,
+   "note": ""
+  },
+  {
+   "id": "armchair-luna-leather",
+   "type": "armchair",
+   "components": [
+    {
+     "pid": "165214580",
+     "qty": 1,
+     "regular": 2499,
+     "sale": 1749
+    }
+   ],
+   "regularTotal": 2499,
+   "publicPrice": 2999,
+   "note": ""
+  },
+  {
+   "id": "armchair-clyde-leather",
+   "type": "armchair",
+   "components": [
+    {
+     "pid": "169195833",
+     "qty": 1,
+     "regular": 2499,
+     "sale": 1749
+    }
+   ],
+   "regularTotal": 2499,
+   "publicPrice": 2999,
+   "note": ""
+  },
+  {
+   "id": "armchair-luna-fabric",
+   "type": "armchair",
+   "components": [
+    {
+     "pid": "166776595",
+     "qty": 1,
+     "regular": 1499,
+     "sale": 1049
+    }
+   ],
+   "regularTotal": 1499,
+   "publicPrice": 1799,
+   "note": ""
+  },
+  {
+   "id": "armchair-pebble",
+   "type": "armchair",
+   "components": [
+    {
+     "pid": "166597944",
+     "qty": 1,
+     "regular": 1499,
+     "sale": 1049
+    }
+   ],
+   "regularTotal": 1499,
+   "publicPrice": 1799,
+   "note": ""
+  },
+  {
+   "id": "coffee-baku-low",
+   "type": "coffee_table",
+   "components": [
+    {
+     "pid": "166548162",
+     "qty": 1,
+     "regular": 1249,
+     "sale": 869
+    }
+   ],
+   "regularTotal": 1249,
+   "publicPrice": 1499,
+   "note": ""
+  },
+  {
+   "id": "coffee-baku-high",
+   "type": "coffee_table",
+   "components": [
+    {
+     "pid": "166548161",
+     "qty": 1,
+     "regular": 1129,
+     "sale": 789
+    }
+   ],
+   "regularTotal": 1129,
+   "publicPrice": 1355,
+   "note": ""
+  },
+  {
+   "id": "coffee-moxie",
+   "type": "coffee_table",
+   "components": [
+    {
+     "pid": "169441675",
+     "qty": 1,
+     "regular": 2229,
+     "sale": 1481
+    }
+   ],
+   "regularTotal": 2229,
+   "publicPrice": 2675,
+   "note": ""
+  },
+  {
+   "id": "coffee-arras",
+   "type": "coffee_table",
+   "components": [
+    {
+     "pid": "168196892",
+     "qty": 1,
+     "regular": 2129,
+     "sale": 1414
+    }
+   ],
+   "regularTotal": 2129,
+   "publicPrice": 2555,
+   "note": ""
+  },
+  {
+   "id": "side-moxie",
+   "type": "side_table",
+   "components": [
+    {
+     "pid": "169441678",
+     "qty": 1,
+     "regular": 999,
+     "sale": 664
+    }
+   ],
+   "regularTotal": 999,
+   "publicPrice": 1199,
+   "note": ""
+  },
+  {
+   "id": "side-tom",
+   "type": "side_table",
+   "components": [
+    {
+     "pid": "168492326",
+     "qty": 1,
+     "regular": 769,
+     "sale": 502
+    }
+   ],
+   "regularTotal": 769,
+   "publicPrice": 923,
+   "note": ""
+  },
+  {
+   "id": "side-arras",
+   "type": "side_table",
+   "components": [
+    {
+     "pid": "168196895",
+     "qty": 1,
+     "regular": 1079,
+     "sale": 711
+    }
+   ],
+   "regularTotal": 1079,
+   "publicPrice": 1295,
+   "note": ""
+  },
+  {
+   "id": "tv-jasper",
+   "type": "tv_unit",
+   "components": [
+    {
+     "pid": "169859748",
+     "qty": 1,
+     "regular": 849,
+     "sale": 589
+    }
+   ],
+   "regularTotal": 849,
+   "publicPrice": 1019,
+   "note": ""
+  },
+  {
+   "id": "tv-hege",
+   "type": "tv_unit",
+   "components": [
+    {
+     "pid": "168492403",
+     "qty": 1,
+     "regular": 799,
+     "sale": 559
+    }
+   ],
+   "regularTotal": 799,
+   "publicPrice": 959,
+   "note": ""
+  },
+  {
+   "id": "tv-espresso",
+   "type": "tv_unit",
+   "components": [
+    {
+     "pid": "165358428",
+     "qty": 1,
+     "regular": 849,
+     "sale": 589
+    }
+   ],
+   "regularTotal": 849,
+   "publicPrice": 1019,
+   "note": ""
+  },
+  {
+   "id": "tv-eden",
+   "type": "tv_unit",
+   "components": [
+    {
+     "pid": "165660335",
+     "qty": 1,
+     "regular": 799,
+     "sale": 559
+    }
+   ],
+   "regularTotal": 799,
+   "publicPrice": 959,
+   "note": ""
+  },
+  {
+   "id": "bed-cloud-160",
+   "type": "bed",
+   "components": [
+    {
+     "pid": "168541482",
+     "qty": 1,
+     "regular": 1799,
+     "sale": 1259
+    }
+   ],
+   "regularTotal": 1799,
+   "publicPrice": 2159,
+   "note": ""
+  },
+  {
+   "id": "bed-nazario-160",
+   "type": "bed",
+   "components": [
+    {
+     "pid": "164619133",
+     "qty": 1,
+     "regular": 1099,
+     "sale": 769
+    }
+   ],
+   "regularTotal": 1099,
+   "publicPrice": 1319,
+   "note": ""
+  },
+  {
+   "id": "bed-maison-160",
+   "type": "bed",
+   "components": [
+    {
+     "pid": "165937013",
+     "qty": 1,
+     "regular": 2399,
+     "sale": 1679
+    }
+   ],
+   "regularTotal": 2399,
+   "publicPrice": 2879,
+   "note": ""
+  },
+  {
+   "id": "mattress-rejuvenate-160",
+   "type": "mattress",
+   "components": [
+    {
+     "pid": "167025199",
+     "qty": 1,
+     "regular": 1129,
+     "sale": 669
+    }
+   ],
+   "regularTotal": 1129,
+   "publicPrice": 1355,
+   "note": ""
+  },
+  {
+   "id": "mattress-bliss-gel-160",
+   "type": "mattress",
+   "components": [
+    {
+     "pid": "170118972",
+     "qty": 1,
+     "regular": 1499,
+     "sale": 1049
+    }
+   ],
+   "regularTotal": 1499,
+   "publicPrice": 1799,
+   "note": ""
+  },
+  {
+   "id": "bedding-white-oat-clay",
+   "type": "bedding",
+   "components": [
+    {
+     "pid": "161124290",
+     "qty": 1,
+     "regular": 229,
+     "sale": 159
+    },
+    {
+     "pid": "164494890",
+     "qty": 1,
+     "regular": 229,
+     "sale": 159
+    },
+    {
+     "pid": "170140856",
+     "qty": 1,
+     "regular": 169,
+     "sale": 149
+    }
+   ],
+   "regularTotal": 627,
+   "publicPrice": 752,
+   "note": ""
+  },
+  {
+   "id": "bedding-oat-rust",
+   "type": "bedding",
+   "components": [
+    {
+     "pid": "165322100",
+     "qty": 1,
+     "regular": 229,
+     "sale": 229
+    },
+    {
+     "pid": "168125153",
+     "qty": 1,
+     "regular": 99,
+     "sale": 69
+    }
+   ],
+   "regularTotal": 328,
+   "publicPrice": 394,
+   "note": ""
+  },
+  {
+   "id": "bedding-white-oat-olive",
+   "type": "bedding",
+   "components": [
+    {
+     "pid": "166835106",
+     "qty": 1,
+     "regular": 179,
+     "sale": 125
+    },
+    {
+     "pid": "166836255",
+     "qty": 1,
+     "regular": 129,
+     "sale": 90
+    },
+    {
+     "pid": "170140895",
+     "qty": 1,
+     "regular": 329,
+     "sale": 289
+    }
+   ],
+   "regularTotal": 637,
+   "publicPrice": 764,
+   "note": ""
+  },
+  {
+   "id": "nightstand-suri",
+   "type": "nightstand",
+   "components": [
+    {
+     "pid": "168036633",
+     "qty": 1,
+     "regular": 1939,
+     "sale": 1459
+    }
+   ],
+   "regularTotal": 1939,
+   "publicPrice": 2327,
+   "note": ""
+  },
+  {
+   "id": "nightstand-nazario",
+   "type": "nightstand",
+   "components": [
+    {
+     "pid": "162645652",
+     "qty": 1,
+     "regular": 299,
+     "sale": 209
+    }
+   ],
+   "regularTotal": 299,
+   "publicPrice": 359,
+   "note": ""
+  },
+  {
+   "id": "nightstand-verve",
+   "type": "nightstand",
+   "components": [
+    {
+     "pid": "169487751",
+     "qty": 1,
+     "regular": 1669,
+     "sale": 1429
+    }
+   ],
+   "regularTotal": 1669,
+   "publicPrice": 2003,
+   "note": ""
+  },
+  {
+   "id": "tablelamp-crosby",
+   "type": "table_lamp",
+   "components": [
+    {
+     "pid": "168429630",
+     "qty": 1,
+     "regular": 149,
+     "sale": 103
+    }
+   ],
+   "regularTotal": 149,
+   "publicPrice": 179,
+   "note": ""
+  },
+  {
+   "id": "tablelamp-tolima",
+   "type": "table_lamp",
+   "components": [
+    {
+     "pid": "166689599",
+     "qty": 1,
+     "regular": 179,
+     "sale": 179
+    }
+   ],
+   "regularTotal": 179,
+   "publicPrice": 215,
+   "note": ""
+  },
+  {
+   "id": "tablelamp-frosty",
+   "type": "table_lamp",
+   "components": [
+    {
+     "pid": "168337818",
+     "qty": 1,
+     "regular": 249,
+     "sale": 249
+    }
+   ],
+   "regularTotal": 249,
+   "publicPrice": 299,
+   "note": ""
+  },
+  {
+   "id": "tablelamp-dania",
+   "type": "table_lamp",
+   "components": [
+    {
+     "pid": "168112162",
+     "qty": 1,
+     "regular": 199,
+     "sale": 139
+    }
+   ],
+   "regularTotal": 199,
+   "publicPrice": 239,
+   "note": ""
+  },
+  {
+   "id": "dining-kentana-100",
+   "type": "dining_table",
+   "components": [
+    {
+     "pid": "168036692",
+     "qty": 1,
+     "regular": 3659,
+     "sale": 2749
+    }
+   ],
+   "regularTotal": 3659,
+   "publicPrice": 4391,
+   "note": ""
+  },
+  {
+   "id": "dining-mahmayi-80",
+   "type": "dining_table",
+   "components": [
+    {
+     "pid": "169745120",
+     "qty": 1,
+     "regular": 979,
+     "sale": 629
+    }
+   ],
+   "regularTotal": 979,
+   "publicPrice": 1175,
+   "note": ""
+  },
+  {
+   "id": "chair-linden",
+   "type": "dining_chair",
+   "components": [
+    {
+     "pid": "169123965",
+     "qty": 1,
+     "regular": 649,
+     "sale": 449
+    }
+   ],
+   "regularTotal": 649,
+   "publicPrice": 779,
+   "note": ""
+  },
+  {
+   "id": "chair-pebble",
+   "type": "dining_chair",
+   "components": [
+    {
+     "pid": "166523813",
+     "qty": 1,
+     "regular": 849,
+     "sale": 589
+    }
+   ],
+   "regularTotal": 849,
+   "publicPrice": 1019,
+   "note": ""
+  },
+  {
+   "id": "chair-viona",
+   "type": "dining_chair",
+   "components": [
+    {
+     "pid": "168036638",
+     "qty": 1,
+     "regular": 2039,
+     "sale": 1529
+    }
+   ],
+   "regularTotal": 2039,
+   "publicPrice": 2447,
+   "note": ""
+  },
+  {
+   "id": "chair-alfred",
+   "type": "dining_chair",
+   "components": [
+    {
+     "pid": "168036539",
+     "qty": 1,
+     "regular": 1349,
+     "sale": 1019
+    }
+   ],
+   "regularTotal": 1349,
+   "publicPrice": 1619,
+   "note": ""
+  },
+  {
+   "id": "chair-wishbone",
+   "type": "dining_chair",
+   "components": [
+    {
+     "pid": "168036558",
+     "qty": 1,
+     "regular": 1069,
+     "sale": 809
+    }
+   ],
+   "regularTotal": 1069,
+   "publicPrice": 1283,
+   "note": ""
+  },
+  {
+   "id": "floorlamp-sable",
+   "type": "floor_lamp",
+   "components": [
+    {
+     "pid": "168514889",
+     "qty": 1,
+     "regular": 399,
+     "sale": 279
+    }
+   ],
+   "regularTotal": 399,
+   "publicPrice": 479,
+   "note": ""
+  },
+  {
+   "id": "floorlamp-frosty",
+   "type": "floor_lamp",
+   "components": [
+    {
+     "pid": "168337813",
+     "qty": 1,
+     "regular": 449,
+     "sale": 449
+    }
+   ],
+   "regularTotal": 449,
+   "publicPrice": 539,
+   "note": ""
+  },
+  {
+   "id": "floorlamp-austen",
+   "type": "floor_lamp",
+   "components": [
+    {
+     "pid": "168514888",
+     "qty": 1,
+     "regular": 399,
+     "sale": 279
+    }
+   ],
+   "regularTotal": 399,
+   "publicPrice": 479,
+   "note": ""
+  },
+  {
+   "id": "pendant-cosme",
+   "type": "pendant_lamp",
+   "components": [
+    {
+     "pid": "168337812",
+     "qty": 1,
+     "regular": 179,
+     "sale": 125
+    }
+   ],
+   "regularTotal": 179,
+   "publicPrice": 215,
+   "note": ""
+  },
+  {
+   "id": "pendant-dexter",
+   "type": "pendant_lamp",
+   "components": [
+    {
+     "pid": "168337817",
+     "qty": 1,
+     "regular": 299,
+     "sale": 299
+    }
+   ],
+   "regularTotal": 299,
+   "publicPrice": 359,
+   "note": ""
+  },
+  {
+   "id": "pendant-tobin",
+   "type": "pendant_lamp",
+   "components": [
+    {
+     "pid": "167811523",
+     "qty": 1,
+     "regular": 299,
+     "sale": 209
+    }
+   ],
+   "regularTotal": 299,
+   "publicPrice": 359,
+   "note": ""
+  },
+  {
+   "id": "pendant-naturel",
+   "type": "pendant_lamp",
+   "components": [
+    {
+     "pid": "161885277",
+     "qty": 1,
+     "regular": 349,
+     "sale": 239
+    }
+   ],
+   "regularTotal": 349,
+   "publicPrice": 419,
+   "note": ""
+  },
+  {
+   "id": "pendant-accorsa",
+   "type": "pendant_lamp",
+   "components": [
+    {
+     "pid": "165855189",
+     "qty": 1,
+     "regular": 229,
+     "sale": 159
+    }
+   ],
+   "regularTotal": 229,
+   "publicPrice": 275,
+   "note": ""
+  },
+  {
+   "id": "rug-heaton-200x290",
+   "type": "rug",
+   "components": [
+    {
+     "pid": "165204346",
+     "qty": 1,
+     "regular": 1649,
+     "sale": 1149
+    }
+   ],
+   "regularTotal": 1649,
+   "publicPrice": 1979,
+   "note": ""
+  },
+  {
+   "id": "rug-dione-200x290",
+   "type": "rug",
+   "components": [
+    {
+     "pid": "168271528",
+     "qty": 1,
+     "regular": 1099,
+     "sale": 769
+    }
+   ],
+   "regularTotal": 1099,
+   "publicPrice": 1319,
+   "note": ""
+  },
+  {
+   "id": "rug-pulara-160x230",
+   "type": "rug",
+   "components": [
+    {
+     "pid": "168407218",
+     "qty": 1,
+     "regular": 649,
+     "sale": 649
+    }
+   ],
+   "regularTotal": 649,
+   "publicPrice": 779,
+   "note": ""
+  },
+  {
+   "id": "rug-marlow-200x290",
+   "type": "rug",
+   "components": [
+    {
+     "pid": "170024146",
+     "qty": 1,
+     "regular": 749,
+     "sale": 749
+    }
+   ],
+   "regularTotal": 749,
+   "publicPrice": 899,
+   "note": ""
+  },
+  {
+   "id": "curtains-sullivan-layered",
+   "type": "curtains",
+   "components": [
+    {
+     "pid": "165279975",
+     "qty": 2,
+     "regular": 199,
+     "sale": 199
+    },
+    {
+     "pid": "166840461",
+     "qty": 2,
+     "regular": 249,
+     "sale": 169
+    }
+   ],
+   "regularTotal": 896,
+   "publicPrice": 1075,
+   "note": ""
+  },
+  {
+   "id": "curtains-sullivan-sheer",
+   "type": "curtains",
+   "components": [
+    {
+     "pid": "165279975",
+     "qty": 2,
+     "regular": 199,
+     "sale": 199
+    }
+   ],
+   "regularTotal": 398,
+   "publicPrice": 478,
+   "note": ""
+  },
+  {
+   "id": "curtains-khor-sheer",
+   "type": "curtains",
+   "components": [
+    {
+     "pid": "166008879",
+     "qty": 2,
+     "regular": 149,
+     "sale": 103
+    }
+   ],
+   "regularTotal": 298,
+   "publicPrice": 358,
+   "note": ""
+  },
+  {
+   "id": "art-zuri-80",
+   "type": "wall_art",
+   "components": [
+    {
+     "pid": "170064364",
+     "qty": 1,
+     "regular": 249,
+     "sale": 249
+    }
+   ],
+   "regularTotal": 249,
+   "publicPrice": 299,
+   "note": ""
+  },
+  {
+   "id": "art-sylvan-60x90",
+   "type": "wall_art",
+   "components": [
+    {
+     "pid": "168540074",
+     "qty": 1,
+     "regular": 79,
+     "sale": 79
+    }
+   ],
+   "regularTotal": 79,
+   "publicPrice": 95,
+   "note": ""
+  },
+  {
+   "id": "art-aquarelle-53x80",
+   "type": "wall_art",
+   "components": [
+    {
+     "pid": "168528348",
+     "qty": 1,
+     "regular": 199,
+     "sale": 113
+    }
+   ],
+   "regularTotal": 199,
+   "publicPrice": 239,
+   "note": ""
+  },
+  {
+   "id": "art-vaseo-53x80",
+   "type": "wall_art",
+   "components": [
+    {
+     "pid": "168528349",
+     "qty": 1,
+     "regular": 199,
+     "sale": 113
+    }
+   ],
+   "regularTotal": 199,
+   "publicPrice": 239,
+   "note": ""
+  },
+  {
+   "id": "art-ember-90x60",
+   "type": "wall_art",
+   "components": [
+    {
+     "pid": "168481783",
+     "qty": 1,
+     "regular": 379,
+     "sale": 213
+    }
+   ],
+   "regularTotal": 379,
+   "publicPrice": 455,
+   "note": ""
+  },
+  {
+   "id": "art-nyla-50x70",
+   "type": "wall_art",
+   "components": [
+    {
+     "pid": "170064362",
+     "qty": 1,
+     "regular": 129,
+     "sale": 129
+    }
+   ],
+   "regularTotal": 129,
+   "publicPrice": 155,
+   "note": ""
+  },
+  {
+   "id": "plant-olive-themis",
+   "type": "plant",
+   "components": [
+    {
+     "pid": "168518574",
+     "qty": 1,
+     "regular": 399,
+     "sale": 279
+    },
+    {
+     "pid": "167557633",
+     "qty": 1,
+     "regular": 179,
+     "sale": 125
+    }
+   ],
+   "regularTotal": 578,
+   "publicPrice": 694,
+   "note": ""
+  },
+  {
+   "id": "plant-olive-urbano",
+   "type": "plant",
+   "components": [
+    {
+     "pid": "169868215",
+     "qty": 1,
+     "regular": 349,
+     "sale": 349
+    }
+   ],
+   "regularTotal": 349,
+   "publicPrice": 419,
+   "note": ""
+  },
+  {
+   "id": "plant-olive-homekode",
+   "type": "plant",
+   "components": [
+    {
+     "pid": "166898008",
+     "qty": 1,
+     "regular": 929,
+     "sale": 545
+    }
+   ],
+   "regularTotal": 929,
+   "publicPrice": 1115,
+   "note": ""
+  },
+  {
+   "id": "cushions-linen-olive-rust",
+   "type": "cushions",
+   "components": [
+    {
+     "pid": "170140863",
+     "qty": 1,
+     "regular": 219,
+     "sale": 179
+    },
+    {
+     "pid": "170140895",
+     "qty": 1,
+     "regular": 329,
+     "sale": 289
+    },
+    {
+     "pid": "170140966",
+     "qty": 1,
+     "regular": 299,
+     "sale": 259
+    }
+   ],
+   "regularTotal": 847,
+   "publicPrice": 1016,
+   "note": ""
+  },
+  {
+   "id": "cushions-linen-clay",
+   "type": "cushions",
+   "components": [
+    {
+     "pid": "170140863",
+     "qty": 1,
+     "regular": 219,
+     "sale": 179
+    },
+    {
+     "pid": "170140966",
+     "qty": 1,
+     "regular": 299,
+     "sale": 259
+    },
+    {
+     "pid": "170140856",
+     "qty": 1,
+     "regular": 169,
+     "sale": 149
+    }
+   ],
+   "regularTotal": 687,
+   "publicPrice": 824,
+   "note": ""
+  },
+  {
+   "id": "cushions-oat-velvet-olive",
+   "type": "cushions",
+   "components": [
+    {
+     "pid": "170140987",
+     "qty": 1,
+     "regular": 339,
+     "sale": 299
+    },
+    {
+     "pid": "168176915",
+     "qty": 1,
+     "regular": 379,
+     "sale": 339
+    },
+    {
+     "pid": "170140895",
+     "qty": 1,
+     "regular": 329,
+     "sale": 289
+    }
+   ],
+   "regularTotal": 1047,
+   "publicPrice": 1256,
+   "note": ""
+  },
+  {
+   "id": "decor-sand-travertine-walnut",
+   "type": "decor_set",
+   "components": [
+    {
+     "pid": "164824383",
+     "qty": 1,
+     "regular": 179,
+     "sale": 179
+    },
+    {
+     "pid": "169037988",
+     "qty": 1,
+     "regular": 179,
+     "sale": 179
+    },
+    {
+     "pid": "169440274",
+     "qty": 1,
+     "regular": 79,
+     "sale": 79
+    }
+   ],
+   "regularTotal": 437,
+   "publicPrice": 524,
+   "note": ""
+  },
+  {
+   "id": "decor-terracotta",
+   "type": "decor_set",
+   "components": [
+    {
+     "pid": "165839001",
+     "qty": 1,
+     "regular": 149,
+     "sale": 149
+    },
+    {
+     "pid": "170590024",
+     "qty": 1,
+     "regular": 199,
+     "sale": 139
+    },
+    {
+     "pid": "164824384",
+     "qty": 1,
+     "regular": 129,
+     "sale": 129
+    }
+   ],
+   "regularTotal": 477,
+   "publicPrice": 572,
+   "note": ""
+  },
+  {
+   "id": "decor-white-ceramic",
+   "type": "decor_set",
+   "components": [
+    {
+     "pid": "169767116",
+     "qty": 1,
+     "regular": 99,
+     "sale": 99
+    },
+    {
+     "pid": "165839004",
+     "qty": 1,
+     "regular": 99,
+     "sale": 99
+    },
+    {
+     "pid": "169440275",
+     "qty": 1,
+     "regular": 179,
+     "sale": 179
+    }
+   ],
+   "regularTotal": 377,
+   "publicPrice": 452,
+   "note": ""
+  }
+ ]
+}

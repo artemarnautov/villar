@@ -51,7 +51,7 @@ export function createBudget({ el, store, packName, onOrder, onLine, announce })
   }
 
   function renderLines() {
-    lines.replaceChildren(...store.lines().map(({ item, qty, sum }) => {
+    lines.replaceChildren(...store.lines().map(({ item, qty, sum, slotId }) => {
       const b = h('button', {
         type: 'button', class: 'line-btn', 'data-opens-sheet': '',
         'aria-label': `${item.name}${qty > 1 ? `, ${qty} шт.` : ''}, ${formatAED(sum)}. Открыть варианты`,
@@ -60,7 +60,7 @@ export function createBudget({ el, store, packName, onOrder, onLine, announce })
         h('span', { class: 'line-name' }, item.name, h('small', null, typeLabel(item.type))),
         h('span', { class: 'line-qty' }, `× ${qty}`),
         h('span', { class: 'line-sum' }, formatAED(sum)));
-      b.addEventListener('click', () => onLine?.(item.type, b));
+      b.addEventListener('click', () => onLine?.(slotId, b));
       return h('li', null, b);
     }));
   }

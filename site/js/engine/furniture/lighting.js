@@ -62,19 +62,19 @@ function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null })
   }
   if (s.includes('globe') || s.includes('sphere') || s.includes('ball') || s.includes('lantern')) {
     const Ry = h / 2;
-    const ribs = s.includes('paper') || s.includes('lantern') ? 14 : 0;
+    const ribs = s.includes('paper') || s.includes('lantern') ? 16 : 0;
     const pts = [];
-    const N = 90;
+    const N = 96;
     for (let i = 0; i <= N; i++) {
       const t = -Math.PI / 2 + (i / N) * Math.PI;
       let r = R * Math.cos(t), y = Ry * Math.sin(t);
-      if (ribs) { const k = Math.cos((i / N) * ribs * Math.PI * 2); r *= 1 + 0.006 * Math.max(0, k) ** 6 - 0.004; }
+      if (ribs) { const k = Math.cos((i / N) * ribs * Math.PI * 2); r *= 1 + 0.012 * Math.max(0, k) ** 8 - 0.006; }
       pts.push([Math.max(0.0, r), y]);
     }
     // open top & bottom
     const open = 0.035;
     const trimmed = pts.filter(([r, y]) => !(r < open && Math.abs(y) > Ry * 0.5));
-    b.add(lathe(trimmed, 64), mat, { pos: [0, yb + Ry, 0], uv: 'box' });
+    b.add(lathe(trimmed, 40), mat, { pos: [0, yb + Ry, 0], uv: 'box' });
     return yb + Ry;
   }
   // drum (default)
@@ -130,7 +130,7 @@ export function floorLamp(c) {
   }
   const rim = c.mat(/brass|gold/.test(baseKey) ? 'metal-brass' : 'metal-black');
   const ly = addShade(b, c, { style, R, h: sh, yb, mat: shade, rimMat: rim });
-  spider(b, rim, { R: style.includes('cone') ? R * 0.68 : R, y: yb + sh, hubY: yb + sh * 0.55 });
+  spider(b, rim, { R: style.includes('cone') ? R * 0.68 : style.includes('pleat') ? R * 0.8 : R, y: yb + sh, hubY: yb + sh * 0.55 });
   bulb(b, c, ly + 0.02, 0.028);
   return {
     group: b.build('floor_lamp'),
@@ -171,14 +171,14 @@ export function tableLamp(c) {
   }
   const fn = BASE_SHAPES[Object.keys(BASE_SHAPES).find((k) => shapeName.includes(k)) || 'gourd'];
   const br = Math.min(R * 0.55, 0.11);
-  b.add(lathe(smoothProfile(fn(bh, br), 60), 56), baseMat, { uv: 'box', axis: 'x' });
+  b.add(lathe(smoothProfile(fn(bh, br), 36), 44), baseMat, { uv: 'box', axis: 'x' });
   // socket + neck
   const brass = c.mat('metal-brass');
   b.add(new THREE.CylinderGeometry(0.012, 0.016, 0.03, 16), brass, { pos: [0, bh + 0.012, 0] });
   b.add(new THREE.CylinderGeometry(0.004, 0.004, yb + sh * 0.5 - bh, 8), brass, { pos: [0, (bh + yb + sh * 0.5) / 2, 0] });
   const rim = c.mat('metal-brass');
   const ly = addShade(b, c, { style, R, h: sh, yb, mat: shade, rimMat: rim });
-  spider(b, rim, { R: style.includes('cone') ? R * 0.68 : R, y: yb + sh, hubY: yb + sh * 0.6 });
+  spider(b, rim, { R: style.includes('cone') ? R * 0.68 : style.includes('pleat') ? R * 0.8 : R, y: yb + sh, hubY: yb + sh * 0.6 });
   bulb(b, c, ly + 0.01, 0.022);
   return {
     group: b.build('table_lamp'),

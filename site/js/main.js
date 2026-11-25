@@ -28,7 +28,7 @@ function renderHeroNote({ store, layout }) {
   const el = $('[data-hero-note]');
   if (!el) return;
   const min = store.placed().reduce((sum, p) => {
-    const prices = store.options(p.slotType).map((o) => o.price).filter((n) => Number.isFinite(n));
+    const prices = store.options(p.slotId).map((o) => o.price).filter((n) => Number.isFinite(n));
     return sum + (prices.length ? Math.min(...prices) : p.item.price || 0);
   }, 0);
   if (!min) return;
@@ -92,11 +92,11 @@ async function boot() {
   createBudget({
     el: $('#budget'), store, packName, announce,
     onOrder: () => order.open(),
-    onLine: (type, from) => {
-      const slot = store.placed().find((p) => p.slotType === type);
+    onLine: (slotId, from) => {
+      const slot = store.placed().find((p) => p.slotId === slotId);
       if (!slot) return;
       scrollToEl(stageEl);
-      setTimeout(() => sheet.open({ slotId: slot.slotId, slotType: type, item: slot.item }, { focus: true, from }), 280);
+      setTimeout(() => sheet.open({ slotId: slot.slotId, slotType: slot.slotType, item: slot.item }, { focus: true, from }), 280);
     },
   });
 

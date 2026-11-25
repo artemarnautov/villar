@@ -65,7 +65,7 @@ export function curtains(c) {
   const hang = H - 0.035; // below the track
   const r = rng(c.seed);
   const wave = 0.13, amp = clamp(p.foldDepth ? cm(p.foldDepth) : 0.035, 0.015, 0.07);
-  const nx = 90, ny = 40;
+  const nx = Math.round(clamp(gathered / 0.012, 40, 110)), ny = 22;
   for (let k = 0; k < panels; k++) {
     // panel centre along x
     let cx;

@@ -238,7 +238,7 @@ function build(w, h, tile, fn, { normalStrength = 1, albedo = true, rough = true
     },
     finish() {
       if (H) { NM.set(heightToNormal(H, w, h, normalStrength)); out.normalMap.needsUpdate = true; }
-      if (A) { out.mean = meanLinear(A); out.map.needsUpdate = true; }
+      if (A) { out.mean = meanLinear(A); out.meanRGB = meanRGB(A); out.map.needsUpdate = true; }
       if (R) out.roughnessMap.needsUpdate = true;
       out.done = true;
       for (const cb of cbs) cb(out);
@@ -291,6 +291,11 @@ export function heightToNormal(H, w, h, strength = 1) {
 
 function srgbToLinear(c) { return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
 const LIN = new Float32Array(256); for (let i = 0; i < 256; i++) LIN[i] = srgbToLinear(i / 255);
+function meanRGB(A) {
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let i = 0; i < A.length; i += 16) { r += LIN[A[i]]; g += LIN[A[i + 1]]; b += LIN[A[i + 2]]; n++; }
+  return [r / n, g / n, b / n];
+}
 function meanLinear(A) {
   let s = 0, n = 0;
   for (let i = 0; i < A.length; i += 16) { s += LIN[A[i]] * 0.3 + LIN[A[i + 1]] * 0.59 + LIN[A[i + 2]] * 0.11; n++; }
@@ -479,8 +484,8 @@ export function travertineTextures(seed = 31, { base = '#d8c6a8', band = '#c7b08
     const bands = BA(u, v);
     mixRgb(B, Bd, clamp01(bands * 0.8 + 0.4), tmp);
     mixRgb(tmp, Lt, clamp01(B2(u, v) * 0.6), tmp);
-    const pore = smooth(0.62, 0.8, PO(u, v));
-    const pd = 1 - pore * 0.35;
+    const pore = smooth(0.66, 0.84, PO(u, v));
+    const pd = 1 - pore * 0.28;
     px.r = tmp[0] * pd; px.g = tmp[1] * pd * 0.99; px.b = tmp[2] * pd * 0.97;
     px.rough = 0.52 + pore * 0.35 + bands * 0.05;
     px.h = -pore * 3 + bands * 0.15;
@@ -824,12 +829,22 @@ export function rugPatternTexture({ w = 2.9, d = 2.0, color = '#e3dacb', pattern
     const n = Math.round(w / 0.18); g.globalAlpha = 0.85;
     for (let i = 0; i < n; i++) if (i % 2) g.fillRect(i * W / n, 0, (W / n) * (0.35 + 0.3 * r()), H);
     g.globalAlpha = 1;
-  } else if (pattern === 'geometric' || pattern === 'diamond' || pattern === 'berber') {
-    const cell = 0.24 * sx; g.lineWidth = 0.012 * sx;
-    for (let y = -cell; y < H + cell; y += cell) for (let x = -cell; x < W + cell; x += cell) {
-      g.beginPath(); g.moveTo(x + cell / 2, y); g.lineTo(x + cell, y + cell / 2); g.lineTo(x + cell / 2, y + cell); g.lineTo(x, y + cell / 2); g.closePath(); g.stroke();
+  } else if (pattern === 'geometric' || pattern === 'diamond' || pattern === 'berber' || pattern === 'beni-ourain') {
+    // hand-drawn lozenge lattice (Beni Ourain style): wobbly, varying stroke
+    const cw = 0.42 * sx, chh = 0.62 * sy; g.lineCap = 'round'; g.lineJoin = 'round';
+    const wob = (x, y) => [x + (r() - 0.5) * 0.02 * sx, y + (r() - 0.5) * 0.02 * sy];
+    const line = (x0, y0, x1, y1) => {
+      g.lineWidth = (0.014 + r() * 0.01) * sx; g.beginPath(); let [px, py] = wob(x0, y0); g.moveTo(px, py);
+      const n = 6; for (let i = 1; i <= n; i++) { [px, py] = wob(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n); g.lineTo(px, py); } g.stroke();
+    };
+    g.globalAlpha = 0.85;
+    for (let y = -chh; y < H + chh; y += chh) for (let x = -cw; x < W + cw; x += cw) {
+      line(x + cw / 2, y, x + cw, y + chh / 2); line(x + cw, y + chh / 2, x + cw / 2, y + chh);
     }
-    rectInset(m(4), m(4));
+    for (let y = -chh; y < H + chh; y += chh) for (let x = -cw; x < W + cw; x += cw) {
+      line(x + cw / 2, y, x, y + chh / 2); line(x, y + chh / 2, x + cw / 2, y + chh);
+    }
+    g.globalAlpha = 1;
   } else if (pattern === 'abstract' || pattern === 'organic') {
     g.globalAlpha = 0.5;
     for (let i = 0; i < 9; i++) {

@@ -102,7 +102,7 @@ export function mattress(c) {
  * Cloth draped over a box (mattress) whose top is at y = 0, half-size (hx, hz), corner radius rc.
  * Flat cloth: width wFlat (x), length lFlat (along +z starting at z0). Returns { geom, edge: (a,s)->point }.
  */
-function drape({ wFlat, lFlat, z0, hx, hz, rc = 0.05, lift = 0.0, puff = 0.04, nA = 60, nS = 70, seed = 1, maxDrop = 0.3, footHang = true, flare = 0.35, headRoll = 0 }) {
+function drape({ wFlat, lFlat, z0, hx, hz, rc = 0.05, lift = 0.0, puff = 0.04, nA = 60, nS = 70, seed = 1, maxDrop = 0.3, footHang = true, flare = 0.22, headRoll = 0 }) {
   const r = rng(seed);
   const ph = Array.from({ length: 8 }, () => r() * Math.PI * 2);
   const inner = (h) => h - rc;
@@ -123,7 +123,7 @@ function drape({ wFlat, lFlat, z0, hx, hz, rc = 0.05, lift = 0.0, puff = 0.04, n
     let zz = z <= inner(hz) || !footHang ? z : inner(hz) + oz;
     let y = -Math.sqrt(dx * dx + dz * dz);
     // corner flare: cloth hanging on one side pushes the other outward
-    if (hx2 > 0 && hz2 > 0) { x += flare * Math.min(hz2, hx2); zz += flare * Math.min(hz2, hx2); }
+    if (hx2 > 0 && hz2 > 0) { const f = flare * Math.min(hz2, hx2); x += f; zz += f; }
     else { x += hz2 > 0 && ax > inner(hx) ? 0 : 0; }
     const hang = Math.max(hx2, hz2);
     if (y < -maxDrop) y = -maxDrop - (y + maxDrop) * -0.0; // hem stops at maxDrop (cloth would rest on the frame)
@@ -192,10 +192,10 @@ export function bedding(c) {
   const maxDrop = clamp(cm(p.drop, mh - 0.06), 0.08, 0.32);
   const lFlat = (hz - z0) + maxDrop + 0.03;
   const wFlat = mw + 2 * (maxDrop + 0.03);
-  const dv = drape({ wFlat, lFlat, z0, hx, hz, rc: 0.055, puff: 0.045, nA: 70, nS: 80, seed: c.seed, maxDrop, headRoll: 0.01 });
+  const dv = drape({ wFlat, lFlat, z0, hx, hz, rc: 0.055, puff: 0.045, nA: 56, nS: 60, seed: c.seed, maxDrop, headRoll: 0.01 });
   b.add(dv.geom, duvet, { uv: 'keep' });
   // hem roll gives the duvet a visible thickness
-  b.add(tube(dv.edge(90), 0.012, { tubular: 260, radial: 6, tension: 0.3 }), duvet, { uv: 'box' });
+  b.add(tube(dv.edge(70), 0.012, { tubular: 200, radial: 6, tension: 0.3 }), duvet, { uv: 'box' });
   // turn-down fold at the head
   const fold = drape({ wFlat, lFlat: 0.3, z0: z0 - 0.0, hx, hz, rc: 0.06, lift: 0.045, puff: 0.03, nA: 60, nS: 10, seed: c.seed + 5, maxDrop: maxDrop - 0.01, footHang: false });
   b.add(fold.geom, duvet, { uv: 'keep' });

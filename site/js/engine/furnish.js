@@ -69,7 +69,7 @@ export function createFurnisher({ layout, store, materials, buildItem, quality =
   }
 
   function build(slot) {
-    const item = store.selected(slot.type);
+    const item = store.selected(slot.id);
     if (!item) return null;
     const parentRec = slot.attach ? placed.get(slot.attach.slot) : null;
     if (slot.attach && !parentRec) return null;

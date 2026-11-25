@@ -168,6 +168,13 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
     grid.texture = tex;
   }
 
+  // async (PBO + fence) readback avoids a pipeline stall on real GPUs; software rasterisers
+  // (SwiftShader) reset the context on fence waits, so they read synchronously
+  const gl = renderer.getContext();
+  const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+  const gpuName = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
+  const useAsync = !/swiftshader|llvmpipe|software/i.test(gpuName) && !window.__villarSyncReadback;
+
   // ---------------------------------------------------------------- progressive bake
   let job = null;
   function renderProbe(j) {
@@ -196,7 +203,11 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
     return done;
   }
 
-  /** Advance the current bake within a time budget (ms). Returns true while work remains. */
+  /**
+   * Advance the current bake: at most `maxProbes` probes (GPU work is asynchronous, so a JS time
+   * budget alone can queue seconds of GPU work) and at most `budgetMs` of CPU time.
+   */
+  let perFrame = useAsync ? 3 : 1;
   function step(budgetMs = 8) {
     if (!job || job.reading) return !!job;
     const t0 = performance.now();
@@ -209,7 +220,11 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
     const gridVisible = grid.visible;
     if (j0.bounce === 0 && j0.fresh) grid.visible = false;
     try {
-      while (j0.next < N && performance.now() - t0 < budgetMs) renderProbe(j0.next++);
+      let n = 0;
+      while (j0.next < N && n < perFrame && performance.now() - t0 < budgetMs) { renderProbe(j0.next++); n++; }
+      // adapt the per-frame count to the CPU cost of a probe (6 scene renders)
+      const dt = performance.now() - t0;
+      if (useAsync && n === perFrame) perFrame = dt < budgetMs * 0.5 ? Math.min(8, perFrame + 1) : dt > budgetMs * 1.2 ? Math.max(1, perFrame - 1) : perFrame;
     } finally {
       grid.visible = gridVisible;
       atlas.scissorTest = false;
@@ -220,9 +235,9 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
     if (j0.next >= N) {
       // async readback of the float atlas, SH9 projection on the CPU
       j0.reading = true;
-      const read = renderer.readRenderTargetPixelsAsync
+      const read = (useAsync && renderer.readRenderTargetPixelsAsync)
         ? renderer.readRenderTargetPixelsAsync(atlas, 0, 0, cols, N * S, atlasBuf)
-        : Promise.resolve(renderer.readRenderTargetPixels(atlas, 0, 0, cols, N * S, atlasBuf));
+        : new Promise((res) => { renderer.readRenderTargetPixels(atlas, 0, 0, cols, N * S, atlasBuf); res(); });
       read.then(() => {
         if (j0.cancelled) return;
         upload(projectCPU());

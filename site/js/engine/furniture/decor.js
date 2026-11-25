@@ -16,7 +16,8 @@ export function wallArt(c) {
     const art = c.mat('canvas', { motif: p.motif, colors: p.colors, w: W, h: H, seed: c.seed });
     const g = new THREE.PlaneGeometry(W, H);
     b.add(g, art, { pos: [0, 0, depth], uv: 'keep' });
-    b.add(softBox(W, H, depth - 0.001, { r: 0.002, seg: 1 }), c.mat('paper', { color: (p.colors && p.colors[1]) || '#efe8dc' }), { pos: [0, 0, depth / 2 - 0.0005] });
+    const bgc = (p.colors || []).find((x) => new THREE.Color(x).getHSL({}).l > 0.75) || '#efe8dc';
+    b.add(softBox(W, H, depth - 0.001, { r: 0.002, seg: 1 }), c.mat('paper', { color: bgc }), { pos: [0, 0, depth / 2 - 0.0005] });
     return { group: b.build('wall_art') };
   }
   const frameMat = frameKey.includes('white') ? c.mat('kitchen-front', { color: '#f2efe9' }) : frameKey.includes('black') ? c.mat('lacquer', { color: '#1c1b1a', roughness: 0.45 }) : frameKey.includes('brass') || frameKey.includes('gold') ? c.mat('metal-brass') : c.mat(frameKey);
@@ -139,6 +140,52 @@ function leafTemplate({ L = 0.06, Wd = 0.012, outline = (v) => Math.sin(Math.PI 
   return g;
 }
 
+/**
+ * Monstera deliciosa leaf: cordate blade split into lobes by slits that run from the margin toward
+ * the midrib along the lateral veins (built as separate lobe strips → clean cuts), length along +Y.
+ */
+function monsteraLeaf({ L = 0.4, Wd = 0.38, lobes = 7, seed = 1, fold = 0.1, arch = 0.18 }) {
+  const r = rng(seed);
+  const pos = [], uv = [], idx = [], shade = [];
+  const outline = (v) => Math.pow(Math.sin(Math.PI * Math.min(1, 0.1 + v * 0.9)), 0.4) * (1 - 0.15 * v);
+  const tilt = 0.22; // lateral veins rise toward the margin
+  const vert = (sgn, sa, v) => {
+    const w = outline(v) * Wd / 2;
+    const x = sgn * sa * w, y = v * L;
+    const z = sa * w * fold - v * v * L * arch;
+    pos.push(x, y, z); uv.push(0.5 + sgn * sa * 0.5, v); shade.push(0.9 + 0.1 * (1 - sa));
+    return pos.length / 3 - 1;
+  };
+  const NS = 6, NV = 3;
+  for (const sgn of [-1, 1]) {
+    for (let k = 0; k < lobes; k++) {
+      const gapK = 0.1 + r() * 0.1, reach = 0.35 + r() * 0.35; // slit width at margin, slit depth start
+      const base = pos.length / 3;
+      for (let i = 0; i <= NS; i++) {
+        const sa = i / NS; // 0 = midrib, 1 = margin
+        const g = sa < reach ? 0 : ((sa - reach) / (1 - reach)) * gapK;
+        for (let j = 0; j <= NV; j++) {
+          const ph = k + g / 2 + (1 - g) * (j / NV);
+          let v = ph / lobes + sa * tilt * (1 - ph / lobes);
+          v = Math.min(1, Math.max(0, v));
+          vert(sgn, sa, v);
+        }
+      }
+      const m = NV + 1;
+      for (let i = 0; i < NS; i++) for (let j = 0; j < NV; j++) {
+        const a = base + i * m + j, b2 = a + 1, c2 = a + m, d = c2 + 1;
+        if (sgn > 0) idx.push(a, c2, d, a, d, b2); else idx.push(a, d, c2, a, b2, d);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx); g.computeVertexNormals();
+  g.userData.shade = shade;
+  return g;
+}
+
 const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _s3 = new THREE.Vector3();
 /** Matrix placing a leaf at point p, pointing along dir, with roll around dir and scale. */
 function leafMatrix(p, dir, roll, scale) {
@@ -167,7 +214,7 @@ function addPot(b, c, { r, h, style, color }) {
   b.add(lathe(smoothProfile(prof, 48), 48), mat, { uv: 'box' });
   const soilY = h * 0.9;
   const sr = (shape.includes('egg') ? r * 0.72 : r * 0.9);
-  const soil = lathe([[0.001, soilY + 0.012], [sr * 0.6, soilY + 0.008], [sr, soilY - 0.004], [sr * 1.01, soilY - 0.03]], 32);
+  const soil = lathe([[sr * 1.01, soilY - 0.03], [sr, soilY - 0.004], [sr * 0.6, soilY + 0.008], [0.001, soilY + 0.012]], 32);
   b.add(soil, c.mat('soil'), { uv: 'box', cast: false });
   return soilY + 0.008;
 }
@@ -193,8 +240,9 @@ export function plant(c) {
   const stemMat = c.mat('plant-stem', { color: '#6b6248' });
   const barkMat = c.mat('bark', { color: '#cfc4b4' });
   let kind = 'olive';
-  if (/fiddle|lyrata|rubber|elastica/.test(species)) kind = 'fiddle';
-  else if (/monstera|philo|banana|bird|strelitzia|calathea|alocasia/.test(species)) kind = 'monstera';
+  if (/fiddle|lyrata|rubber|elastica|audrey|benghal|ficus/.test(species)) kind = 'fiddle';
+  else if (/bird|strelitzia|banana|musa|heliconia/.test(species)) kind = 'bird';
+  else if (/monstera|philo|calathea|alocasia/.test(species)) kind = 'monstera';
   else if (/snake|sansev|zz|aloe|yucca|dracaena|cactus/.test(species)) kind = 'snake';
   else if (/palm|areca|kentia|fern/.test(species)) kind = 'palm';
 
@@ -263,38 +311,66 @@ export function plant(c) {
     }
   } else if (kind === 'fiddle') {
     const stemsN = clamp(Math.round(p.stems || 1), 1, 3);
-    const tmpl = leafTemplate({ L: 0.28, Wd: 0.2, outline: (v) => { const a = Math.sin(Math.PI * Math.min(1, v * 1.02)) ** 0.6; return a * (0.62 + 0.38 * Math.sin(v * Math.PI * 0.9) ** 2) * (v > 0.85 ? 1 - (v - 0.85) * 2.2 : 1); }, nu: 6, nv: 10, fold: 0.18, arch: 0.22, wave: 0.004 });
-    const cols = plantColors('#3f5f2e', 20, r, 0.1);
+    const audrey = /audrey|benghal|elastica|rubber|ficus(?!.*lyrata)/.test(species) && !/fiddle|lyrata/.test(species);
+    const tmpl = audrey ? leafTemplate({ L: 0.16, Wd: 0.1, outline: (v) => Math.pow(Math.sin(Math.PI * Math.min(1, v * 1.02)), 0.7), nu: 4, nv: 7, fold: 0.15, arch: 0.15 }) : leafTemplate({ L: 0.28, Wd: 0.2, outline: (v) => { const a = Math.sin(Math.PI * Math.min(1, v * 1.02)) ** 0.6; return a * (0.62 + 0.38 * Math.sin(v * Math.PI * 0.9) ** 2) * (v > 0.85 ? 1 - (v - 0.85) * 2.2 : 1); }, nu: 6, nv: 10, fold: 0.18, arch: 0.22, wave: 0.004 });
+    const cols = plantColors(audrey ? '#4d6b3a' : '#3f5f2e', 20, r, 0.1);
     for (let s = 0; s < stemsN; s++) {
       const ox = (s - (stemsN - 1) / 2) * 0.05;
       const pts = [V3(ox, soilY - 0.02, 0)];
       for (let i = 1; i <= 6; i++) pts.push(V3(ox + (r() - 0.5) * 0.03 + ox * i * 0.3, lerp(soilY, H - 0.12 - s * 0.12, i / 6), (r() - 0.5) * 0.03));
       const sw = sweep(pts, (t) => lerp(0.016, 0.008, t), { radial: 8 });
       b.add(sw.geom, barkMat, { uv: 'keep' });
-      const n = 16;
+      const n = audrey ? 34 : 22;
       for (let k = 0; k < n; k++) {
-        const t = 0.35 + 0.65 * (k / (n - 1));
+        const t = (audrey ? 0.45 : 0.35) + (audrey ? 0.55 : 0.65) * (k / (n - 1));
         const lp = sw.curve.getPointAt(t);
         const a = k * 2.4 + s;
         const out = V3(Math.cos(a), 0.55 + t * 0.5, Math.sin(a)).normalize();
-        const sc = (0.72 + 0.28 * Math.sin(t * Math.PI)) * clamp(W / 0.6, 0.7, 1.3) * (t > 0.95 ? 0.7 : 1);
+        const sc = (0.8 + 0.3 * Math.sin(t * Math.PI)) * clamp(W / 0.55, 0.75, 1.35) * (t > 0.95 ? 0.7 : 1);
         leaves.add(tmpl, leafMatrix(lp.clone().addScaledVector(out, 0.02), out, a + Math.PI / 2 + (r() - 0.5) * 0.6, sc), cols[(r() * cols.length) | 0]);
       }
+    }
+  } else if (kind === 'bird') {
+    // Strelitzia nicolai: long upright petioles, large paddle leaves with natural tears
+    const n = 8;
+    const cols = plantColors('#3e5c34', 12, r, 0.1);
+    for (let k = 0; k < n; k++) {
+      const a = k * 2.39996 + r() * 0.5;
+      const lean = 0.06 + r() * 0.3;
+      const avail = H - soilY;
+      const L = clamp(avail * (0.3 + r() * 0.08), 0.25, 0.65);
+      const petL = Math.max(0.2, (avail - L * Math.cos(lean * 1.3)) * (0.7 + r() * 0.3));
+      const out = V3(Math.cos(a), 0, Math.sin(a));
+      const base = V3(Math.cos(a) * 0.03, soilY - 0.01, Math.sin(a) * 0.03);
+      const top = base.clone().addScaledVector(out, Math.sin(lean) * petL).add(V3(0, Math.cos(lean) * petL, 0));
+      const mid = base.clone().lerp(top, 0.5).addScaledVector(out, -0.01);
+      const sw = sweep([base, mid, top], (t) => lerp(0.014, 0.008, t), { radial: 6, tubular: 10 });
+      b.add(sw.geom, stemMat, { uv: 'keep' });
+      const tears = Array.from({ length: 4 + ((r() * 4) | 0) }, () => [0.2 + r() * 0.7, r() < 0.5 ? -1 : 1, 0.25 + r() * 0.6]);
+      const tmpl = leafTemplate({ L, Wd: L * 0.36, outline: (v) => Math.pow(Math.sin(Math.PI * Math.min(1, v * 1.0)), 0.6), nu: 8, nv: 30, fold: 0.1, arch: 0.12, wave: 0.004,
+        holes: (u, v) => tears.some(([tv, sd, dp]) => Math.abs(v - tv) < 0.018 && Math.sign(u - 0.5) === sd && Math.abs(u * 2 - 1) > 1 - dp) });
+      const dir = top.clone().sub(base).normalize().addScaledVector(out, 0.35).normalize();
+      leaves.add(tmpl, leafMatrix(top, dir, a + Math.PI / 2 + (r() - 0.5) * 0.8, 1), cols[(r() * cols.length) | 0]);
     }
   } else if (kind === 'monstera' || kind === 'palm') {
     const isPalm = kind === 'palm';
     const nLeaves = isPalm ? 9 : 11;
     const leafL = isPalm ? 0.12 : clamp(H * 0.3, 0.18, 0.42);
+    // fenestration: slits from the margin toward the midrib following the lateral veins + small oval holes
     const holes = isPalm ? null : (u, v) => {
-      const s = Math.abs(u * 2 - 1);
-      if (v < 0.12 || v > 0.94) return false;
-      const band = (v * 7.5) % 1;
-      if (s > 0.55 && band > 0.42 && band < 0.58) return true; // edge slits
-      if (s > 0.18 && s < 0.36 && band > 0.35 && band < 0.65 && v > 0.25 && v < 0.8) return true; // holes
+      const sgn = u < 0.5 ? 0 : 1, s = Math.abs(u * 2 - 1);
+      if (v < 0.1 || v > 0.9) return false;
+      const ph = (v - s * 0.22) * 6.5;
+      const idx = Math.floor(ph), f = ph - idx;
+      const hsh = Math.abs(Math.sin(idx * 12.9898 + sgn * 78.233) * 43758.5453) % 1;
+      if (s > 0.42 + hsh * 0.25 && Math.abs(f - 0.5) < 0.07) return true;
+      if (hsh > 0.35 && s > 0.17 && s < 0.32 && Math.abs(f - 0.5) < 0.12 && v > 0.2 && v < 0.78) return true;
       return false;
     };
-    const monsteraOutline = (v) => { const a = Math.sin(Math.PI * Math.min(1, v * 1.0)); return Math.pow(a, 0.55) * (1 - 0.25 * v); };
-    const tmpl = isPalm ? leafTemplate({ L: 0.2, Wd: 0.025, nu: 2, nv: 4, fold: 0.3, arch: 0.25 }) : leafTemplate({ L: leafL, Wd: leafL * 0.95, outline: monsteraOutline, nu: 14, nv: 16, fold: 0.12, arch: 0.18, holes, wave: 0.003 });
+    const monsteraOutline = (v) => { const a = Math.sin(Math.PI * Math.min(1, 0.06 + v * 0.94)); return Math.pow(a, 0.45) * (1 - 0.2 * v); };
+    const tmpls = isPalm ? [leafTemplate({ L: 0.2, Wd: 0.025, nu: 2, nv: 4, fold: 0.3, arch: 0.25 })] : [0, 1, 2].map((q) => monsteraLeaf({ L: leafL, Wd: leafL * 1.0, lobes: 6, seed: c.seed + q * 31 }));
+    const tmpl = tmpls[0];
+    void holes; void monsteraOutline;
     const cols = plantColors(isPalm ? '#4f6d36' : '#2f5428', 20, r, 0.1);
     for (let k = 0; k < nLeaves; k++) {
       const a = (k / nLeaves) * Math.PI * 2 * 1.618 + r() * 0.4;
@@ -324,7 +400,7 @@ export function plant(c) {
         }
       } else {
         const ld = outv.clone().multiplyScalar(Math.sin(tilt) + 0.3).add(V3(0, Math.cos(tilt) * 0.8, 0)).normalize();
-        leaves.add(tmpl, leafMatrix(tipStem, ld, Math.PI / 2 + (r() - 0.5) * 0.5, 0.75 + r() * 0.35), cols[(r() * cols.length) | 0]);
+        leaves.add(tmpls[k % tmpls.length], leafMatrix(tipStem, ld, Math.PI / 2 + (r() - 0.5) * 0.5, 0.75 + r() * 0.35), cols[(r() * cols.length) | 0]);
       }
     }
   } else {
@@ -383,7 +459,14 @@ export function decorSet(c) {
   const { W, D, H, params: p } = c;
   const b = new Builder(c.seed);
   const r = rng(c.seed + 3);
-  const list = (p.items && p.items.length ? p.items : ['vase-tall', 'books', 'bowl']).map((s) => String(s).toLowerCase());
+  // items: 'vase-tall' | 'vase-tall:travertine' | { type, material, color }; params.materials[i] also accepted
+  const raw = p.items && p.items.length ? p.items : ['vase-tall', 'books', 'bowl'];
+  const hints = p.materialHints && p.materialHints.length >= raw.length ? p.materialHints : null;
+  const itemMats = raw.map((s, i) => (typeof s === 'object' ? s.material : String(s).split(':')[1]) || (p.materials && p.materials[i]) || (hints && hints[i]) || null);
+  const heights = (p.heights || []).map((h) => cm(h, null));
+  const itemCols = raw.map((s) => (typeof s === 'object' ? s.color : null));
+  const list = raw.map((s) => String(typeof s === 'object' ? s.type || s.kind || 'vase' : s).split(':')[0].toLowerCase());
+  let curIdx = 0;
   const colors = p.colors && p.colors.length ? p.colors : ['#CBB89A', '#3B3B3B', '#B5653F'];
   const col = (i) => colors[i % colors.length];
   // footprint per item
@@ -392,10 +475,25 @@ export function decorSet(c) {
   const k0 = Math.min(1, W / total);
   let x = -Math.min(W, total) / 2;
   let booksTop = null;
+  let trayY = 0;
+  const trayIdx = list.findIndex((k) => k.includes('tray'));
+  if (trayIdx >= 0) {
+    // the tray carries the other objects: draw it first, full width, then lay the rest out on it
+    const tw = Math.min(W, Math.max(0.3, total * 0.8)), td = Math.min(D, 0.26);
+    const tm = itemMats[trayIdx] ? c.mat(itemMats[trayIdx]) : c.mat(p.trayMaterial || 'walnut-dark');
+    b.add(slab(roundedRectShape(tw, td, 0.03), 0.012, { bevel: 0.003 }), tm, {});
+    b.add(tube([...Array(33)].map((_, j) => { const a = (j / 32) * Math.PI * 2; const ca = Math.cos(a), sa = Math.sin(a); return V3(Math.sign(ca) * Math.pow(Math.abs(ca), 0.4) * (tw / 2 - 0.004), 0.018, Math.sign(sa) * Math.pow(Math.abs(sa), 0.4) * (td / 2 - 0.004)); }), 0.0045, { tubular: 96, radial: 5, closed: true }), tm, {});
+    trayY = 0.012;
+    fp[trayIdx] = 0;
+    const tot2 = fp.reduce((a, v) => a + v, 0) + 0.025 * (list.length - 2);
+    x = -Math.min(tw - 0.04, tot2) / 2;
+  }
   list.forEach((kind, i) => {
+    curIdx = i;
+    if (i === trayIdx) return;
     const w = fp[i] * k0;
     let cx = x + w / 2; let cz = (i % 2 ? 0.25 : -0.2) * D * 0.5; let baseY = 0;
-    const color = col(i);
+    const color = itemCols[i] || col(i);
     if (kind.includes('book')) {
       const n = 2 + (r() < 0.5 ? 1 : 0);
       let y = 0;
@@ -413,15 +511,18 @@ export function decorSet(c) {
       b.add(slab(roundedRectShape(tw, td, 0.03), 0.012, { bevel: 0.003 }), c.mat(p.trayMaterial || 'walnut-dark'), { pos: [cx, 0, cz * 0.2] });
       b.add(tube([...Array(33)].map((_, j) => { const a = (j / 32) * Math.PI * 2; return V3(cx + Math.cos(a) * (tw / 2 - 0.004), 0.02, cz * 0.2 + Math.sin(a) * (td / 2 - 0.004)); }), 0.004, { tubular: 64, radial: 5, closed: true }), c.mat(p.trayMaterial || 'walnut-dark'), {});
     } else {
-      addSmall(kind, cx, 0, cz, color);
+      addSmall(kind, cx, trayY, trayY ? cz * 0.3 : cz, color);
     }
     x += w + 0.03 * k0;
   });
 
   function addSmall(kind, cx, y0, cz, color) {
-    const ceramic = c.mat(/glaze|gloss/.test(kind) ? 'ceramic-glazed' : 'ceramic-matte', { color });
+    let mk = itemMats[curIdx];
+    if (mk && mk.includes(':')) { color = mk.split(':')[1]; mk = mk.split(':')[0]; }
+    const HH = heights[curIdx];
+    const ceramic = mk ? c.mat(mk, /ceram|glaze|paint|matte/.test(mk) ? { color } : {}) : c.mat(/glaze|gloss/.test(kind) ? 'ceramic-glazed' : /amber|glass/.test(kind) ? 'glass-amber' : /brass|candlestick/.test(kind) ? 'metal-brass' : /travert/.test(kind) ? 'travertine' : /marble/.test(kind) ? 'marble-white' : /wood|walnut/.test(kind) ? 'walnut-dark' : 'ceramic-matte', { color });
     if (kind.includes('tall') || kind.includes('bottle')) {
-      const h = Math.min(H * 0.92, 0.34), rr = Math.min(0.055, h * 0.2);
+      const h = HH || Math.min(H * 0.92, 0.34), rr = Math.min(0.07, h * 0.18);
       b.add(lathe(smoothProfile(vaseProfile('vase-tall', h, rr), 40), 40), ceramic, { pos: [cx, y0, cz], uv: 'box' });
       // dried branches
       if (p.stems !== false) {
@@ -440,25 +541,36 @@ export function decorSet(c) {
         b.add(g, leaf, { uv: 'keep' });
       }
     } else if (kind.includes('bowl')) {
-      const rr = Math.min(0.11, W * 0.22), h = Math.min(0.07, H * 0.3);
+      const h = HH || Math.min(0.07, H * 0.3), rr = Math.min(0.12, W * 0.24, Math.max(0.06, h * 1.6));
       b.add(lathe(smoothProfile(vaseProfile('bowl', h, rr), 30), 48), /wood|walnut/.test(kind) ? c.mat('walnut-dark') : ceramic, { pos: [cx, y0, cz], uv: 'box' });
+    } else if (kind.includes('candlestick') || kind.includes('holder')) {
+      const h = 0.16 + (curIdx % 2) * 0.06;
+      b.add(lathe(smoothProfile([[0.001, 0], [0.04, 0], [0.04, 0.008], [0.012, 0.02], [0.008, h * 0.5], [0.012, h - 0.02], [0.016, h - 0.006], [0.016, h], [0.001, h]], 30), 32), ceramic, { pos: [cx, y0, cz], uv: 'box' });
+      b.add(new THREE.CylinderGeometry(0.011, 0.011, 0.18, 16), c.mat('paper', { color: '#f2ece0' }), { pos: [cx, y0 + h + 0.09, cz] });
     } else if (kind.includes('candle')) {
       const h = 0.1 + r() * 0.05, rr = 0.035;
       b.add(lathe(vaseProfile('candle', h, rr), 28), c.mat('paper', { color: '#f2ece0' }), { pos: [cx, y0, cz], uv: 'box' });
       b.add(new THREE.CylinderGeometry(0.0012, 0.0012, 0.012, 4), c.mat('rubber'), { pos: [cx, y0 + h + 0.004, cz] });
     } else if (kind.includes('sculpt') || kind.includes('object') || kind.includes('ring')) {
-      const g = new THREE.TorusGeometry(0.05, 0.016, 16, 40);
-      b.add(g, ceramic, { pos: [cx, y0 + 0.066, cz], rot: [0, 0.4, 0] });
-      b.add(slab(ellipseShape(0.06, 0.04), 0.012, { bevel: 0.003 }), ceramic, { pos: [cx, y0, cz] });
+      const h = HH || 0.13;
+      if (h > 0.18) {
+        // tall organic sculpture: stacked soft forms
+        const prof = smoothProfile([[0.001, 0], [0.05, 0], [0.055, h * 0.12], [0.03, h * 0.3], [0.06, h * 0.5], [0.05, h * 0.68], [0.02, h * 0.82], [0.035, h * 0.94], [0.001, h]], 50);
+        b.add(lathe(prof, 36), ceramic, { pos: [cx, y0, cz], uv: 'box' });
+      } else {
+        const rr = h * 0.38;
+        b.add(new THREE.TorusGeometry(rr, rr * 0.32, 16, 40), ceramic, { pos: [cx, y0 + rr * 1.32 + 0.01, cz], rot: [0, 0.4, 0] });
+        b.add(slab(ellipseShape(rr * 1.2, rr * 0.8), 0.012, { bevel: 0.003 }), ceramic, { pos: [cx, y0, cz] });
+      }
     } else if (kind.includes('stone') || kind.includes('pebble')) {
       for (let k = 0; k < 3; k++) { const g = new THREE.SphereGeometry(0.03 - k * 0.006, 16, 10); g.scale(1, 0.45, 0.8); b.add(g, c.mat('stone-worktop'), { pos: [cx + (k - 1) * 0.045, y0 + 0.012, cz + (r() - 0.5) * 0.03] }); }
     } else if (kind.includes('box')) {
       b.add(softBox(0.14, 0.07, 0.1, { r: 0.004, seg: 2 }), c.mat('walnut-dark'), { pos: [cx, y0 + 0.035, cz] });
     } else if (kind.includes('jar')) {
-      const h = Math.min(0.16, H * 0.5), rr = 0.05;
+      const h = HH || Math.min(0.16, H * 0.5), rr = 0.05;
       b.add(lathe(smoothProfile(vaseProfile('jar', h, rr), 30), 40), ceramic, { pos: [cx, y0, cz], uv: 'box' });
     } else {
-      const h = Math.min(0.2, H * 0.6), rr = 0.06;
+      const h = HH || Math.min(0.2, H * 0.6), rr = Math.min(0.09, Math.max(0.05, h * 0.38));
       b.add(lathe(smoothProfile(vaseProfile('vase-round', h, rr), 40), 40), ceramic, { pos: [cx, y0, cz], uv: 'box' });
     }
   }

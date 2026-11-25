@@ -85,7 +85,7 @@ export function createPlan({ container, layout, store, onHover, onSelect }) {
     const items = [];
     for (const slot of layout.slots) {
       if (SKIP.has(slot.type)) continue;
-      const item = store.selected(slot.type);
+      const item = store.selected(slot.id);
       if (!item) continue;
       const pose = worldPose(slot);
       if (!pose) continue;
@@ -113,18 +113,18 @@ export function createPlan({ container, layout, store, onHover, onSelect }) {
         const pts = footprint(it.pose, it.wM, it.dM);
         grp.append(el('polygon', { class: 'shape', points: pts.map((p) => p.map((v) => v.toFixed(1)).join(',')).join(' '), 'stroke-linejoin': 'round' }));
       }
-      const payload = (e) => ({ slotId: slot.id, slotType: slot.type, item: store.selected(slot.type), x: e.clientX, y: e.clientY });
+      const payload = (e) => ({ slotId: slot.id, slotType: slot.type, item: store.selected(slot.id), x: e.clientX, y: e.clientY });
       grp.addEventListener('pointermove', (e) => { if (e.pointerType !== 'touch') onHover(payload(e)); });
       grp.addEventListener('pointerleave', () => onHover(null));
       grp.addEventListener('click', (e) => { e.stopPropagation(); onSelect(payload(e)); });
       const center = () => { const r = grp.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
-      grp.addEventListener('focus', () => { if (grp.matches(':focus-visible')) onHover({ slotId: slot.id, slotType: slot.type, item: store.selected(slot.type), ...center() }); });
+      grp.addEventListener('focus', () => { if (grp.matches(':focus-visible')) onHover({ slotId: slot.id, slotType: slot.type, item: store.selected(slot.id), ...center() }); });
       grp.addEventListener('blur', () => onHover(null));
       grp.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           const r = grp.getBoundingClientRect();
-          onSelect({ slotId: slot.id, slotType: slot.type, item: store.selected(slot.type), x: r.left + r.width / 2, y: r.top + r.height / 2, keyboard: true });
+          onSelect({ slotId: slot.id, slotType: slot.type, item: store.selected(slot.id), x: r.left + r.width / 2, y: r.top + r.height / 2, keyboard: true });
         }
       });
       g.append(grp);

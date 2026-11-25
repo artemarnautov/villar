@@ -8,7 +8,7 @@
 <style>
   html, body { margin: 0; height: 100%; background: #e9e6e1; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, system-ui, sans-serif; }
   #c { position: fixed; inset: 0; }
-  .lbl { position: absolute; transform: translate(-50%, 0); font-size: 11px; line-height: 1.25; color: #2b2724; background: rgba(255,255,255,.78); padding: 3px 7px; border-radius: 6px; white-space: nowrap; pointer-events: none; text-align: center; }
+  .lbl { position: absolute; transform: translate(-50%, 0); font-size: 10px; line-height: 1.25; color: #2b2724; background: rgba(255,255,255,.78); padding: 3px 7px; border-radius: 6px; white-space: nowrap; pointer-events: none; text-align: center; }
   .lbl b { font-weight: 600; } .lbl i { font-style: normal; color: #7b736b; }
   #hud { position: fixed; left: 12px; top: 10px; font-size: 12px; color: #3a342f; background: rgba(255,255,255,.8); padding: 6px 10px; border-radius: 8px; }
 </style>
@@ -152,6 +152,8 @@ const VARIANTS = [
   { id: 'v-decor-tv', type: 'decor_set', dims: { w: 50, d: 25, h: 40 }, model: { archetype: 'decor_set', params: { items: ['books', 'candle', 'vase-round', 'bowl'], colors: ['#7A7B55', '#E6DDCF', '#B5653F', '#CBB89A'] } } },
   { id: 'v-cush-4', type: 'cushions', dims: { w: 50, d: 15, h: 50 }, model: { archetype: 'cushions', params: { count: 4, colors: ['#E6DDCF', '#7A7B55', '#B5653F', '#D9CDB8'], fabrics: ['linen', 'velvet', 'linen', 'boucle'], sizes: [{ w: 50, h: 50 }, { w: 45, h: 45 }, { w: 45, h: 45 }, { w: 50, h: 30 }] } } },
   { id: 'v-sofa-chaise', type: 'sofa', dims: { w: 235, d: 100, h: 80 }, model: { archetype: 'sofa', params: { seats: 3, arm: 'slim', legs: 'metal', fabric: 'linen', fabricColor: '#D9CDB8', backCushions: 'tight', bench: true } } },
+  { id: 'v-sofa-l', type: 'sofa', dims: { w: 230, d: 160, h: 82 }, model: { archetype: 'sofa', params: { seats: 3, chaise: 'right', arm: 'track', legs: 'wood-taper', fabric: 'boucle', fabricColor: '#E8E1D5', wood: 'walnut-dark' } } },
+  { id: 'v-decor-mix', type: 'decor_set', dims: { w: 45, d: 25, h: 35 }, model: { archetype: 'decor_set', params: { items: ['tray:walnut-dark', 'candlestick:metal-brass', 'bottle:glass-amber', 'bowl:travertine'], colors: ['#CBB89A'] } } },
   { id: 'v-dining-trav', type: 'dining_table', dims: { w: 100, d: 100, h: 76 }, model: { archetype: 'dining_table', params: { shape: 'round', top: 'travertine', legs: 'pedestal', legMaterial: 'walnut-dark', fluted: true } } },
   { id: 'v-curt-2', type: 'curtains', dims: { w: 400, d: 10, h: 280 }, model: { archetype: 'curtains', params: { panels: 2, fabric: 'linen', color: '#ECE7DE', sheer: true } } },
 ];
@@ -248,6 +250,28 @@ async function main() {
     camera.fov = Number(Q.get('fov') || 50); camera.position.set(...cp); controls.target.set(...ct2); controls.update(); camera.updateProjectionMatrix();
     setKey(9, new THREE.Vector3(0, 0, 1));
     key.position.set(4, 5, 6);
+  } else if (Q.has('fuzz')) {
+    // robustness: every archetype with empty / odd / random params must build, finite, near dims
+    const { ARCHETYPES: AR } = await import('/js/engine/furniture/index.js');
+    const pick = (a) => a[(Math.random() * a.length) | 0];
+    const junk = [undefined, null, '', 'unknown', 0, -1, 3, 'walnut', 'black', 'brass', 'oak', 'velvet', 'leather', 'round', 'oval', 'rect', 'tripod', 'hairpin', 'pedestal', 'plinth', 'none', true, false, ['#ff0000'], '#B5653F'];
+    const keys = ['seats', 'arm', 'legs', 'fabric', 'fabricColor', 'wood', 'shape', 'top', 'legMaterial', 'doors', 'drawers', 'handles', 'front', 'headboard', 'frame', 'base', 'shade', 'shadeColor', 'drop', 'pattern', 'material', 'color', 'panels', 'sheer', 'motif', 'colors', 'species', 'pot', 'items', 'count', 'style', 'back', 'seat', 'chaise', 'pillows', 'thickness', 'baseShape', 'fluted', 'open'];
+    let fails = 0, n = 0;
+    for (const a of AR) for (let t = 0; t < 12; t++) {
+      const params = {};
+      if (t > 0) for (let k = 0; k < 8; k++) params[pick(keys)] = pick(junk);
+      const dims = t === 1 ? {} : t === 2 ? { w: 10, d: 10, h: 10 } : t === 3 ? { w: 400, d: 300, h: 300 } : { w: 40 + Math.random() * 200, d: 30 + Math.random() * 150, h: 20 + Math.random() * 180 };
+      const item = { id: `fz-${a}-${t}`, type: a, dims, colorHex: '#c8b8a0', model: { archetype: a, params } };
+      n++;
+      const errs = [];
+      const oe = console.error; console.error = (...x) => errs.push(x.map(String).join(' '));
+      let g; try { g = buildItem(item, { materials }); } catch (e) { errs.push('THROW ' + e.message); }
+      console.error = oe;
+      let bad = errs.length ? errs[0] : '';
+      if (g) { const bb = new THREE.Box3().setFromObject(g); if (!isFinite(bb.min.x + bb.max.y + bb.max.z)) bad = 'non-finite bbox'; g.traverse((o) => { if (o.isMesh && o.geometry.attributes.position.array.some((v) => !isFinite(v))) bad = 'NaN vertex'; }); }
+      if (bad) { fails++; console.log('FUZZ FAIL ' + a + ' ' + JSON.stringify(params) + ' ' + JSON.stringify(dims) + ' → ' + bad); }
+    }
+    console.log(`FUZZ DONE ${n} builds, ${fails} failures`);
   } else if (Q.has('mats')) {
     const only = Q.get('only') ? Q.get('only').split(',') : MATERIAL_KEYS;
     const cols = Math.ceil(Math.sqrt(only.length * 1.6));
@@ -280,9 +304,10 @@ async function main() {
     if (Q.get('type')) items = items.filter((it) => it.type === Q.get('type') || it.model?.archetype === Q.get('type'));
     if (Q.get('item')) items = items.filter((it) => it.id === Q.get('item'));
     const objs = [];
-    // grid layout: rows by footprint
-    let x = 0, z = 0, rowD = 0; const maxRow = Number(Q.get('row') || 7.5);
-    const sorted = Q.get('item') ? items : items.slice();
+    // grid layout: archetype order, rows of ≤ maxRow metres
+    const order = ['sofa', 'armchair', 'cushions', 'coffee_table', 'side_table', 'rug', 'tv_unit', 'decor_set', 'floor_lamp', 'bed', 'mattress', 'bedding', 'nightstand', 'table_lamp', 'dining_table', 'dining_chair', 'pendant_lamp', 'wall_art', 'plant', 'curtains'];
+    let x = 0, z = 0, rowD = 0; const maxRow = Number(Q.get('row') || 10.5);
+    const sorted = Q.get('item') ? items : items.slice().sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
     for (const it of sorted) {
       const t1 = performance.now();
       const host = it.type === 'bedding' ? { w: 1.6, d: 2.0, h: 0.25 } : it.type === 'cushions' ? { w: 1.9 } : null;
@@ -290,19 +315,18 @@ async function main() {
       const dt = performance.now() - t1;
       const box = new THREE.Box3().setFromObject(g);
       const size = box.getSize(new THREE.Vector3());
-      const w = Math.max(size.x, 0.4) + 0.45, d = Math.max(size.z, 0.4) + 0.6;
-      if (x + w > maxRow && x > 0) { x = 0; z += rowD; rowD = 0; }
-      g.position.set(x + w / 2, it.type === 'pendant_lamp' ? Math.max(1.2, size.y + 0.05) : it.type === 'wall_art' ? size.y / 2 + 0.3 : 0, z + d / 2);
-      if (it.type === 'wall_art') g.position.z -= 0.2;
+      const w = Math.max(size.x, 0.45) + 0.35, d = Math.max(size.z, 0.5) + 0.55;
+      if (x + w > maxRow && x > 0) { x = 0; z -= rowD; rowD = 0; }
+      const lift = it.type === 'pendant_lamp' ? -box.min.y + 0.9 : it.type === 'wall_art' ? size.y / 2 + 0.25 : it.type === 'bedding' || it.type === 'cushions' ? 0.02 - box.min.y : 0;
+      g.position.set(x + w / 2, lift, z - d / 2);
+      if (it.type === 'wall_art') g.rotation.x = -0.12;
       scene.add(g); objs.push(g);
-      label(it.id, `${it.type} · ${g.userData.triangles.toLocaleString('ru-RU')} tris · ${dt.toFixed(0)} ms`, new THREE.Vector3(g.position.x, 0, g.position.z + Math.max(size.z, 0.3) / 2 + 0.05));
+      label(it.id, `${it.type} · ${g.userData.triangles.toLocaleString('ru-RU')} tris`, new THREE.Vector3(g.position.x, 0, g.position.z + Math.max(size.z, 0.3) / 2 + 0.12));
       stats.push([it.id, g.userData.triangles, Math.round(dt)]);
-      // lamp lights
       if (lit) for (const L of g.userData.lights || []) {
         const l = new THREE.PointLight(L.color, (L.intensity || 1) * 1.2, L.distance || 4, 2);
         l.position.set(...L.position); g.add(l);
       }
-      // anchors debug
       if (Q.has('anchors')) for (const [k, v] of Object.entries(g.userData.anchors || {})) {
         const s = new THREE.Mesh(new THREE.SphereGeometry(0.015), new THREE.MeshStandardMaterial({ color: 'red' })); s.position.copy(v); g.add(s);
       }
@@ -313,11 +337,13 @@ async function main() {
     else {
       const bb = new THREE.Box3(); objs.forEach((o) => bb.expandByObject(o));
       const c = bb.getCenter(new THREE.Vector3()), s = bb.getSize(new THREE.Vector3());
-      camera.fov = 28; camera.updateProjectionMatrix();
+      camera.fov = 30; camera.updateProjectionMatrix();
       const view = Q.get('cam') || 'grid';
-      camera.position.set(c.x, Math.max(s.x, s.z) * 0.95, c.z + Math.max(s.x, s.z) * 1.35);
+      const hf = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect);
+      const dist = (s.x / 2) / Math.tan(hf / 2) * 1.02 + s.z * 0.5;
+      camera.position.set(c.x, dist * 0.42, c.z + dist * 0.9);
       if (view === 'top') camera.position.set(c.x, Math.max(s.x, s.z) * 2, c.z + 0.01);
-      controls.target.set(c.x, 0.3, c.z + 0.2); controls.update();
+      controls.target.set(c.x, 0.2, c.z + 0.1); controls.update();
       setKey(Math.max(s.x, s.z), c);
     }
   }
