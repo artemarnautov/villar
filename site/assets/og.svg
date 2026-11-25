@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbfbfd"/><stop offset="1" stop-color="#f1ece5"/></linearGradient>
+    <linearGradient id="tone" x1="0" y1="0" x2="1" y2="0"><stop offset="0.1" stop-color="#4a3426"/><stop offset="0.55" stop-color="#8a5a3c"/><stop offset="1" stop-color="#b5653f"/></linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <g transform="translate(96 92)">
+    <rect width="44" height="44" rx="11.7" fill="#4a3426"/>
+    <path d="M12.6 13.1 22 31.1l9.4-18" fill="none" stroke="#f6f1ea" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="60" y="33" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" font-size="32" font-weight="600" letter-spacing="-1" fill="#1d1d1f">Villar</text>
+  </g>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" font-weight="700" letter-spacing="-3">
+    <text x="96" y="300" font-size="84" fill="#1d1d1f">Квартира, готовая к жизни.</text>
+    <text x="96" y="396" font-size="84" fill="url(#tone)">За один день.</text>
+  </g>
+  <text x="96" y="470" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="500" fill="#6e6e73" letter-spacing="-0.5">Стиль · настоящая мебель · 3D · заказ в один клик со сборкой</text>
+  <g transform="translate(96 520)">
+    <rect width="600" height="40" rx="12" fill="#EDE7DE"/>
+    <rect x="360" width="90" height="40" fill="#E8E1D5"/>
+    <rect x="450" width="90" height="40" fill="#4A3426"/>
+    <rect x="540" width="30" height="40" fill="#7A7B55"/>
+    <rect x="570" width="18" height="40" fill="#B5653F"/>
+    <path d="M588 0h0.5a11.5 11.5 0 0 1 11.5 11.5v17a11.5 11.5 0 0 1-11.5 11.5H588z" fill="#1E1E1E"/>
+  </g>
+</svg>

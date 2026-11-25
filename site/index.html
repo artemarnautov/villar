@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Villar — квартира, готовая к жизни. За один день.</title>
+  <meta name="description" content="Villar — ИИ-студия интерьера. Выберите стиль, посмотрите квартиру в 3D с настоящей мебелью и ценами, замените что угодно и закажите всё в один клик — с доставкой и сборкой.">
+  <meta name="theme-color" content="#fbfbfd">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="mask-icon" href="/assets/favicon.svg" color="#4a3426">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Villar — квартира, готовая к жизни">
+  <meta property="og:description" content="Стилевые пакеты, настоящая мебель, вся квартира в 3D и заказ в один клик со сборкой.">
+  <meta property="og:image" content="/assets/og.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/site.css">
+  <link rel="stylesheet" href="/css/studio.css">
+  <script>
+    // Progressive enhancement: hide-until-revealed only while JS is alive; if main.js never boots, show everything.
+    document.documentElement.classList.add('js');
+    window.__villarBootGuard = setTimeout(function () { document.documentElement.classList.remove('js'); }, 4000);
+  </script>
+  <script type="importmap">{"imports":{
+    "three":"/vendor/three/three.module.js",
+    "three/addons/":"/vendor/three/addons/",
+    "three/examples/jsm/":"/vendor/three/addons/",
+    "three/webgpu":"/vendor/three/three.webgpu.js",
+    "three/tsl":"/vendor/three/three.tsl.js",
+    "three-mesh-bvh":"/vendor/three-mesh-bvh/src/index.js",
+    "three-mesh-bvh/webgpu":"/vendor/three-mesh-bvh/src/webgpu/index.js",
+    "three-gpu-pathtracer":"/vendor/three-gpu-pathtracer/src/index.js"
+  }}</script>
+  <script type="module" src="/js/main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#studio">Перейти к студии</a>
+
+  <header class="nav" role="banner">
+    <nav class="nav-inner" aria-label="Основная навигация">
+      <a class="wordmark" href="#top" aria-label="Villar — на главную">
+        <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false" style="color:var(--accent)"><rect width="32" height="32" rx="8.5" fill="currentColor"/><path d="M9.2 9.5 16 22.6l6.8-13.1" fill="none" stroke="#f6f1ea" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Villar</span>
+      </a>
+      <div class="nav-links">
+        <a href="#studio" data-scroll-studio>Студия</a>
+        <a href="#style">Стиль</a>
+        <a href="#how">Как это работает</a>
+      </div>
+      <button type="button" class="btn btn-primary btn-sm nav-cta" data-order>Заказать</button>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-inner">
+        <p class="t-eyebrow intro" style="--i:0">Villar — ИИ-студия интерьера</p>
+        <h1 id="hero-title" class="t-hero intro" style="--i:1">Квартира, готовая к&nbsp;жизни. <span class="tone">За&nbsp;один день.</span></h1>
+        <p class="t-lead hero-sub intro" style="--i:2">Выберите стиль — мы обставим квартиру настоящей мебелью, покажем её&nbsp;в&nbsp;3D и&nbsp;привезём всё в&nbsp;один клик, вместе со&nbsp;сборкой.</p>
+        <div class="hero-ctas intro" style="--i:3">
+          <a class="btn btn-primary btn-lg" href="#studio" data-scroll-studio>Открыть студию</a>
+          <a class="link" href="#how">Как это работает <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+        </div>
+        <p class="hero-note t-small intro" style="--i:4" data-hero-note hidden></p>
+      </div>
+    </section>
+
+    <section id="studio" class="studio" aria-labelledby="studio-title">
+      <div class="section-head reveal">
+        <p class="t-eyebrow">Студия</p>
+        <h2 id="studio-title" class="t-h2">Осмотритесь. Замените что&nbsp;угодно.</h2>
+        <p class="t-lead" data-studio-lead>Студия в Дубае. Наведите на предмет — увидите цену и размеры. Кликните — подберём совместимую замену.</p>
+      </div>
+
+      <div class="studio-shell reveal">
+        <div class="stage" id="stage" role="region" aria-roledescription="3D-сцена" aria-label="Квартира в 3D. Перетаскивайте, чтобы осмотреться; стрелками — идти; выбирайте предметы, чтобы заменить их.">
+          <div class="stage-canvas" id="stage-canvas"></div>
+          <div class="stage-plan" hidden></div>
+          <div class="stage-loading" role="progressbar" aria-label="Загрузка 3D-сцены" aria-valuemin="0" aria-valuemax="100">
+            <div class="loading-box">
+              <svg class="loading-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8.5" fill="currentColor"/><path d="M9.2 9.5 16 22.6l6.8-13.1" fill="none" stroke="#f6f1ea" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div class="loading-label">Собираем квартиру</div>
+              <div class="loading-bar is-indeterminate"><i></i></div>
+              <div class="loading-pct" aria-hidden="true"></div>
+            </div>
+          </div>
+          <div class="stage-ui"></div>
+        </div>
+        <aside class="sheet" id="sheet" aria-label="Предмет"></aside>
+      </div>
+
+      <div class="budget reveal" id="budget" aria-label="Бюджет квартиры">
+        <div class="budget-main"><div class="budget-sum"><div class="budget-label">Итого за квартиру</div></div></div>
+      </div>
+    </section>
+
+    <section id="style" class="style" aria-labelledby="style-title">
+      <div class="section-head reveal">
+        <p class="t-eyebrow">Стиль</p>
+        <h2 id="style-title" class="t-h2" data-pack-name>Тёмный орех.</h2>
+        <p class="t-lead" data-pack-tagline></p>
+        <p class="t-body style-desc" data-pack-desc hidden></p>
+      </div>
+      <div class="style-body" data-palette>
+        <div class="ratio reveal">
+          <div class="palette-head">
+            <h3 class="t-h3">Палитра</h3>
+            <p class="t-small" data-ratio-label>Пропорция 60 / 30 / 10</p>
+          </div>
+          <div class="ratio-bar" role="list" aria-label="Пропорции цветов палитры" data-ratio-bar></div>
+          <div class="ratio-tiers" data-ratio-tiers></div>
+        </div>
+        <ul class="swatches reveal" role="list" aria-label="Цвета палитры" data-swatches></ul>
+        <div class="rules reveal" data-rules></div>
+      </div>
+    </section>
+
+    <section id="how" class="how" aria-labelledby="how-title">
+      <div class="section-head reveal">
+        <p class="t-eyebrow">Как это работает</p>
+        <h2 id="how-title" class="t-h2">Три шага до готовой квартиры.</h2>
+      </div>
+      <ol class="steps">
+        <li class="step reveal" style="--i:0">
+          <div class="step-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2a8.8 8.8 0 1 0 0 17.6c1.2 0 1.9-.8 1.9-1.8 0-.5-.2-.9-.5-1.3-.3-.3-.5-.8-.5-1.2 0-1 .8-1.8 1.8-1.8h2.1a4.4 4.4 0 0 0 4.4-4.4c0-3.9-4-7.1-9.2-7.1z"/><circle cx="7.6" cy="11.4" r="1.2"/><circle cx="10.4" cy="7.4" r="1.2"/><circle cx="15.2" cy="7.6" r="1.2"/></svg></div>
+          <p class="step-n">Шаг 1</p>
+          <h3 class="t-h3">Выберите стиль</h3>
+          <p>Стилевой пакет — это палитра, материалы и&nbsp;правила сочетаний, собранные дизайнерами. Начните с&nbsp;«Тёмного ореха».</p>
+        </li>
+        <li class="step reveal" style="--i:1">
+          <div class="step-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8l8 4.4v9.6l-8 4.4-8-4.4V7.2z"/><path d="M4.3 7.4 12 11.8l7.7-4.4M12 11.8v9.2"/></svg></div>
+          <p class="step-n">Шаг 2</p>
+          <h3 class="t-h3">Посмотрите квартиру в&nbsp;3D и&nbsp;замените что&nbsp;угодно</h3>
+          <p>Пройдитесь по&nbsp;комнатам, узнайте цену и&nbsp;размеры любого предмета. Замены — только из&nbsp;вариантов, которые подходят стилю.</p>
+        </li>
+        <li class="step reveal" style="--i:2">
+          <div class="step-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 6.5h11v9.5h-11zM13.8 9.5h4l2.6 3.2v3.3h-6.6"/><circle cx="7" cy="17.4" r="1.9"/><circle cx="17" cy="17.4" r="1.9"/></svg></div>
+          <p class="step-n">Шаг 3</p>
+          <h3 class="t-h3">Закажите всё в&nbsp;один клик</h3>
+          <p>Мы привезём мебель, текстиль и&nbsp;декор и&nbsp;соберём всё за&nbsp;один день. Вам останется только въехать.</p>
+        </li>
+      </ol>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <span class="wordmark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" style="color:var(--accent)"><rect width="32" height="32" rx="8.5" fill="currentColor"/><path d="M9.2 9.5 16 22.6l6.8-13.1" fill="none" stroke="#f6f1ea" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Villar</span>
+      </span>
+      <span>© Villar 2026. Цены указаны в AED. Визуализация может немного отличаться от реальных изделий.</span>
+    </div>
+  </footer>
+
+  <div class="hovercard" id="hovercard"></div>
+  <div class="sheet-scrim" id="sheet-scrim" aria-hidden="true"></div>
+  <dialog id="order"></dialog>
+  <div class="sr-only" id="announcer" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

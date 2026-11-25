@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Villar — furniture & materials lab</title>
+<link rel="icon" href="data:,">
+<style>
+  html, body { margin: 0; height: 100%; background: #e9e6e1; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, system-ui, sans-serif; }
+  #c { position: fixed; inset: 0; }
+  .lbl { position: absolute; transform: translate(-50%, 0); font-size: 11px; line-height: 1.25; color: #2b2724; background: rgba(255,255,255,.78); padding: 3px 7px; border-radius: 6px; white-space: nowrap; pointer-events: none; text-align: center; }
+  .lbl b { font-weight: 600; } .lbl i { font-style: normal; color: #7b736b; }
+  #hud { position: fixed; left: 12px; top: 10px; font-size: 12px; color: #3a342f; background: rgba(255,255,255,.8); padding: 6px 10px; border-radius: 8px; }
+</style>
+<script type="importmap">{"imports":{
+  "three":"/vendor/three/three.module.js",
+  "three/addons/":"/vendor/three/addons/",
+  "three/examples/jsm/":"/vendor/three/addons/",
+  "three/webgpu":"/vendor/three/three.webgpu.js",
+  "three/tsl":"/vendor/three/three.tsl.js",
+  "three-mesh-bvh":"/vendor/three-mesh-bvh/src/index.js",
+  "three-mesh-bvh/webgpu":"/vendor/three-mesh-bvh/src/webgpu/index.js",
+  "three-gpu-pathtracer":"/vendor/three-gpu-pathtracer/src/index.js"
+}}</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="labels"></div>
+<div id="hud"></div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { createMaterials, MATERIAL_KEYS, planarUVs } from '/js/engine/materials.js';
+import { buildItem, ARCHETYPES } from '/js/engine/furniture/index.js';
+import { softBox } from '/js/engine/furniture/geom.js';
+
+// URL params:
+//   ?item=<id>        one item close-up      &cam=close|front|side|top|back|low|far
+//   ?type=<slotType>  only items of that type (grid)
+//   ?mats=1           material swatch board    &only=key1,key2
+//   ?tex=<key>        flat close-up of a material on a plane (0.5 m wide)  &span=metres
+//   ?lit=1            lamps on (dim environment)
+//   ?scene=1          small vignette: sofa+rug+coffee table+cushions+decor with anchors
+//   ?catalog=<path>   alternative catalog json
+const Q = new URLSearchParams(location.search);
+const hud = document.getElementById('hud');
+const t0 = performance.now();
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.AgXToneMapping;
+renderer.toneMappingExposure = Number(Q.get('exp') || 1.05);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#e7e3dd');
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const lit = Q.has('lit');
+scene.environmentIntensity = lit ? 0.12 : 0.55;
+if (lit) scene.background = new THREE.Color('#2a2622');
+
+const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.02, 200);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = false;
+
+const key = new THREE.DirectionalLight('#fff3e6', lit ? 0.25 : 2.4);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.bias = -0.0002;
+key.shadow.normalBias = 0.02;
+key.shadow.radius = 4;
+scene.add(key, key.target);
+const fill = new THREE.HemisphereLight('#f4f1ec', '#b9b0a4', lit ? 0.05 : 0.5);
+scene.add(fill);
+
+const materials = createMaterials(renderer);
+window.materials = materials;
+materials.setLampsOn(lit);
+
+// floor
+const floorMat = materials.get(Q.get('floor') || 'paint', { color: '#d9d4cc' });
+const floorGeo = planarUVs(new THREE.PlaneGeometry(60, 60).rotateX(-Math.PI / 2), 'xz');
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.receiveShadow = true;
+scene.add(floor);
+
+const labels = document.getElementById('labels');
+const tags = [];
+function label(text, sub, pos) {
+  const d = document.createElement('div'); d.className = 'lbl';
+  d.innerHTML = `<b>${text}</b>${sub ? '<br><i>' + sub + '</i>' : ''}`;
+  labels.appendChild(d); tags.push({ d, pos });
+}
+
+function setKey(span, center) {
+  key.position.set(center.x - span * 0.6, span * 1.3 + 2, center.z + span * 0.9);
+  key.target.position.copy(center);
+  const s = key.shadow.camera; const e = span * 0.8 + 1;
+  s.left = -e; s.right = e; s.top = e; s.bottom = -e; s.near = 0.1; s.far = span * 4 + 10; s.updateProjectionMatrix();
+}
+
+function frame(obj, view = 'close', cam = camera) {
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+  const r = Math.max(size.x, size.y * 1.1, size.z) * 0.5 + 0.05;
+  const zoom = Number(Q.get('zoom') || 1);
+  const dist = r / Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) * (view === 'far' ? 1.8 : 0.98) / zoom;
+  const dirs = { close: [0.55, 0.38, 1], front: [0, 0.12, 1], side: [1, 0.15, 0], top: [0, 1, 0.02], back: [-0.5, 0.4, -1], low: [0.5, 0.08, 1], far: [0.55, 0.42, 1], three: [0.8, 0.5, 0.8], high: [0.4, 1.0, 0.8] };
+  const d = new THREE.Vector3(...(dirs[view] || dirs.close)).normalize();
+  if (Q.get('fx')) c.x += Number(Q.get('fx')); if (Q.get('fy')) c.y += Number(Q.get('fy'));
+  cam.position.copy(c).addScaledVector(d, dist);
+  cam.lookAt(c);
+  if (cam === camera) { controls.target.copy(c); controls.update(); }
+  cam.near = dist / 50; cam.far = dist * 20; cam.updateProjectionMatrix();
+  setKey(Math.max(2, r * 3), c);
+  return { c, r };
+}
+
+// extra parameter variants for QA (?variants=1 adds them to the catalog)
+const VARIANTS = [
+  { id: 'v-arm-leather', type: 'armchair', dims: { w: 76, d: 82, h: 78 }, model: { archetype: 'armchair', params: { style: 'mid-century', fabric: 'leather', fabricColor: '#8a4b24', frame: 'walnut-dark' } } },
+  { id: 'v-arm-club', type: 'armchair', dims: { w: 85, d: 85, h: 75 }, model: { archetype: 'armchair', params: { style: 'club', fabric: 'velvet', fabricColor: '#6f704a', legs: 'wood-taper', frame: 'walnut-dark' } } },
+  { id: 'v-tv-cane', type: 'tv_unit', dims: { w: 180, d: 40, h: 55 }, model: { archetype: 'tv_unit', params: { doors: 2, drawers: 0, front: 'cane', legs: 'wood-taper', wood: 'walnut-dark', handles: 'knob-brass', top: 'travertine' } } },
+  { id: 'v-tv-flute', type: 'tv_unit', dims: { w: 170, d: 40, h: 52 }, model: { archetype: 'tv_unit', params: { doors: 3, front: 'fluted', legs: 'plinth', wood: 'walnut-dark', handles: 'none' } } },
+  { id: 'v-chair-cane', type: 'dining_chair', dims: { w: 47, d: 53, h: 80 }, model: { archetype: 'dining_chair', params: { frame: 'walnut-dark', seat: 'leather', seatColor: '#8a4b24', back: 'cane' } } },
+  { id: 'v-chair-uph', type: 'dining_chair', dims: { w: 50, d: 56, h: 82 }, model: { archetype: 'dining_chair', params: { frame: 'walnut-dark', seat: 'linen', seatColor: '#D9CDB8', back: 'upholstered' } } },
+  { id: 'v-coffee-trav', type: 'coffee_table', dims: { w: 110, d: 65, h: 38 }, model: { archetype: 'coffee_table', params: { shape: 'pebble', top: 'travertine', legs: 'plinth', legMaterial: 'travertine' } } },
+  { id: 'v-side-drum', type: 'side_table', dims: { w: 42, d: 42, h: 50 }, model: { archetype: 'side_table', params: { shape: 'round', top: 'ceramic-matte', legs: 'drum', legMaterial: 'ceramic-matte' } } },
+  { id: 'v-side-brass', type: 'side_table', dims: { w: 45, d: 45, h: 55 }, model: { archetype: 'side_table', params: { shape: 'round', top: 'travertine', legs: 'tripod', legMaterial: 'metal-brass' } } },
+  { id: 'v-bed-cane', type: 'bed', dims: { w: 172, d: 212, h: 105 }, model: { archetype: 'bed', params: { headboard: 'cane', frame: 'walnut-dark', legs: 'wood-taper' } } },
+  { id: 'v-bed-channel', type: 'bed', dims: { w: 176, d: 215, h: 115 }, model: { archetype: 'bed', params: { headboard: 'channel', headboardColor: '#D9CDB8', frame: 'fabric-linen', fabric: 'linen', legs: 'wood-short' } } },
+  { id: 'v-ns-trav', type: 'nightstand', dims: { w: 48, d: 40, h: 52 }, model: { archetype: 'nightstand', params: { drawers: 1, open: true, legs: 'wood-taper', wood: 'walnut-dark', handles: 'bar-brass', top: 'travertine' } } },
+  { id: 'v-fl-pleat', type: 'floor_lamp', dims: { w: 45, d: 45, h: 165 }, model: { archetype: 'floor_lamp', params: { base: 'metal-brass', shade: 'pleated', shadeColor: '#EFE8DA' } } },
+  { id: 'v-fl-tripod', type: 'floor_lamp', dims: { w: 50, d: 50, h: 155 }, model: { archetype: 'floor_lamp', params: { base: 'walnut-dark', baseStyle: 'tripod', shade: 'drum', shadeColor: '#E8E1D5' } } },
+  { id: 'v-tl-mush', type: 'table_lamp', dims: { w: 30, d: 30, h: 42 }, model: { archetype: 'table_lamp', params: { base: 'metal-brass', shade: 'mushroom', shadeMaterial: 'opal-glass' } } },
+  { id: 'v-tl-trav', type: 'table_lamp', dims: { w: 35, d: 35, h: 50 }, model: { archetype: 'table_lamp', params: { base: 'travertine', baseShape: 'sphere', shade: 'cone', shadeColor: '#EDE5D6' } } },
+  { id: 'v-pend-rattan', type: 'pendant_lamp', dims: { w: 50, d: 50, h: 35 }, model: { archetype: 'pendant_lamp', params: { shape: 'rattan-dome', drop: 0.7 } } },
+  { id: 'v-pend-opal', type: 'pendant_lamp', dims: { w: 40, d: 40, h: 40 }, model: { archetype: 'pendant_lamp', params: { shape: 'globe-opal', fitting: 'metal-brass', drop: 0.8 } } },
+  { id: 'v-plant-fiddle', type: 'plant', dims: { w: 60, d: 60, h: 170 }, model: { archetype: 'plant', params: { species: 'fiddle-leaf', pot: 'basket', potColor: '#c49a5e' } } },
+  { id: 'v-plant-bird', type: 'plant', dims: { w: 70, d: 70, h: 180 }, model: { archetype: 'plant', params: { species: 'strelitzia-nicolai', pot: 'terracotta', potColor: '#b5653f' } } },
+  { id: 'v-plant-mon', type: 'plant', dims: { w: 70, d: 70, h: 120 }, model: { archetype: 'plant', params: { species: 'monstera', pot: 'ceramic-matte', potColor: '#E6DDCF' } } },
+  { id: 'v-plant-snake', type: 'plant', dims: { w: 35, d: 35, h: 90 }, model: { archetype: 'plant', params: { species: 'snake-plant', pot: 'travertine' } } },
+  { id: 'v-rug-jute', type: 'rug', dims: { w: 290, d: 200, h: 1.2 }, model: { archetype: 'rug', params: { shape: 'rect', material: 'jute', color: '#bfa27a' } } },
+  { id: 'v-rug-berber', type: 'rug', dims: { w: 300, d: 200, h: 1.5 }, model: { archetype: 'rug', params: { shape: 'rect', material: 'wool-rug', color: '#E6DDCF', pattern: 'berber', patternColor: '#3B3B3B', fringe: true } } },
+  { id: 'v-art-canvas', type: 'wall_art', dims: { w: 100, d: 4, h: 70 }, model: { archetype: 'wall_art', params: { frame: 'none', motif: 'organic', colors: ['#E6DDCF', '#7A7B55', '#B5653F', '#C9A24A'] } } },
+  { id: 'v-art-black', type: 'wall_art', dims: { w: 50, d: 3, h: 70 }, model: { archetype: 'wall_art', params: { frame: 'black', motif: 'line', colors: ['#F2EEE6', '#2b2724', '#B5653F'] } } },
+  { id: 'v-decor-tv', type: 'decor_set', dims: { w: 50, d: 25, h: 40 }, model: { archetype: 'decor_set', params: { items: ['books', 'candle', 'vase-round', 'bowl'], colors: ['#7A7B55', '#E6DDCF', '#B5653F', '#CBB89A'] } } },
+  { id: 'v-cush-4', type: 'cushions', dims: { w: 50, d: 15, h: 50 }, model: { archetype: 'cushions', params: { count: 4, colors: ['#E6DDCF', '#7A7B55', '#B5653F', '#D9CDB8'], fabrics: ['linen', 'velvet', 'linen', 'boucle'], sizes: [{ w: 50, h: 50 }, { w: 45, h: 45 }, { w: 45, h: 45 }, { w: 50, h: 30 }] } } },
+  { id: 'v-sofa-chaise', type: 'sofa', dims: { w: 235, d: 100, h: 80 }, model: { archetype: 'sofa', params: { seats: 3, arm: 'slim', legs: 'metal', fabric: 'linen', fabricColor: '#D9CDB8', backCushions: 'tight', bench: true } } },
+  { id: 'v-dining-trav', type: 'dining_table', dims: { w: 100, d: 100, h: 76 }, model: { archetype: 'dining_table', params: { shape: 'round', top: 'travertine', legs: 'pedestal', legMaterial: 'walnut-dark', fluted: true } } },
+  { id: 'v-curt-2', type: 'curtains', dims: { w: 400, d: 10, h: 280 }, model: { archetype: 'curtains', params: { panels: 2, fabric: 'linen', color: '#ECE7DE', sheer: true } } },
+];
+
+async function loadCatalog() {
+  const res = await fetch(Q.get('catalog') || '/data/catalog.json', { cache: 'no-cache' });
+  const cat = await res.json();
+  if (Q.has('variants')) cat.items = (Q.get('variants') === 'only' ? [] : cat.items).concat(VARIANTS);
+  return cat;
+}
+
+const stats = [];
+async function main() {
+  if (Q.has('tex')) {
+    const k = Q.get('tex');
+    const span = Number(Q.get('span') || 0.5);
+    const g = planarUVs(new THREE.PlaneGeometry(span, span), 'xy');
+    const m = new THREE.Mesh(g, materials.get(k, Q.get('color') ? { color: '#' + Q.get('color') } : {}));
+    m.position.y = span / 2 + 0.01; scene.add(m);
+    camera.fov = 30; camera.updateProjectionMatrix();
+    camera.position.set(0, span / 2, span * 1.95); controls.target.set(0, span / 2, 0); controls.update();
+    key.position.set(-1.2, 2.5, 2.2); key.target.position.set(0, span / 2, 0);
+    label(k, `${span} m`, new THREE.Vector3(0, -0.0, 0));
+  } else if (Q.has('sheet')) {
+    const cat = await loadCatalog();
+    const ids = Q.get('sheet').split(',');
+    const items = ids.map((id) => id.startsWith('m:') ? { swatch: id.slice(2) } : (cat.items.find((it) => it.id === id) || cat.items.find((it) => it.type === id))).filter(Boolean);
+    const views = (Q.get('cams') || '').split(',');
+    items.forEach((it, i) => {
+      if (it.swatch) {
+        const [k, colr] = it.swatch.split('#');
+        const size = Number(Q.get('size') || 0.4);
+        const m = materials.get(k, colr ? { color: '#' + colr } : {});
+        const g = new THREE.Group();
+        const box = new THREE.Mesh(materials.boxProjectUVs(softBox(size, size * 0.5, size, { r: size * 0.08, seg: 5, cell: size / 8, bulge: { top: size * 0.03 } })), m);
+        box.position.y = size * 0.25; box.castShadow = box.receiveShadow = true; g.add(box);
+        g.position.set(i * 30, 0, 0); scene.add(g);
+        const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 100);
+        sheet.push({ g, cam, view: views[i] || Q.get('cam') || 'close', label: k });
+        return;
+      }
+      const host = it.type === 'bedding' ? { w: 1.6, d: 2.0, h: 0.25 } : it.type === 'cushions' ? { w: 1.9 } : null;
+      const g = buildItem(it, { materials, host });
+      g.position.set(i * 30, it.type === 'pendant_lamp' ? 2.0 : it.type === 'wall_art' ? 1.0 : 0, 0);
+      scene.add(g);
+      if (lit) for (const L of g.userData.lights || []) { const l = new THREE.PointLight(L.color, (L.intensity || 1) * 1.2, L.distance || 4, 2); l.position.set(...L.position); g.add(l); }
+      const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 100);
+      sheet.push({ g, cam, view: views[i] || Q.get('cam') || 'close', label: `${it.id} · ${g.userData.triangles.toLocaleString('ru-RU')} tris` });
+      stats.push([it.id, g.userData.triangles]);
+    });
+  } else if (Q.has('compose')) {
+    // mini room vignette assembled through anchors, the way the engine does it
+    const cat = await loadCatalog();
+    const pick = Object.fromEntries((Q.get('pick') || '').split(',').filter(Boolean).map((id) => [cat.items.find((i) => i.id === id)?.type, id]));
+    const first = (type) => cat.items.find((i) => i.id === pick[type]) || cat.items.find((i) => i.type === type);
+    floor.material = materials.get('oak-floor', { species: 'oak-light' });
+    const wallMat = materials.get('plaster-wall', { color: '#EDE7DE' });
+    const wall = (w, h, x, z, ry) => { const g = materials.planarUVs(new THREE.PlaneGeometry(w, h), 'xy'); const m = new THREE.Mesh(g, wallMat); m.position.set(x, h / 2, z); m.rotation.y = ry; m.receiveShadow = true; scene.add(m); };
+    wall(9, 2.85, 0, -1.6, 0); wall(9, 2.85, -4.5, 1.5, Math.PI / 2);
+    const place = (item, pos, rotY = 0, parent = scene, opts = {}) => {
+      if (!item) return null;
+      const g = buildItem(item, { materials, ...opts });
+      g.position.set(...pos); g.rotation.y = rotY * Math.PI / 180; parent.add(g);
+      if (lit) for (const L of g.userData.lights || []) { const l = new THREE.PointLight(L.color, (L.intensity || 1) * 1.5, L.distance || 4, 2); l.position.set(...L.position); l.castShadow = false; g.add(l); }
+      stats.push([item.id, g.userData.triangles]);
+      return g;
+    };
+    const attach = (parentObj, anchor, item, extra = {}) => {
+      if (!parentObj || !item) return null;
+      const a = parentObj.userData.anchors?.[anchor]; if (!a) return null;
+      const host = parentObj.userData.anchorInfo?.[anchor] || null;
+      return place(item, [a.x, a.y, a.z], 0, parentObj, { host, ...extra });
+    };
+    // living: sofa against back wall, rug, coffee table, armchair, side table, floor lamp, art above sofa
+    const sofa = place(first('sofa'), [0, 0, -1.6 + 0.5], 0);
+    attach(sofa, 'seat', first('cushions'));
+    place(first('rug'), [0, 0, 0.3], 0);
+    const ct = place(first('coffee_table'), [0, 0, 0.55], 0);
+    attach(ct, 'top', first('decor_set'));
+    place(first('armchair'), [1.9, 0, 0.9], -60);
+    const st = place(first('side_table'), [-1.45, 0, -1.25], 0);
+    place(first('floor_lamp'), [1.55, 0, -1.3], 0);
+    place(first('wall_art'), [0, 1.55, -1.6], 0);
+    place(first('plant'), [-2.2, 0, -1.2], 0);
+    // bedroom on the left wall
+    const bed = place(first('bed'), [-4.5 + 1.1, 0, 3.2], 90);
+    const mat = attach(bed, 'deck', first('mattress'));
+    attach(mat, 'top', first('bedding'));
+    for (const dz of [-1.15, 1.15]) { const ns = place(first('nightstand'), [-4.5 + 0.25, 0, 3.2 + dz], 90); attach(ns, 'top', first('table_lamp')); }
+    place(first('curtains'), [3.5, 0, -1.5], 0, scene, { span: 2.0 });
+    const view = Q.get('view') || 'living';
+    const views = { living: [[0.6, 1.45, 4.2], [0, 0.7, -0.6]], bed: [[0.6, 1.5, 3.6], [-3.6, 0.6, 3.0]], top: [[0, 8, 2.5], [0, 0, 1]], sofa: [[0.3, 1.1, 1.6], [0, 0.55, -1.1]] };
+    const [cp, ct2] = views[view] || views.living;
+    camera.fov = Number(Q.get('fov') || 50); camera.position.set(...cp); controls.target.set(...ct2); controls.update(); camera.updateProjectionMatrix();
+    setKey(9, new THREE.Vector3(0, 0, 1));
+    key.position.set(4, 5, 6);
+  } else if (Q.has('mats')) {
+    const only = Q.get('only') ? Q.get('only').split(',') : MATERIAL_KEYS;
+    const cols = Math.ceil(Math.sqrt(only.length * 1.6));
+    const sp = 0.75;
+    only.forEach((k, i) => {
+      const x = (i % cols) * sp, z = Math.floor(i / cols) * sp;
+      const t1 = performance.now();
+      const opts = k === 'wool-rug' ? { color: '#d8cdbb' } : k === 'canvas' ? { motif: 'abstract-arches', w: 0.4, h: 0.4 } : {};
+      const m = materials.get(k, opts);
+      const dt = performance.now() - t1;
+      const g = softBox(0.4, 0.4, 0.4, { r: 0.05, seg: 4 });
+      const mesh = new THREE.Mesh(materials.boxProjectUVs(g), m);
+      mesh.position.set(x, 0.2, z); mesh.castShadow = mesh.receiveShadow = true;
+      if (k === 'canvas') { mesh.geometry = new THREE.PlaneGeometry(0.4, 0.4); mesh.position.y = 0.2; }
+      scene.add(mesh);
+      const s = new THREE.Mesh(new THREE.SphereGeometry(0.12, 48, 32), m);
+      materials.boxProjectUVs(s.geometry);
+      s.geometry = materials.boxProjectUVs(s.geometry);
+      s.position.set(x + 0.26, 0.12, z + 0.22); s.castShadow = true; scene.add(s);
+      label(k, `${dt.toFixed(0)} ms`, new THREE.Vector3(x, -0.0, z + 0.3));
+      stats.push([k, Math.round(dt)]);
+    });
+    const span = cols * sp;
+    camera.position.set(span * 0.45, span * 0.9, span * 1.35);
+    controls.target.set((cols - 1) * sp / 2, 0, Math.ceil(only.length / cols) * sp / 2 - 0.2); controls.update();
+    setKey(span, controls.target.clone());
+  } else {
+    const cat = await loadCatalog();
+    let items = cat.items || [];
+    if (Q.get('type')) items = items.filter((it) => it.type === Q.get('type') || it.model?.archetype === Q.get('type'));
+    if (Q.get('item')) items = items.filter((it) => it.id === Q.get('item'));
+    const objs = [];
+    // grid layout: rows by footprint
+    let x = 0, z = 0, rowD = 0; const maxRow = Number(Q.get('row') || 7.5);
+    const sorted = Q.get('item') ? items : items.slice();
+    for (const it of sorted) {
+      const t1 = performance.now();
+      const host = it.type === 'bedding' ? { w: 1.6, d: 2.0, h: 0.25 } : it.type === 'cushions' ? { w: 1.9 } : null;
+      const g = buildItem(it, { materials, host });
+      const dt = performance.now() - t1;
+      const box = new THREE.Box3().setFromObject(g);
+      const size = box.getSize(new THREE.Vector3());
+      const w = Math.max(size.x, 0.4) + 0.45, d = Math.max(size.z, 0.4) + 0.6;
+      if (x + w > maxRow && x > 0) { x = 0; z += rowD; rowD = 0; }
+      g.position.set(x + w / 2, it.type === 'pendant_lamp' ? Math.max(1.2, size.y + 0.05) : it.type === 'wall_art' ? size.y / 2 + 0.3 : 0, z + d / 2);
+      if (it.type === 'wall_art') g.position.z -= 0.2;
+      scene.add(g); objs.push(g);
+      label(it.id, `${it.type} · ${g.userData.triangles.toLocaleString('ru-RU')} tris · ${dt.toFixed(0)} ms`, new THREE.Vector3(g.position.x, 0, g.position.z + Math.max(size.z, 0.3) / 2 + 0.05));
+      stats.push([it.id, g.userData.triangles, Math.round(dt)]);
+      // lamp lights
+      if (lit) for (const L of g.userData.lights || []) {
+        const l = new THREE.PointLight(L.color, (L.intensity || 1) * 1.2, L.distance || 4, 2);
+        l.position.set(...L.position); g.add(l);
+      }
+      // anchors debug
+      if (Q.has('anchors')) for (const [k, v] of Object.entries(g.userData.anchors || {})) {
+        const s = new THREE.Mesh(new THREE.SphereGeometry(0.015), new THREE.MeshStandardMaterial({ color: 'red' })); s.position.copy(v); g.add(s);
+      }
+      x += w; rowD = Math.max(rowD, d);
+    }
+    const all = new THREE.Group(); objs.forEach((o) => all.add(o.clone(false)));
+    if (Q.get('item')) frame(objs[0], Q.get('cam') || 'close');
+    else {
+      const bb = new THREE.Box3(); objs.forEach((o) => bb.expandByObject(o));
+      const c = bb.getCenter(new THREE.Vector3()), s = bb.getSize(new THREE.Vector3());
+      camera.fov = 28; camera.updateProjectionMatrix();
+      const view = Q.get('cam') || 'grid';
+      camera.position.set(c.x, Math.max(s.x, s.z) * 0.95, c.z + Math.max(s.x, s.z) * 1.35);
+      if (view === 'top') camera.position.set(c.x, Math.max(s.x, s.z) * 2, c.z + 0.01);
+      controls.target.set(c.x, 0.3, c.z + 0.2); controls.update();
+      setKey(Math.max(s.x, s.z), c);
+    }
+  }
+  window.__stats = stats;
+  const tb = performance.now() - t0;
+  render();
+  const tr0 = performance.now();
+  await materials.ready();
+  hud.textContent = `${tb.toFixed(0)} ms build · textures +${(performance.now() - tr0).toFixed(0)} ms · ${renderer.capabilities.getMaxAnisotropy()}× aniso`;
+  render();
+  window.__labReady = true;
+  console.log('LAB_STATS ' + JSON.stringify(stats));
+}
+
+const sheet = [];
+const _v = new THREE.Vector3();
+function render() {
+  if (sheet.length) {
+    const n = sheet.length, cols = n <= 2 ? n : n <= 4 ? 2 : 3, rows = Math.ceil(n / cols);
+    const w = Math.floor(innerWidth / cols), h = Math.floor(innerHeight / rows);
+    renderer.setScissorTest(true);
+    labels.innerHTML = '';
+    sheet.forEach((sh, i) => {
+      const x = (i % cols) * w, y = innerHeight - (Math.floor(i / cols) + 1) * h;
+      sh.cam.aspect = w / h; sh.cam.updateProjectionMatrix();
+      frame(sh.g, sh.view, sh.cam);
+      renderer.setViewport(x, y, w, h); renderer.setScissor(x, y, w, h);
+      renderer.render(scene, sh.cam);
+      const d = document.createElement('div'); d.className = 'lbl'; d.style.left = (x + w / 2) + 'px'; d.style.top = (innerHeight - y - 26) + 'px'; d.innerHTML = '<b>' + sh.label + '</b>'; labels.appendChild(d);
+    });
+    renderer.setScissorTest(false);
+    return;
+  }
+  renderer.render(scene, camera);
+  for (const t of tags) {
+    _v.copy(t.pos).project(camera);
+    t.d.style.left = ((_v.x * 0.5 + 0.5) * innerWidth) + 'px';
+    t.d.style.top = ((-_v.y * 0.5 + 0.5) * innerHeight) + 'px';
+    t.d.style.display = _v.z < 1 ? '' : 'none';
+  }
+}
+controls.addEventListener('change', render);
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); render(); });
+camera.aspect = innerWidth / innerHeight;
+main().catch((e) => { console.error(e); hud.textContent = 'ERROR: ' + e.message; });
+</script>
+</body>
+</html>
