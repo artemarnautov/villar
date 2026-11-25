@@ -1,0 +1,653 @@
+{
+ "currency": "AED",
+ "markup": 1.2,
+ "placeholder": true,
+ "items": [
+  {
+   "id": "sofa-ph-a",
+   "type": "sofa",
+   "name": "Диван-заглушка A, трёхместный",
+   "price": 4799,
+   "dims": {
+    "w": 220,
+    "d": 92,
+    "h": 82
+   },
+   "materials": [
+    "Букле",
+    "Орех"
+   ],
+   "color": "Молочный",
+   "colorHex": "#E8E1D5",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "sofa",
+    "params": {
+     "seats": 3,
+     "arm": "track",
+     "legs": "wood-taper",
+     "fabric": "boucle",
+     "fabricColor": "#E8E1D5",
+     "wood": "walnut-dark"
+    }
+   }
+  },
+  {
+   "id": "sofa-ph-b",
+   "type": "sofa",
+   "name": "Диван-заглушка B, трёхместный",
+   "price": 5399,
+   "dims": {
+    "w": 230,
+    "d": 95,
+    "h": 78
+   },
+   "materials": [
+    "Лён",
+    "Орех"
+   ],
+   "color": "Овсяный",
+   "colorHex": "#D9CDB8",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "sofa",
+    "params": {
+     "seats": 3,
+     "arm": "round",
+     "legs": "plinth",
+     "fabric": "linen",
+     "fabricColor": "#D9CDB8",
+     "wood": "walnut-dark"
+    }
+   }
+  },
+  {
+   "id": "cushions-ph-a",
+   "type": "cushions",
+   "name": "Подушки-заглушка, комплект",
+   "price": 359,
+   "dims": {
+    "w": 45,
+    "d": 15,
+    "h": 45
+   },
+   "materials": [
+    "Лён"
+   ],
+   "color": "Олива / терракота",
+   "colorHex": "#7A7B55",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "cushions",
+    "params": {
+     "count": 3,
+     "colors": [
+      "#7A7B55",
+      "#B5653F",
+      "#E6DDCF"
+     ],
+     "fabric": "linen"
+    }
+   }
+  },
+  {
+   "id": "coffee-ph-a",
+   "type": "coffee_table",
+   "name": "Журнальный стол-заглушка, круглый",
+   "price": 1499,
+   "dims": {
+    "w": 90,
+    "d": 90,
+    "h": 40
+   },
+   "materials": [
+    "Шпон ореха"
+   ],
+   "color": "Тёмный орех",
+   "colorHex": "#4A3426",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "coffee_table",
+    "params": {
+     "shape": "round",
+     "top": "walnut-dark",
+     "legs": "pedestal",
+     "legMaterial": "walnut-dark"
+    }
+   }
+  },
+  {
+   "id": "coffee-ph-b",
+   "type": "coffee_table",
+   "name": "Журнальный стол-заглушка, овальный",
+   "price": 1799,
+   "dims": {
+    "w": 120,
+    "d": 65,
+    "h": 38
+   },
+   "materials": [
+    "Шпон ореха",
+    "Металл"
+   ],
+   "color": "Орех / чёрный",
+   "colorHex": "#4A3426",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "coffee_table",
+    "params": {
+     "shape": "oval",
+     "top": "walnut-dark",
+     "legs": "metal-hairpin",
+     "legMaterial": "metal-black"
+    }
+   }
+  },
+  {
+   "id": "decor-ph-a",
+   "type": "decor_set",
+   "name": "Декор-заглушка: ваза и книги",
+   "price": 289,
+   "dims": {
+    "w": 40,
+    "d": 25,
+    "h": 35
+   },
+   "materials": [
+    "Керамика",
+    "Бумага"
+   ],
+   "color": "Песочный",
+   "colorHex": "#CBB89A",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "decor_set",
+    "params": {
+     "items": [
+      "vase-tall",
+      "books",
+      "bowl"
+     ],
+     "colors": [
+      "#CBB89A",
+      "#3B3B3B",
+      "#B5653F"
+     ]
+    }
+   }
+  },
+  {
+   "id": "rug-ph-a",
+   "type": "rug",
+   "name": "Ковёр-заглушка 200×290",
+   "price": 1999,
+   "dims": {
+    "w": 290,
+    "d": 200,
+    "h": 1
+   },
+   "materials": [
+    "Шерсть",
+    "Хлопок"
+   ],
+   "color": "Кремовый",
+   "colorHex": "#E3DACB",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "rug",
+    "params": {
+     "shape": "rect",
+     "material": "wool-rug",
+     "color": "#E3DACB",
+     "pattern": "plain-border",
+     "patternColor": "#B9A88E"
+    }
+   }
+  },
+  {
+   "id": "tv-ph-a",
+   "type": "tv_unit",
+   "name": "ТВ-тумба-заглушка 180 см",
+   "price": 2399,
+   "dims": {
+    "w": 180,
+    "d": 42,
+    "h": 50
+   },
+   "materials": [
+    "Шпон ореха"
+   ],
+   "color": "Тёмный орех",
+   "colorHex": "#4A3426",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "tv_unit",
+    "params": {
+     "doors": 2,
+     "drawers": 2,
+     "legs": "wood-taper",
+     "wood": "walnut-dark",
+     "handles": "none"
+    }
+   }
+  },
+  {
+   "id": "side-ph-a",
+   "type": "side_table",
+   "name": "Приставной столик-заглушка",
+   "price": 549,
+   "dims": {
+    "w": 45,
+    "d": 45,
+    "h": 55
+   },
+   "materials": [
+    "Орех",
+    "Металл"
+   ],
+   "color": "Орех",
+   "colorHex": "#4A3426",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "side_table",
+    "params": {
+     "shape": "round",
+     "top": "walnut-dark",
+     "legs": "tripod",
+     "legMaterial": "metal-black"
+    }
+   }
+  },
+  {
+   "id": "armchair-ph-a",
+   "type": "armchair",
+   "name": "Кресло-заглушка",
+   "price": 2199,
+   "dims": {
+    "w": 78,
+    "d": 82,
+    "h": 80
+   },
+   "materials": [
+    "Букле",
+    "Орех"
+   ],
+   "color": "Молочный",
+   "colorHex": "#E8E1D5",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "armchair",
+    "params": {
+     "style": "lounge",
+     "fabric": "boucle",
+     "fabricColor": "#E8E1D5",
+     "frame": "walnut-dark"
+    }
+   }
+  },
+  {
+   "id": "floorlamp-ph-a",
+   "type": "floor_lamp",
+   "name": "Торшер-заглушка",
+   "price": 899,
+   "dims": {
+    "w": 40,
+    "d": 40,
+    "h": 160
+   },
+   "materials": [
+    "Металл",
+    "Лён"
+   ],
+   "color": "Чёрный / лён",
+   "colorHex": "#1E1E1E",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "floor_lamp",
+    "params": {
+     "base": "metal-black",
+     "shade": "drum",
+     "shadeColor": "#EDE5D6"
+    }
+   }
+  },
+  {
+   "id": "bed-ph-a",
+   "type": "bed",
+   "name": "Кровать-заглушка 160×200",
+   "price": 3999,
+   "dims": {
+    "w": 175,
+    "d": 215,
+    "h": 110
+   },
+   "materials": [
+    "Шпон ореха",
+    "Букле"
+   ],
+   "color": "Орех / молочный",
+   "colorHex": "#4A3426",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "bed",
+    "params": {
+     "headboard": "upholstered-panel",
+     "headboardColor": "#E8E1D5",
+     "frame": "walnut-dark",
+     "legs": "wood-short"
+    }
+   }
+  },
+  {
+   "id": "mattress-ph-a",
+   "type": "mattress",
+   "name": "Матрас-заглушка 160×200",
+   "price": 1999,
+   "dims": {
+    "w": 160,
+    "d": 200,
+    "h": 25
+   },
+   "materials": [
+    "Пена с памятью"
+   ],
+   "color": "Белый",
+   "colorHex": "#F4F2EE",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "mattress",
+    "params": {
+     "thickness": 0.25
+    }
+   }
+  },
+  {
+   "id": "bedding-ph-a",
+   "type": "bedding",
+   "name": "Комплект постельного белья-заглушка",
+   "price": 699,
+   "dims": {
+    "w": 220,
+    "d": 240,
+    "h": 10
+   },
+   "materials": [
+    "Хлопок сатин",
+    "Лён"
+   ],
+   "color": "Белый / олива",
+   "colorHex": "#F2EFE9",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "bedding",
+    "params": {
+     "duvetColor": "#F2EFE9",
+     "throwColor": "#7A7B55",
+     "pillows": 4,
+     "pillowColors": [
+      "#F2EFE9",
+      "#F2EFE9",
+      "#D9CDB8",
+      "#7A7B55"
+     ]
+    }
+   }
+  },
+  {
+   "id": "nightstand-ph-a",
+   "type": "nightstand",
+   "name": "Прикроватная тумба-заглушка",
+   "price": 799,
+   "dims": {
+    "w": 45,
+    "d": 40,
+    "h": 55
+   },
+   "materials": [
+    "Шпон ореха"
+   ],
+   "color": "Тёмный орех",
+   "colorHex": "#4A3426",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "nightstand",
+    "params": {
+     "drawers": 2,
+     "legs": "wood-taper",
+     "wood": "walnut-dark"
+    }
+   }
+  },
+  {
+   "id": "tablelamp-ph-a",
+   "type": "table_lamp",
+   "name": "Настольная лампа-заглушка",
+   "price": 399,
+   "dims": {
+    "w": 30,
+    "d": 30,
+    "h": 45
+   },
+   "materials": [
+    "Керамика",
+    "Лён"
+   ],
+   "color": "Песочный",
+   "colorHex": "#CBB89A",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "table_lamp",
+    "params": {
+     "base": "ceramic-matte",
+     "baseColor": "#CBB89A",
+     "shade": "drum",
+     "shadeColor": "#EDE5D6"
+    }
+   }
+  },
+  {
+   "id": "dining-ph-a",
+   "type": "dining_table",
+   "name": "Обеденный стол-заглушка, круглый Ø90",
+   "price": 1899,
+   "dims": {
+    "w": 90,
+    "d": 90,
+    "h": 75
+   },
+   "materials": [
+    "Шпон ореха"
+   ],
+   "color": "Тёмный орех",
+   "colorHex": "#4A3426",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "dining_table",
+    "params": {
+     "shape": "round",
+     "top": "walnut-dark",
+     "legs": "pedestal",
+     "legMaterial": "walnut-dark"
+    }
+   }
+  },
+  {
+   "id": "chair-ph-a",
+   "type": "dining_chair",
+   "name": "Стул-заглушка",
+   "price": 499,
+   "dims": {
+    "w": 48,
+    "d": 54,
+    "h": 80
+   },
+   "materials": [
+    "Орех",
+    "Букле"
+   ],
+   "color": "Орех / молочный",
+   "colorHex": "#4A3426",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "dining_chair",
+    "params": {
+     "frame": "walnut-dark",
+     "seat": "fabric-boucle",
+     "seatColor": "#E8E1D5",
+     "back": "curved"
+    }
+   }
+  },
+  {
+   "id": "pendant-ph-a",
+   "type": "pendant_lamp",
+   "name": "Подвесной светильник-заглушка",
+   "price": 699,
+   "dims": {
+    "w": 45,
+    "d": 45,
+    "h": 30
+   },
+   "materials": [
+    "Рисовая бумага"
+   ],
+   "color": "Белый",
+   "colorHex": "#F3EEE4",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "pendant_lamp",
+    "params": {
+     "shape": "globe-paper",
+     "color": "#F3EEE4",
+     "drop": 0.75
+    }
+   }
+  },
+  {
+   "id": "art-ph-a",
+   "type": "wall_art",
+   "name": "Постер-заглушка в раме",
+   "price": 449,
+   "dims": {
+    "w": 70,
+    "d": 3,
+    "h": 100
+   },
+   "materials": [
+    "Бумага",
+    "Дерево"
+   ],
+   "color": "Терракота / беж",
+   "colorHex": "#B5653F",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "walnut-dark",
+     "motif": "abstract-arches",
+     "colors": [
+      "#B5653F",
+      "#E6DDCF",
+      "#7A7B55"
+     ]
+    }
+   }
+  },
+  {
+   "id": "plant-ph-a",
+   "type": "plant",
+   "name": "Растение-заглушка в кашпо",
+   "price": 599,
+   "dims": {
+    "w": 55,
+    "d": 55,
+    "h": 160
+   },
+   "materials": [
+    "Искусственное растение",
+    "Керамика"
+   ],
+   "color": "Зелёный",
+   "colorHex": "#4E6B3A",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "plant",
+    "params": {
+     "species": "olive-tree",
+     "pot": "ceramic-matte",
+     "potColor": "#CBB89A"
+    }
+   }
+  },
+  {
+   "id": "curtains-ph-a",
+   "type": "curtains",
+   "name": "Шторы-заглушка, лён",
+   "price": 899,
+   "dims": {
+    "w": 140,
+    "d": 2,
+    "h": 260
+   },
+   "materials": [
+    "Лён"
+   ],
+   "color": "Натуральный",
+   "colorHex": "#E9E2D4",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "curtains",
+    "params": {
+     "panels": 2,
+     "fabric": "linen",
+     "color": "#E9E2D4",
+     "sheer": true
+    }
+   }
+  }
+ ]
+}

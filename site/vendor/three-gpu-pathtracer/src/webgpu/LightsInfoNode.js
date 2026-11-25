@@ -1,0 +1,497 @@
+import { storage, uniform, uniformArray, texture } from 'three/tsl';
+import { StorageBufferAttribute, HalfFloatType } from 'three/webgpu';
+import { wgslTagFn } from 'three-mesh-bvh/webgpu';
+import { AtlasTexture } from './AtlasTexture.js';
+import { EquirectHdrInfoNode } from './EquirectHdrInfoNode.js';
+import { LightsInfoUniformStruct } from '../uniforms/LightsInfoUniformStruct.js';
+import { lightStruct, lightRecordStruct } from './nodes/structs.wgsl.js';
+import { sampleTexelFunc, clampPathContributionFunc } from './nodes/utils.wgsl.js';
+import { luminanceFn, misHeuristicFn } from './nodes/sampling.wgsl.js';
+import {
+	RECT_AREA_LIGHT_TYPE,
+	CIRC_AREA_LIGHT_TYPE,
+	SPOT_LIGHT_TYPE,
+	DIR_LIGHT_TYPE,
+	POINT_LIGHT_TYPE,
+	ENVIRONMENT_LIGHT_TYPE,
+	LIGHT_FAR_DISTANCE,
+	intersectsRectangleFn,
+	intersectsCircleFn,
+	randomAreaLightSampleFn,
+	randomSpotLightSampleFn,
+	getSpotAttenuationFn,
+	getDistanceAttenuationFn,
+	getSpotLightNearestFn,
+	isMISWeightLightFn,
+} from './nodes/lights.wgsl.js';
+
+export class LightsInfoNode extends LightsInfoUniformStruct {
+
+	constructor() {
+
+		super();
+
+		// the environment, sampled as one more light
+		// TODO: own the environment's escape radiance here too
+		this.envInfo = new EquirectHdrInfoNode();
+
+		// lights packed into a storage buffer of Light structs
+		this.countNode = uniform( this.count, 'uint' );
+		this.buffer = new StorageBufferAttribute( new Float32Array( 2 * lightStruct.getLength() ), lightStruct.getLength() );
+		this.bufferNode = storage( this.buffer, lightStruct ).toReadOnly().setName( 'lights' );
+
+		// ies profiles packed into an atlas alongside their placement rects
+		this.iesAtlas = new AtlasTexture( { type: HalfFloatType } );
+		this.iesProfilesNode = texture( this.iesAtlas.texture );
+		this.iesInfoNode = uniformArray( this.iesAtlas.textureInfo, 'uvec4' ).setName( 'iesInfo' );
+
+		this._initFns();
+
+	}
+
+	// Returns whether the number of ies profiles changed, so the kernels need rebuilding
+	updateFrom( renderer, lights ) {
+
+		// the unique set of ies textures referenced by the lights' "iesMap" fields
+		const iesTextures = Array.from( new Set( lights.map( l => l.iesMap ).filter( t => t ) ) );
+		super.updateFrom( lights, iesTextures );
+
+		// the atlas refills its texture info array in place, but the kernels size it when they're built
+		const { length } = this.iesAtlas.textureInfo;
+		this.iesAtlas.setTextures( renderer, iesTextures );
+		this.iesProfilesNode.value = this.iesAtlas.texture;
+
+		const stride = lightStruct.getLength();
+		const count = this.count;
+		const capacity = Math.max( count, 2 );
+
+		// resize the buffer to the exact light count, keeping the same binding node
+		if ( this.buffer.array.length !== capacity * stride ) {
+
+			this.buffer.dispose();
+			this.buffer = new StorageBufferAttribute( new Float32Array( capacity * stride ), stride );
+			this.bufferNode.value = this.buffer;
+
+		}
+
+		// the texture's packed float layout already matches lightStruct's std layout, so copy it in
+		const src = this.tex.image.data;
+		this.buffer.array.set( src.subarray( 0, count * stride ) );
+
+		// rewrite the int fields ( lightType, visibleToCameraRays, iesProfile ) as i32 bits
+		const intView = new Int32Array( this.buffer.array.buffer );
+		for ( let i = 0; i < count; i ++ ) {
+
+			const base = i * stride;
+			intView[ base + 3 ] = Math.round( src[ base + 3 ] );
+			intView[ base + 11 ] = Math.round( src[ base + 11 ] );
+			intView[ base + 21 ] = Math.round( src[ base + 21 ] );
+
+		}
+
+		this.buffer.needsUpdate = true;
+		this.countNode.value = this.count;
+
+		return this.iesAtlas.textureInfo.length !== length;
+
+	}
+
+	_initFns() {
+
+		const { bufferNode, countNode, iesProfilesNode, iesInfoNode, envInfo } = this;
+
+		// profiles are sampled out of an atlas so filtering must resolve tile-relative wrapping
+		const sampleIesTexelFn = sampleTexelFunc( iesInfoNode, iesProfilesNode, 'sampleIesTexel' );
+
+		this.isLightVisibleToCamera = wgslTagFn/* wgsl */`
+			fn isLightVisibleToCamera( index: u32 ) -> bool {
+
+				return ${ bufferNode }[ index ].visibleToCameraRays != 0;
+
+			}
+		`;
+
+		// A cheap estimate of how much light reaches a position from a light, ignoring occlusion and
+		// the surface orientation, used to choose which light to sample.
+		// TODO: weigh lights below the surface's horizon to zero using its normal, skipped for
+		// transmissive surfaces. Forward hit MIS would then need the previous vertex's normal too.
+		this.getLightWeight = wgslTagFn/* wgsl */`
+			fn getLightWeight( index: u32, position: vec3f ) -> f32 {
+
+				let light = ${ bufferNode }[ index ];
+				let power = ${ luminanceFn }( light.color * light.intensity );
+				if ( light.lightType == ${ SPOT_LIGHT_TYPE } ) {
+
+					// the most any point on the spot's disc lights the position. Ies profiles are not
+					// evaluated here
+					let nearest = ${ getSpotLightNearestFn }( light, position );
+					var attenuation = 1.0;
+					if ( light.iesProfile < 0 ) {
+
+						attenuation = ${ getSpotAttenuationFn }( light.coneCos, light.penumbraCos, nearest.x );
+
+					}
+
+					return power * attenuation * ${ getDistanceAttenuationFn }( nearest.y, light.distance, light.decay );
+
+				} else if ( light.lightType == ${ POINT_LIGHT_TYPE } ) {
+
+					// the point light's world position is packed into the u slot
+					let dist = length( light.u - position );
+					return power * ${ getDistanceAttenuationFn }( dist, light.distance, light.decay );
+
+				} else if ( light.lightType == ${ DIR_LIGHT_TYPE } ) {
+
+					return power;
+
+				} else {
+
+					let toLight = light.position - position;
+					let distSq = dot( toLight, toLight );
+					if ( distSq == 0.0 ) {
+
+						return 0.0;
+
+					}
+
+					// area lights only emit from their front face, and the distance is held above the size
+					// of the light so positions on or near it do not dominate
+					let normal = normalize( cross( light.u, light.v ) );
+					let cosTheta = dot( toLight, normal ) * inverseSqrt( distSq );
+					return power * light.area * max( cosTheta, 0.0 ) / max( distSq, light.area );
+
+				}
+
+			}
+		`;
+
+		// the total estimated weight of the lights and the environment at the position
+		this.getLightsWeight = wgslTagFn/* wgsl */`
+			fn getLightsWeight( position: vec3f ) -> f32 {
+
+				var total = ${ envInfo.getWeight }();
+				for ( var i = 0u; i < ${ countNode }; i ++ ) {
+
+					total += ${ this.getLightWeight }( i, position );
+
+				}
+
+				return total;
+
+			}
+		`;
+
+		// Returns the pdf of the light sampling choosing the environment and then the direction, which paths escaping
+		// to the environment are weighted against. Zero without an environment
+		this.getEnvironmentPdf = wgslTagFn/* wgsl */`
+			fn getEnvironmentPdf( position: vec3f, direction: vec3f ) -> f32 {
+
+				let envWeight = ${ envInfo.getWeight }();
+				if ( envWeight <= 0.0 ) {
+
+					return 0.0;
+
+				}
+
+				return ${ envInfo.getDirPdf }( direction ) * envWeight / ${ this.getLightsWeight }( position );
+
+			}
+		`;
+
+		// Chooses a light, or the environment when the returned index equals the light count, in
+		// proportion to the estimated weights. The pdf is zero when nothing can light the position.
+		this.selectLight = wgslTagFn/* wgsl */`
+			fn selectLight( position: vec3f, r: f32, selectionPdf: ptr<function, f32> ) -> u32 {
+
+				let count = ${ countNode };
+				let envWeight = ${ envInfo.getWeight }();
+				let totalWeight = ${ this.getLightsWeight }( position );
+				if ( totalWeight <= 0.0 ) {
+
+					*selectionPdf = 0.0;
+					return 0u;
+
+				}
+
+				let targetWeight = r * totalWeight;
+				var accumulated = 0.0;
+				var lastWeighted = 0u;
+				var index = count;
+				for ( var i = 0u; i < count; i ++ ) {
+
+					let lightWeight = ${ this.getLightWeight }( i, position );
+					accumulated += lightWeight;
+					if ( lightWeight > 0.0 ) {
+
+						lastWeighted = i;
+
+					}
+
+					if ( targetWeight < accumulated ) {
+
+						index = i;
+						break;
+
+					}
+
+				}
+
+				// rounding can carry the target past the last light when there is no environment
+				if ( index == count && envWeight <= 0.0 ) {
+
+					index = lastWeighted;
+
+				}
+
+				var weight = envWeight;
+				if ( index < count ) {
+
+					weight = ${ this.getLightWeight }( index, position );
+
+				}
+
+				*selectionPdf = weight / totalWeight;
+				return index;
+
+			}
+		`;
+
+		// sample the light at the given index
+		this.randomLightSample = wgslTagFn/* wgsl */`
+			fn randomLightSample( lightIndex: u32, rayOrigin: vec3f, ruv: vec2f ) -> ${ lightRecordStruct } {
+
+				let light = ${ bufferNode }[ lightIndex ];
+
+				var result: ${ lightRecordStruct };
+				if ( light.lightType == ${ SPOT_LIGHT_TYPE } ) {
+
+					result = ${ randomSpotLightSampleFn }( light, rayOrigin, ruv );
+
+					let spotNormal = normalize( cross( light.u, light.v ) );
+					let cosTheta = dot( result.direction, spotNormal );
+					var spotAttenuation: f32;
+					if ( light.iesProfile >= 0 ) {
+
+						// half a texel of the profile's tile in the atlas
+						let profileInfo = ${ iesInfoNode }[ u32( light.iesProfile ) ];
+						let texelInset = 0.5 / vec2f( vec2u( profileInfo.y & 0xFFFFu, profileInfo.y >> 16u ) );
+
+						// tilt spans [ 0, 180 ]deg inset to the texel centers, twist covers [ 0, 359 ]deg and wraps
+						let tiltAngle = mix( texelInset.x, 1.0 - texelInset.x, acos( cosTheta ) / PI );
+						let twistAngle = ( atan2( dot( result.direction, light.v ), dot( result.direction, light.u ) ) + PI ) / ( 2.0 * PI ) + texelInset.y;
+						let packedProfile = ( 1 << 26 ) | light.iesProfile;
+						spotAttenuation = ${ sampleIesTexelFn }( vec2f( tiltAngle, twistAngle ), packedProfile, 0.0 ).r;
+
+					} else {
+
+						spotAttenuation = ${ getSpotAttenuationFn }( light.coneCos, light.penumbraCos, cosTheta );
+
+					}
+
+					result.emission *= spotAttenuation;
+
+				} else if ( light.lightType == ${ POINT_LIGHT_TYPE } ) {
+
+					// the point light's world position is packed into the u slot
+					let lightRay = light.u - rayOrigin;
+					let lightDist = length( lightRay );
+					let cutoffDistance = light.distance;
+					var distanceFalloff = 1.0 / max( pow( lightDist, light.decay ), 0.01 );
+					if ( cutoffDistance > 0.0 ) {
+
+						let window = clamp( 1.0 - pow( lightDist / cutoffDistance, 4.0 ), 0.0, 1.0 );
+						distanceFalloff *= window * window;
+
+					}
+
+					result.direction = normalize( lightRay );
+					result.dist = lightDist;
+					result.pdf = 1.0;
+					result.emission = light.color * light.intensity * distanceFalloff;
+					result.lightType = light.lightType;
+
+				} else if ( light.lightType == ${ DIR_LIGHT_TYPE } ) {
+
+					// the directional light's direction is packed into the u slot
+					result.dist = ${ LIGHT_FAR_DISTANCE };
+					result.direction = light.u;
+					result.pdf = 1.0;
+					result.emission = light.color * light.intensity;
+					result.lightType = light.lightType;
+
+				} else {
+
+					result = ${ randomAreaLightSampleFn }( light, rayOrigin, ruv );
+
+				}
+
+				return result;
+
+			}
+		`;
+
+		// Picks one light or the environment by its estimated contribution at the position, and samples a direction
+		// to it. The record's pdf includes the selection's, and is zero when nothing is picked
+		this.sampleLight = wgslTagFn/* wgsl */`
+			fn sampleLight( position: vec3f, ruv: vec3f ) -> ${ lightRecordStruct } {
+
+				var lightRec: ${ lightRecordStruct };
+				var selectionPdf = 0.0;
+				let lightIndex = ${ this.selectLight }( position, ruv.x, &selectionPdf );
+				if ( selectionPdf <= 0.0 ) {
+
+					return lightRec;
+
+				}
+
+				if ( lightIndex == ${ countNode } ) {
+
+					// the environment, sampled from its CDF, as a light of kind ENVIRONMENT
+					let envSample = ${ envInfo.sampleDir }( ruv.yz );
+					lightRec.direction = envSample.direction;
+					lightRec.emission = envSample.color;
+					lightRec.pdf = envSample.pdf;
+					lightRec.dist = ${ LIGHT_FAR_DISTANCE };
+					lightRec.lightType = ${ ENVIRONMENT_LIGHT_TYPE };
+
+				} else {
+
+					lightRec = ${ this.randomLightSample }( lightIndex, position, ruv.yz );
+
+				}
+
+				lightRec.pdf *= selectionPdf;
+				return lightRec;
+
+			}
+		`;
+
+		// forward intersection of a ray with a single area light ( rect / circ only ), used for MIS
+		// TODO: support hitting the spot light disk here and move spot lights into the
+		// MIS-weighted set so they appear in sharp reflections
+		this.intersectLightAtIndex = wgslTagFn/* wgsl */`
+			fn intersectLightAtIndex( rayOrigin: vec3f, rayDirection: vec3f, index: u32, lightRec: ptr<function, ${ lightRecordStruct }> ) -> bool {
+
+				let light = ${ bufferNode }[ index ];
+
+				var u = light.u;
+				var v = light.v;
+				let normal = normalize( cross( u, v ) );
+
+				// only front-facing area lights can be hit
+				if ( dot( normal, rayDirection ) > 0.0 ) {
+
+					u *= 1.0 / dot( u, u );
+					v *= 1.0 / dot( v, v );
+
+					var dist = - 1.0;
+					if ( light.lightType == ${ RECT_AREA_LIGHT_TYPE } ) {
+
+						dist = ${ intersectsRectangleFn }( light.position, normal, u, v, rayOrigin, rayDirection );
+
+					} else if ( light.lightType == ${ CIRC_AREA_LIGHT_TYPE } ) {
+
+						dist = ${ intersectsCircleFn }( light.position, normal, u, v, rayOrigin, rayDirection );
+
+					}
+
+					if ( dist > 0.0 ) {
+
+						let cosTheta = dot( rayDirection, normal );
+						lightRec.dist = dist;
+						lightRec.pdf = ( dist * dist ) / ( light.area * cosTheta );
+						lightRec.emission = light.color * light.intensity;
+						lightRec.direction = rayDirection;
+						lightRec.lightType = light.lightType;
+						return true;
+
+					}
+
+				}
+
+				return false;
+
+			}
+		`;
+
+		// Returns the light a shadow ray lets through to its vertex: the light sample, evaluated at the vertex, scaled by
+		// the transmittance along the ray. Env + area lights are also found by bsdf rays, so they are MIS weighted.
+		// Punctual lights, and lights past the bounce limit, take full weight. Bsdf rays stopped by faces the shadow ray
+		// skipped can't find the light, so their share of the weight moves to the light sample. "bounce" is the shadow
+		// ray's depth, one past its vertex, which clamps it
+		this.getDirectLight = wgslTagFn/* wgsl */`
+			fn getDirectLight(
+				lightPdf: f32, lightEmission: vec3f, lightType: i32, evalColor: vec3f, evalPdf: f32,
+				transmittance: vec3f, skippedOcclusion: f32, throughput: vec3f, bounce: u32, maxBounces: u32,
+			) -> vec3f {
+
+				let isMISWeighted = ${ isMISWeightLightFn }( lightType ) && bounce < maxBounces;
+				let misWeight = select( 1.0, mix( ${ misHeuristicFn }( lightPdf, evalPdf ), 1.0, skippedOcclusion ), isMISWeighted );
+				let directLight = throughput * lightEmission * transmittance * evalColor * misWeight / lightPdf;
+				return ${ clampPathContributionFunc }( directLight, bounce );
+
+			}
+		`;
+
+		// Returns the light of the area lights a ray passes between "start" and "end" along it, each clamped at the
+		// segment's depth, as in Cycles. When "isMISWeighted" each is weighted against the light sampling at the ray's
+		// origin. Camera rays only see visibleToCameraRays lights. The alpha is one if a light was hit
+		this.getLightHits = wgslTagFn/* wgsl */`
+			fn getLightHits(
+				origin: vec3f, direction: vec3f, start: f32, end: f32,
+				throughput: vec3f, scatterPdf: f32, isMISWeighted: bool, bounce: u32,
+			) -> vec4f {
+
+				// NEE's total weight at the ray's origin
+				var lightTotalWeight = 0.0;
+				if ( isMISWeighted ) {
+
+					lightTotalWeight = ${ this.getLightsWeight }( origin );
+
+				}
+
+				var light = vec3f( 0.0 );
+				var didHit = false;
+				for ( var i = 0u; i < ${ countNode }; i ++ ) {
+
+					if ( bounce == 0u && ! ${ this.isLightVisibleToCamera }( i ) ) {
+
+						continue;
+
+					}
+
+					var lightRec: ${ lightRecordStruct };
+					if ( ${ this.intersectLightAtIndex }( origin, direction, i, &lightRec ) && lightRec.dist > start && lightRec.dist < end ) {
+
+						var misWeight = 1.0;
+						if ( isMISWeighted ) {
+
+							let selectionPdf = ${ this.getLightWeight }( i, origin ) / lightTotalWeight;
+							misWeight = ${ misHeuristicFn }( scatterPdf, lightRec.pdf * selectionPdf );
+
+						}
+
+						light += ${ clampPathContributionFunc }( lightRec.emission * throughput * misWeight, bounce );
+						didHit = true;
+
+					}
+
+				}
+
+				return vec4f( light, select( 0.0, 1.0, didHit ) );
+
+			}
+		`;
+
+	}
+
+	dispose() {
+
+		this.tex.dispose();
+		this.buffer.dispose();
+		this.iesAtlas.dispose();
+		this.envInfo.dispose();
+
+	}
+
+}

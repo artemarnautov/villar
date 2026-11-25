@@ -1,0 +1,140 @@
+{
+ "id": "dark-walnut",
+ "name": "Тёмный орех",
+ "tagline": "Глубокий орех, тёплый молочный, олива и терракота.",
+ "description": "Заглушка — будет заменена реальным стилевым паком.",
+ "palette": "palette-dark-walnut.json",
+ "architecture": {
+  "floor": "oak-light",
+  "walls": "#EDE7DE",
+  "ceiling": "#F5F2EC",
+  "kitchenFronts": "#D8D0C4",
+  "worktop": "travertine"
+ },
+ "slots": {
+  "sofa": {
+   "default": "sofa-ph-a",
+   "options": [
+    "sofa-ph-a",
+    "sofa-ph-b"
+   ]
+  },
+  "cushions": {
+   "default": "cushions-ph-a",
+   "options": [
+    "cushions-ph-a"
+   ]
+  },
+  "coffee_table": {
+   "default": "coffee-ph-a",
+   "options": [
+    "coffee-ph-a",
+    "coffee-ph-b"
+   ]
+  },
+  "decor_set": {
+   "default": "decor-ph-a",
+   "options": [
+    "decor-ph-a"
+   ]
+  },
+  "rug": {
+   "default": "rug-ph-a",
+   "options": [
+    "rug-ph-a"
+   ]
+  },
+  "tv_unit": {
+   "default": "tv-ph-a",
+   "options": [
+    "tv-ph-a"
+   ]
+  },
+  "side_table": {
+   "default": "side-ph-a",
+   "options": [
+    "side-ph-a"
+   ]
+  },
+  "armchair": {
+   "default": "armchair-ph-a",
+   "options": [
+    "armchair-ph-a"
+   ]
+  },
+  "floor_lamp": {
+   "default": "floorlamp-ph-a",
+   "options": [
+    "floorlamp-ph-a"
+   ]
+  },
+  "bed": {
+   "default": "bed-ph-a",
+   "options": [
+    "bed-ph-a"
+   ]
+  },
+  "mattress": {
+   "default": "mattress-ph-a",
+   "options": [
+    "mattress-ph-a"
+   ]
+  },
+  "bedding": {
+   "default": "bedding-ph-a",
+   "options": [
+    "bedding-ph-a"
+   ]
+  },
+  "nightstand": {
+   "default": "nightstand-ph-a",
+   "options": [
+    "nightstand-ph-a"
+   ]
+  },
+  "table_lamp": {
+   "default": "tablelamp-ph-a",
+   "options": [
+    "tablelamp-ph-a"
+   ]
+  },
+  "dining_table": {
+   "default": "dining-ph-a",
+   "options": [
+    "dining-ph-a"
+   ]
+  },
+  "dining_chair": {
+   "default": "chair-ph-a",
+   "options": [
+    "chair-ph-a"
+   ]
+  },
+  "pendant_lamp": {
+   "default": "pendant-ph-a",
+   "options": [
+    "pendant-ph-a"
+   ]
+  },
+  "wall_art": {
+   "default": "art-ph-a",
+   "options": [
+    "art-ph-a"
+   ]
+  },
+  "plant": {
+   "default": "plant-ph-a",
+   "options": [
+    "plant-ph-a"
+   ]
+  },
+  "curtains": {
+   "default": "curtains-ph-a",
+   "options": [
+    "curtains-ph-a"
+   ]
+  }
+ },
+ "rules": [],
+ "placeholder": true
+}
