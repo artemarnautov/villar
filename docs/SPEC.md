@@ -122,11 +122,13 @@ main.js ─► data.js (fetch JSON) ─► store.js (selection state)
 ```
 
 ### Store (`site/js/core/store.js`, coordinator)
-- `store.state` = `{ catalog, stylepack, layout, selection: { [slotType]: itemId } }`
-- `store.select(slotType, itemId)` validates against `stylepack.slots[slotType].options`.
-- `store.on('change', fn)` → `fn({ slotType, itemId, prev })`.
-- `store.placed()` → `[{ slotId, slotType, item }]` for every slot in the layout (grouped slots count each placement).
-- `store.total()` → sum of `item.price` over `placed()`.
+- Selection is per **key**: a slot's key = its slot id if `stylepack.slots[slotId]` exists, else its
+  `group` if `stylepack.slots[group]` exists, else its slot type. Every API accepts a slot id, group, key or type.
+- `store.state` = `{ catalog, stylepack, layout, selection: { [key]: itemId } }`
+- `store.select(x, itemId)` validates against `stylepack.slots[key].options`; persisted to localStorage.
+- `store.on('change', fn)` → `fn({ key, slotType, slots: [slotIds], itemId, prev })` (listeners isolated).
+- `store.placed()` → `[{ slotId, slotType, key, item }]`; `store.qty(x)`; `store.options(x)`; `store.selected(x)`.
+- `store.lines()` → `[{ item, qty, sum, key, slotId, slotIds }]`; `store.total()`; `store.isCustomized()`; `store.reset()`.
 
 ### Engine API (`site/js/engine/index.js`, engine)
 ```js
@@ -147,8 +149,12 @@ The engine listens to `store.on('change')` and swaps the 3D model in every slot 
 import { buildItem, ARCHETYPES } from './furniture/index.js';
 const group = buildItem(item, { materials });   // item = catalog item (dims in cm)
 group.userData.anchors = { top: Vector3, seat: Vector3, deck: Vector3, ... }   // local coords
-group.userData.lights = [ { type: 'point'|'spot', position: [x,y,z], color: '#ffd8a8', intensity: 1, distance: 4 } ]  // lamps
+group.userData.lights = [ { type: 'point'|'spot', position: [x,y,z], color: '#ffd8a8', intensity: 1, distance: 4,
+                             angle: 0.9, penumbra: 0.6, target: [x,y,z], decay: 2, shadow: false } ]  // lamps
 ```
+Light descriptor units (three.js conventions): `position`/`target` in the group's local meters; `angle` in
+**radians** (spot half-angle, ≤ π/2); `penumbra` 0–1; `decay` physical (2); `intensity: 1` ≈ a 40 W
+incandescent equivalent (the engine scales it); `shadow` is advisory (engine decides by quality tier).
 Required archetypes: `sofa, armchair, coffee_table, side_table, tv_unit, bed, mattress, bedding,
 nightstand, dining_table, dining_chair, floor_lamp, table_lamp, pendant_lamp, rug, curtains,
 wall_art, plant, decor_set, cushions`.

@@ -7,7 +7,7 @@
 //   3. its slot type (shared by every slot of that type — the default)
 // Every API below accepts a slot id, a group, a key or a slot type.
 
-export function createStore({ catalog, stylepack, layout }) {
+export function createStore({ catalog, stylepack, layout, persist = true }) {
   const byId = new Map(catalog.items.map((it) => [it.id, it]));
   const slotById = new Map(layout.slots.map((s) => [s.id, s]));
   const packSlots = stylepack.slots || {};
@@ -26,12 +26,31 @@ export function createStore({ catalog, stylepack, layout }) {
 
   const slotsForKey = (key) => layout.slots.filter((s) => keyOfSlot(s) === key);
 
+  const defaults = {};
   for (const [key, cfg] of Object.entries(packSlots)) {
     const def = byId.has(cfg.default) ? cfg.default : (cfg.options || []).find((id) => byId.has(id));
-    if (def) selection[key] = def;
+    if (def) { selection[key] = def; defaults[key] = def; }
   }
 
-  const emit = (evt, payload) => (listeners.get(evt) || []).forEach((fn) => fn(payload));
+  // Persist the visitor's choices per style pack + layout (best effort: storage may be unavailable).
+  const storageKey = persist ? `villar:selection:${stylepack.id || 'pack'}:${layout.id || 'layout'}` : null;
+  if (storageKey) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+      for (const [key, id] of Object.entries(saved?.selection || {})) {
+        if (packSlots[key]?.options?.includes(id) && byId.has(id)) selection[key] = id;
+      }
+    } catch { /* ignore */ }
+  }
+  const save = () => {
+    if (!storageKey) return;
+    try { localStorage.setItem(storageKey, JSON.stringify({ v: 1, selection })); } catch { /* ignore */ }
+  };
+
+  // One failing listener must never stop the others (e.g. the 3D rebuild after a UI error).
+  const emit = (evt, payload) => (listeners.get(evt) || []).forEach((fn) => {
+    try { fn(payload); } catch (err) { console.error(`[store] '${evt}' listener failed`, err); }
+  });
 
   const store = {
     state: { catalog, stylepack, layout, selection },
@@ -59,9 +78,18 @@ export function createStore({ catalog, stylepack, layout }) {
       const prev = selection[key];
       if (prev === itemId) return true;
       selection[key] = itemId;
+      save();
       const slots = slotsForKey(key);
       emit('change', { key, slotType: slots[0]?.type || key, slots: slots.map((s) => s.id), itemId, prev });
       return true;
+    },
+
+    /** True if the visitor changed anything from the style pack defaults. */
+    isCustomized() { return Object.keys(defaults).some((k) => selection[k] !== defaults[k]); },
+
+    /** Restore the style pack defaults (emits one change event per changed key). */
+    reset() {
+      for (const [key, def] of Object.entries(defaults)) if (selection[key] !== def) store.select(key, def);
     },
 
     /** Every concrete placement in the layout (grouped/attached slots included). */
@@ -80,12 +108,13 @@ export function createStore({ catalog, stylepack, layout }) {
     /** Live budget in AED. */
     total() { return store.placed().reduce((sum, p) => sum + (p.item.price || 0), 0); },
 
-    /** Budget grouped by item (quantity × price), for the itemized list. */
+    /** Budget lines: one per selection key + item (qty × price); each line knows its slots. */
     lines() {
       const map = new Map();
       for (const p of store.placed()) {
-        const line = map.get(p.item.id) || { item: p.item, qty: 0, sum: 0, slotId: p.slotId, key: p.key };
-        line.qty += 1; line.sum += p.item.price; map.set(p.item.id, line);
+        const id = `${p.key}|${p.item.id}`;
+        const line = map.get(id) || { item: p.item, qty: 0, sum: 0, slotId: p.slotId, slotIds: [], key: p.key };
+        line.qty += 1; line.sum += p.item.price; line.slotIds.push(p.slotId); map.set(id, line);
       }
       return [...map.values()];
     },

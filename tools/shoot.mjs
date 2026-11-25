@@ -33,6 +33,12 @@ const MIME = {
   '.woff2': 'font/woff2', '.hdr': 'application/octet-stream', '.ktx2': 'application/octet-stream', '.glb': 'model/gltf-binary',
 };
 
+// --csp: apply the production security headers from vercel.json (catches CSP violations locally).
+const PROD_HEADERS = args.csp
+  ? (JSON.parse(await readFile(resolve(ROOT, '..', 'vercel.json'), 'utf8')).headers || [])
+      .filter((h) => h.source === '/(.*)').flatMap((h) => h.headers)
+  : [];
+
 const server = createServer(async (req, res) => {
   try {
     let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
@@ -40,7 +46,9 @@ const server = createServer(async (req, res) => {
     const file = normalize(join(ROOT, p));
     if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end(); }
     const body = await readFile(file);
-    res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream' });
+    const headers = { 'Content-Type': MIME[extname(file)] || 'application/octet-stream' };
+    for (const h of PROD_HEADERS) headers[h.key] = h.value;
+    res.writeHead(200, headers);
     res.end(body);
   } catch { res.writeHead(404); res.end('not found'); }
 });
