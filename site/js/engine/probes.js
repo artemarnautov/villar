@@ -61,8 +61,10 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
 
   // atlas: probe j occupies row j, faces side by side
   const cols = 6 * S;
+  // float targets need EXT_float_blend too (transparent glass is blended into the atlas)
+  const floatRT = renderer.extensions.has('EXT_color_buffer_float') && renderer.extensions.has('EXT_float_blend');
   const atlas = new THREE.WebGLRenderTarget(cols, N * S, {
-    type: THREE.FloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false, depthBuffer: true,
+    type: floatRT ? THREE.FloatType : THREE.HalfFloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false, depthBuffer: true,
   });
   atlas.texture.name = 'probe-atlas';
   const cam = new THREE.PerspectiveCamera(90, 1, 0.03, 9000);
@@ -85,6 +87,9 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
   }
   const norm = (4 * Math.PI) / wsum;
   const atlasBuf = new Float32Array(cols * N * S * 4);
+  const prevSH = new Float32Array(7 * N * 4);
+  const outSH = new Float32Array(7 * N * 4);
+  const TAIL = 0.45 / (1 - 0.45); // geometric tail of the missing bounces (mean bounce ratio ≈ 0.45)
   const stripBuf = new Float32Array(cols * S * 4);
   const shBuf = new Float32Array(7 * N * 4);
   const c = new Float32Array(27);
@@ -227,8 +232,8 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
         renderProbe(j);
         if (!useAsync) {
           // software rasterisers choke on one big float readback: read this probe's strip now
-          renderer.readRenderTargetPixels(atlas, 0, j * S, cols, S, stripBuf);
-          atlasBuf.set(stripBuf, j * S * cols * 4);
+          if (floatRT) { renderer.readRenderTargetPixels(atlas, 0, j * S, cols, S, stripBuf); atlasBuf.set(stripBuf, j * S * cols * 4); }
+          else { renderer.readRenderTargetPixels(atlas, 0, j * S, cols, S, halfStrip); fromHalf(halfStrip, atlasBuf, j * S * cols * 4); }
         }
         n++;
       }
@@ -245,14 +250,23 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
     if (j0.next >= N) {
       // async readback of the float atlas, SH9 projection on the CPU
       j0.reading = true;
+      const dst = floatRT ? atlasBuf : halfAtlas;
       const read = useAsync
         ? (renderer.readRenderTargetPixelsAsync
-          ? renderer.readRenderTargetPixelsAsync(atlas, 0, 0, cols, N * S, atlasBuf)
-          : new Promise((res) => { renderer.readRenderTargetPixels(atlas, 0, 0, cols, N * S, atlasBuf); res(); }))
+          ? renderer.readRenderTargetPixelsAsync(atlas, 0, 0, cols, N * S, dst)
+          : new Promise((res) => { renderer.readRenderTargetPixels(atlas, 0, 0, cols, N * S, dst); res(); }))
+          .then(() => { if (!floatRT) fromHalf(halfAtlas, atlasBuf); })
         : Promise.resolve();
       read.then(() => {
         if (j0.cancelled) return;
-        upload(projectCPU());
+        const sh = projectCPU();
+        if (j0.fresh && j0.bounce >= 1 && j0.bounce === j0.bounces - 1) {
+          // converge a fresh multi-bounce bake: add the extrapolated tail of further bounces so that
+          // later incremental (1-bounce, grid visible) re-bakes stay at the same fixed point
+          for (let i = 0; i < sh.length; i++) outSH[i] = sh[i] + (sh[i] - prevSH[i]) * TAIL;
+          upload(outSH);
+        } else upload(sh);
+        prevSH.set(sh);
         j0.onBounce(j0.bounce);
         j0.bounce++;
         j0.reading = false;
@@ -266,6 +280,7 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
   return {
     grid, bake, step,
     get baking() { return !!job; },
+    get progress() { return job ? Math.min(1, (job.bounce + job.next / N) / job.bounces) : 1; },
     get count() { return N; },
     setEnabled(v) { grid.visible = v; },
     debugPositions: () => ({ grid: gridPos, capture: capturePos }),

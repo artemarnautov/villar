@@ -40,7 +40,7 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     concrete: materials.get('paint', { color: '#b9b3aa' }),
     cap: own(new THREE.MeshStandardMaterial({ color: '#34312e', roughness: 0.9, name: 'cutaway-cap' })),
     tvBody: materials.get('lacquer', { color: '#0b0b0c', roughness: 0.35 }),
-    tvScreen: own(new THREE.MeshPhysicalMaterial({ color: '#050506', roughness: 0.12, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.04, name: 'tv-screen' })),
+    tvScreen: own(new THREE.MeshPhysicalMaterial({ color: '#030304', roughness: 0.2, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.05, specularIntensity: 0.5, envMapIntensity: 0.5, name: 'tv-screen' })),
     hob: own(new THREE.MeshPhysicalMaterial({ color: '#08080a', roughness: 0.08, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.03, name: 'hob-glass' })),
     hobRing: own(new THREE.MeshStandardMaterial({ color: '#2a2a2c', roughness: 0.4, name: 'hob-ring' })),
     sinkDark: own(new THREE.MeshStandardMaterial({ color: '#202022', roughness: 0.5, metalness: 0.6, name: 'drain' })),
@@ -49,6 +49,11 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     diffuser: materials.get('bulb', { color: '#f3f1ec', lit: false, tag: 'downlight' }),
     led: materials.get('bulb', { color: '#fff3de', lit: false, tag: 'led-strip' }),
     grilleSlot: own(new THREE.MeshStandardMaterial({ color: '#2b2a29', roughness: 0.8, name: 'grille-slot' })),
+    bathTile: materials.get('porcelain-tile', { color: '#d4cfc6' }),
+    bathWall: materials.get('porcelain-tile', { color: '#e4e0d8' }),
+    ceramic: materials.get('ceramic-glazed', { color: '#f2f0ec' }),
+    wood: materials.get('walnut-medium'),
+    mirror: materials.get('mirror'),
   };
   const doorFinish = (o) => materials.get(o.finish === 'paint' ? 'kitchen-front' : (o.finish || A.doorFinish || 'walnut-dark'), o.finish === 'paint' ? { color: A.walls || '#EDE7DE', roughness: 0.45 } : {});
 
@@ -66,7 +71,7 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     } else { c0 = c - t / 2; c1 = c + t / 2; }
     let a0 = Math.min(alongX ? ax : az, alongX ? bx : bz), a1 = Math.max(alongX ? ax : az, alongX ? bx : bz);
     if (perimeter && alongX) { a0 -= T; a1 += T; } // perimeter walls along X overlap the corners
-    if (!perimeter) { a1 += t / 2; if (a0 > 0.01) a0 -= t / 2; }
+    if (!perimeter) { a1 += t / 2; a0 -= a0 > 0.01 ? t / 2 : 0.06; } // overlap neighbours: no raster cracks
     return { ...w, alongX, t, c0, c1, a0, a1, perimeter, dir: Math.sign((alongX ? bx - ax : bz - az)) || 1, start: alongX ? ax : az };
   });
   const wallById = Object.fromEntries(walls.map((w) => [w.id, w]));
@@ -105,7 +110,7 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
 
     // floor (planks run along Z, towards the window) + structural slab
     {
-      const g = boxGeometry(0, X, -0.02, 0, 0, Z, { uvSwap: true, skip: 'ny' });
+      const g = boxGeometry(-0.05, X + 0.05, -0.02, 0, -0.05, Z + 0.05, { uvSwap: true, skip: 'ny' });
       B.add(M.floor, g, { cast: false, receive: true, name: 'floor', userData: { surface: 'floor' } });
       box(M.concrete, -T, X + T, -0.3, -0.02, -T, Z + T, { receive: false });
     }
@@ -118,13 +123,14 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     for (const w of walls) {
       const ops = openings.filter((o) => o.w === w).sort((a, b) => a.s0 - b.s0);
       let a = w.a0;
+      const yB = -0.02, yT = H + 0.03; // sink into the floor / ceiling slabs
       for (const o of ops) {
-        W(w.alongX, a, o.s0, 0, H, w.c0, w.c1, M.wall);
-        if (o.sill > 0) W(w.alongX, o.s0, o.s1, 0, o.sill, w.c0, w.c1, M.wall);
-        W(w.alongX, o.s0, o.s1, o.head, H, w.c0, w.c1, M.wall);
+        W(w.alongX, a, o.s0, yB, yT, w.c0, w.c1, M.wall);
+        if (o.sill > 0) W(w.alongX, o.s0, o.s1, yB, o.sill, w.c0, w.c1, M.wall);
+        W(w.alongX, o.s0, o.s1, o.head, yT, w.c0, w.c1, M.wall);
         a = o.s1;
       }
-      W(w.alongX, a, w.a1, 0, H, w.c0, w.c1, M.wall);
+      W(w.alongX, a, w.a1, yB, yT, w.c0, w.c1, M.wall);
       if (isCut) {
         // dark section caps (architectural poché)
         let a2 = w.a0;
@@ -141,6 +147,7 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
       if (b.type === 'kitchen') kitchen(box, B, b, cut);
       else if (b.type === 'wardrobe') wardrobe(box, B, b, cut);
     }
+    bathroom(box, B);
     for (const p of layout.fixedProps || []) {
       if (p.type === 'tv' && !isCut) tv(box, p);
       else if (p.type === 'downlights' && !isCut) downlightFixtures(B, p);
@@ -438,6 +445,25 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     bar(z0 + dw - 0.04); bar(z0 + dw + 0.04); bar(z1 - 0.04);
   }
 
+  // ---------------------------------------------------------------- bathroom (seen in the dollhouse)
+  function bathroom(box, B) {
+    const bx = 1.95, bz = 2.55; // inner extents (partition faces)
+    box(M.bathTile, 0, bx, 0, 0.006, 0, bz, { cast: false });
+    box(M.bathWall, 0, 0.004, 0.006, 1.2, 0, bz, { cast: false });
+    box(M.bathWall, 0, bx, 0.006, 1.2, 0, 0.004, { cast: false });
+    // shower: tray + glass screen in the entry-side corner
+    box(M.ceramic, 0, 0.9, 0.006, 0.04, 0, 0.9);
+    box(M.steel, 0.895, 0.905, 0.04, 2.0, 0.02, 0.06);          // shower screen profile
+    // WC against the west wall
+    box(M.ceramic, 0.004, 0.2, 0.006, 0.82, 1.3, 1.68);          // cistern / in-wall frame cover
+    box(M.ceramic, 0.2, 0.62, 0.3, 0.42, 1.31, 1.67);            // bowl
+    box(M.ceramic, 0.25, 0.5, 0.006, 0.3, 1.38, 1.6);
+    // vanity against the partition to the dining area
+    box(M.wood, 0.95, 1.65, 0.3, 0.82, bz - 0.46, bz);
+    box(M.ceramic, 0.95, 1.65, 0.82, 0.86, bz - 0.47, bz);
+    box(M.mirror, 1.0, 1.6, 1.0, 1.75, bz - 0.012, bz - 0.004);
+  }
+
   // ---------------------------------------------------------------- fixed props
   function tv(box, p) {
     const inches = p.size || 65;
@@ -483,6 +509,27 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
   const cutGroup = build(CUT_HEIGHT);
   downlights.length = nFullDownlights;
   const allGlass = glassMeshes;
+
+  // Shadow leaks: by default three renders *back* faces into the shadow map, so a wall's stored
+  // occluder depth is its interior face and anything touching it (floor, partitions) passes the
+  // biased test → bright seams along junctions. Architecture gets engine-owned clones of its
+  // materials (textures shared) that render both sides into the shadow map instead.
+  const shadowClones = new Map();
+  const withDoubleShadow = (m) => {
+    if (m.userData.engineOwned) { m.shadowSide = THREE.DoubleSide; return m; }
+    if (!shadowClones.has(m)) {
+      const c = m.clone();
+      c.shadowSide = THREE.DoubleSide;
+      c.userData = { ...m.userData, engineOwned: true, shadowClone: true };
+      owned.push(c);
+      shadowClones.set(m, c);
+    }
+    return shadowClones.get(m);
+  };
+  for (const g of [full, cutGroup]) g.traverse((o) => { if (o.isMesh && o.castShadow) o.material = withDoubleShadow(o.material); });
+  // keep handles used by lighting.js pointing at the live instances
+  M.diffuser = shadowClones.get(M.diffuser) || M.diffuser;
+  M.led = shadowClones.get(M.led) || M.led;
 
   full.name = 'architecture'; cutGroup.name = 'architecture-cutaway';
   cutGroup.visible = false;

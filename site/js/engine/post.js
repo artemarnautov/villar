@@ -8,6 +8,50 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { Pass, FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
+
+/** Writes centre-weighted log-luminance of the HDR frame into a 32×20 float target (on request). */
+class MeterPass extends Pass {
+  constructor(floatRT = true) {
+    super();
+    this.half = !floatRT;
+    this.needsSwap = false;
+    this.requested = false;
+    this.fresh = false;
+    this.rt = new THREE.WebGLRenderTarget(32, 20, { type: floatRT ? THREE.FloatType : THREE.HalfFloatType, depthBuffer: false, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
+    this.material = new THREE.ShaderMaterial({
+      uniforms: { map: { value: null } },
+      vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4( position.xy, 0.0, 1.0 ); }',
+      fragmentShader: /* glsl */`
+        uniform sampler2D map; varying vec2 vUv;
+        void main() {
+          vec2 o = vec2( 0.25 ) / vec2( 32.0, 20.0 );
+          float L = 0.0;
+          for ( int i = 0; i < 4; i ++ ) {
+            vec2 j = vec2( i % 2 == 0 ? -o.x : o.x, i < 2 ? -o.y : o.y );
+            vec3 c = texture2D( map, vUv + j ).rgb;
+            L += log( max( dot( c, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 ) );
+          }
+          vec2 d = ( vUv - vec2( 0.5, 0.48 ) ) * vec2( 1.3, 1.6 );
+          float w = exp( - dot( d, d ) * 3.0 );
+          gl_FragColor = vec4( L * 0.25 * w, w, 0.0, 1.0 );
+        }`,
+      depthTest: false, depthWrite: false, toneMapped: false,
+    });
+    this.quad = new FullScreenQuad(this.material);
+  }
+  render(renderer, writeBuffer, readBuffer) {
+    if (!this.requested) return;
+    this.requested = false;
+    this.material.uniforms.map.value = readBuffer.texture;
+    const prev = renderer.getRenderTarget();
+    renderer.setRenderTarget(this.rt);
+    this.quad.render(renderer);
+    renderer.setRenderTarget(prev);
+    this.fresh = true;
+  }
+  dispose() { this.rt.dispose(); this.material.dispose(); this.quad.dispose(); }
+}
 
 export const QUALITY = {
   high:   { msaa: 4, ao: true, aoScale: 0.5, bloom: true, maxDpr: 2 },
@@ -49,6 +93,10 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
   gtao.enabled = Q.ao;
   composer.addPass(gtao);
 
+  // --- exposure metering (auto-exposure / eye adaptation)
+  const meter = new MeterPass(renderer.extensions.has('EXT_color_buffer_float'));
+  composer.addPass(meter);
+
   // --- selection outline: thin, soft, warm white
   const outline = new OutlinePass(new THREE.Vector2(size.x, size.y), scene, camera, []);
   outline.edgeStrength = 2.2;
@@ -72,7 +120,7 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
   let bloomWanted = false;
 
   return {
-    composer, renderPass, gtao, outline, bloom, output, rt,
+    composer, renderPass, gtao, outline, bloom, output, rt, meter,
     get quality() { return quality; },
     setQuality(q) {
       quality = q; Q = QUALITY[q] || QUALITY.high;
@@ -87,7 +135,7 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
     setSize(w, h) { composer.setSize(w, h); },
     render(dt) { composer.render(dt); },
     dispose() {
-      gtao.dispose(); outline.dispose(); bloom.dispose(); output.dispose();
+      gtao.dispose(); outline.dispose(); bloom.dispose(); output.dispose(); meter.dispose();
       composer.renderTarget1.dispose(); composer.renderTarget2.dispose();
     },
   };

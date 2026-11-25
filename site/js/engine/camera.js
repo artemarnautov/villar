@@ -117,7 +117,9 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
   // ---------------------------------------------------------------- views
   function poseForView(name) {
     if (name === 'top') {
-      const o = { ...state.orbit, target: state.orbit.target.clone(), radius: 12.5, theta: 0.0, phi: 62 * DEG };
+      // landscape screens: long axis (Z) across the screen, window on the right
+      const wide = camera.aspect > 1.05;
+      const o = { ...state.orbit, target: state.orbit.target.clone(), radius: wide ? 9.6 : 11.2, theta: wide ? -90 * DEG : 0, phi: wide ? 58 * DEG : 64 * DEG };
       return { mode: 'orbit', orbit: o, pos: orbitPose(o), target: o.target.clone() };
     }
     const v = views[name] || views.eye;

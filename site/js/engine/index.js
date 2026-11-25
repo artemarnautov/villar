@@ -69,7 +69,8 @@ async function loadFurniture() {
 
 export async function createVillar({
   container, store, layout, catalog, stylepack, palette = null,
-  quality = 'high', timeOfDay = 'day', view = 'eye', adaptive = true, toneMapping = 'agx', gi = true,
+  quality = 'high', timeOfDay = 'day', view = 'eye', adaptive = true, toneMapping = 'agx', gi = true, autoExposure = true,
+  onProgress = null,
 } = {}) {
   if (!container) throw new Error('createVillar: container is required');
   layout = layout || store?.state?.layout;
@@ -77,6 +78,15 @@ export async function createVillar({
   catalog = catalog || store?.state?.catalog;
   const events = createEmitter();
   let disposed = false;
+  // loading progress for the host UI (0…1), monotonic
+  let loadP = 0;
+  const loadProgress = (v, stage) => {
+    v = Math.max(loadP, Math.min(1, v));
+    if (v === loadP && stage !== 'ready') return;
+    loadP = v;
+    try { onProgress?.({ progress: v, stage }); } catch { /* host callback */ }
+  };
+  loadProgress(0.03, 'start');
   let Q = QUALITY[quality] ? quality : 'high';
   patchShaderChunks(Q === 'low' ? 5 : Q === 'medium' ? 8 : 12);
 
@@ -122,6 +132,7 @@ export async function createVillar({
   const materials = await loadMaterials(renderer, Q);
   const buildItem = await loadFurniture();
   if (disposed) return null;
+  loadProgress(0.15, 'modules');
 
   const arch = buildArchitecture({ layout, stylepack, palette, materials });
   scene.add(arch.group);
@@ -183,15 +194,68 @@ export async function createVillar({
   let envTimer = 0;
   let texturesSettled = false;
 
+  // ---------------------------------------------------------------- auto-exposure
+  // Each time of day has a hand-calibrated base exposure for the reference "eye" view (metered
+  // log-luminance `ref`); other views get a partial (62 %) compensation clamped to −0.6…+1.3 EV,
+  // adapted smoothly like a camera / the eye.
+  const METER_REF = { morning: -2.8, day: -2.9, golden: -3.1, evening: -2.05 };
+  const ae = { ev: 0, target: 0, busy: false, buf: new Float32Array(32 * 20 * 4), hbuf: post.meter.half ? new Uint16Array(32 * 20 * 4) : null, enabled: autoExposure, last: 0 };
+  const gl = renderer.getContext();
+  const dbgInfo = gl.getExtension('WEBGL_debug_renderer_info');
+  const softwareGL = /swiftshader|llvmpipe|software/i.test(dbgInfo ? String(gl.getParameter(dbgInfo.UNMASKED_RENDERER_WEBGL)) : '');
+  function readMeter() {
+    if (!post.meter.fresh || ae.busy) return;
+    post.meter.fresh = false;
+    ae.busy = true;
+    const dst = ae.hbuf || ae.buf;
+    const done = () => {
+      ae.busy = false;
+      if (ae.hbuf) for (let i = 0; i < ae.hbuf.length; i++) ae.buf[i] = THREE.DataUtils.fromHalfFloat(ae.hbuf[i]);
+      let sl = 0, sw = 0;
+      for (let i = 0; i < 32 * 20; i++) { sl += ae.buf[i * 4]; sw += ae.buf[i * 4 + 1]; }
+      if (!(sw > 0)) return;
+      const logL = sl / sw - Math.log(renderer.toneMappingExposure) * 0; // HDR is pre-exposure
+      ae.lastLog = logL;
+      const ref = METER_REF[currentTime] ?? -2.3;
+      const ev = Math.max(-0.6, Math.min(1.3, 0.62 * (ref - logL) / Math.LN2));
+      ae.target = ev;
+      if (Math.abs(ae.target - ae.ev) > 0.02) invalidate(2);
+    };
+    if (!softwareGL && renderer.readRenderTargetPixelsAsync) renderer.readRenderTargetPixelsAsync(post.meter.rt, 0, 0, 32, 20, dst).then(done, () => { ae.busy = false; });
+    else { renderer.readRenderTargetPixels(post.meter.rt, 0, 0, 32, 20, dst); done(); }
+  }
+  function stepExposure(dt) {
+    if (!ae.enabled) { ae.ev = 0; return false; }
+    const d = ae.target - ae.ev;
+    if (Math.abs(d) < 0.01) { ae.ev = ae.target; return false; }
+    ae.ev += d * (1 - Math.exp(-Math.min(dt, 0.1) / (prefersReducedMotion() ? 0.05 : 0.35)));
+    applyExposure();
+    return true;
+  }
   function applyExposure() {
     const base = BASE_EXPOSURE[tone] ?? 1;
-    renderer.toneMappingExposure = exposureOverride ?? base * TOD[currentTime].exposure;
+    renderer.toneMappingExposure = exposureOverride ?? base * TOD[currentTime].exposure * Math.pow(2, ae.ev);
   }
 
+  const topBackdrop = new THREE.Color('#c9c4bc');
+  function applyBackdrop() {
+    skyline.mesh.visible = !cutaway;
+    scene.background = cutaway ? topBackdrop : lighting.skyTexture;
+    lighting.setDollhouse(cutaway);
+    probes.grid.userData.dollhouseHidden = cutaway;
+    probes.setEnabled(!cutaway && probes.grid.texture !== null && !lighting.fallback);
+  }
+  /** Run fn with the full (non-cutaway) apartment and real sky, e.g. for light captures. */
+  function withFullScene(fn) {
+    const was = cutaway;
+    if (was) { arch.setCutaway(false); skyline.mesh.visible = true; scene.background = lighting.skyTexture; lighting.setDollhouse(false); probes.setEnabled(probes.grid.texture !== null && !lighting.fallback); }
+    try { return fn(); } finally { if (was) { arch.setCutaway(true); applyBackdrop(); } }
+  }
   function setCutaway(on) {
     if (cutaway === on) return;
     cutaway = on;
     arch.setCutaway(on);
+    applyBackdrop();
     for (const [id, rec] of furnisher.placed) {
       const hide = on && (CUTAWAY_HIDE.has(rec.slot.type) || (rec.slot.mount === 'wall'));
       rec.group.visible = !hide;
@@ -204,10 +268,7 @@ export async function createVillar({
   function refreshEnvironment(passes = 1) {
     phase = 'env-capture';
     renderer.shadowMap.needsUpdate = true;
-    const wasCut = cutaway;
-    if (wasCut) { arch.setCutaway(false); }
-    lighting.captureEnvironment({ passes, hide: [marker.mesh] });
-    if (wasCut) { arch.setCutaway(true); }
+    withFullScene(() => lighting.captureEnvironment({ passes, hide: [marker.mesh] }));
     renderer.shadowMap.needsUpdate = true;
     invalidate();
   }
@@ -241,12 +302,15 @@ export async function createVillar({
       hide(marker.mesh);
       const env = scene.environment; scene.environment = null;
       const wasFallback = lighting.fallback; lighting.setFallback(false);
-      const wasCut = cutaway; if (wasCut) arch.setCutaway(false);
+      const wasCut = cutaway;
+      const gridWas = probes.grid.visible;
+      if (wasCut) { arch.setCutaway(false); skyline.mesh.visible = true; scene.background = lighting.skyTexture; lighting.setDollhouse(false); probes.setEnabled(probes.grid.texture !== null); }
       return () => {
+        probes.grid.visible = gridWas;
         for (const o of hidden) o.visible = true;
         scene.environment = env;
         lighting.setFallback(wasFallback);
-        if (wasCut) arch.setCutaway(true);
+        if (wasCut) { arch.setCutaway(true); applyBackdrop(); }
       };
     };
     const t0 = performance.now();
@@ -254,7 +318,7 @@ export async function createVillar({
       bounces, fresh, prepare,
       onBounce: (b) => {
         if (gen !== relightGen) return;
-        probes.setEnabled(true); lighting.setFallback(false);
+        lighting.setFallback(false); probes.setEnabled(!cutaway);
         if (b === bounces - 1) { refreshEnvironment(1); perf.bakeMs = performance.now() - t0; }
         invalidate(3);
       },
@@ -313,8 +377,9 @@ export async function createVillar({
       // window portal: sky light enters as an area light (fast, low-noise convergence); the sky
       // stays visible as background, but escaping indirect rays no longer sample it (no double count)
       set(scene, 'environment', lighting.skyTexture);
-      set(scene, 'environmentIntensity', 0);
-      set(lighting.portal, 'visible', true);
+      // dollhouse (open roof): the sky lights everything directly, no portal needed
+      set(scene, 'environmentIntensity', cutaway ? 1 : 0);
+      set(lighting.portal, 'visible', !cutaway);
       for (const m of arch.glassMaterials) { set(m, 'transmission', 1); set(m, 'opacity', 1); set(m, 'transparent', false); set(m, 'roughness', 0.0); }
       const sky = skyline.mesh.material;
       const skyEm = sky.emissiveMap;
@@ -365,6 +430,7 @@ export async function createVillar({
     currentTime = tod;
     lighting.setTimeOfDay(tod);
     skyline.setTimeOfDay(tod, SKY_PRESETS[tod]);
+    applyBackdrop();
     materials.setLampsOn?.(TOD[tod].lamps, 1);
     post.setBloom(TOD[tod].lamps);
     applyExposure();
@@ -381,6 +447,7 @@ export async function createVillar({
     const db = renderer.getDrawingBufferSize(new THREE.Vector2());
     post.setSize(db.x, db.y);
     controls.resize(w, h);
+    photoNeedsRender = true;
     invalidate();
   }
   const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => resize()) : null;
@@ -419,9 +486,11 @@ export async function createVillar({
       return;
     }
     phase = 'render';
+    if (ae.enabled && giSettled && !probes.baking && now - ae.last > 90) { post.meter.requested = true; ae.last = now; }
     post.render(0.016);
+    readMeter();
     const dt = (now - lastRenderAt) / 1000;
-    if (lastRenderAt && dt < 0.25) adapt(dt);
+    if (lastRenderAt && dt < 0.25 && !probes.baking) adapt(dt);
     lastRenderAt = now;
     clock.frames++;
   }
@@ -441,6 +510,7 @@ export async function createVillar({
       if (marker.mat.opacity < 0.01 && marker.target === 0 && marker.pulse === 0) marker.mesh.visible = false;
       invalidate(1);
     }
+    if (giSettled && !probes.baking && stepExposure(dt)) invalidate(1);
     if (moving) invalidate(2);
     if (probes.baking && !photo.active) { phase = 'probe-bake'; probes.step(moving || controls.isDragging() ? 4 : 10); }
     if (photo.active) { render(now); return; }
@@ -451,7 +521,26 @@ export async function createVillar({
     } else lastRenderAt = 0;
   }
 
+  // Pre-compile the shader variants of the other lighting states (evening lights, dollhouse fill)
+  // in the background so the first switch doesn't hitch. Needs KHR_parallel_shader_compile.
+  async function prewarm() {
+    if (!renderer.extensions.has('KHR_parallel_shader_compile')) return;
+    const states = [
+      () => { lighting.setTimeOfDay('evening'); return () => { lighting.setTimeOfDay(currentTime); applyBackdrop(); }; },
+      () => { arch.setCutaway(true); lighting.setDollhouse(true); probes.setEnabled(false); return () => { arch.setCutaway(cutaway); applyBackdrop(); }; },
+    ];
+    for (const apply of states) {
+      if (disposed || photo.active) return;
+      const restore = apply();
+      let p;
+      try { p = renderer.compileAsync(scene, camera); } finally { restore(); }
+      try { await p; } catch { /* ignore */ }
+    }
+  }
+
   function markReady() {
+    setTimeout(prewarm, 300);
+    loadProgress(1, 'ready');
     ready = true;
     window.villar = api;
     window.__villarReady = true;
@@ -461,6 +550,7 @@ export async function createVillar({
   // ---------------------------------------------------------------- public API
   const api = {
     on: (evt, fn) => events.on(evt, fn),
+    get ready() { return ready; },
     off: (evt, fn) => events.off(evt, fn),
     setView(name, opts) {
       if (!VIEWS.includes(name) && !(layout.views || {})[name]) { console.warn(`[villar] unknown view "${name}"`); return; }
@@ -492,6 +582,8 @@ export async function createVillar({
       setExposure(v) { exposureOverride = v; applyExposure(); invalidate(); },
       setQuality(q) { if (QUALITY[q]) { Q = q; post.setQuality(q); dpr = maxDpr(); resize(); } },
       setAdaptive(v) { adaptive = !!v; },
+      setAutoExposure(v) { ae.enabled = !!v; ae.target = 0; applyExposure(); invalidate(); },
+      get meter() { return { log: ae.lastLog, ev: ae.ev, target: ae.target }; },
       setPose(pos, target) { controls.state.pos.set(...pos); const d = new THREE.Vector3(...target).sub(new THREE.Vector3(...pos)).normalize(); controls.state.yaw = Math.atan2(d.x, d.z); controls.state.pitch = Math.asin(d.y); controls.setView && camera.position.set(...pos); camera.lookAt(...target); invalidate(); },
       invalidate,
       info() { return { ...renderer.info.render, programs: renderer.info.programs?.length, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }; },
@@ -534,6 +626,16 @@ export async function createVillar({
   if (disposed) return null;
   invalidate(3);
   raf = requestAnimationFrame(frame);
+  loadProgress(0.3, 'scene');
+  // loading bar: textures 0.3→0.65, GI bake 0.65→0.97
+  let maxPending = 1;
+  const progTimer = setInterval(() => {
+    if (disposed || ready) { clearInterval(progTimer); return; }
+    const pend = materials.pending ? materials.pending() : 0;
+    maxPending = Math.max(maxPending, pend);
+    if (!texturesSettled) loadProgress(0.3 + 0.35 * (1 - pend / maxPending), 'textures');
+    else if (probes.baking) loadProgress(0.65 + 0.32 * probes.progress, 'lighting');
+  }, 200);
   // "first good frame" = real textures + room environment captured with them
   Promise.race([watchTextures(), new Promise((r) => setTimeout(r, 15000))]).then(async () => {
     if (disposed) return;

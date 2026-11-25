@@ -18,8 +18,8 @@ export const TIMES = ['morning', 'day', 'golden', 'evening'];
 export const TOD = {
   morning: { sun: { alt: 17, az: 40, K: 4600, I: 7.0 }, exposure: 2.3, hemi: 0.10, windowFill: 0.55, env: 1.0, lamps: false },
   day:     { sun: { alt: 41, az: -24, K: 5500, I: 8.5 }, exposure: 2.4, hemi: 0.10, windowFill: 0.6, env: 1.0, lamps: false },
-  golden:  { sun: { alt: 9, az: -47, K: 3000, I: 6.0 }, exposure: 2.6, hemi: 0.08, windowFill: 0.45, env: 1.0, lamps: false },
-  evening: { sun: { alt: -5, az: -60, K: 3000, I: 0 }, exposure: 2.6, hemi: 0.02, windowFill: 0.05, env: 1.0, lamps: true },
+  golden:  { sun: { alt: 9, az: -47, K: 3400, I: 6.0 }, exposure: 2.4, hemi: 0.08, windowFill: 0.45, env: 1.0, lamps: false },
+  evening: { sun: { alt: -5, az: -60, K: 3000, I: 0 }, exposure: 1.55, hemi: 0.02, windowFill: 0.05, env: 1.0, lamps: true },
 };
 
 const WARM = kelvin(2700);
@@ -78,7 +78,7 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
   // ---------------------------------------------------------------- evening lights
   const downlights = [];
   for (const p of arch.downlights) {
-    const s = new THREE.SpotLight(WARM, 0, 0, 52 * DEG, 0.75, 2);
+    const s = new THREE.SpotLight(WARM, 0, 0, 38 * DEG, 0.65, 2);
     s.position.copy(p);
     s.target.position.set(p.x, 0, p.z);
     s.castShadow = false;
@@ -164,11 +164,16 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
   // volume is baked; with probes the bounce light is real and these would double count
   let fallback = true;
   let sunUpNow = true;
+  let dollhouse = false;
   function applyFallback() {
-    windowFill.visible = fallback;
-    bounce.visible = fallback && sunUpNow;
-    hemi.visible = fallback;
+    windowFill.visible = fallback && !dollhouse;
+    bounce.visible = fallback && sunUpNow && !dollhouse;
+    hemi.visible = fallback || dollhouse;
+    const cfg = TOD[current];
+    hemi.intensity = dollhouse ? (cfg.lamps ? 0.12 : 0.55) : cfg.hemi;
   }
+  /** Open-roof dollhouse: sky light from above instead of the closed-room GI. */
+  function setDollhouse(on) { dollhouse = !!on; applyFallback(); }
   function setFallback(on) { fallback = !!on; applyFallback(); }
 
   function setLampLights(list) { lampLights = list; applyLamps(); }
@@ -241,7 +246,7 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
     get time() { return current; },
     get skyTexture() { return skyTex; },
     sunDirection: () => sunDirection(TOD[current]),
-    setTimeOfDay, setLampLights, captureEnvironment, setFallback,
+    setTimeOfDay, setLampLights, captureEnvironment, setFallback, setDollhouse,
     get fallback() { return fallback; },
     fakeLights: [windowFill, bounce, hemi],
     dispose() {

@@ -12,9 +12,9 @@ import { rng, clamp, smoothstep, DEG } from './util.js';
 // Radiance units match lighting.js (sun ≈ 8–10 at noon).
 export const SKY_PRESETS = {
   morning: { zenith: '#6f98c8', horizon: '#dfe3e3', ground: '#a99a84', haze: '#d9dcdc', zenithL: 0.32, horizonL: 0.95, groundL: 0.22, glow: '#ffd6a8', glowL: 1.1, hazeL: 0.9 },
-  day:     { zenith: '#4d84c6', horizon: '#dfe7ee', ground: '#b3a58d', haze: '#cfd8e0', zenithL: 0.38, horizonL: 1.1,  groundL: 0.28, glow: '#fff1dc', glowL: 0.9, hazeL: 1.0 },
-  golden:  { zenith: '#5f7fad', horizon: '#f3c491', ground: '#9a8166', haze: '#e9c29a', zenithL: 0.22, horizonL: 0.85, groundL: 0.15, glow: '#ffae5e', glowL: 2.2, hazeL: 0.75 },
-  evening: { zenith: '#16264a', horizon: '#c9875f', ground: '#2a2a33', haze: '#4b4e68', zenithL: 0.030, horizonL: 0.075, groundL: 0.012, glow: '#ff9a5c', glowL: 0.09, hazeL: 0.05 },
+  day:     { zenith: '#5a8cc4', horizon: '#e6e8e4', ground: '#b3a58d', haze: '#d8dcdc', zenithL: 0.38, horizonL: 1.1,  groundL: 0.28, glow: '#fff1dc', glowL: 0.9, hazeL: 1.0 },
+  golden:  { zenith: '#6a86b0', horizon: '#efcfa8', ground: '#9a8166', haze: '#e6c8a4', zenithL: 0.24, horizonL: 0.85, groundL: 0.15, glow: '#ffb46a', glowL: 2.0, hazeL: 0.75 },
+  evening: { zenith: '#18295a', horizon: '#56608a', ground: '#1c1d26', haze: '#3e4566', zenithL: 0.032, horizonL: 0.05, groundL: 0.01, glow: '#ff9156', glowL: 0.11, hazeL: 0.04 },
 };
 
 const _c = new THREE.Color();
@@ -78,11 +78,11 @@ export function makeSkyTexture(preset, sunDir, { width = 1024, height = 512 } = 
 
 // ----------------------------------------------------------------------------- skyline
 const GROUND_Y = -138;          // we are ~40 floors up
-const TILE_W = 36, TILE_H = 42; // facade texture tile in metres (12 bays × 12 floors)
+const TILE_W = 32, TILE_H = 52; // facade texture tile in metres (16 bays × 16 floors)
 
 function facadeTextures() {
   // map: subtle floor bands + mullions (sRGB); night: lit windows (sRGB emissive)
-  const N = 256, cells = 12, cs = N / cells;
+  const N = 256, cells = 16, cs = N / cells;
   const day = new Uint8Array(N * N * 4), night = new Uint8Array(N * N * 4);
   const r = rng(77);
   const lit = [];
@@ -163,7 +163,7 @@ class GeoBuilder {
   }
 }
 
-const TOWER_COLORS = ['#7d8c97', '#56636d', '#9aa6ad', '#c8b89e', '#d9d5cc', '#6c7a80', '#b3a68f', '#8f9aa0'];
+const TOWER_COLORS = ['#6f8592', '#3f5260', '#8fa2ab', '#c9b597', '#ddd5c6', '#55707a', '#b09b7c', '#7f939b', '#2f3d47', '#a7b4b8'];
 
 export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 11 } = {}) {
   const r = rng(seed);
@@ -195,11 +195,19 @@ export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 
       B.tower(cx, cz, w * 0.6, d * 0.6, GROUND_Y + h, GROUND_Y + h + 18 + r() * 25, 0, hz, c, 0, 0);
     }
   }
-  // low-rise city fabric near the ground
-  for (let i = 0; i < 420; i++) {
-    const ang = (r() * 2 - 1) * 120 * DEG;
-    const dist = 140 + Math.pow(r(), 0.7) * 1800;
-    add(ang, dist, 14 + r() * 30, 14 + r() * 30, 8 + r() * 30, r() * Math.PI, ['#c7b79f', '#d8cfc0', '#a99d8a', '#bdb3a3'][(r() * 4) | 0]);
+  // low-rise city fabric: blocks on a street grid (two districts with different orientation)
+  for (const [rot, ox, oz] of [[0.18, 0, 0], [-0.42, 37, 11]]) {
+    const c = Math.cos(rot), s2 = Math.sin(rot);
+    for (let gx = -40; gx <= 40; gx++) for (let gz = 2; gz <= 40; gz++) {
+      if (r() < 0.5) continue;
+      const lx = gx * 64 + ox, lz = gz * 64 + oz;
+      const wx = lx * c + lz * s2, wz = -lx * s2 + lz * c;
+      const dist = Math.hypot(wx, wz);
+      if (dist < 160 || dist > 2400) continue;
+      const ang = Math.atan2(wx, wz);
+      if (Math.abs(ang) > 125 * DEG) continue;
+      add(ang, dist, 26 + r() * 22, 26 + r() * 22, 6 + Math.pow(r(), 2) * 34, rot, ['#c9b9a0', '#d9d0c1', '#ab9f8b', '#bfb5a4', '#cfc6b6'][(r() * 5) | 0]);
+    }
   }
   // landmark supertall (stylised, stepped + spire) far to the left
   {
@@ -215,13 +223,24 @@ export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 
     }
     B.tower(cx, cz, 5, 5, y, y + 170, 0, hz, c, 0, 0);
   }
-  // ground plane (desert/city haze)
+  // ground: concentric rings so aerial perspective varies with distance; street grid via the
+  // facade texture at city-block scale
   {
-    const R = 5200;
-    const hz = 0.75;
-    const c = new THREE.Color('#b9a98f').multiplyScalar(1 - hz * 0.8);
-    B.quad([center.x - R, GROUND_Y, center.z + R], [center.x + R, GROUND_Y, center.z + R], [center.x + R, GROUND_Y, center.z - R], [center.x - R, GROUND_Y, center.z - R],
-      [0, 1, 0], [[0, 0.01], [0.001, 0.01], [0.001, 0.012], [0, 0.012]], hz, c);
+    const radii = [0, 150, 300, 550, 900, 1400, 2200, 3400, 5200];
+    const segs = 48;
+    for (let k = 0; k < radii.length - 1; k++) {
+      const r0 = radii[k], r1 = radii[k + 1];
+      const h0 = hazeOf(r0 + 1), h1 = hazeOf(r1);
+      for (let i = 0; i < segs; i++) {
+        const a0 = (i / segs) * Math.PI * 2, a1 = ((i + 1) / segs) * Math.PI * 2;
+        const P = (rr, a) => [center.x + Math.sin(a) * rr, GROUND_Y, center.z + Math.cos(a) * rr];
+        const U = (p) => [p[0] / 900, p[2] / 700];
+        const p0 = P(r0, a0), p1 = P(r0, a1), p2 = P(r1, a1), p3 = P(r1, a0);
+        const hz = (h0 + h1) / 2;
+        const c = new THREE.Color('#9f927c').multiplyScalar(1 - hz * 0.8);
+        B.quad(p0, p3, p2, p1, [0, 1, 0], [U(p0), U(p3), U(p2), U(p1)], hz, c);
+      }
+    }
   }
   const geometry = B.build();
   const tx = facadeTextures();
@@ -250,7 +269,7 @@ export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 
         nightMat.emissiveIntensity = 0.55;
       } else {
         mesh.material = dayMat;
-        dayMat.emissive.set(preset.haze).multiplyScalar(preset.hazeL);
+        dayMat.emissive.set(preset.haze).multiplyScalar(preset.hazeL * 0.75);
       }
     },
     dispose() { geometry.dispose(); dayMat.dispose(); nightMat.dispose(); tx.day.dispose(); tx.night.dispose(); tx.ramp.dispose(); },

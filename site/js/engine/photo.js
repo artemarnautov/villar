@@ -86,8 +86,9 @@ export function createPhoto({ renderer, scene, camera, emit, rasterRender, prepa
       r.setRenderTarget(cleanRT); despeckleQuad.render(r); r.setRenderTarget(prev);
       // denoise strongly while noisy, fade the filter out as the estimate converges
       denoise.map = cleanRT.texture;
-      denoise.sigma = Math.max(0.8, 3.5 / Math.pow(s, 0.28));
-      denoise.threshold = Math.max(0.012, 0.35 / Math.pow(s, 0.55));
+      denoise.sigma = Math.max(0.8, 4.0 / Math.pow(s, 0.25));
+      denoise.kSigma = 1.5;
+      denoise.threshold = Math.max(0.015, 0.6 / Math.sqrt(s));
       denoise.opacity = ptQuad.material.opacity;
       const ac = r.autoClear; r.autoClear = false;
       const ex = r.toneMappingExposure; r.toneMappingExposure = ex * exposureScale;
