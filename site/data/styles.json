@@ -1,0 +1,6 @@
+{
+  "default": "dark-walnut",
+  "packs": [
+    { "id": "dark-walnut", "file": "stylepack-dark-walnut.json" }
+  ]
+}

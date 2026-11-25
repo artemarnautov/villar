@@ -1,4 +1,6 @@
 // Loads the MVP data bundle. Owner: coordinator.
+// styles.json lists every style pack; all packs (small JSON) are loaded up front so cross-style
+// swaps are instant. Falls back to the single dark-walnut pack if styles.json is missing.
 const BASE = '/data/';
 
 async function getJSON(name) {
@@ -7,15 +9,23 @@ async function getJSON(name) {
   return res.json();
 }
 
-export async function loadData({ stylepackId = 'dark-walnut', layoutId = 'studio' } = {}) {
-  const [layout, catalog, stylepack] = await Promise.all([
+export async function loadData({ layoutId = 'studio' } = {}) {
+  let index;
+  try { index = await getJSON('styles.json'); } catch { index = { default: 'dark-walnut', packs: [{ id: 'dark-walnut' }] }; }
+  const [layout, catalog, ...packList] = await Promise.all([
     getJSON(`layout-${layoutId}.json`),
     getJSON('catalog.json'),
-    getJSON(`stylepack-${stylepackId}.json`),
+    ...index.packs.map((p) => getJSON(p.file || `stylepack-${p.id}.json`).catch(() => null)),
   ]);
-  let palette = null;
-  try { palette = await getJSON(stylepack.palette || `palette-${stylepackId}.json`); } catch { /* optional */ }
-  return { layout, catalog, stylepack, palette };
+  const packs = {};
+  const palettes = {};
+  await Promise.all(packList.filter(Boolean).map(async (pk) => {
+    packs[pk.id] = pk;
+    try { palettes[pk.id] = await getJSON(pk.palette || `palette-${pk.id}.json`); } catch { /* optional */ }
+  }));
+  const styleId = packs[index.default] ? index.default : Object.keys(packs)[0];
+  // Back-compat fields for code written against a single pack.
+  return { layout, catalog, packs, palettes, styleId, stylepack: packs[styleId], palette: palettes[styleId] || null };
 }
 
 export const formatAED = (n) => `${new Intl.NumberFormat('ru-RU').format(Math.round(n))} AED`;
