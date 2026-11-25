@@ -106,6 +106,18 @@ export function createFurnisher({ layout, store, materials, buildItem, quality =
       group.position.set(...slot.pos);
       group.rotation.set(0, (slot.rotY || 0) * DEG, 0);
     }
+    // nothing may poke through the ceiling: curtains (and any too-tall floor item) are clamped
+    // to the room height; ceiling-mounted items hang from the mount point and are left alone
+    if (slot.mount !== 'ceiling' || slot.type === 'curtains') {
+      group.updateMatrixWorld(true);
+      const bb = new THREE.Box3().setFromObject(group);
+      const ceil = (layout.size?.ceiling || 2.85) - 0.012;
+      if (bb.max.y > ceil && bb.max.y - bb.min.y > 0.05) {
+        const base = group.position.y;
+        const k = (ceil - base) / (bb.max.y - base);
+        if (k > 0.5) { group.scale.y *= k; if (slot.type !== 'curtains') console.debug(`[villar] ${item.id} clamped to ceiling (×${k.toFixed(2)})`); }
+      }
+    }
     group.userData.slotId = slot.id;
     group.userData.slotType = slot.type;
     group.traverse((o) => {
@@ -137,14 +149,16 @@ export function createFurnisher({ layout, store, materials, buildItem, quality =
     for (const id of ordered(slots.map((s) => s.id))) build(byId.get(id));
   }
 
-  /** Rebuild every slot of a type and all slots attached (transitively) to them. */
-  function rebuildType(type) {
-    const ids = slots.filter((s) => s.type === type).map((s) => s.id);
+  /** Rebuild the given slots and all slots attached (transitively) to them. */
+  function rebuildSlots(ids) {
+    ids = ids.filter((id) => byId.has(id));
     const all = ordered([...ids, ...descendants(ids)]);
     for (const id of [...all].reverse()) remove(id);
     for (const id of all) build(byId.get(id));
     return all;
   }
+  /** Rebuild every slot of a type (legacy change events without `slots`). */
+  function rebuildType(type) { return rebuildSlots(slots.filter((s) => s.type === type).map((s) => s.id)); }
 
   function colliders() {
     const out = [];
@@ -174,7 +188,7 @@ export function createFurnisher({ layout, store, materials, buildItem, quality =
   }
 
   return {
-    root, placed, placeAll, rebuildType, colliders, lampLights, meshesOf, info,
+    root, placed, placeAll, rebuildType, rebuildSlots, colliders, lampLights, meshesOf, info,
     groupOf: (id) => placed.get(id)?.group || null,
     slotsOfType: (type) => slots.filter((s) => s.type === type),
     dispose() { for (const id of [...placed.keys()]) remove(id); },

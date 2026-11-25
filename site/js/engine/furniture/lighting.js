@@ -16,7 +16,7 @@ function shadeMatFor(c, p, color) {
 }
 
 /** Adds a shade (centre axis at origin x/z), bottom at yb, of given style. Returns light centre y. */
-function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null }) {
+function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null, open = 0, wave = 0 }) {
   const s = String(style).toLowerCase();
   const seg = 72;
   if (s.includes('pleat')) {
@@ -54,8 +54,10 @@ function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null })
       ? smoothProfile([[R, 0], [R * 0.92, h * 0.15], [R * 0.6, h * 0.55], [R * 0.32, h * 0.85], [R * 0.12, h], [0.012, h]], 40)
       : Array.from({ length: 25 }, (_, i) => { const t = (i / 24) * Math.PI / 2; return [Math.max(0.012, R * Math.cos(t)), h * Math.sin(t)]; });
     const g = lathe(prof, seg);
+    if (wave) { const pa = g.attributes.position; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), z = pa.getZ(i), y = pa.getY(i); const a = Math.atan2(z, x); const k = 1 + wave * Math.sin(a * 6) * (1 - y / h); pa.setX(i, x * k); pa.setZ(i, z * k); } g.computeVertexNormals(); }
     b.add(g, mat, { pos: [0, yb, 0], uv: 'box' });
     const gi = lathe(prof.map(([r, y]) => [r * 0.985, y - 0.002]).reverse(), seg);
+    if (wave) { const pa = gi.attributes.position; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), z = pa.getZ(i), y = pa.getY(i); const a = Math.atan2(z, x); const k = 1 + wave * Math.sin(a * 6) * (1 - y / h); pa.setX(i, x * k); pa.setZ(i, z * k); } gi.computeVertexNormals(); }
     b.add(gi, inner || c.mat('metal-white'), { pos: [0, yb, 0], uv: 'box' });
     b.add(new THREE.TorusGeometry(R, 0.002, 6, seg).rotateX(Math.PI / 2), mat, { pos: [0, yb, 0] });
     return yb + h * 0.4;
@@ -72,8 +74,8 @@ function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null })
       pts.push([Math.max(0.0, r), y]);
     }
     // open top & bottom
-    const open = 0.035;
-    const trimmed = pts.filter(([r, y]) => !(r < open && Math.abs(y) > Ry * 0.5));
+    const hole = Math.max(0.035, open * R);
+    const trimmed = pts.filter(([r, y]) => !(r < hole && Math.abs(y) > Ry * 0.3));
     b.add(lathe(trimmed, 40), mat, { pos: [0, yb + Ry, 0], uv: 'box' });
     return yb + Ry;
   }
@@ -101,13 +103,16 @@ export function floorLamp(c) {
   const { W, H, params: p } = c;
   const b = new Builder(c.seed);
   const baseKey = p.base || p.frame || 'metal-black';
-  const baseMat = c.mat(baseKey);
+  const baseMat = c.mat(baseKey, p.baseColor && isMetalKey(baseKey) ? { color: p.baseColor } : undefined);
   const style = String(p.shade || 'drum').toLowerCase();
   const shade = shadeMatFor(c, p, p.shadeColor || '#EDE5D6');
-  const R = W / 2;
+  const R = clamp(cm(p.shadeDiameter, W) / 2, 0.1, 0.35);
+  const stem = String(p.stem || '').toLowerCase();
+  if (stem.includes('swing') || stem.includes('arm')) return swingArmLamp(c, { b, baseMat, shade, style, R });
   const sh = clamp(cm(p.shadeHeight, Math.min(0.36, W * 0.72)), 0.12, 0.5);
   const yb = H - sh;
-  const baseStyle = String(p.baseStyle || p.stand || (String(baseKey).includes('wood') || /walnut|oak|teak/.test(baseKey) ? 'tripod' : 'disc')).toLowerCase();
+  const woodBase = String(baseKey).includes('wood') || /walnut|oak|teak/.test(baseKey);
+  const baseStyle = String(p.baseStyle || p.stand || (woodBase && !stem.includes('turn') ? 'tripod' : 'disc')).toLowerCase();
   if (baseStyle.includes('tripod')) {
     const legTop = yb - 0.08;
     for (let i = 0; i < 3; i++) {
@@ -122,6 +127,14 @@ export function floorLamp(c) {
     }
     b.add(new THREE.CylinderGeometry(0.016, 0.016, 0.05, 14), c.mat('metal-brass'), { pos: [0, legTop, 0] });
     b.add(new THREE.CylinderGeometry(0.006, 0.006, yb + sh * 0.4 - legTop, 10), c.mat('metal-brass'), { pos: [0, (legTop + yb + sh * 0.4) / 2, 0] });
+  } else if (stem.includes('turn')) {
+    // turned wooden column with beads on a round foot
+    const top = yb + sh * 0.4;
+    const prof = [[0.001, 0], [0.13, 0], [0.13, 0.02], [0.11, 0.035], [0.035, 0.06]];
+    const n = 5;
+    for (let i = 0; i < n; i++) { const y0 = 0.06 + (i / n) * (top - 0.08), y1 = 0.06 + ((i + 1) / n) * (top - 0.08); prof.push([0.022, y0 + (y1 - y0) * 0.15], [0.034, y0 + (y1 - y0) * 0.5], [0.022, y0 + (y1 - y0) * 0.85]); }
+    prof.push([0.014, top], [0.001, top]);
+    b.add(lathe(smoothProfile(prof, 90), 28), baseMat, { uv: 'cyl' });
   } else {
     const br = clamp(R * 0.75, 0.11, 0.17);
     b.add(slab(ellipseShape(br * 2, br * 2), 0.024, { bevel: 0.007, bevelSeg: 4 }), baseMat, {});
@@ -138,27 +151,54 @@ export function floorLamp(c) {
   };
 }
 
+const isMetalKey = (k) => /metal|brass|chrome|nickel|black|gold/.test(String(k || ''));
+
+/** Swing-arm floor lamp: disc base, upright stem, horizontal arm, shade hanging at the arm end. */
+function swingArmLamp(c, { b, baseMat, shade, style, R }) {
+  const { H, params: p } = c;
+  const sh = clamp(cm(p.shadeHeight, R * 1.2), 0.12, 0.4);
+  const armL = clamp(R * 1.6, 0.25, 0.5);
+  const br = 0.13;
+  const stemTop = H - 0.02;
+  b.add(slab(ellipseShape(br * 2, br * 2), 0.022, { bevel: 0.007, bevelSeg: 4 }), baseMat, { pos: [-armL / 2, 0, 0] });
+  b.add(new THREE.CylinderGeometry(0.009, 0.009, stemTop - 0.02, 14), baseMat, { pos: [-armL / 2, 0.02 + (stemTop - 0.02) / 2, 0], axis: 'y' });
+  b.add(tube([V3(-armL / 2, stemTop - 0.03, 0), V3(-armL / 2 + 0.02, stemTop, 0), V3(armL / 2 - 0.02, stemTop, 0), V3(armL / 2, stemTop - 0.03, 0)], 0.007, { tubular: 24, radial: 8, tension: 0.2 }), baseMat, {});
+  b.add(new THREE.SphereGeometry(0.014, 12, 8), baseMat, { pos: [-armL / 2, stemTop - 0.03, 0] });
+  const yb = stemTop - 0.05 - sh;
+  b.add(new THREE.CylinderGeometry(0.005, 0.005, 0.06, 8), baseMat, { pos: [armL / 2, stemTop - 0.06, 0] });
+  const g = new Builder(c.seed + 1);
+  const ly = addShade(g, c, { style, R, h: sh, yb, mat: shade, rimMat: baseMat });
+  spider(g, baseMat, { R: style.includes('cone') ? R * 0.68 : R, y: yb + sh, hubY: yb + sh * 0.6 });
+  bulb(g, c, ly, 0.026);
+  const sg = g.build('shade');
+  sg.children.forEach((m) => { m.position.x += armL / 2; });
+  const group = b.build('floor_lamp');
+  while (sg.children.length) group.add(sg.children[0]);
+  return { group, lights: [{ type: 'point', position: [armL / 2, ly, 0], color: WARM, intensity: 1, distance: 4.5, decay: 2, shadow: true }] };
+}
+
 const BASE_SHAPES = {
   gourd: (h, r) => [[0.001, 0], [r * 0.5, 0], [r * 0.56, h * 0.025], [r * 0.86, h * 0.2], [r, h * 0.44], [r * 0.9, h * 0.66], [r * 0.58, h * 0.84], [r * 0.34, h * 0.93], [r * 0.3, h * 0.97], [r * 0.3, h], [0.001, h]],
   jar: (h, r) => [[0.001, 0], [r * 0.7, 0], [r * 0.74, h * 0.03], [r * 0.98, h * 0.4], [r, h * 0.6], [r * 0.86, h * 0.84], [r * 0.45, h * 0.94], [r * 0.3, h], [0.001, h]],
   cylinder: (h, r) => [[0.001, 0], [r * 0.82, 0], [r * 0.85, h * 0.02], [r * 0.85, h * 0.97], [r * 0.8, h], [0.001, h]],
   sphere: (h, r) => { const out = [[0.001, 0], [r * 0.4, 0]]; for (let i = 1; i < 12; i++) { const t = -Math.PI / 2 + (i / 12) * Math.PI; out.push([r * Math.cos(t), h * 0.5 + h * 0.5 * Math.sin(t)]); } out.push([r * 0.2, h], [0.001, h]); return out; },
   column: (h, r) => [[0.001, 0], [r * 0.7, 0], [r * 0.7, h * 0.06], [r * 0.32, h * 0.1], [r * 0.3, h * 0.92], [r * 0.4, h], [0.001, h]],
+  turned: (h, r) => [[0.001, 0], [r * 0.85, 0], [r * 0.85, h * 0.05], [r * 0.4, h * 0.09], [r * 0.55, h * 0.2], [r * 0.25, h * 0.32], [r * 0.45, h * 0.46], [r * 0.22, h * 0.6], [r * 0.38, h * 0.74], [r * 0.2, h * 0.88], [r * 0.25, h], [0.001, h]],
 };
 
 export function tableLamp(c) {
   const { W, H, params: p } = c;
   const b = new Builder(c.seed);
   const baseKey = p.base || 'ceramic-matte';
-  const baseMat = c.mat(baseKey, { color: p.baseColor || '#CBB89A' });
+  const baseMat = c.mat(baseKey, /ceram|paint|glaze/.test(baseKey) || isMetalKey(baseKey) ? { color: p.baseColor || (isMetalKey(baseKey) ? undefined : '#CBB89A') } : p.baseColor ? { match: p.baseColor } : undefined);
   const style = String(p.shade || 'drum').toLowerCase();
   const shade = shadeMatFor(c, p, p.shadeColor || '#EDE5D6');
-  const R = W / 2;
+  const R = clamp(cm(p.shadeDiameter, W) / 2, 0.08, 0.3);
   const sh = clamp(cm(p.shadeHeight, H * 0.42), 0.1, 0.4);
   const yb = H - sh;
   const bh = clamp(yb - 0.02, 0.1, H);
   const mushroom = style.includes('mushroom');
-  const shapeName = String(p.baseShape || (mushroom ? 'stem' : /metal|brass|black|wood|walnut|oak/.test(baseKey) ? 'column' : 'gourd')).toLowerCase();
+  const shapeName = String(p.baseShape || p.body || (mushroom ? 'stem' : /metal|brass|black|wood|walnut|oak/.test(baseKey) ? 'column' : 'gourd')).toLowerCase();
   if (mushroom) {
     // flared stem straight into the dome shade
     const dh = sh;
@@ -171,7 +211,14 @@ export function tableLamp(c) {
   }
   const fn = BASE_SHAPES[Object.keys(BASE_SHAPES).find((k) => shapeName.includes(k)) || 'gourd'];
   const br = Math.min(R * 0.55, 0.11);
-  b.add(lathe(smoothProfile(fn(bh, br), 36), 44), baseMat, { uv: 'box', axis: 'x' });
+  const lg = lathe(smoothProfile(fn(bh, br), 36), shapeName.includes('rib') ? 96 : 44);
+  if (shapeName.includes('rib')) {
+    // vertical ribs (fluted ceramic)
+    const pa = lg.attributes.position;
+    for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), z = pa.getZ(i); const a = Math.atan2(z, x); const k = 1 + 0.035 * Math.abs(Math.sin(a * 12)); pa.setX(i, x * k); pa.setZ(i, z * k); }
+    lg.computeVertexNormals();
+  }
+  b.add(lg, baseMat, { uv: /walnut|oak|wood/.test(baseKey) ? 'cyl' : 'box', axis: 'x' });
   // socket + neck
   const brass = c.mat('metal-brass');
   b.add(new THREE.CylinderGeometry(0.012, 0.016, 0.03, 16), brass, { pos: [0, bh + 0.012, 0] });
@@ -189,17 +236,20 @@ export function tableLamp(c) {
 export function pendantLamp(c) {
   const { W, H, params: p } = c;
   const b = new Builder(c.seed);
-  const shape = String(p.shape || 'dome').toLowerCase();
-  const color = p.color || c.item?.colorHex || '#F3EEE4';
+  const body = String(p.body || '').toLowerCase();
+  const prof = String(p.shadeProfile || '').toLowerCase();
+  const shape = String(p.shape || ((p.shade ? p.shade : 'dome') + (body ? '-' + body : '') + (p.shadeMaterial ? '-' + p.shadeMaterial : '') + (prof ? '-' + prof : ''))).toLowerCase();
+  const color = p.color || p.shadeColor || c.item?.colorHex || '#F3EEE4';
   const drop = clamp(Number(p.drop) || 0.7, 0.05, 2.0);
   const R = W / 2, h = H;
   let mat;
   if (shape.includes('paper') || shape.includes('lantern')) mat = c.mat('paper-shade', { color });
-  else if (shape.includes('rattan') || shape.includes('wicker')) mat = c.mat('rattan');
+  else if (shape.includes('rattan') || shape.includes('wicker') || shape.includes('hyacinth')) mat = c.mat('rattan', { color: p.shadeColor || undefined });
   else if (shape.includes('glass') || shape.includes('opal')) mat = c.mat('opal-glass');
-  else if (shape.includes('linen') || shape.includes('fabric') || shape.includes('drum')) mat = c.mat('lamp-shade', { color });
+  else if (shape.includes('linen') || shape.includes('fabric') || shape.includes('drum') || shape.includes('pleat')) mat = c.mat('lamp-shade', { color });
   else mat = c.mat(p.material || (shape.includes('brass') ? 'metal-brass' : 'metal-black'), { color: p.material ? undefined : color === '#F3EEE4' ? undefined : color });
   const metal = c.mat(p.fitting || 'metal-black');
+  const trim = p.trimColor ? c.mat('leather-cognac', { color: p.trimColor }) : metal;
   // canopy + cord
   b.add(slab(ellipseShape(0.11, 0.11), 0.025, { bevel: 0.005 }), metal, { pos: [0, -0.025, 0] });
   b.add(new THREE.CylinderGeometry(0.0025, 0.0025, drop - 0.025, 6), c.mat('cord'), { pos: [0, -0.025 - (drop - 0.025) / 2, 0], cast: false });
@@ -207,15 +257,22 @@ export function pendantLamp(c) {
   const top = -drop;
   let ly;
   if (shape.includes('globe') || shape.includes('sphere') || shape.includes('lantern') || (shape.includes('paper') && !shape.includes('dome'))) {
-    ly = addShade(b, c, { style: 'globe' + (shape.includes('paper') ? '-paper' : ''), R, h, yb: top - h, mat, rimMat: metal });
+    ly = addShade(b, c, { style: 'globe' + (shape.includes('paper') ? '-paper' : ''), R, h, yb: top - h, mat, rimMat: metal, open: shape.includes('rattan') || shape.includes('flatten') ? 0.35 : 0 });
     // wire ribs hint at top/bottom rings
     b.add(new THREE.TorusGeometry(0.035, 0.002, 6, 24).rotateX(Math.PI / 2), metal, { pos: [0, top - 0.01, 0] });
+  } else if (shape.includes('pleat')) {
+    // tiered pleated fabric shade
+    const tiers = clamp(Math.round(p.tiers || 1), 1, 3);
+    const th = h / tiers;
+    for (let i = 0; i < tiers; i++) addShade(b, c, { style: 'pleated', R: R * (1 - 0.18 * (tiers - 1 - i)), h: th * 1.05, yb: top - (i + 1) * th, mat, rimMat: trim });
+    ly = top - h * 0.55;
   } else if (shape.includes('drum') || shape.includes('cone')) {
-    ly = addShade(b, c, { style: shape.includes('cone') ? 'cone' : 'drum', R, h, yb: top - h, mat, rimMat: metal });
+    ly = addShade(b, c, { style: shape.includes('cone') ? 'cone' : 'drum', R, h, yb: top - h, mat, rimMat: trim });
+    if (p.trimColor) for (const y of [top - h + 0.012, top - 0.012]) b.add(new THREE.CylinderGeometry(R + 0.002, R + 0.002, 0.022, 72, 1, true), trim, { pos: [0, y, 0] });
     spider(b, metal, { R: shape.includes('cone') ? R * 0.68 : R, y: top, hubY: top - h * 0.2 });
   } else {
     // dome / bell (open at the bottom)
-    ly = addShade(b, c, { style: shape.includes('bell') ? 'bell' : 'dome', R, h, yb: top - h, mat, rimMat: metal, inner: /rattan|wicker|paper|linen|opal|glass/.test(shape) ? mat : c.mat('metal-white') });
+    ly = addShade(b, c, { style: shape.includes('bell') ? 'bell' : 'dome', R, h, yb: top - h, mat, rimMat: metal, inner: /rattan|wicker|paper|linen|opal|glass/.test(shape) ? mat : c.mat('metal-white'), wave: shape.includes('wave') || shape.includes('organic') ? 0.06 : 0 });
     ly = top - h * 0.45;
   }
   bulb(b, c, ly, 0.03);

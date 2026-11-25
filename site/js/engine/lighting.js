@@ -16,10 +16,10 @@ export const TIMES = ['morning', 'day', 'golden', 'evening'];
 
 // alt/az in degrees; az measured from the window normal (+Z) towards +X.
 export const TOD = {
-  morning: { sun: { alt: 17, az: 40, K: 4600, I: 7.0 }, exposure: 1.0, hemi: 0.10, windowFill: 0.55, env: 1.0, lamps: false },
-  day:     { sun: { alt: 41, az: -24, K: 5500, I: 8.5 }, exposure: 0.85, hemi: 0.10, windowFill: 0.6, env: 1.0, lamps: false },
-  golden:  { sun: { alt: 9, az: -47, K: 3000, I: 6.0 }, exposure: 1.05, hemi: 0.08, windowFill: 0.45, env: 1.0, lamps: false },
-  evening: { sun: { alt: -5, az: -60, K: 3000, I: 0 }, exposure: 1.6, hemi: 0.02, windowFill: 0.05, env: 1.0, lamps: true },
+  morning: { sun: { alt: 17, az: 40, K: 4600, I: 7.0 }, exposure: 2.3, hemi: 0.10, windowFill: 0.55, env: 1.0, lamps: false },
+  day:     { sun: { alt: 41, az: -24, K: 5500, I: 8.5 }, exposure: 2.4, hemi: 0.10, windowFill: 0.6, env: 1.0, lamps: false },
+  golden:  { sun: { alt: 9, az: -47, K: 3000, I: 6.0 }, exposure: 2.6, hemi: 0.08, windowFill: 0.45, env: 1.0, lamps: false },
+  evening: { sun: { alt: -5, az: -60, K: 3000, I: 0 }, exposure: 2.6, hemi: 0.02, windowFill: 0.05, env: 1.0, lamps: true },
 };
 
 const WARM = kelvin(2700);
@@ -58,6 +58,15 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
   windowFill.lookAt(windowFill.position.x, windowFill.position.y, 0);
   windowFill.userData.fake = true;
   rig.add(windowFill);
+
+  // photo-mode sky portal (only visible while the path tracer snapshots the scene)
+  const portal = new THREE.RectAreaLight(0xffffff, 1, win.x1 - win.x0 - 0.1, win.y1 - win.y0 - 0.06);
+  portal.name = 'sky-portal';
+  portal.position.set((win.x0 + win.x1) / 2, (win.y0 + win.y1) / 2, win.z + 0.125); // outside the glass, inside the reveal
+  portal.lookAt(portal.position.x, portal.position.y, 0);
+  portal.visibleToCameraRays = false;
+  portal.visible = false;
+  rig.add(portal);
 
   // sun-patch bounce (warm floor bounce lighting walls/ceiling)
   const bounce = new THREE.RectAreaLight(0xffffff, 0, 1, 1);
@@ -191,6 +200,9 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
     // window fill takes the horizon sky colour
     windowFill.color.set(P.horizon).lerp(new THREE.Color(P.zenith), 0.3);
     windowFill.intensity = P.horizonL * cfg.windowFill;
+    // portal radiance ≈ mean sky radiance seen through a vertical window (horizon-weighted)
+    portal.color.set(P.horizon).lerp(new THREE.Color(P.zenith), 0.35);
+    portal.intensity = (P.horizonL * 0.75 + P.zenithL * 0.25) * 0.92;
     placeBounce(dir, cfg);
     sunUpNow = sunUp;
     applyFallback();
@@ -225,7 +237,7 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
   }
 
   return {
-    rig, sun, hemi, windowFill, bounce, downlights, strip,
+    rig, sun, hemi, windowFill, bounce, downlights, strip, portal,
     get time() { return current; },
     get skyTexture() { return skyTex; },
     sunDirection: () => sunDirection(TOD[current]),

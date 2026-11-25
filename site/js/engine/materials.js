@@ -229,7 +229,8 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
 
   // --- builders -------------------------------------------------
   const wood = (species, o, extra = {}) => {
-    const b0 = tex('wood:' + species, () => T.woodTextures(species, T.hashStr(species) % 97 + 3));
+    const chevron = /chevron|herring/.test(String(o.layout || ''));
+    const b0 = chevron ? tex('chevron:' + species, () => T.chevronTextures(species)) : tex('wood:' + species, () => T.woodTextures(species, T.hashStr(species) % 97 + 3));
     const b = scaled(b0, o.scale || 1);
     const m = physical({
       ...withTex(b, 0.55), color: o.tint ? col(o.tint) : 0xffffff, roughness: o.roughness ?? 1, metalness: 0,
@@ -301,7 +302,8 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       return physical({ ...withTex(b, 0.5), roughness: 1, metalness: 0, clearcoat: 0.15, clearcoatRoughness: 0.5, sheen: 0.2, sheenRoughness: 0.5, sheenColor: new THREE.Color(c).lerp(new THREE.Color(0xffffff), 0.3), specularIntensity: 0.6 });
     },
     'wool-rug': (o) => {
-      const pile = tex('woolpile', () => T.woolPileTextures());
+      const fine = /weave|flat|kilim/.test(String(o.texture || ''));
+      const pile = fine ? tex('linen-rug', () => T.linenTextures(117, { tile: 0.3, threads: 110 })) : tex('woolpile', () => T.woolPileTextures());
       const c = detailColor(o.color, pile, '#E3DACB');
       if (o.pattern && o.pattern !== 'none') {
         // pattern map in rug UV (0..1 over the rug); pile normal repeats in metres
@@ -315,6 +317,13 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     },
     'jute': (o) => {
       const c = o.color || '#b89a6c';
+      if (o.pattern && o.pattern !== 'none' && o.pattern !== 'plain') {
+        const w = o.w || 2.3, d = o.d || 1.6;
+        const jb = tex('jute:' + c, () => T.juteTextures(161, c));
+        const pattern = T.rugPatternTexture({ w, d, color: c, patternColor: o.patternColor || '#C2A77D', pattern: o.pattern, seed: o.seed || 1, shape: o.shape || 'rect' });
+        const n = jb.normalMap.clone(); n.repeat.set(w / jb.tile[0], d / jb.tile[1]);
+        return physical({ map: pattern, normalMap: n, normalScale: new THREE.Vector2(1, 1), roughness: 0.95, metalness: 0, sheen: 0.3, sheenRoughness: 0.9, sheenColor: new THREE.Color(c), specularIntensity: 0.3 });
+      }
       const b = scaled(tex('jute:' + c, () => T.juteTextures(161, c)), o.scale || 1);
       return physical({ ...withTex(b, 1), roughness: 1, metalness: 0, sheen: 0.3, sheenRoughness: 0.9, sheenColor: new THREE.Color(c), specularIntensity: 0.3 });
     },
@@ -326,7 +335,7 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     'rattan': (o) => {
       const c = o.color || '#c49a5e';
       const b = scaled(tex('rattan:' + c, () => T.rattanTextures(151, c)), o.scale || 1);
-      return physical({ ...withTex(b, 1), roughness: 1, metalness: 0, clearcoat: 0.08, clearcoatRoughness: 0.5, specularIntensity: 0.5 });
+      return physical({ ...withTex(b, 1), roughness: 1, metalness: 0, clearcoat: 0.08, clearcoatRoughness: 0.5, specularIntensity: 0.5, side: o.side ?? THREE.DoubleSide });
     },
     // metals --------------------------------------------------
     'metal-black': (o) => {
@@ -422,8 +431,9 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       const w = o.w || 0.6, h = o.h || 0.8;
       const weave = tex('canvasweave', () => T.canvasWeaveTextures());
       const n = weave.normalMap.clone(); n.repeat.set(w / weave.tile[0], h / weave.tile[1]);
-      const map = o.map || T.artTexture({ motif: o.motif, colors: o.colors, aspect: w / h, seed: o.seed || 1 });
-      return standard({ map, normalMap: n, normalScale: new THREE.Vector2(0.35, 0.35), roughness: 0.88, metalness: 0 });
+      const art = o.map || T.artTexture({ motif: o.motif, colors: o.colors, aspect: w / h, seed: o.seed || 1, relief: !!o.relief });
+      if (art && art.normalMap) return standard({ map: art.map, normalMap: art.normalMap, normalScale: new THREE.Vector2(0.9, -0.9), roughness: 0.9, metalness: 0 });
+      return standard({ map: art, normalMap: n, normalScale: new THREE.Vector2(0.35, 0.35), roughness: 0.88, metalness: 0 });
     },
   };
 

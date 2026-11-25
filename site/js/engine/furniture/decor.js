@@ -13,7 +13,7 @@ export function wallArt(c) {
   const isMirror = /mirror/.test(String(p.kind || p.motif || c.item?.type || ''));
   if (frameKey === 'none' || frameKey.includes('canvas') || frameKey.includes('wrap')) {
     // gallery-wrapped canvas on a stretcher
-    const art = c.mat('canvas', { motif: p.motif, colors: p.colors, w: W, h: H, seed: c.seed });
+    const art = c.mat('canvas', { motif: p.motif, colors: p.colors, w: W, h: H, seed: c.seed, relief: !!p.relief || /textur|impasto|paste|plaster/.test(String(p.motif || '')) });
     const g = new THREE.PlaneGeometry(W, H);
     b.add(g, art, { pos: [0, 0, depth], uv: 'keep' });
     const bgc = (p.colors || []).find((x) => new THREE.Color(x).getHSL({}).l > 0.75) || '#efe8dc';
@@ -22,6 +22,21 @@ export function wallArt(c) {
   }
   const frameMat = frameKey.includes('white') ? c.mat('kitchen-front', { color: '#f2efe9' }) : frameKey.includes('black') ? c.mat('lacquer', { color: '#1c1b1a', roughness: 0.45 }) : frameKey.includes('brass') || frameKey.includes('gold') ? c.mat('metal-brass') : c.mat(frameKey);
   const fw = clamp(cm(p.frameWidth, Math.min(W, H) * 0.035), 0.012, 0.06);
+  if (String(p.frameShape || '').includes('arch')) {
+    // arch-topped frame: extruded ring + shaped canvas
+    const archShape = (w, h) => { const sh = new THREE.Shape(); const r = w / 2; const yb = -H / 2 + (H - h) / 2, yt = yb + h - r; sh.moveTo(-w / 2, yb); sh.lineTo(w / 2, yb); sh.lineTo(w / 2, yt); sh.absarc(0, yt, r, 0, Math.PI, false); sh.lineTo(-w / 2, yb); return sh; };
+    const outer = archShape(W, H), inner = archShape(W - 2 * fw, H - 2 * fw);
+    outer.holes.push(new THREE.Path(inner.getPoints(48).reverse()));
+    const fg = new THREE.ExtrudeGeometry(outer, { depth: depth - 0.004, bevelEnabled: true, bevelThickness: 0.002, bevelSize: 0.002, bevelSegments: 2, curveSegments: 48 });
+    b.add(fg, frameMat, { pos: [0, 0, 0.002] });
+    const ag = new THREE.ShapeGeometry(inner, 48);
+    const pa = ag.attributes.position, uv = ag.attributes.uv; const iw = W - 2 * fw, ih = H - 2 * fw;
+    for (let i = 0; i < pa.count; i++) uv.setXY(i, (pa.getX(i) + iw / 2) / iw, (pa.getY(i) + ih / 2) / ih);
+    const art = c.mat('canvas', { motif: p.motif, colors: p.colors, w: iw, h: ih, seed: c.seed, relief: !!p.relief || /textur|impasto|paste|plaster/.test(String(p.motif || '')) });
+    b.add(ag, art, { pos: [0, 0, depth - 0.006], uv: 'keep' });
+    b.add(new THREE.ShapeGeometry(inner, 24), c.mat('paper', { color: '#3b342e' }), { pos: [0, 0, 0.003], uv: 'keep' });
+    return { group: b.build('wall_art') };
+  }
   // frame bars (mitred look via overlapping soft boxes)
   const bar = (w, h, x, y, axis) => b.add(softBox(w, h, depth, { r: Math.min(0.003, fw / 4), seg: 2 }), frameMat, { pos: [x, y, depth / 2], axis });
   bar(W, fw, 0, H / 2 - fw / 2, 'x');
@@ -35,9 +50,9 @@ export function wallArt(c) {
     b.add(new THREE.PlaneGeometry(iw, ih), c.mat('mirror'), { pos: [0, 0, depth - 0.006], uv: 'keep' });
     return { group: b.build('wall_art') };
   }
-  const matW = p.mat === false || p.passepartout === false ? 0 : clamp(cm(p.matWidth, Math.min(iw, ih) * 0.12), 0, Math.min(iw, ih) * 0.3);
+  const matW = p.mat === false || p.passepartout === false || p.relief || /canvas|холст/i.test(String((c.item?.materials || [])[0] || '')) ? 0 : clamp(cm(p.matWidth, Math.min(iw, ih) * 0.12), 0, Math.min(iw, ih) * 0.3);
   const aw = iw - 2 * matW, ah = ih - 2 * matW;
-  const art = c.mat('canvas', { motif: p.motif, colors: p.colors, w: aw, h: ah, seed: c.seed });
+  const art = c.mat('canvas', { motif: p.motif, colors: p.colors, w: aw, h: ah, seed: c.seed, relief: !!p.relief || /textur|impasto|paste|plaster/.test(String(p.motif || '')) });
   b.add(new THREE.PlaneGeometry(aw, ah), art, { pos: [0, 0, depth - 0.008], uv: 'keep' });
   if (matW > 0) {
     const mm = c.mat('paper', { color: p.matColor || '#f3efe7' });
@@ -256,7 +271,7 @@ export function plant(c) {
     b.add(tr.geom, barkMat, { uv: 'keep' });
     const tmpl = leafTemplate({ L: 0.075, Wd: 0.015, nu: 2, nv: 2, fold: 0.3, arch: 0.18 });
     const cols = plantColors('#7f8f68', 32, r, 0.18);
-    const canopy = { c: V3(0, lerp(crownY, top, 0.56), 0), rx: W / 2 * 0.92, ry: (top - crownY) * 0.52 };
+    const canopy = { c: V3(0, lerp(crownY, top, 0.56), 0), rx: W / 2 * 0.8, ry: (top - crownY) * 0.52 };
     const leafAt = (lp, tan, k) => {
       const rel = lp.clone().sub(canopy.c);
       const e = Math.hypot(rel.x / canopy.rx, rel.y / canopy.ry, rel.z / canopy.rx);

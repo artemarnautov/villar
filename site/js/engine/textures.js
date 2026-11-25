@@ -418,6 +418,37 @@ export function floorTextures(species = 'oak-light', seed = 3) {
   }, { normalStrength: 1.0, placeholder: M, prep: sample.init });
 }
 
+/** Chevron / herringbone veneer: 45° strips (≈2.8 cm) in alternating 6 cm columns, tile 24 cm. */
+export function chevronTextures(species = 'walnut-dark', seed = 9) {
+  const P = WOOD_PALETTES[species] || WOOD_PALETTES['walnut-dark'];
+  const L = hexToRgb(P.light), M = hexToRgb(P.mid), D = hexToRgb(P.dark), S = hexToRgb(P.streak);
+  const sample = woodSampler(seed, P);
+  const r = rng(seed + 3);
+  const TU = 0.24, TV = 0.24, CW = 0.06, PER = TV / 6, SQ = Math.SQRT1_2;
+  const offs = Array.from({ length: 24 }, () => [r() * 1.6, r() * 0.4, 0.92 + r() * 0.14]);
+  const tmp = [0, 0, 0], tmp2 = [0, 0, 0];
+  return build(res(512), res(512), [TU, TV], (u, v, px) => {
+    const um = u * TU, vm = v * TV;
+    const k = Math.min(3, Math.floor(um / CW)), xl = um - k * CW, d = k % 2 ? 1 : -1;
+    const sv = vm + d * xl;
+    const jf = sv / PER, j = Math.floor(jf), fj = jf - j;
+    const o = offs[(((j % 6) + 6) % 6) * 4 + k];
+    const along = (xl - d * vm) * SQ, across = fj * PER * SQ;
+    const sm = sample(o[0] + along, o[1] + across);
+    mixRgb(L, M, clamp01(0.5 + 0.6 * sm.streak), tmp);
+    mixRgb(tmp, D, clamp01(sm.late * 0.45), tmp2);
+    if (sm.streak > 0.3) mixRgb(tmp2, S, (sm.streak - 0.3) * 0.5, tmp2);
+    let kk = o[2] * (1 - sm.pore * 0.3);
+    const eS = Math.min(fj, 1 - fj) * PER * SQ, eC = Math.min(xl, CW - xl);
+    const e = Math.min(eS, eC);
+    let h = -sm.pore * 0.6;
+    if (e < 0.0008) { kk *= 0.55; h -= 2; } else if (e < 0.0016) { kk *= 0.85; h -= 0.8; }
+    px.r = tmp2[0] * kk; px.g = tmp2[1] * kk; px.b = tmp2[2] * kk;
+    px.rough = P.rough + sm.pore * 0.15 + (e < 0.0016 ? 0.15 : 0);
+    px.h = h;
+  }, { normalStrength: 1.4, placeholder: M, prep: sample.init });
+}
+
 // ---------------------------------------------------------------- STONE & CERAMIC
 
 export function porcelainTileTextures(seed = 5, color = '#d9d4cc') {
@@ -821,15 +852,15 @@ export function rugPatternTexture({ w = 2.9, d = 2.0, color = '#e3dacb', pattern
   if (shape === 'round' || shape === 'oval') {
     const ell = (inset, lw) => { g.lineWidth = lw * sx; g.beginPath(); g.ellipse(W / 2, H / 2, W / 2 - inset * sx - g.lineWidth / 2, H / 2 - inset * sy - g.lineWidth / 2, 0, 0, Math.PI * 2); g.stroke(); };
     if (pattern !== 'solid' && pattern !== 'plain') { ell(m(6), m(5)); ell(m(14), m(1.2)); }
-  } else if (pattern === 'plain-border' || pattern === 'border') {
+  } else if (/^(plain-border|border)$/.test(pattern)) {
     rectInset(m(7), m(6)); rectInset(m(17), m(1.2));
   } else if (pattern === 'double-border') {
     rectInset(m(4), m(2.5)); rectInset(m(10), m(6)); rectInset(m(20), m(1));
-  } else if (pattern === 'stripes' || pattern === 'stripe') {
+  } else if (/stripe|pinstripe/.test(pattern)) {
     const n = Math.round(w / 0.18); g.globalAlpha = 0.85;
     for (let i = 0; i < n; i++) if (i % 2) g.fillRect(i * W / n, 0, (W / n) * (0.35 + 0.3 * r()), H);
     g.globalAlpha = 1;
-  } else if (pattern === 'geometric' || pattern === 'diamond' || pattern === 'berber' || pattern === 'beni-ourain') {
+  } else if (/geometric|diamond|berber|beni|ourain|lattice/.test(pattern)) {
     // hand-drawn lozenge lattice (Beni Ourain style): wobbly, varying stroke
     const cw = 0.42 * sx, chh = 0.62 * sy; g.lineCap = 'round'; g.lineJoin = 'round';
     const wob = (x, y) => [x + (r() - 0.5) * 0.02 * sx, y + (r() - 0.5) * 0.02 * sy];
@@ -845,12 +876,17 @@ export function rugPatternTexture({ w = 2.9, d = 2.0, color = '#e3dacb', pattern
       line(x + cw / 2, y, x, y + chh / 2); line(x, y + chh / 2, x + cw / 2, y + chh);
     }
     g.globalAlpha = 1;
-  } else if (pattern === 'abstract' || pattern === 'organic') {
-    g.globalAlpha = 0.5;
-    for (let i = 0; i < 9; i++) {
-      g.beginPath(); const cx = r() * W, cy = r() * H, rr = (0.2 + r() * 0.5) * sx;
-      g.ellipse(cx, cy, rr, rr * (0.4 + r() * 0.6), r() * Math.PI, 0, Math.PI * 2); g.fill();
+  } else if (/abstract|organic|wave|scribble/.test(pattern)) {
+    // soft tone-on-tone abstract: sweeping hand-tufted curves + a few blots
+    g.globalAlpha = 0.55; g.lineCap = 'round';
+    for (let i = 0; i < 7; i++) {
+      g.lineWidth = (0.03 + r() * 0.05) * sx; g.beginPath();
+      let x = r() * W, y = r() * H; g.moveTo(x, y);
+      for (let k = 0; k < 3; k++) { const x2 = r() * W, y2 = r() * H; g.bezierCurveTo(x + (r() - 0.5) * W, y + (r() - 0.5) * H, x2 + (r() - 0.5) * W * 0.5, y2, x2, y2); x = x2; y = y2; }
+      g.stroke();
     }
+    g.globalAlpha = 0.35;
+    for (let i = 0; i < 5; i++) { g.beginPath(); const cx = r() * W, cy = r() * H, rr = (0.15 + r() * 0.3) * sx; g.ellipse(cx, cy, rr, rr * (0.4 + r() * 0.6), r() * Math.PI, 0, Math.PI * 2); g.fill(); }
     g.globalAlpha = 1;
   } else if (pattern === 'distressed' || pattern === 'vintage') {
     rectInset(m(8), m(5));
@@ -864,9 +900,10 @@ export function rugPatternTexture({ w = 2.9, d = 2.0, color = '#e3dacb', pattern
 
 // ---------------------------------------------------------------- ART (canvas)
 
-const MOTIFS = ['abstract-arches', 'sun', 'organic', 'lines', 'landscape', 'botanical', 'stripes', 'grid', 'blocks'];
+const MOTIFS = ['abstract-arches', 'sun', 'organic', 'lines', 'landscape', 'botanical', 'stripes', 'grid', 'blocks', 'textured'];
 
-export function artTexture({ motif = 'abstract-arches', colors = ['#B5653F', '#E6DDCF', '#7A7B55'], aspect = 0.7, seed = 1 } = {}) {
+/** Returns a CanvasTexture; with relief: true returns { map, normalMap } (impasto / plaster relief). */
+export function artTexture({ motif = 'abstract-arches', colors = ['#B5653F', '#E6DDCF', '#7A7B55'], aspect = 0.7, seed = 1, relief = false } = {}) {
   const H = 1024, W = Math.max(64, Math.round(H * aspect));
   const cv = makeCanvas(W, H); const g = cv.getContext('2d');
   const r = rng(seed + hashStr(motif));
@@ -875,11 +912,22 @@ export function artTexture({ motif = 'abstract-arches', colors = ['#B5653F', '#E
   const pick = (i) => cols[i % cols.length];
   let m = String(motif || '').toLowerCase();
   if (!MOTIFS.some((k) => m.includes(k.split('-')[0]))) m = MOTIFS[hashStr(m) % MOTIFS.length];
+  const strokes = []; // relief height strokes [x, y, w, h, angle, height]
   const bg = cols.find((c) => lum(c) > 0.7) || paper;
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
   const others = cols.filter((c) => c !== bg);
   const oc = (i) => (others.length ? others[i % others.length] : pick(i));
-  if (m.includes('arch')) {
+  if (m.includes('textur') || m.includes('impasto') || m.includes('plaster')) {
+    // palette-knife strokes, tone on tone
+    for (let i = 0; i < 160; i++) {
+      const x = r() * W, y = r() * H, w = W * (0.1 + r() * 0.3), h = H * (0.02 + r() * 0.05), a = (r() - 0.5) * 0.7;
+      g.save(); g.translate(x, y); g.rotate(a); g.globalAlpha = 0.35 + r() * 0.4; g.fillStyle = i % 4 === 0 ? oc(i) : shade(bg, (r() - 0.5) * 0.18);
+      g.beginPath(); g.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2); g.fill(); g.restore();
+      strokes.push([x, y, w, h, a, 0.4 + r() * 0.6]);
+    }
+    g.globalAlpha = 1;
+    g.fillStyle = oc(1); g.globalAlpha = 0.5; g.beginPath(); g.ellipse(W * 0.6, H * 0.42, W * 0.18, H * 0.1, -0.3, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
+  } else if (m.includes('arch')) {
     const n = 3;
     for (let i = 0; i < n; i++) {
       const cx = W * (0.3 + 0.4 * (i / (n - 1))) + (r() - 0.5) * W * 0.1, w2 = W * (0.22 + r() * 0.1);
@@ -939,7 +987,32 @@ export function artTexture({ motif = 'abstract-arches', colors = ['#B5653F', '#E
   g.putImageData(img, 0, 0);
   const t = canvasTexture(cv);
   t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
-  return t;
+  if (!relief) return t;
+  // relief: height from blurred luminance edges (shapes stand proud) + knife strokes + fine grain
+  const RW = Math.min(512, W), RH = Math.round(RW * H / W);
+  const sc = makeCanvas(RW, RH); const sg = sc.getContext('2d');
+  sg.filter = 'blur(2px)'; sg.drawImage(cv, 0, 0, RW, RH); sg.filter = 'none';
+  const pix = sg.getImageData(0, 0, RW, RH).data;
+  const bgc = hexToRgb(bg); const bgl = bgc[0] * 0.3 + bgc[1] * 0.59 + bgc[2] * 0.11;
+  const Hh = new Float32Array(RW * RH);
+  const rn = rng(seed + 7);
+  for (let i = 0; i < RW * RH; i++) { const l = (pix[i * 4] * 0.3 + pix[i * 4 + 1] * 0.59 + pix[i * 4 + 2] * 0.11) / 255; Hh[i] = Math.min(1, Math.abs(l - bgl) * 3) * 1.5 + (rn() - 0.5) * 0.08; }
+  for (const [x, y, w, h, a, hh] of strokes) {
+    const cx = x * RW / W, cy = y * RH / H, rw = w * RW / W / 2, rh = h * RH / H / 2, ca = Math.cos(a), sa = Math.sin(a);
+    const R = Math.ceil(Math.max(rw, rh)) + 1;
+    for (let yy = Math.max(0, (cy - R) | 0); yy < Math.min(RH, cy + R); yy++) for (let xx = Math.max(0, (cx - R) | 0); xx < Math.min(RW, cx + R); xx++) {
+      const dx = xx - cx, dy = yy - cy; const u2 = (dx * ca + dy * sa) / rw, v2 = (-dx * sa + dy * ca) / rh; const d = u2 * u2 + v2 * v2;
+      if (d < 1) Hh[yy * RW + xx] += hh * (1 - d) * (0.6 + 0.4 * Math.sin(u2 * 9));
+    }
+  }
+  const N = heightToNormal(Hh, RW, RH, 3.0);
+  const nt = new THREE.DataTexture(N, RW, RH, THREE.RGBAFormat, THREE.UnsignedByteType);
+  nt.flipY = false; nt.colorSpace = THREE.NoColorSpace; nt.generateMipmaps = true; nt.minFilter = THREE.LinearMipmapLinearFilter; nt.magFilter = THREE.LinearFilter; nt.anisotropy = MAX_ANISO;
+  nt.wrapS = nt.wrapT = THREE.ClampToEdgeWrapping;
+  // canvas rows run top→bottom while DataTexture rows run bottom→top: flip via texture transform
+  nt.repeat.set(1, -1); nt.offset.set(0, 1);
+  nt.needsUpdate = true;
+  return { map: t, normalMap: nt };
 }
 
 function lum(hex) { const [r, g, b] = hexToRgb(hex); return 0.3 * r + 0.59 * g + 0.11 * b; }

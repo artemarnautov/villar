@@ -29,16 +29,87 @@ function table(c, kind) {
   const { W, D, H, params: p } = c;
   const b = new Builder(c.seed);
   const topKey = p.top || p.wood || 'walnut-dark';
-  const topMat = c.mat(topKey);
+  const topCol = p.topColor || null;
+  const topMat = c.mat(topKey, topCol ? (/ceram|paint|lacq|kitchen/.test(topKey) ? { color: topCol } : { match: topCol }) : undefined);
   const legKey = p.legMaterial || (String(p.legs || '').includes('metal') ? 'metal-black' : topKey);
-  const legMat = c.mat(legKey);
+  const legMat = c.mat(legKey, p.legColor ? (isMetal(legKey) || /ceram/.test(legKey) ? { color: p.legColor } : { match: p.legColor }) : undefined);
   const isStone = /marble|travert|stone|quartz|glass/.test(topKey);
   const tt = clamp(cm(p.topThickness, isStone ? 0.025 : kind === 'dining' ? 0.034 : 0.03), 0.012, 0.06);
   const { shape, round } = topShape(p.shape, W, D);
   b.add(slab(shape, tt, { bevel: Math.min(0.006, tt / 3), bevelSeg: 3, curveSeg: 64 }), topMat, { pos: [0, H - tt, 0], uv: 'box', axis: 'x' });
   const under = H - tt;
   const legs = String(p.legs || (round ? 'pedestal' : 'wood-taper')).toLowerCase();
-  const fluted = p.fluted || legs.includes('flut');
+  const ps = String(p.pedestalStyle || '').toLowerCase();
+  const fluted = p.fluted || legs.includes('flut') || ps.includes('flut');
+
+  if (legs.includes('pedestal') && ps && !ps.includes('drum') || ps.includes('slat')) {
+    const R0 = Math.min(W, D);
+    if (ps.includes('block')) {
+      // square/soft block pedestal
+      const bw = R0 * (kind === 'side' ? 0.36 : 0.34);
+      b.add(softBox(bw, under, bw, { r: 0.01, seg: 3 }), legMat, { pos: [0, under / 2, 0], axis: 'y' });
+    } else if (ps.includes('cone')) {
+      // tapered cone, optionally fluted
+      const rt = R0 * 0.16, rb = R0 * (kind === 'side' ? 0.34 : 0.3);
+      if (fluted) {
+        // fluted cone: lathe-like surface with scalloped (concave) flutes around
+        const n = Math.max(14, Math.round((2 * Math.PI * rb) / 0.04));
+        const segA = n * 6, segY = 8;
+        const pos = [], idx = [];
+        for (let j = 0; j <= segY; j++) {
+          const t = j / segY, y = t * under, r0 = rb + (rt - rb) * t;
+          for (let i = 0; i <= segA; i++) {
+            const a = (i / segA) * Math.PI * 2;
+            const f = (i % 6) / 6; const k = 1 - 0.07 * Math.sin(f * Math.PI);
+            pos.push(Math.cos(a) * r0 * k, y, Math.sin(a) * r0 * k);
+          }
+        }
+        const m = segA + 1;
+        for (let j = 0; j < segY; j++) for (let i = 0; i < segA; i++) { const a = j * m + i, b2 = a + 1, c2 = a + m, d = c2 + 1; idx.push(a, c2, d, a, d, b2); }
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+        b.add(g, legMat, { uv: 'cyl' });
+        b.add(new THREE.CylinderGeometry(rb * 0.92, rb * 0.92, 0.01, 48), c.mat('metal-black', { color: '#1d1a18' }), { pos: [0, 0.005, 0] });
+      } else b.add(new THREE.CylinderGeometry(rt, rb, under, 48), legMat, { pos: [0, under / 2, 0], uv: 'cyl' });
+    } else if (ps.includes('ball') || ps.includes('turned') || ps.includes('bead')) {
+      // stacked turned spheres
+      const prof = [];
+      const n = kind === 'side' ? 3 : 4; const rr = R0 * (kind === 'side' ? 0.2 : 0.17);
+      prof.push([0.001, 0], [rr * 0.7, 0]);
+      for (let i = 0; i < n; i++) {
+        const y0 = (i / n) * under, y1 = ((i + 1) / n) * under;
+        for (let k = 0; k <= 10; k++) { const t = k / 10; prof.push([Math.max(rr * 0.35, rr * Math.sin(t * Math.PI)), y0 + (y1 - y0) * t]); }
+      }
+      prof.push([rr * 0.6, under], [0.001, under]);
+      b.add(lathe(prof, 48), legMat, { uv: 'cyl' });
+    } else if (ps.includes('slat')) {
+      // ring of vertical slats around a dark core, on a disc foot
+      const rc = R0 * (kind === 'dining' ? 0.2 : 0.25), n = Math.max(12, Math.round((2 * Math.PI * rc) / 0.045));
+      b.add(new THREE.CylinderGeometry(rc * 0.8, rc * 0.8, under, 32), c.mat('walnut-dark', { tint: '#3a2e26' }), { pos: [0, under / 2, 0] });
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        b.add(softBox(0.03, under - 0.02, 0.022, { r: 0.006, seg: 2 }), legMat, { pos: [Math.cos(a) * rc, under / 2, Math.sin(a) * rc], rot: [0, -a + Math.PI / 2, 0], axis: 'y' });
+      }
+      if (kind === 'dining') b.add(slab(ellipseShape(rc * 2.6, rc * 2.6), 0.025, { bevel: 0.006 }), legMat, {});
+    }
+    return { group: b.build(kind + '_table'), anchors: { top: V3(0, H, 0) }, anchorInfo: { top: { w: W, d: D } } };
+  }
+  if (legs.includes('four-block') || (legs.includes('block') && p.legShape) || p.parsons) {
+    // chunky legs: cylinders (legShape) or squares; parsons = flush with the top corners
+    const cyl = String(p.legShape || '').includes('cyl');
+    const lw = clamp(Math.min(W, D) * (p.parsons ? 0.07 : 0.11), 0.04, 0.12);
+    const insetX = p.parsons ? lw / 2 : round ? W * 0.22 : lw / 2 + 0.06;
+    const insetZ = p.parsons ? lw / 2 : round ? D * 0.22 : lw / 2 + 0.06;
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const x = sx * (W / 2 - insetX), z = sz * (D / 2 - insetZ);
+      if (cyl) b.add(new THREE.CylinderGeometry(lw / 2, lw / 2, under, 32), legMat, { pos: [x, under / 2, z], uv: 'cyl' });
+      else b.add(softBox(lw, under, lw, { r: 0.004, seg: 2 }), legMat, { pos: [x, under / 2, z], axis: 'y' });
+    }
+    if (p.parsons) {
+      const ah = 0.06;
+      b.add(softBox(W - 0.004, ah, D - 0.004, { r: 0.003, seg: 1 }), legMat, { pos: [0, under - ah / 2, 0] });
+    }
+    return { group: b.build(kind + '_table'), anchors: { top: V3(0, H, 0) }, anchorInfo: { top: { w: W, d: D } } };
+  }
 
   if (legs.includes('pedestal') || legs.includes('drum') || legs.includes('column') || legs.includes('tulip') || legs.includes('cylinder')) {
     const rBase = Math.min(W, D) * (kind === 'side' ? 0.36 : legs.includes('drum') ? 0.4 : 0.3);
@@ -128,10 +199,14 @@ export function diningTable(c) { return table(c, 'dining'); }
  * Cabinet body with fronts. layout = array of columns, each { w (fraction), cells: [{ type:'drawer'|'door'|'open', h (fraction) }] }.
  */
 function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat', name, top = null }) {
+  const p = c.params;
   const b = new Builder(c.seed);
   const wood = c.mat(woodKey);
+  const frontWood = /herring|chevron/.test(front) ? c.mat(woodKey, { layout: 'chevron' }) : wood;
   const dark = c.mat('walnut-dark', { tint: '#5a4a40' });
-  const legH = legType === 'none' ? 0 : String(legType).includes('plinth') ? 0.06 : clamp(H * 0.26, 0.1, 0.2);
+  const lt = String(legType);
+  const legH = lt === 'none' || lt.includes('hidden') ? 0 : lt.includes('plinth') ? clamp(cm(p.legHeight, 0.06), 0.03, 0.12) : clamp(cm(p.legHeight, H * 0.26), 0.04, 0.25);
+  const legMat = p.legMaterial ? c.mat(p.legMaterial, p.legColor ? (isMetal(p.legMaterial) ? { color: p.legColor } : { match: p.legColor }) : undefined) : null;
   const bodyH = H - legH;
   const panelT = 0.018, reveal = 0.003, frontT = 0.018;
   const bodyD = D - frontT;
@@ -141,8 +216,7 @@ function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat'
   b.add(softBox(W, panelT, bodyD, { r: 0.003, seg: 1 }), wood, { pos: [0, legH + panelT / 2, bz] });
   for (const s of [-1, 1]) b.add(softBox(panelT, bodyH - panelT, bodyD + frontT, { r: 0.003, seg: 2 }), wood, { pos: [s * (W / 2 - panelT / 2), legH + (bodyH - panelT) / 2, 0], axis: 'y' });
   b.add(new THREE.BoxGeometry(W - 2 * panelT, bodyH - 2 * panelT, 0.006), dark, { pos: [0, legH + bodyH / 2, -D / 2 + 0.01] });
-  // inner shadow volume behind reveals
-  b.add(new THREE.BoxGeometry(W - 2 * panelT, bodyH - 2 * panelT, 0.004), dark, { pos: [0, legH + bodyH / 2, D / 2 - frontT - 0.004] });
+
   // fronts
   const fx0 = -W / 2 + panelT, fw = W - 2 * panelT;
   const fy0 = legH + panelT, fh = bodyH - 2 * panelT;
@@ -159,9 +233,12 @@ function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat'
       const cx = x + cw / 2, cy = y - ch / 2;
       const w = cw - reveal * 2, h = ch - reveal * 2;
       if (cell.type === 'open') {
-        b.add(softBox(cw, 0.012, bodyD - 0.02, { r: 0.002, seg: 1 }), wood, { pos: [cx, y - ch + 0.006, bz] });
+        b.add(softBox(cw, 0.014, bodyD - 0.02, { r: 0.002, seg: 1 }), wood, { pos: [cx, y - ch + 0.007, bz] });
+        b.add(new THREE.BoxGeometry(cw, ch, 0.006), wood, { pos: [cx, cy, -D / 2 + 0.016] });
       } else {
-        if (front === 'fluted' && cell.type === 'door') {
+        // dark shadow plane behind the reveals of closed fronts
+        b.add(new THREE.BoxGeometry(cw, ch, 0.004), dark, { pos: [cx, cy, D / 2 - frontT - 0.004] });
+        if (front === 'fluted') {
           b.add(new THREE.BoxGeometry(w, h, frontT * 0.6), wood, { pos: [cx, cy, zf - frontT * 0.2] });
           addFlutes(b, wood, { cx, cy, z: zf + frontT * 0.1, w, h, pitch: 0.026, depth: 0.007 });
         } else if (front === 'slatted' && cell.type === 'door') {
@@ -177,7 +254,7 @@ function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat'
           b.add(new THREE.PlaneGeometry(w - 2 * fr + 0.004, h - 2 * fr + 0.004), c.mat('cane'), { pos: [cx, cy, zf + 0.002] });
           b.add(new THREE.BoxGeometry(w - 2 * fr, h - 2 * fr, 0.004), dark, { pos: [cx, cy, zf - frontT / 2 + 0.002] });
         } else {
-          b.add(softBox(w, h, frontT, { r: 0.0025, seg: 2 }), wood, { pos: [cx, cy, zf] });
+          b.add(softBox(w, h, frontT, { r: 0.0025, seg: 2 }), frontWood, { pos: [cx, cy, zf] });
         }
         // handle
         const ht = handles || 'none';
@@ -196,36 +273,42 @@ function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat'
     x += cw;
   });
   // legs
-  if (String(legType).includes('plinth')) b.add(softBox(W - 0.06, legH, D - 0.06, { r: 0.003, seg: 1 }), dark, { pos: [0, legH / 2, -0.01] });
-  else if (legH > 0) addLegs(b, c, { type: legType, w: W, d: D, top: legH, inset: 0.045, mat: wood, metalMat: c.mat('metal-black') });
+  if (lt.includes('plinth')) b.add(softBox(W - 0.06, legH, D - 0.06, { r: 0.003, seg: 1 }), dark, { pos: [0, legH / 2, -0.01] });
+  else if (legH > 0) addLegs(b, c, { type: legType, w: W, d: D, top: legH, inset: 0.045, mat: legMat || wood, metalMat: legMat || c.mat('metal-black') });
+  else if (lt.includes('hidden')) b.add(softBox(W - 0.08, 0.04, D - 0.08, { r: 0.003, seg: 1 }), dark, { pos: [0, 0.02, -0.01] });
   return { group: b.build(name), anchors: { top: V3(0, H, 0) }, anchorInfo: { top: { w: W, d: D } } };
 }
 
 export function nightstand(c) {
   const { W, D, H, params: p } = c;
   const drawers = clamp(Math.round(p.drawers ?? 2), 0, 4);
+  const doors = clamp(Math.round(p.doors ?? 0), 0, 2);
+  const open = p.open === true ? 1 : clamp(Math.round(Number(p.open) || (p.shelf ? 1 : 0)), 0, 3);
   const cells = [];
-  if (p.open || p.shelf) cells.push({ type: 'open', h: 1 });
+  for (let i = 0; i < open; i++) cells.push({ type: 'open', h: 0.8 });
   for (let i = 0; i < drawers; i++) cells.push({ type: 'drawer', h: 1 });
+  if (doors) cells.push({ type: 'door', h: Math.max(1, 2 - drawers) });
   if (!cells.length) cells.push({ type: 'door', h: 1 });
-  return cabinet(c, { W, D, H, layout: [{ w: 1, cells }], legType: p.legs || 'wood-taper', woodKey: p.wood || p.frame || 'walnut-dark', handles: p.handles || 'none', front: p.front || (p.fluted ? 'fluted' : 'flat'), name: 'nightstand', top: p.top || null });
+  return cabinet(c, { W, D, H, layout: [{ w: 1, cells }], legType: p.legs || 'wood-taper', woodKey: p.wood || p.frame || 'walnut-dark', handles: p.handles || 'none', front: String(p.fronts || p.front || (p.fluted ? 'fluted' : 'flat')), name: 'nightstand', top: p.top || null });
 }
 
 export function tvUnit(c) {
   const { W, D, H, params: p } = c;
   const doors = clamp(Math.round(p.doors ?? 2), 0, 4);
-  const drawers = clamp(Math.round(p.drawers ?? 0), 0, 4);
-  const open = p.open ?? (doors + drawers === 0);
+  const drawers = clamp(Math.round(p.drawers ?? 0), 0, 6);
+  const openN = p.open === true ? 1 : clamp(Math.round(Number(p.open) || 0), 0, 4);
   const cols = [];
   const half = Math.ceil(doors / 2);
   for (let i = 0; i < half; i++) cols.push({ w: 1, cells: [{ type: 'door', h: 1 }] });
-  if (drawers > 0) {
-    const n = drawers;
-    if (W / (doors + 1) > 0.45 || n <= 2) cols.push({ w: 1, cells: Array.from({ length: n }, () => ({ type: 'drawer', h: 1 })) });
+  if (drawers > 2 && doors === 0) {
+    // a row of drawers under an open shelf
+    for (let i = 0; i < drawers; i++) cols.push({ w: 1, cells: openN ? [{ type: 'open', h: 0.9 }, { type: 'drawer', h: 1 }] : [{ type: 'drawer', h: 1 }] });
+  } else {
+    if (drawers > 0) cols.push({ w: 1, cells: Array.from({ length: drawers }, () => ({ type: 'drawer', h: 1 })) });
+    for (let i = 0; i < openN; i++) cols.push({ w: openN > 1 ? 0.7 : 1, cells: [{ type: 'open', h: 1 }, { type: 'open', h: 1 }] });
   }
-  if (open) cols.push({ w: 1, cells: [{ type: 'open', h: 1 }, { type: 'open', h: 1 }] });
   for (let i = half; i < doors; i++) cols.push({ w: 1, cells: [{ type: 'door', h: 1 }] });
   if (!cols.length) cols.push({ w: 1, cells: [{ type: 'open', h: 1 }] });
-  const front = p.front || (p.fluted ? 'fluted' : p.slatted ? 'slatted' : 'flat');
+  const front = String(p.fronts || p.front || (p.fluted ? 'fluted' : p.slatted ? 'slatted' : 'flat'));
   return cabinet(c, { W, D, H, layout: cols, legType: p.legs || 'wood-taper', woodKey: p.wood || 'walnut-dark', handles: p.handles || 'none', front, name: 'tv_unit', top: p.top || null });
 }

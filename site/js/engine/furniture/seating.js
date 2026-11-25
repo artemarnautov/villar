@@ -207,10 +207,13 @@ function barrelChair(c) {
   // seat platform + crowned round cushion
   const sr = R - t + 0.01;
   b.add(new THREE.CylinderGeometry(sr + 0.01, sr + 0.01, seatH - 0.12 - legH, 48), fab, { pos: [0, legH + (seatH - 0.12 - legH) / 2, 0] });
-  const prof = [];
-  for (let i = 0; i <= 14; i++) { const t2 = i / 14; prof.push([Math.max(0.001, sr * Math.sin(t2 * Math.PI / 2) ** 0.35), 0.12 * (1 - Math.cos(t2 * Math.PI)) / 2]); }
-  const cush = lathe(prof.map(([rr, y]) => [rr, y]).concat([[0.001, 0.13]]), 48);
-  b.add(cush, fab, { pos: [0, seatH - 0.12, 0.02] });
+  // puffy round seat cushion: flat bottom, rounded edge, crowned top
+  const ch = 0.13, rr = 0.045, cr = sr + 0.012, crown = 0.018;
+  const prof = [[0.001, 0], [cr - rr, 0]];
+  for (let i = 1; i <= 8; i++) { const a = -Math.PI / 2 + (i / 8) * Math.PI; prof.push([cr - rr + Math.cos(a) * rr, rr + Math.sin(a) * rr + (i > 4 ? (ch - 2 * rr) : 0)]); }
+  for (let i = 1; i <= 6; i++) { const t2 = i / 6; prof.push([(cr - rr) * (1 - t2), ch + crown * Math.sin(t2 * Math.PI / 2)]); }
+  prof[prof.length - 1][0] = 0.001;
+  b.add(lathe(prof, 56), fab, { pos: [0, seatH - ch, 0.015] });
   addLegs(b, c, { type: 'wood-taper', w: R * 1.3, d: R * 1.3, top: legH, inset: 0, mat: legMat });
   return { group: b.build('armchair'), anchors: { seat: V3(0, seatH, 0.05) } };
 }

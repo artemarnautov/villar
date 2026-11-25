@@ -13,7 +13,7 @@ export function bed(c) {
   const b = new Builder(c.seed);
   const woodKey = p.frame || p.wood || 'walnut-dark';
   const frameIsFabric = /fabric|bouc|linen|velvet|uphol/.test(String(woodKey));
-  const wood = frameIsFabric ? fabricMat(c, woodKey, p.headboardColor) : c.mat(woodKey);
+  const wood = frameIsFabric ? fabricMat(c, /uphol/.test(woodKey) ? (p.fabric || 'linen') : woodKey, p.frameColor || p.headboardColor) : c.mat(woodKey);
   const hbType = String(p.headboard || 'upholstered-panel').toLowerCase();
   const hbFab = fabricMat(c, p.fabric || p.headboardFabric || 'boucle', p.headboardColor || '#E8E1D5');
   const legType = String(p.legs || 'wood-short').toLowerCase();
@@ -22,9 +22,11 @@ export function bed(c) {
   const hbT = clamp((D - md) * 0.62, 0.05, 0.14);
   const footT = clamp(D - md - hbT, 0.02, 0.08);
   const sideT = clamp((W - mw) / 2, 0.02, 0.12);
-  const legH = legType === 'none' || legType.includes('floor') ? 0 : legType.includes('plinth') ? 0.07 : clamp(cm(p.legHeight, 0.1), 0.04, 0.25);
-  const deckY = clamp(cm(p.deckHeight, legH + 0.2), 0.12, 0.5);
-  const railTop = deckY + clamp(cm(p.railAbove, 0.06), 0, 0.15);
+  const hidden = legType.includes('hidden');
+  const legH = legType === 'none' || legType.includes('floor') ? 0 : hidden ? 0.035 : legType.includes('plinth') ? 0.07 : clamp(cm(p.legHeight, 0.1), 0.04, 0.25);
+  let deckY = clamp(cm(p.deckHeight, legH + 0.2), 0.12, 0.5);
+  let railTop = deckY + clamp(cm(p.railAbove, 0.06), 0, 0.15);
+  if (p.railHeight) { railTop = clamp(cm(p.railHeight), legH + 0.12, 0.6); deckY = Math.min(deckY, railTop - 0.04); }
   const railH = railTop - legH;
   const zc = -D / 2 + hbT + md / 2;
 
@@ -43,12 +45,33 @@ export function bed(c) {
       const n = Math.round(W / 0.06);
       for (let i = 0; i < n; i++) b.add(softBox(0.035, hbH - 0.25, 0.02, { r: 0.004, seg: 1 }), wood, { pos: [-W / 2 + (i + 0.5) * W / n, railTop + (hbH - 0.25 - (railTop - hbBottom)) / 2 + 0.1, -D / 2 + hbT * 0.5 + 0.01], axis: 'y' });
     }
-  } else if (hbType.includes('channel') || hbType.includes('tuft') || hbType.includes('rib')) {
+  } else if (hbType.includes('channel') || hbType.includes('rib')) {
     b.add(softBox(W, hbH, hbT * 0.4, { r: 0.006, seg: 2 }), wood, { pos: [0, hbBottom + hbH / 2, -D / 2 + hbT * 0.2], axis: 'y' });
     const n = Math.max(4, Math.round((W - 0.04) / 0.18));
     const cw = (W - 0.04) / n;
     const ch = H - railTop - 0.03;
     for (let i = 0; i < n; i++) b.add(softBox(cw + 0.004, ch, hbT * 0.6, { r: Math.min(0.04, cw / 2.3), seg: 4, cell: 0.08, bulge: { front: 0.02, top: 0.005 }, seed: c.seed + i }), hbFab, { pos: [-W / 2 + 0.02 + cw * (i + 0.5), railTop + ch / 2, -D / 2 + hbT * 0.4 + hbT * 0.3] });
+  } else if (hbType.includes('tuft') || hbType.includes('button') || hbType.includes('capiton')) {
+    // deep-buttoned upholstered panel: puffy cells + buttons on a diamond grid
+    const backT = hbT * 0.35;
+    b.add(softBox(W, hbH, backT, { r: 0.01, seg: 3 }), frameIsFabric ? wood : wood, { pos: [0, hbBottom + hbH / 2, -D / 2 + backT / 2], axis: 'y' });
+    const pw = W - 0.03, ph = H - railTop - 0.02, pt = hbT - backT + 0.01;
+    const z0 = -D / 2 + backT + pt / 2 - 0.004;
+    const g = softBox(pw, ph, pt, { r: Math.min(0.05, pt / 2.1), seg: 4, cell: 0.03, bulge: { front: 0.02, top: 0.008 }, seed: c.seed });
+    const nx = Math.max(4, Math.round(pw / 0.2)), ny = Math.max(2, Math.round(ph / 0.18));
+    const btn = [];
+    for (let j = 1; j < ny; j++) for (let i = 1; i < nx; i++) if ((i + j) % 2 === 0) btn.push([-pw / 2 + (i / nx) * pw, -ph / 2 + (j / ny) * ph]);
+    const pa = g.attributes.position;
+    for (let i = 0; i < pa.count; i++) {
+      if (pa.getZ(i) < pt * 0.2) continue;
+      const x = pa.getX(i), y = pa.getY(i);
+      let dip = 0;
+      for (const [bx, by] of btn) { const d2 = ((x - bx) ** 2 + (y - by) ** 2) / (0.06 * 0.06); dip = Math.max(dip, Math.exp(-d2)); }
+      pa.setZ(i, pa.getZ(i) - dip * 0.028);
+    }
+    g.computeVertexNormals();
+    b.add(g, hbFab, { pos: [0, railTop + ph / 2 + 0.005, z0] });
+    for (const [bx, by] of btn) { const sg = new THREE.SphereGeometry(0.009, 10, 6); sg.scale(1, 1, 0.5); b.add(sg, hbFab, { pos: [bx, railTop + ph / 2 + 0.005 + by, z0 + pt / 2 + 0.02 - 0.028] }); }
   } else if (hbType.includes('cane') || hbType.includes('rattan')) {
     // wooden frame headboard with a Vienna-cane panel
     const fr = 0.06, ft = hbT * 0.55;
@@ -70,8 +93,13 @@ export function bed(c) {
     b.add(softBox(pw, ph, pt, { r: Math.min(0.045, pt / 2.1), seg: 4, cell: 0.08, bulge: { front: 0.025, top: 0.006, left: 0.004, right: 0.004 }, wrinkle: 0.0015, seed: c.seed }), hbFab, { pos: [0, railTop + ph / 2 + 0.005, -D / 2 + backT + pt / 2 - 0.004] });
   }
 
+  if (p.footboard === true || p.footboard === 'true') {
+    const fh = clamp(cm(p.footboardHeight, 0.45), railTop + 0.02, H * 0.6);
+    b.add(softBox(W, fh - legH, footT + 0.01, { r: frameIsFabric ? 0.02 : 0.008, seg: 3 }), wood, { pos: [0, legH + (fh - legH) / 2, D / 2 - (footT + 0.01) / 2], axis: 'y' });
+  }
   // legs
-  if (legType.includes('plinth')) b.add(softBox(W - 0.1, legH, D - 0.12, { r: 0.004, seg: 1 }), c.mat('metal-black', { color: '#1d1a18' }), { pos: [0, legH / 2, 0] });
+  if (hidden) b.add(softBox(W - 0.12, legH, D - 0.16, { r: 0.003, seg: 1 }), c.mat('metal-black', { color: '#1d1a18' }), { pos: [0, legH / 2, 0] });
+  else if (legType.includes('plinth')) b.add(softBox(W - 0.1, legH, D - 0.12, { r: 0.004, seg: 1 }), c.mat('metal-black', { color: '#1d1a18' }), { pos: [0, legH / 2, 0] });
   else if (legH > 0) addLegs(b, c, { type: legType.includes('metal') ? 'metal' : legType.includes('taper') ? 'wood-taper' : 'wood-block', w: W, d: D, top: legH, inset: 0.07, mat: frameIsFabric ? c.mat('walnut-dark') : wood, metalMat: c.mat('metal-black'), middle: true });
 
   const group = b.build('bed');
@@ -82,7 +110,7 @@ export function mattress(c) {
   const { W, D, H, params: p } = c;
   const b = new Builder(c.seed);
   const t = clamp(cm(p.thickness != null ? p.thickness * 100 : null, H), 0.08, 0.4);
-  const cover = c.mat('fabric-cotton', { color: p.color || c.item?.colorHex || '#F4F2EE' });
+  const cover = c.mat('fabric-cotton', { color: p.coverColor || p.color || c.item?.colorHex || '#F4F2EE' });
   const band = c.mat('fabric-linen', { color: p.bandColor || '#d8d6d1' });
   const r = 0.04;
   b.add(softBox(W, t, D, { r, seg: 4, cell: 0.12, bulge: { top: 0.008, front: 0.004, back: 0.004, left: 0.004, right: 0.004 }, seed: c.seed }), cover, { pos: [0, t / 2, 0] });

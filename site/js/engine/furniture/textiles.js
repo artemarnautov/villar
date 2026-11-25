@@ -10,10 +10,13 @@ export function rug(c) {
   const shape = String(p.shape || 'rect').toLowerCase();
   const matKey = p.material || 'wool-rug';
   const isJute = /jute|sisal|seagrass/.test(matKey);
-  const pattern = p.pattern || (isJute ? 'none' : 'plain');
+  const pattern = String(p.pattern || (isJute ? 'none' : 'plain'));
   const round = shape.includes('round') || shape.includes('circle') || shape.includes('oval');
-  const usePattern = !isJute && pattern !== 'none';
-  const mat = isJute ? c.mat('jute', { color: p.color || '#b89a6c' }) : c.mat(matKey, usePattern ? { color: p.color || c.item?.colorHex, pattern, patternColor: p.patternColor, w: W, d: D, shape: round ? 'round' : 'rect', seed: c.seed } : { color: p.color || c.item?.colorHex });
+  const plain = pattern === 'none' || pattern === 'plain' || pattern === 'solid';
+  const usePattern = !plain;
+  const mat = isJute
+    ? c.mat('jute', usePattern ? { color: p.color || '#b89a6c', pattern, patternColor: p.patternColor, w: W, d: D, shape: round ? 'round' : 'rect', seed: c.seed } : { color: p.color || '#b89a6c' })
+    : c.mat(matKey, usePattern ? { color: p.color || c.item?.colorHex, pattern, patternColor: p.patternColor, w: W, d: D, shape: round ? 'round' : 'rect', seed: c.seed, texture: p.texture } : { color: p.color || c.item?.colorHex, texture: p.texture });
   const s = round ? ellipseShape(W, D) : roundedRectShape(W, D, 0.012);
   const bev = Math.min(0.004, t * 0.45);
   const g = new THREE.ExtrudeGeometry(s, { depth: Math.max(0.001, t - bev * 2), bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 2, curveSegments: round ? 96 : 8 });
@@ -54,63 +57,62 @@ export function rug(c) {
 export function curtains(c) {
   const { W, H, params: p } = c;
   const b = new Builder(c.seed);
-  const panels = clamp(Math.round(p.panels || 2), 1, 4);
-  const sheer = !!p.sheer;
-  const color = p.color || c.item?.colorHex || '#E9E2D4';
-  const fab = sheer ? c.mat('fabric-linen', { color, sheer: true, side: THREE.DoubleSide }) : c.mat(p.fabric === 'velvet' ? 'fabric-velvet' : 'fabric-linen', { color, side: THREE.DoubleSide });
-  if (sheer) { fab.transparent = true; fab.opacity = 0.62; fab.depthWrite = false; fab.sheen = 0.5; }
-  const span = Math.max(c.span || W, W);
-  const panelW = (p.panelWidth ? cm(p.panelWidth) : W / panels); // flat fabric width per panel… gathered:
-  const gathered = clamp(p.gathered ? cm(p.gathered) : (c.span ? Math.min(panelW * 0.55, span / panels) : W / panels), 0.2, span / panels);
-  const hang = H - 0.035; // below the track
+  // layers: [{ fabric, color, panels, blackout }] front (room side) to back; default = one layer from params
+  const layers = Array.isArray(p.layers) && p.layers.length ? p.layers.slice(0, 3) : [{ fabric: p.fabric, color: p.color, panels: p.panels, sheer: p.sheer }];
+  const span = Math.max(c.span || W, W * (c.span ? 0 : 1), 0.4);
+  const hang = H - 0.035;
   const r = rng(c.seed);
-  const wave = 0.13, amp = clamp(p.foldDepth ? cm(p.foldDepth) : 0.035, 0.015, 0.07);
-  const nx = Math.round(clamp(gathered / 0.012, 40, 110)), ny = 22;
-  for (let k = 0; k < panels; k++) {
-    // panel centre along x
-    let cx;
-    if (panels === 1) cx = c.span ? -span / 2 + gathered / 2 : 0;
-    else if (c.span) cx = k < panels / 2 ? -span / 2 + gathered / 2 + k * gathered : span / 2 - gathered / 2 - (panels - 1 - k) * gathered;
-    else cx = -W / 2 + gathered * (k + 0.5);
-    const gw = gathered * 0.995;
-    const phase = r() * Math.PI;
-    const pos = [], uv = [], idx = [];
-    for (let j = 0; j <= ny; j++) {
-      const v = j / ny; const y = 0.004 + v * (hang - 0.004);
-      // folds deepen slightly toward the hem, hem flares a touch
-      const ampY = amp * (0.85 + 0.25 * (1 - v));
-      let arc = 0, prevX = 0, prevZ = 0;
-      for (let i = 0; i <= nx; i++) {
-        const u = i / nx;
-        const x = -gw / 2 + u * gw;
-        const ph = (x / wave) * Math.PI * 2 + phase;
-        let z = Math.sin(ph) * ampY + Math.sin(ph * 0.37 + k) * 0.006 * (1 - v);
-        const sway = Math.sin(v * 3.1 + k) * 0.004;
-        z += sway;
-        if (i > 0) arc += Math.hypot(x - prevX, z - prevZ);
-        prevX = x; prevZ = z;
-        pos.push(cx + x, y, z);
-        uv.push(arc, y);
-      }
+  const nL = layers.length;
+  layers.forEach((L, li) => {
+    const sheer = L.sheer ?? (/sheer|voile|вуал/.test(String(L.fabric || '')) || (li === 0 && p.sheer && nL === 1));
+    const color = (L.color && /^#/.test(L.color) ? L.color : null) || p.color || c.item?.colorHex || '#E9E2D4';
+    const fk = /velvet/.test(String(L.fabric || '')) ? 'fabric-velvet' : 'fabric-linen';
+    const fab = sheer ? c.mat('fabric-linen', { color, sheer: true, side: THREE.DoubleSide, opacity: 0.55 }) : c.mat(fk, { color, side: THREE.DoubleSide });
+    const panels = clamp(Math.round(L.panels || p.panels || 2), 1, 6);
+    // sheer layer spreads over ~2/3 of the rail (parted in the middle); opaque layers are stacked at the ends
+    const cover = sheer ? (nL > 1 ? 0.62 : 0.56) : 0.24;
+    const groupW = (span * cover) / 2; // per side
+    const perSide = Math.max(1, Math.round(panels / 2));
+    const gw0 = panels === 1 ? span * cover : groupW / perSide;
+    const z = nL > 1 ? (li - (nL - 1) / 2) * -0.06 : 0;
+    const wave = 0.13, amp = clamp(p.foldDepth ? cm(p.foldDepth) : sheer ? 0.03 : 0.04, 0.015, 0.07);
+    for (let k = 0; k < panels; k++) {
+      const left = panels === 1 ? true : k < perSide;
+      const idx = left ? k : k - perSide;
+      const cx = panels === 1 ? -span / 2 + gw0 / 2 : left ? -span / 2 + gw0 * (idx + 0.5) : span / 2 - gw0 * (idx + 0.5);
+      addPanel(b, fab, { cx, z, gw: gw0 * 0.995, hang, wave, amp, phase: r() * Math.PI, k: k + li * 7, cast: !sheer });
     }
-    const m = nx + 1;
-    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-      const a = j * m + i, bb = a + 1, cc = a + m, d = cc + 1;
-      idx.push(a, bb, d, a, d, cc);
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-    g.setIndex(idx); g.computeVertexNormals();
-    b.add(g, fab, { uv: 'keep', cast: !sheer });
-    // heading tape (stiffer band at the top) + hem weight line
-    const hp = [];
-    for (let i = 0; i <= 40; i++) { const x = -gw / 2 + (i / 40) * gw; const ph = (x / wave) * Math.PI * 2 + phase; hp.push(V3(cx + x, hang - 0.004, Math.sin(ph) * amp * 0.85)); }
-    b.add(tube(hp, 0.004, { tubular: 120, radial: 5 }), fab, { cast: !sheer });
-  }
-  // ceiling track
+  });
+  // ceiling track (one per layer)
   const metal = c.mat(p.track || 'metal-white');
-  const tg = new THREE.BoxGeometry(span, 0.022, 0.03);
-  b.add(tg, metal, { pos: [0, H - 0.011, 0.0], cast: false });
+  for (let li = 0; li < nL; li++) b.add(new THREE.BoxGeometry(span, 0.022, 0.026), metal, { pos: [0, H - 0.011, nL > 1 ? (li - (nL - 1) / 2) * -0.06 : 0], cast: false });
   return { group: b.build('curtains') };
+}
+
+function addPanel(b, fab, { cx, z, gw, hang, wave, amp, phase, k, cast }) {
+  const nx = Math.round(clamp(gw / 0.012, 30, 110)), ny = 22;
+  const pos = [], uv = [], idx = [];
+  for (let j = 0; j <= ny; j++) {
+    const v = j / ny; const y = 0.004 + v * (hang - 0.004);
+    const ampY = amp * (0.85 + 0.25 * (1 - v));
+    let arc = 0, prevX = 0, prevZ = 0;
+    for (let i = 0; i <= nx; i++) {
+      const x = -gw / 2 + (i / nx) * gw;
+      const ph = (x / wave) * Math.PI * 2 + phase;
+      let zz = Math.sin(ph) * ampY + Math.sin(ph * 0.37 + k) * 0.006 * (1 - v) + Math.sin(v * 3.1 + k) * 0.004;
+      if (i > 0) arc += Math.hypot(x - prevX, zz - prevZ);
+      prevX = x; prevZ = zz;
+      pos.push(cx + x, y, z + zz); uv.push(arc, y);
+    }
+  }
+  const m = nx + 1;
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const a = j * m + i, bb = a + 1, cc = a + m, d = cc + 1; idx.push(a, bb, d, a, d, cc); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx); g.computeVertexNormals();
+  b.add(g, fab, { uv: 'keep', cast });
+  const hp = [];
+  for (let i = 0; i <= 40; i++) { const x = -gw / 2 + (i / 40) * gw; const ph = (x / wave) * Math.PI * 2 + phase; hp.push(V3(cx + x, hang - 0.004, z + Math.sin(ph) * amp * 0.85)); }
+  b.add(tube(hp, 0.004, { tubular: 100, radial: 5 }), fab, { cast });
 }

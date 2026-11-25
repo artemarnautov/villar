@@ -85,6 +85,7 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
   }
   const norm = (4 * Math.PI) / wsum;
   const atlasBuf = new Float32Array(cols * N * S * 4);
+  const stripBuf = new Float32Array(cols * S * 4);
   const shBuf = new Float32Array(7 * N * 4);
   const c = new Float32Array(27);
   function projectCPU() {
@@ -221,7 +222,16 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
     if (j0.bounce === 0 && j0.fresh) grid.visible = false;
     try {
       let n = 0;
-      while (j0.next < N && n < perFrame && performance.now() - t0 < budgetMs) { renderProbe(j0.next++); n++; }
+      while (j0.next < N && n < perFrame && performance.now() - t0 < budgetMs) {
+        const j = j0.next++;
+        renderProbe(j);
+        if (!useAsync) {
+          // software rasterisers choke on one big float readback: read this probe's strip now
+          renderer.readRenderTargetPixels(atlas, 0, j * S, cols, S, stripBuf);
+          atlasBuf.set(stripBuf, j * S * cols * 4);
+        }
+        n++;
+      }
       // adapt the per-frame count to the CPU cost of a probe (6 scene renders)
       const dt = performance.now() - t0;
       if (useAsync && n === perFrame) perFrame = dt < budgetMs * 0.5 ? Math.min(8, perFrame + 1) : dt > budgetMs * 1.2 ? Math.max(1, perFrame - 1) : perFrame;
@@ -235,9 +245,11 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
     if (j0.next >= N) {
       // async readback of the float atlas, SH9 projection on the CPU
       j0.reading = true;
-      const read = (useAsync && renderer.readRenderTargetPixelsAsync)
-        ? renderer.readRenderTargetPixelsAsync(atlas, 0, 0, cols, N * S, atlasBuf)
-        : new Promise((res) => { renderer.readRenderTargetPixels(atlas, 0, 0, cols, N * S, atlasBuf); res(); });
+      const read = useAsync
+        ? (renderer.readRenderTargetPixelsAsync
+          ? renderer.readRenderTargetPixelsAsync(atlas, 0, 0, cols, N * S, atlasBuf)
+          : new Promise((res) => { renderer.readRenderTargetPixels(atlas, 0, 0, cols, N * S, atlasBuf); res(); }))
+        : Promise.resolve();
       read.then(() => {
         if (j0.cancelled) return;
         upload(projectCPU());

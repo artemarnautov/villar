@@ -27,6 +27,7 @@ const TONE = { agx: THREE.AgXToneMapping, aces: THREE.ACESFilmicToneMapping, neu
 const BASE_EXPOSURE = { agx: 1.0, aces: 0.72, neutral: 0.85 };
 // slots hidden in the dollhouse (they hang from the ceiling or sit high on cut walls)
 const CUTAWAY_HIDE = new Set(['pendant_lamp', 'wall_art', 'curtains']);
+const PHOTO_EXPOSURE = 1.0; // path-traced exposure relative to raster (calibrated against GI)
 
 let chunksPatched = false;
 function patchShaderChunks(taps) {
@@ -308,14 +309,18 @@ export async function createVillar({
       const set = (obj, key, val) => { saved.push([obj, key, obj[key]]); obj[key] = val; };
       for (const l of lighting.fakeLights) set(l, 'visible', false);
       set(marker.mesh, 'visible', false);
+      set(probes.grid, 'visible', false);
+      // window portal: sky light enters as an area light (fast, low-noise convergence); the sky
+      // stays visible as background, but escaping indirect rays no longer sample it (no double count)
       set(scene, 'environment', lighting.skyTexture);
-      set(scene, 'environmentIntensity', 1);
+      set(scene, 'environmentIntensity', 0);
+      set(lighting.portal, 'visible', true);
       for (const m of arch.glassMaterials) { set(m, 'transmission', 1); set(m, 'opacity', 1); set(m, 'transparent', false); set(m, 'roughness', 0.0); }
       const sky = skyline.mesh.material;
       const skyEm = sky.emissiveMap;
       if (currentTime !== 'evening') { set(sky, 'emissiveMap', null); set(sky, 'emissiveIntensity', 0.45); }
       const restore = () => { for (let i = saved.length - 1; i >= 0; i--) { const [o, k, v] = saved[i]; o[k] = v; } sky.emissiveMap = skyEm; };
-      restore.exposureScale = 1.0;
+      restore.exposureScale = PHOTO_EXPOSURE;
       return restore;
     },
   });
@@ -336,9 +341,9 @@ export async function createVillar({
   }
 
   // ---------------------------------------------------------------- store changes
-  const unsubStore = store?.on ? store.on('change', ({ slotType }) => {
+  const unsubStore = store?.on ? store.on('change', (e) => {
     if (photo.active || photo.busy) stopPhoto();
-    const rebuilt = furnisher.rebuildType(slotType);
+    const rebuilt = Array.isArray(e.slots) && e.slots.length ? furnisher.rebuildSlots(e.slots) : furnisher.rebuildType(e.slotType);
     lighting.setLampLights(furnisher.lampLights());
     controls.setColliders(furnisher.colliders());
     if (cutaway) for (const id of rebuilt) {

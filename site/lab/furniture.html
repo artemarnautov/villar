@@ -36,12 +36,16 @@ import { buildItem, ARCHETYPES } from '/js/engine/furniture/index.js';
 import { softBox } from '/js/engine/furniture/geom.js';
 
 // URL params:
-//   ?item=<id>        one item close-up      &cam=close|front|side|top|back|low|far
+//   (none)            every catalog item in a grid with labels (tris)
+//   ?item=<id>        one item close-up      &cam=close|front|side|top|back|low|far|high  &zoom=1.3
+//   ?sheet=a,b,c      up to 6 close-ups in split viewports (ids, slot types or m:<materialKey>[#hex])  &cams=..
 //   ?type=<slotType>  only items of that type (grid)
+//   ?compose=1        mini room built through anchors like the engine  &view=living|bed|sofa|top  &pick=id,id
+//   ?variants=1|only  add built-in parameter variants (cane, chaise, mid-century, lamps, plants…)
 //   ?mats=1           material swatch board    &only=key1,key2
 //   ?tex=<key>        flat close-up of a material on a plane (0.5 m wide)  &span=metres
-//   ?lit=1            lamps on (dim environment)
-//   ?scene=1          small vignette: sofa+rug+coffee table+cushions+decor with anchors
+//   ?fuzz=1           robustness test (random/odd params for every archetype; see console)
+//   ?lit=1            lamps on (dim environment)      ?anchors=1  show anchor points
 //   ?catalog=<path>   alternative catalog json
 const Q = new URLSearchParams(location.search);
 const hud = document.getElementById('hud');
