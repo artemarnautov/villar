@@ -161,15 +161,32 @@
     "pendant-accorsa"
    ]
   },
-  "wall_art": {
-   "default": "art-zuri-80",
+  "art_sofa": {
+   "default": "art-madar-aziza-100",
    "options": [
-    "art-zuri-80",
-    "art-sylvan-60x90",
-    "art-aquarelle-53x80",
+    "art-madar-aziza-100",
+    "art-najla-120x80",
+    "art-madar-hiba-100",
+    "art-caitlin-triptych",
+    "art-zuri-80"
+   ]
+  },
+  "art_bed": {
+   "default": "art-ember-90x60",
+   "options": [
     "art-ember-90x60",
+    "art-caitlin-triptych",
+    "art-olina-120x60"
+   ]
+  },
+  "art_dining": {
+   "default": "art-aquarelle-53x80",
+   "options": [
+    "art-aquarelle-53x80",
+    "art-sylvan-60x90",
     "art-vaseo-53x80",
-    "art-nyla-50x70"
+    "art-nyla-50x70",
+    "art-zuri-80"
    ]
   },
   "plant": {
@@ -200,6 +217,9 @@
   "Приставной столик контрастирует с журнальным по материалу: орех ↔ травертин.",
   "Букле — не больше одного предмета на студию.",
   "Свет 2700 K; абажуры из льна, бумаги, ротанга или опала.",
+  "Подвес над столом: низ абажура на 75–85 см выше столешницы (≈1,3 м от потолка).",
+  "Три работы на стенах разные: одна акцентная над диваном, две тихие; рамы — один материал.",
+  "Работа над кроватью — низкого формата, низ на 15 см выше изголовья.",
   "Каждый вариант укладывается в габариты своего места в планировке."
  ]
 }

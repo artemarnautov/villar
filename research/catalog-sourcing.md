@@ -55,20 +55,27 @@ Full per-product record (URLs, SKUs, regular + sale prices, dims, materials, ver
 | dining_table | **2** (target 3) | `dining-kentana-100` (4391) | 1175–4391 |
 | dining_chair | 5 | `chair-linden` (779) | 779–2447 |
 | pendant_lamp | 5 | `pendant-cosme` (215) | 215–419 |
-| wall_art | 6 | `art-zuri-80` (299) | 95–455 |
+| art_sofa (slot id) | 5 | `art-madar-aziza-100` (599) | 239–599 |
+| art_bed (slot id) | **3** | `art-ember-90x60` (455) | 239–455 |
+| art_dining (slot id) | 5 | `art-aquarelle-53x80` (239) | 95–299 |
 | plant | 3 | `plant-olive-themis` (694) | 419–1115 |
 | curtains | 3 | `curtains-sullivan-layered` (1075) | 358–1075 |
 
-73 catalog items, built from 86 Home Centre products. 105 further candidates were checked and rejected or held
-for review (reasons in the raw file).
+78 catalog items, built from 91 Home Centre products. 111 further candidates were checked and rejected, held for
+review or not selected (reasons in the raw file). Wall art is chosen per placement: the style pack has keys
+`art_sofa`, `art_bed`, `art_dining` (layout slot ids) instead of a shared `wall_art` key; catalog items keep
+`type: "wall_art"`, and some pieces (Zuri, Caitlin) are offered in two slots.
 
-### Default room — 32,345 AED (all 26 placements)
+### Default room — 32,741 AED (all 26 placements)
 
 Lansbury oat sofa on a walnut rail · linen/olive/rust cushions · Baku walnut pebble coffee table · Heaton wool rug ·
 Jasper walnut TV unit on brass legs · Moxie travertine side table · Luna cognac-leather armchair on walnut ·
 Sable brass floor lamp · Cloud oat upholstered bed · Suri fluted-walnut nightstands ×2 with Crosby cream ceramic
 lamps ×2 · white percale + oat throw + terracotta lumbar · Kentana marble/walnut pedestal table Ø100 with Linden
-walnut chairs ×2 · Cosme linen pendant · Zuri textured canvas ×3 · olive tree in speckled ceramic planter ·
+walnut chairs ×2 · Cosme linen pendant · three different artworks: Madar Aziza 100×100 over the sofa (the one statement piece: sand
+ground, white relief stripes, terracotta-brown triangles), Ember 90×60 white botanical relief over the bed (quiet,
+low format) and Aquarelle 53×80 sage-and-terracotta vase relief in the dining nook (ties to the olive/rust cushions) —
+frames are one material (light wood-look) or none · olive tree in speckled ceramic planter ·
 layered Sullivan sheer + blackout curtains.
 
 Why this set: walnut appears in four places of different scale (TV unit, coffee table, nightstands, chair/table
@@ -115,13 +122,18 @@ Travertine coffee table Ø70 (below Ø80 rule), Canovia chair (dims look like se
 
 ## 6. Notes for the coordinator / other teams
 
-1. **wall_art is shared by three slots** (`art_dining`, `art_sofa`, `art_bed`) because selection is keyed by slot
-   type, so the same artwork hangs three times and is billed three times. Every wall_art option therefore fits the
-   smallest box (≤ 100 wide, ≤ 90 high). If per-slot art is wanted, give the slots their own types (e.g.
-   `wall_art_sofa`) and I can supply larger pieces for the sofa wall.
-2. **Pendant drop.** The pendant slot `max.h` is 1.0 m, so `dims.h + drop` ≤ 100 cm for every option. The rules
-   want the shade bottom 70–85 cm above the table (≈ 1.3 m from the 2.85 m ceiling). Raising `max.h` to 1.35
-   would allow that; then `drop` can grow by ~0.3 m.
+1. **Wall art per placement (resolved).** `art_sofa` options fit ≤ 160×100 (larger pieces added: Madar Aziza and
+   Madar Hiba 100×100, Najla 120×80, Caitlin triptych 126×60); `art_bed` fits ≤ 140×90 **and** is limited to
+   60 cm high so the bottom edge (centre at 1.60 m) clears the default Cloud headboard (114 cm) by ≥ 15 cm;
+   `art_dining` fits ≤ 100×100 (50–80 wide per rules). Cross-slot caveat: with the Nazario bed (headboard 119 cm)
+   the 60 cm bed pieces clear it by only 11 cm. Home Centre's best "arches" piece (Lina triptych, terracotta arches
+   and palms) is 120 cm tall per panel and fits no slot. Most other large Home Centre canvases are portrait
+   90–100 × 120–150 (too tall), blue/coastal, gold-leaf or calligraphy.
+2. **Pendant drop (resolved).** With the slot `max.h` raised to 1.4 m, every pendant now hangs at
+   `dims.h + drop` = 132 cm, so the shade bottom sits at 153 cm: 80 cm above Kentana (73 cm) and 78 cm above
+   Mahmayi (75 cm), inside the 70–85 cm rule. The old 1.0 m limit only shortened the drops; it did not exclude any
+   pendant, so no options needed adding. Home Centre's remaining pendants are clusters, glass/metal or
+   shade-only "Mix and Match" items without a cord set.
 3. decor_set is used twice (coffee table + TV unit) and nightstand / table_lamp / dining_chair twice each; the
    budget counts every placement (`store.total()`), as intended.
 
@@ -146,7 +158,8 @@ Travertine coffee table Ø70 (below Ø80 rule), Canovia chair (dims look like se
 | lamps `body` | base silhouette: `gourd`, `ribbed-gourd`, `turned-stem`, `column`, `fabric`, `rattan` |
 | lamps `stem` | `swing-arm`, `turned`, `straight` |
 | lamps `shadeDiameter`, `shadeMaterial`, `shadeProfile`, `tiers`, `trimColor` | metres; `opal`; `flattened`, `organic-wave`; count; hex |
-| pendant `drop` | metres from ceiling to top of shade (`dims.h + drop·100 ≤ max.h`) |
+| pendant `drop` | metres from ceiling to top of shade (`dims.h + drop·100 ≤ max.h`; all options = 132 cm total) |
+| wall_art `panels`, `gap`, `mirrored` | `[[w,h] m …]` for multi-panel sets; metres between panels; bool |
 | rug `texture` | `fine-weave` |
 | curtains `layers[]` | `{ fabric, color, panels, blackout }`, front-to-back order: sheer first |
 | wall_art `frame` / `frameShape` / `relief` | + `oak-light`; `arch`; bool (3D relief, no glass) |
@@ -162,4 +175,7 @@ Round items carry `dims.round = true` (w = d = diameter), which `formatDims` in 
 `node` script (kept outside the repo) checks: every layout slot type has a default inside its options; every
 option exists in the catalog with the right type; all prices are integers equal to `round(Σ regular × 1.2)` and
 match the raw file; public JSON has no `http`, supplier name, pid/sku/url keys or 9-digit codes; every option fits
-the `max` of every slot of its type (pendant: `h + drop`). Result: 0 errors, 0 warnings.
+the `max` of every slot it is offered in (pendant: `h + drop`); slot keys resolve as in `store.js` (slot id →
+group → type) and every layout slot gets a default; pendant shade bottom is 70–85 cm above every dining-table
+option; art_bed options clear the default headboard by ≥ 15 cm; the three wall-art defaults are different.
+Result: 0 errors, 0 warnings.

@@ -1567,7 +1567,7 @@
      "shade": "drum",
      "shadeColor": "#E6DFD3",
      "trimColor": "#8E5B34",
-     "drop": 0.72
+     "drop": 1.04
     }
    }
   },
@@ -1598,7 +1598,7 @@
      "shade": "pleated",
      "tiers": 2,
      "shadeColor": "#E8E1D6",
-     "drop": 0.6
+     "drop": 0.92
     }
    }
   },
@@ -1628,7 +1628,7 @@
      "body": "rattan",
      "shade": "dome",
      "shadeColor": "#C2A77D",
-     "drop": 0.59
+     "drop": 0.91
     }
    }
   },
@@ -1658,7 +1658,7 @@
      "shade": "globe",
      "shadeProfile": "flattened",
      "shadeColor": "#B89B6E",
-     "drop": 0.7
+     "drop": 1.02
     }
    }
   },
@@ -1688,7 +1688,7 @@
      "shade": "dome",
      "shadeProfile": "organic-wave",
      "shadeColor": "#C2A77D",
-     "drop": 0.69
+     "drop": 1.01
     }
    }
   },
@@ -2455,6 +2455,183 @@
       0.29,
       0.1,
       0.26
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-madar-aziza-100",
+   "type": "wall_art",
+   "name": "Картина Madar Aziza, масло, 100×100",
+   "price": 599,
+   "dims": {
+    "w": 100,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, масло, ручная роспись",
+    "Рама — полистирол под светлое дерево"
+   ],
+   "color": "Песочный / терракота",
+   "colorHex": "#D8CBB6",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-light",
+     "motif": "abstract-shapes",
+     "relief": true,
+     "colors": [
+      "#D8CBB6",
+      "#F0ECE4",
+      "#8E5B34"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-madar-hiba-100",
+   "type": "wall_art",
+   "name": "Картина Madar Hiba, масло, 100×100",
+   "price": 599,
+   "dims": {
+    "w": 100,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, масло, ручная роспись",
+    "Рама — полистирол под светлое дерево"
+   ],
+   "color": "Песочный / терракота",
+   "colorHex": "#D8CBB6",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-light",
+     "motif": "abstract-shapes",
+     "relief": true,
+     "mirrored": true,
+     "colors": [
+      "#D8CBB6",
+      "#F0ECE4",
+      "#8E5B34"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-najla-120x80",
+   "type": "wall_art",
+   "name": "Картина Najla, линейный цветок, 120×80",
+   "price": 479,
+   "dims": {
+    "w": 120,
+    "d": 5,
+    "h": 80
+   },
+   "materials": [
+    "Холст, смешанная техника",
+    "Рама — полистирол под тёплое дерево"
+   ],
+   "color": "Песочно-розовый",
+   "colorHex": "#DCC8BA",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-light",
+     "motif": "line-drawing",
+     "colors": [
+      "#DCC8BA",
+      "#F0E8E0",
+      "#8C6A5A"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-caitlin-triptych",
+   "type": "wall_art",
+   "name": "Триптих Caitlin, шалфей, 126×60",
+   "price": 239,
+   "dims": {
+    "w": 126,
+    "d": 3,
+    "h": 60
+   },
+   "materials": [
+    "Холст на МДФ",
+    "Без рамы, 3 панели"
+   ],
+   "color": "Шалфей / белый",
+   "colorHex": "#9A9C7E",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "none",
+     "motif": "botanical",
+     "panels": [
+      [
+       0.3,
+       0.6
+      ],
+      [
+       0.6,
+       0.6
+      ],
+      [
+       0.3,
+       0.6
+      ]
+     ],
+     "gap": 0.03,
+     "colors": [
+      "#9A9C7E",
+      "#F2EFE8"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-olina-120x60",
+   "type": "wall_art",
+   "name": "Картина Olina, ботаника, 120×60",
+   "price": 239,
+   "dims": {
+    "w": 120,
+    "d": 4,
+    "h": 60
+   },
+   "materials": [
+    "Холст, печать, золотое тиснение",
+    "Рама — полистирол под светлое дерево"
+   ],
+   "color": "Молочный",
+   "colorHex": "#ECE6DB",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-light",
+     "motif": "botanical",
+     "colors": [
+      "#ECE6DB",
+      "#F7F4EE",
+      "#B89B6E"
      ]
     }
    }

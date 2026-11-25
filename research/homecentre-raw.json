@@ -4206,6 +4206,248 @@
    "notes": "cream track-arm sofa on slim matte-black legs",
    "status": "accepted",
    "reason": "Used in: sofa-anders-3"
+  },
+  {
+   "pid": "169739598",
+   "sku": "169739598",
+   "title": "Madar Aziza Framed Oil Painting Canvas Wall Art - 100x100 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/buy-madar-aziza-framed-oil-painting-canvas-wall-art-100x100-cm/p/169739598",
+   "regularPrice": 499,
+   "salePrice": 499,
+   "dimsCm": {
+    "w": 100,
+    "d": 3.5,
+    "h": 100
+   },
+   "materials": "canvas, hand-painted oil; polystyrene frame",
+   "colour": "Brown",
+   "category": "Wall Art",
+   "image": "https://media.homecentre.com/i/homecentre/169739598-169739598-HC06182026_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "sand textured ground, white relief stripes, small terracotta-brown triangles; light natural frame",
+   "status": "accepted",
+   "reason": "Used in: art-madar-aziza-100"
+  },
+  {
+   "pid": "169739599",
+   "sku": "169739599",
+   "title": "Madar Hiba Framed Oil Painting Canvas Wall Art - 100x100 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/buy-madar-hiba-framed-oil-painting-canvas-wall-art-100x100-cm/p/169739599",
+   "regularPrice": 499,
+   "salePrice": 499,
+   "dimsCm": {
+    "w": 100,
+    "d": 3.5,
+    "h": 100
+   },
+   "materials": "canvas, hand-painted oil; polystyrene frame",
+   "colour": "Brown",
+   "category": "Wall Art",
+   "image": "https://media.homecentre.com/i/homecentre/169739599-169739599-HC06182026_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "mirror composition of Madar Aziza",
+   "status": "accepted",
+   "reason": "Used in: art-madar-hiba-100"
+  },
+  {
+   "pid": "169910440",
+   "sku": "169910440",
+   "title": "Najla Framed Canvas Wall Art - 120x80 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/buy-najla-framed-canvas-wall-art-120x80-cm/p/169910440",
+   "regularPrice": 399,
+   "salePrice": 399,
+   "dimsCm": {
+    "w": 120,
+    "d": 5,
+    "h": 80
+   },
+   "materials": "canvas, printed mixed media; polystyrene frame",
+   "colour": "Multi",
+   "category": "Wall Art",
+   "image": "https://media.homecentre.com/i/homecentre/169910440-169910440-HC06182026_01-2100.jpg",
+   "inStock": true,
+   "notes": "blush-sand poppy line study, thin warm wood-look frame; landscape",
+   "status": "accepted",
+   "reason": "Used in: art-najla-120x80"
+  },
+  {
+   "pid": "168125176",
+   "sku": "168125176",
+   "title": "Olina Framed Canvas Wall Art - 120x60 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/buy-olina-framed-canvas-wall-art-120x60-cm/p/168125176",
+   "regularPrice": 199,
+   "salePrice": 199,
+   "dimsCm": {
+    "w": 120,
+    "d": 3.5,
+    "h": 60
+   },
+   "materials": "canvas printed with gold foiling; polystyrene frame; MDF",
+   "colour": "Multi",
+   "category": "Wall Art",
+   "image": "https://media.homecentre.com/i/homecentre/168125176-168125176-HC07082025_01-2100.jpg?v=2",
+   "inStock": true,
+   "notes": "cream botanical with subtle gold-foil accents, natural frame",
+   "status": "accepted",
+   "reason": "Used in: art-olina-120x60"
+  },
+  {
+   "pid": "168684906",
+   "sku": "168684906",
+   "title": "Caitlin 3-Piece Panel Unframed Canvas Wall Art Set",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/buy-caitlin-3piece-panel-unframed-canvas-wall-art-set/p/168684906",
+   "regularPrice": 199,
+   "salePrice": 199,
+   "dimsCm": {
+    "w": 126,
+    "d": 2.5,
+    "h": 60
+   },
+   "materials": "canvas on MDF, unframed; 1x 60x60 + 2x 30x60",
+   "colour": "Green",
+   "category": "Wall Art",
+   "image": "https://media.homecentre.com/i/homecentre/168684906-168684906-HC10302025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "sage green panels with white palm/banana leaves; hung as a row 30+60+30 with 3 cm gaps = 126x60",
+   "status": "accepted",
+   "reason": "Used in: art-caitlin-triptych"
+  },
+  {
+   "pid": "169897144",
+   "sku": "169897144",
+   "title": "Botanique Theron Hand-painted Framed Canvas Wall Art - 100x100 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/p/169897144",
+   "regularPrice": 499,
+   "salePrice": 499,
+   "dimsCm": {
+    "w": 100,
+    "d": null,
+    "h": 100
+   },
+   "materials": "canvas hand-painted",
+   "colour": "Multi",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "not-selected: traditional dark landscape",
+   "status": "not-selected",
+   "reason": "Traditional dark landscape; Madar/Najla chosen for the sofa wall"
+  },
+  {
+   "pid": "170064348",
+   "sku": "170064348",
+   "title": "Cristella Framed Canvas Wall Art - 80x60 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/p/170064348",
+   "regularPrice": 179,
+   "salePrice": 179,
+   "dimsCm": {
+    "w": 80,
+    "d": 3.8,
+    "h": 60
+   },
+   "materials": "canvas printed embellished",
+   "colour": "Multi",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT cool blue-grey sky",
+   "status": "rejected",
+   "reason": "REJECT cool blue-grey sky"
+  },
+  {
+   "pid": "170075117",
+   "sku": "170075117",
+   "title": "Ladon Framed Canvas Wall Art - 120x40 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/p/170075117",
+   "regularPrice": 299,
+   "salePrice": 299,
+   "dimsCm": {
+    "w": 40,
+    "d": 3.5,
+    "h": 120
+   },
+   "materials": "canvas",
+   "colour": "Multi",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT portrait 40x120, too tall",
+   "status": "rejected",
+   "reason": "REJECT portrait 40x120, too tall"
+  },
+  {
+   "pid": "169739597",
+   "sku": "169739597",
+   "title": "Lina 3-Piece Oil Painting Framed Canvas Wall Art Set - 40x120 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/p/169739597",
+   "regularPrice": 799,
+   "salePrice": 799,
+   "dimsCm": {
+    "w": 125,
+    "d": null,
+    "h": 120
+   },
+   "materials": "canvas oil",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT terracotta arches (ideal motif) but panels 120 tall > any slot",
+   "status": "rejected",
+   "reason": "REJECT terracotta arches (ideal motif) but panels 120 tall > any slot"
+  },
+  {
+   "pid": "167823008",
+   "sku": "167823008",
+   "title": "Hemera 2-Piece Panel Wall Art Set - 46x90 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/p/167823008",
+   "regularPrice": 399,
+   "salePrice": 399,
+   "dimsCm": {
+    "w": 97,
+    "d": 4.5,
+    "h": 90
+   },
+   "materials": "iron",
+   "colour": "Natural",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "not-selected: metal panel decor",
+   "status": "not-selected",
+   "reason": "Iron panel decor, not artwork in palette"
+  },
+  {
+   "pid": "169910442",
+   "sku": "169910442",
+   "title": "Wardah Framed Canvas Wall Art - 120x80 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/p/169910442",
+   "regularPrice": 299,
+   "salePrice": 299,
+   "dimsCm": {
+    "w": 120,
+    "d": null,
+    "h": 80
+   },
+   "materials": "canvas gold leaf",
+   "colour": "Gold",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT gold-leaf tree (shiny gold)",
+   "status": "rejected",
+   "reason": "REJECT gold-leaf tree (shiny gold)"
   }
  ],
  "catalogItems": [
@@ -5416,6 +5658,81 @@
    ],
    "regularTotal": 377,
    "publicPrice": 452,
+   "note": ""
+  },
+  {
+   "id": "art-madar-aziza-100",
+   "type": "wall_art",
+   "components": [
+    {
+     "pid": "169739598",
+     "qty": 1,
+     "regular": 499,
+     "sale": 499
+    }
+   ],
+   "regularTotal": 499,
+   "publicPrice": 599,
+   "note": ""
+  },
+  {
+   "id": "art-madar-hiba-100",
+   "type": "wall_art",
+   "components": [
+    {
+     "pid": "169739599",
+     "qty": 1,
+     "regular": 499,
+     "sale": 499
+    }
+   ],
+   "regularTotal": 499,
+   "publicPrice": 599,
+   "note": ""
+  },
+  {
+   "id": "art-najla-120x80",
+   "type": "wall_art",
+   "components": [
+    {
+     "pid": "169910440",
+     "qty": 1,
+     "regular": 399,
+     "sale": 399
+    }
+   ],
+   "regularTotal": 399,
+   "publicPrice": 479,
+   "note": ""
+  },
+  {
+   "id": "art-caitlin-triptych",
+   "type": "wall_art",
+   "components": [
+    {
+     "pid": "168684906",
+     "qty": 1,
+     "regular": 199,
+     "sale": 199
+    }
+   ],
+   "regularTotal": 199,
+   "publicPrice": 239,
+   "note": ""
+  },
+  {
+   "id": "art-olina-120x60",
+   "type": "wall_art",
+   "components": [
+    {
+     "pid": "168125176",
+     "qty": 1,
+     "regular": 199,
+     "sale": 199
+    }
+   ],
+   "regularTotal": 199,
+   "publicPrice": 239,
    "note": ""
   }
  ]
