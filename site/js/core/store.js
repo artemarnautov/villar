@@ -28,10 +28,12 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
     const ps = pack.slots || {};
     return (ps[slot.id] && slot.id) || (slot.group && ps[slot.group] && slot.group) || slot.type;
   };
+  const slotByGroup = new Map();
+  for (const s of layout.slots) if (s.group && !slotByGroup.has(s.group)) slotByGroup.set(s.group, s);
   const keyIn = (pack, x) => {
     if (x && typeof x === 'object') x = x.slotId || x.id || x.slotType;
-    const slot = slotById.get(x);
-    return slot ? keyOfSlotIn(pack, slot) : x;
+    const slot = slotById.get(x) || slotByGroup.get(x);   // slot id or group name
+    return slot ? keyOfSlotIn(pack, slot) : x;              // else: already a key / slot type
   };
   const slotsForKeyIn = (pack, key) => layout.slots.filter((s) => keyOfSlotIn(pack, s) === key);
 
