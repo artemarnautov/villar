@@ -204,6 +204,65 @@
     "curtains-sullivan-sheer",
     "curtains-khor-sheer"
    ]
+  },
+  "tableware": {
+   "default": "tableware-mia-amber",
+   "options": [
+    "tableware-mia-amber",
+    "tableware-stoneage-olive",
+    "tableware-lillian-smoke"
+   ]
+  },
+  "centerpiece": {
+   "default": "centerpiece-sable-eucalyptus",
+   "options": [
+    "centerpiece-sable-eucalyptus",
+    "centerpiece-candles-travertine",
+    "centerpiece-maya-eucalyptus"
+   ]
+  },
+  "kitchen_decor": {
+   "default": "kitchen-walnut-black",
+   "options": [
+    "kitchen-walnut-black",
+    "kitchen-laimai-dark",
+    "kitchen-white-basic"
+   ]
+  },
+  "throw": {
+   "default": "throw-olivia-terracotta",
+   "options": [
+    "throw-olivia-terracotta",
+    "throw-norham-olive",
+    "throw-vayu-sage",
+    "throw-thorn-oat"
+   ]
+  },
+  "nightstand_decor": {
+   "default": "nsdecor-dara-box",
+   "options": [
+    "nsdecor-dara-box",
+    "nsdecor-travertine-candle",
+    "nsdecor-walnut-vase"
+   ]
+  },
+  "runner": {
+   "default": "runner-zen-bianca",
+   "options": [
+    "runner-zen-bianca",
+    "runner-marco-sandy",
+    "runner-zen-alba",
+    "runner-kaela"
+   ]
+  },
+  "mirror": {
+   "default": "mirror-sora-eda",
+   "options": [
+    "mirror-sora-eda",
+    "mirror-agnek-80",
+    "mirror-artemis-arch-60",
+    "mirror-artemis-arch-80"
+   ]
   }
  },
  "rules": [
@@ -220,6 +279,12 @@
   "Подвес над столом: низ абажура на 75–85 см выше столешницы (≈1,3 м от потолка).",
   "Три работы на стенах разные: одна акцентная над диваном, две тихие; рамы — один материал.",
   "Работа над кроватью — низкого формата, низ на 15 см выше изголовья.",
-  "Каждый вариант укладывается в габариты своего места в планировке."
- ]
+  "Каждый вариант укладывается в габариты своего места в планировке.",
+  "Сервировка и кухня — матовая керамика, дерево, янтарное или дымчатое стекло; приборы — латунь или дерево, без хрома.",
+  "Пледы и мелкий текстиль — олива, терракота или овсяный; не больше одного акцента на зону.",
+  "Зеркало — рама из ореха или тонкая латунь; форма круг, арка или органическая."
+ ],
+ "nameEn": "Dark Walnut",
+ "taglineEn": "Dark walnut. Warm linen. Nothing extra.",
+ "descriptionEn": "A calm studio built around dark walnut: cream and oat fabrics, travertine, satin brass and one cognac armchair, with olive and terracotta in small doses. Every piece is real and available to buy."
 }
