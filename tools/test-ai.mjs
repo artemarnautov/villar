@@ -63,7 +63,9 @@ section('core: parity with store.js');
   ok(store.total() === sim.total(base.id, S0.selection), 'default total matches store.total()', [store.total(), sim.total(base.id, S0.selection)]);
   for (const s of layout.slots) ok(store.keyOf(s.id) === sim.keyIn(base, s.id), `key of ${s.id}`);
   ok(sim.qty(base.id, 'nightstand') === store.qty('nightstand'), 'qty nightstand');
-  ok(sim.qty(base.id, 'decor_set') === 2, 'decor_set has 2 placements');
+  // Decor is two independent keys (coffee table, TV unit) since round 2; older packs used one decor_set ×2.
+  if (base.slots.decor_set) ok(sim.qty(base.id, 'decor_set') === 2, 'decor_set has 2 placements');
+  else ok(sim.qty(base.id, 'decor_coffee') === 1 && sim.qty(base.id, 'decor_tv') === 1, 'decor_coffee and decor_tv are separate placements');
   // style landing parity
   const anchor = { slotId: 'sofa', itemId: base.slots.sofa.options[0] };
   const pv = store.previewStyle('test-light', anchor);

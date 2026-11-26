@@ -274,24 +274,33 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
    * with a clear line of sight (`clear(from, to)`, supplied by the engine). Falls back to re-aiming
    * from where the camera is.
    */
-  function focusOn({ center, size = 0.8, front = null, clear = () => true }) {
+  function focusOn({ center, size = 0.8, radius = null, front = null, clear = () => true, preferYaw = null }) {
     if (!state.focus && !(state.transition && state.transition.pose.mode === 'focus')) state.returnPose = currentPose();
     const cam = camera.position;
     const base = front ? Math.atan2(front.x, front.z) : Math.atan2(cam.x - center.x, cam.z - center.z);
-    const d0 = clamp(0.95 + size * 1.25, 1.25, 3.6);
-    const camY = clamp(center.y + 0.42 + size * 0.32, 0.95, 1.72);
+    // distance that fits the object's bounding sphere inside the FREE part of the stage (HUD insets
+    // applied), with margin (D2-01): r / sin(half-angle of the free rect)
+    const r = Math.max(0.15, radius ?? size * 0.6);
+    const tv = Math.tan((camera.fov * DEG) / 2), th = tv * camera.aspect;
+    const fh = Math.max(0.25, 1 - state.insetTarget), fw = Math.max(0.25, 1 - state.insetRTarget);
+    const half = Math.min(Math.atan(tv * fh), Math.atan(th * fw));
+    const dFit = clamp((1.12 * r) / Math.sin(half), 0.9, 5.5);
     const offs = [35, -35, 25, -25, 48, -48, 12, -12, 62, -62, 0, 80, -80, 100, -100].map((a) => a * DEG);
     let best = null;
-    for (const off of offs) {
-      for (const k of [1, 0.86, 0.72, 0.58]) {
-        const h = d0 * k, dy = camY - center.y;
-        const fo = { center: center.clone(), size, yaw: base + off, pitch: Math.atan2(dy, h), dist: Math.hypot(h, dy) };
+    // prefer another angle before moving closer; closer only when no angle has room
+    for (const k of [1, 0.9, 0.8, 0.7, 0.6, 0.5]) {
+      const dist = dFit * k;
+      const dy = clamp(center.y + 0.3 + r * 0.45, 0.95, 1.75) - center.y;
+      const h = Math.sqrt(Math.max(0.04, dist * dist - dy * dy));
+      for (const off of offs) {
+        const fo = { center: center.clone(), size, yaw: base + off, pitch: Math.atan2(dy, h), dist };
         const p = focusPos(fo);
         if (!freeSpot(p) || !clear(p, center)) continue;
-        const score = Math.abs(Math.abs(off) - 35 * DEG) * 1.2 + (1 - k) * 0.9 + p.distanceTo(cam) * 0.04;
+        let score = Math.abs(Math.abs(off) - 35 * DEG) * 1.2 + p.distanceTo(cam) * 0.04;
+        if (preferYaw !== null) score += Math.abs(wrapAngle(fo.yaw - preferYaw)) * 2.5;
         if (!best || score < best.score) best = { fo, score };
-        break; // the largest free distance for this angle
       }
+      if (best) break;
     }
     let fo = best?.fo;
     if (!fo) {
@@ -300,7 +309,7 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
       fo = { center: center.clone(), size, yaw: Math.atan2(d.x, d.z), pitch: Math.asin(clamp(d.y / Math.max(1e-6, d.length()), -0.99, 0.99)), dist: Math.max(0.6, d.length()) };
     }
     fo.yaw0 = fo.yaw; fo.dist0 = fo.dist; fo.yawVel = 0; fo.pitchVel = 0; fo.clear = clear;
-    flyTo({ mode: 'focus', focus: fo }, { duration: 0.9 });
+    flyTo({ mode: 'focus', focus: fo }, { duration: preferYaw !== null ? 0.6 : 0.9 });
     return true;
   }
   /** Back to where the camera was before focusing. */

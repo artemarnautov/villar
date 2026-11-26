@@ -118,7 +118,12 @@ export function createThumbnailer({ renderer, materials, buildItem, releaseItem 
     // the studio's light set differs from the room's: compile its variants off the main thread first
     const wait = texWait.then(() => {
       if (!renderer.extensions.has('KHR_parallel_shader_compile')) return null;
-      return Promise.race([renderer.compileAsync(res.scene, res.camera), new Promise((r) => setTimeout(r, 3000))]).catch(() => null);
+      targets(Math.min(1024, Math.max(64, Math.round(size * 2))));
+      const prev = renderer.getRenderTarget();
+      renderer.setRenderTarget(res.rtHDR); // compile the variant the studio render will use
+      let p;
+      try { p = renderer.compileAsync(res.scene, res.camera); } finally { renderer.setRenderTarget(prev); }
+      return Promise.race([p, new Promise((r) => setTimeout(r, 3000))]).catch(() => null);
     });
     return wait.then(() => {
       try {

@@ -72,10 +72,14 @@ export function attachSSAO(material) {
   material.userData.villarSSAO = true;
   material.defines = { ...(material.defines || {}), VILLAR_SSAO: '' };
   const prev = material.onBeforeCompile;
-  material.onBeforeCompile = function (shader, renderer) {
-    if (prev && prev !== THREE.Material.prototype.onBeforeCompile) prev.call(this, shader, renderer);
-    Object.assign(shader.uniforms, SSAO);
-  };
+  if (!prev || !prev.villarSSAO) {
+    const fn = function (shader, renderer) {
+      if (prev && prev !== THREE.Material.prototype.onBeforeCompile) prev.call(this, shader, renderer);
+      Object.assign(shader.uniforms, SSAO);
+    };
+    fn.villarSSAO = true;
+    material.onBeforeCompile = fn;
+  }
   material.needsUpdate = true;
 }
 
@@ -89,10 +93,10 @@ class MeterPass extends Pass {
     this.fresh = false;
     this.rt = new THREE.WebGLRenderTarget(32, 20, { type: floatRT ? THREE.FloatType : THREE.HalfFloatType, depthBuffer: false, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
     this.material = new THREE.ShaderMaterial({
-      uniforms: { map: { value: null } },
+      uniforms: { map: { value: null }, rect: { value: new THREE.Vector4(0, 0, 1, 1) }, useRect: { value: 0 } },
       vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4( position.xy, 0.0, 1.0 ); }',
       fragmentShader: /* glsl */`
-        uniform sampler2D map; varying vec2 vUv;
+        uniform sampler2D map; uniform vec4 rect; uniform float useRect; varying vec2 vUv;
         void main() {
           vec2 o = vec2( 0.25 ) / vec2( 32.0, 20.0 );
           float L = 0.0, cw = 0.0, rg = 0.0, bg = 0.0;
@@ -102,16 +106,16 @@ class MeterPass extends Pass {
             c = clamp( c == c ? c : vec3( 0.0 ), vec3( 1e-4 ), vec3( 1e4 ) );   // NaN-safe
             float l = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
             L += log( l );
-            // AWB: near-neutral, not-too-bright surfaces vote (white walls, ceiling); saturated
-            // materials (oak floor, terracotta) and the sky / sun patches barely do (white-patch-ish)
             float a = log( c.r / c.g ), b = log( c.b / c.g );
             float k = exp( - 2.0 * ( abs( a ) + abs( b ) ) ) * ( l < 0.6 ? 1.0 : 0.08 );
             cw += k; rg += a * k; bg += b * k;
           }
-          vec2 d = ( vUv - vec2( 0.5, 0.48 ) ) * vec2( 1.3, 1.6 );
-          float w = exp( - dot( d, d ) * 3.0 );
-          // R: log-luminance · w   G: chroma weight · w   B, A: weighted log chroma · w  (Σw is analytic)
-          gl_FragColor = vec4( L * 0.25 * w, cw * 0.25 * w, rg * 0.25 * w, bg * 0.25 * w );
+          // spot (focused object's screen rect) or centre-weighted average
+          float w;
+          if ( useRect > 0.5 ) w = ( vUv.x >= rect.x && vUv.x <= rect.z && vUv.y >= rect.y && vUv.y <= rect.w ) ? 1.0 : 0.0;
+          else { vec2 d = ( vUv - vec2( 0.5, 0.48 ) ) * vec2( 1.3, 1.6 ); w = exp( - dot( d, d ) * 3.0 ); }
+          // R: log-luminance · w   G: w   B, A: chroma (diagnostics)
+          gl_FragColor = vec4( L * 0.25 * w, w, rg * 0.25 * w, bg * 0.25 * w );
         }`,
       depthTest: false, depthWrite: false, toneMapped: false,
     });
@@ -258,6 +262,17 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
       syncSSAO();
       SSAO.villarSSAOIntensity.value = gtao.enabled ? aoIntensity : 0;
       try { composer.render(dt); } finally { SSAO.villarSSAOIntensity.value = 0; }
+    },
+    /** Compile the post materials used only at night / on selection (bloom, outline) ahead of time. */
+    prewarm() {
+      const geo = new THREE.PlaneGeometry(2, 2), cam = new THREE.OrthographicCamera();
+      const mats = [bloom.materialHighPassFilter, ...(bloom.separableBlurMaterials || []), bloom.compositeMaterial, bloom.blendMaterial,
+        outline.maskBufferMaterial, outline.depthMaterial, outline.prepareMaskMaterial, outline.edgeDetectionMaterial, outline.separableBlurMaterial1, outline.separableBlurMaterial2, outline.overlayMaterial].filter(Boolean);
+      const prev = renderer.getRenderTarget();
+      renderer.setRenderTarget(composer.renderTarget2); // these passes render into linear float targets
+      try { for (const m of mats) { try { renderer.compile(new THREE.Mesh(geo, m), cam); } catch { /* best effort */ } } }
+      finally { renderer.setRenderTarget(prev); }
+      geo.dispose();
     },
     /** After a context restore: GL objects are gone; mark targets for re-creation. */
     onContextRestored() { WHITE.needsUpdate = true; },

@@ -77,7 +77,7 @@ vec3 villarSHIrradiance( vec3 c0, vec3 c1, vec3 c2, vec3 c3, vec3 c4, vec3 c5, v
 vec3 getLightProbeGridIrradiance( highp sampler3D probesSH, vec3 probesMin, vec3 probesMax, vec3 probesResolution, vec3 worldPos, vec3 worldNormal ) {
 	ivec3 res = ivec3( probesResolution + 0.5 );
 	vec3 spacing = ( probesMax - probesMin ) / probesResolution;
-	vec3 p = worldPos + worldNormal * spacing * 0.3;
+	vec3 p = worldPos + worldNormal * spacing * 0.45;
 	vec3 g = clamp( ( p - probesMin ) / spacing - 0.5, vec3( 0.0 ), vec3( res - 1 ) );
 	ivec3 base = min( ivec3( floor( g ) ), max( res - 2, ivec3( 0 ) ) );
 	vec3 f = clamp( g - vec3( base ), 0.0, 1.0 );
@@ -101,7 +101,8 @@ vec3 getLightProbeGridIrradiance( highp sampler3D probesSH, vec3 probesMin, vec3
 		vec4 t4 = texelFetch( probesSH, ivec3( q.x, q.y, zb + 4 * pad ), 0 );
 		vec4 t5 = texelFetch( probesSH, ivec3( q.x, q.y, zb + 5 * pad ), 0 );
 		vec4 t6 = texelFetch( probesSH, ivec3( q.x, q.y, zb + 6 * pad ), 0 );
-		w *= max( t6.w, 0.0 ) + 1e-4;
+		// soft validity: invalid probes hold dilated SH, so they still count (a hard 0/1 flips layers → seams)
+		w *= mix( 0.25, 1.0, clamp( t6.w, 0.0, 1.0 ) );
 		s0 += w * t0.xyz; s1 += w * vec3( t0.w, t1.xy ); s2 += w * vec3( t1.zw, t2.x ); s3 += w * t2.yzw;
 		s4 += w * t3.xyz; s5 += w * vec3( t3.w, t4.xy ); s6 += w * vec3( t4.zw, t5.x ); s7 += w * t5.yzw; s8 += w * t6.xyz;
 		wsum += w;
@@ -218,7 +219,7 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
   // ------------------------------------------------------------------ capture resources (lazy)
   let atlas = null, floatRT = null, copyQuad = null, cam = null, basis = null, norm = 1;
   let atlasBuf = null, stripBuf = null;
-  const shBuf = new Float32Array(N * 28), prevSH = new Float32Array(N * 28), outSH = new Float32Array(N * 28);
+  const shBuf = new Float32Array(N * 28), prevSH = new Float32Array(N * 28), outSH = new Float32Array(N * 28), subSH = new Float32Array(N * 28);
   const gl = renderer.getContext();
   const dbg = gl.getExtension('WEBGL_debug_renderer_info');
   const software = /swiftshader|llvmpipe|software/i.test(dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '');
@@ -309,6 +310,20 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
     return shBuf;
   }
 
+  // Indirect chroma (art direction, R2-02): every bounce off the oak floor multiplies its orange, and a
+  // 2-bounce bake of a white room under a sunlit oak floor lands at R/B ≈ 2.3 — physically plausible,
+  // photographically wrong (a photographer white-balances it away). Each SH band keeps its luminance and
+  // a fraction `chroma` of its colour deviation.
+  let chroma = 1;
+  function desaturate(sh, k) {
+    for (let j = 0; j < N; j++) {
+      const o = j * 28;
+      for (let b = 0; b < 9; b++) {
+        const i = o + b * 3, y = 0.2126 * sh[i] + 0.7152 * sh[i + 1] + 0.0722 * sh[i + 2];
+        sh[i] = y + (sh[i] - y) * k; sh[i + 1] = y + (sh[i + 1] - y) * k; sh[i + 2] = y + (sh[i + 2] - y) * k;
+      }
+    }
+  }
   /** Sanity: mean DC luminance of valid probes. A zero/NaN bake must never be shown. */
   function healthy(sh) {
     let s = 0, n = 0;
@@ -319,7 +334,9 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
   // ------------------------------------------------------------------ progressive bake
   let job = null;
   let perFrame = useAsync ? 3 : 1;
-  const TAIL = 0.5 / (1 - 0.5); // geometric tail of the missing bounces (white room: mean bounce ratio ≈ 0.5)
+  // missing bounces beyond the last one, extrapolated in LUMINANCE only (scaling the last bounce's chroma
+  // would multiply the oak-floor colour bleed with every bounce: sepia walls, R2-02)
+  const TAIL = 0.35;
 
   function renderProbe(j) {
     const p = gridPos[j];
@@ -402,18 +419,26 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
         read.then(() => {
           if (j0.cancelled) return;
           const sh = projectCPU();
-          let out = sh;
           const last = j0.bounce === j0.bounces - 1;
           if (j0.fresh && j0.bounce >= 1 && last) {
-            for (let i = 0; i < sh.length; i++) outSH[i] = (i % 28 === 27) ? sh[i] : sh[i] + (sh[i] - prevSH[i]) * TAIL;
-            out = outSH;
-          } else if (j0.subset) {
-            // dirty subset: keep every other probe's converged value (incl. its extrapolated tail)
-            outSH.set(lastOut);
-            for (let j = 0; j < N; j++) if (j0.subset.has(j) || !valid[j]) outSH.set(sh.subarray(j * 28, j * 28 + 28), j * 28);
-            out = outSH;
-          }
+            for (let j = 0; j < N; j++) {
+              const o = j * 28;
+              const y1 = 0.2126 * sh[o] + 0.7152 * sh[o + 1] + 0.0722 * sh[o + 2];
+              const y0 = 0.2126 * prevSH[o] + 0.7152 * prevSH[o + 1] + 0.0722 * prevSH[o + 2];
+              const k = y1 > 1e-6 ? 1 + TAIL * Math.max(0, y1 - y0) / y1 : 1;
+              for (let i = 0; i < 27; i++) outSH[o + i] = sh[o + i] * k;
+              outSH[o + 27] = sh[o + 27];
+            }
+          } else outSH.set(sh);
           prevSH.set(sh);
+          if (chroma < 1) desaturate(outSH, chroma);
+          let out = outSH;
+          if (j0.subset) {
+            // dirty subset: keep every other probe's converged value (incl. its extrapolated tail)
+            subSH.set(lastOut);
+            for (let j = 0; j < N; j++) if (j0.subset.has(j) || !valid[j]) subSH.set(outSH.subarray(j * 28, j * 28 + 28), j * 28);
+            out = subSH;
+          }
           if (!healthy(out)) throw new Error('empty SH result');
           writeTex(work, out);
           j0.hasWork = true;
@@ -459,6 +484,27 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
     get baking() { return !!job; },
     get progress() { return job ? Math.min(1, (job.bounce + job.k / Math.max(1, job.list.length)) / job.bounces) : 1; },
     get count() { return N; },
+    /** Fraction of the bounce light's colour that is kept (1 = physical). Applies from the next bake. */
+    setChroma(k) { chroma = Math.max(0, Math.min(1, k)); },
+    /** A bake is waiting for its GPU readback (progress does not move meanwhile — not a stall). */
+    get reading() { return !!(job && job.reading); },
+    /** Copy of the last converged result (for a per-(style, time) cache). */
+    snapshot() { return hasBaked ? lastOut.slice() : null; },
+    /** Show a cached converged result (blended) and use it as the base for later incremental bakes. */
+    load(sh, { ms = 400 } = {}) {
+      if (!sh || sh.length !== lastOut.length) return false;
+      if (job) { job.cancelled = true; job.resolve(false); job = null; }
+      lastOut.set(sh); hasBaked = true; writeTex(work, lastOut);
+      mode = 'baked'; present(lastOut, ms);
+      return true;
+    },
+    /** Debug: per-probe validity + DC luminance of the last bake and of what is displayed. */
+    dump() {
+      const Y = (a, j) => 0.2126 * a[j * 28] + 0.7152 * a[j * 28 + 1] + 0.0722 * a[j * 28 + 2];
+      const out = [];
+      for (let j = 0; j < N; j++) out.push([gridPos[j].toArray().map((v) => +v.toFixed(2)), valid[j], +Y(lastOut, j).toFixed(3), +Y(shown, j).toFixed(3), +shown[j * 28 + 27].toFixed(2)]);
+      return { res: [nx, ny, nz], mode, hasBaked, probes: out };
+    },
     /** After a context restore the GPU copies are gone: re-upload CPU data, recreate capture targets. */
     onContextRestored() {
       if (job) { job.cancelled = true; job.resolve(false); job = null; }

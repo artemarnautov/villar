@@ -2,29 +2,134 @@
   "id": "mediterranean",
   "name": "Средиземноморье",
   "nameEn": "Mediterranean",
-  "summary": "Стены и потолок как одна побелка, натуральный ротанг и венская сетка, тёплое светлое дерево, льняной песок и солнечная терракота с оливой. Полоска, арки и ручная керамика — как в отеле на Майорке, без морских штампов. Пак собран для посуточной аренды у моря.",
-  "summaryEn": "Walls and ceiling read as one coat of limewash, with natural rattan and cane, warm light wood, sand linen, and sun-baked terracotta with olive. Stripes, arches and handmade ceramics, like a hotel on Mallorca, with no nautical clichés. Made for short-term rentals by the sea.",
+  "summary": "Стены и потолок как одна побелка, натуральный ротанг и венская сетка, тёплое светлое дерево, песочный лён и солнечная терракота с оливой. Полоска, арки и ручная керамика — как в отеле на Майорке, без морских штампов.",
+  "summaryEn": "Walls and ceiling read as one coat of limewash, with natural rattan and cane, warm light wood, sand linen, and sun-baked terracotta with olive. Stripes, arches and handmade ceramics, like a hotel on Mallorca, with no nautical clichés.",
   "roles": {
-    "base": ["#F3EFE6", "#F2EFE8", "#C6A984"],
-    "secondary": ["#EEE8DC", "#DCCFB8", "#C4A57A", "#D6CFBF"],
-    "accent": ["#C2704D", "#76764B", "#2F5673"],
-    "wood": ["#B99A72", "#C4A57A", "#C6A984"],
-    "metal": ["#262422"],
-    "stone": ["#D9C7A8"]
+    "base": [
+      "#F3EFE6",
+      "#F2EFE8",
+      "#C6A984"
+    ],
+    "secondary": [
+      "#EEE8DC",
+      "#DCCFB8",
+      "#C4A57A",
+      "#D6CFBF"
+    ],
+    "accent": [
+      "#C2704D",
+      "#76764B",
+      "#2F5673"
+    ],
+    "wood": [
+      "#B99A72",
+      "#C4A57A",
+      "#C6A984"
+    ],
+    "metal": [
+      "#262422"
+    ],
+    "stone": [
+      "#D9C7A8"
+    ]
   },
   "swatches": [
-    { "name": "Известковый белый", "nameEn": "Limewash white", "hex": "#F3EFE6", "role": "walls", "share": 0.36, "lrv": 86 },
-    { "name": "Облачный потолок", "nameEn": "Cloud ceiling", "hex": "#F2EFE8", "role": "ceiling", "share": 0.1, "lrv": 86 },
-    { "name": "Светлый дуб (пол)", "nameEn": "Light oak floor", "hex": "#C6A984", "role": "floor", "share": 0.14, "lrv": 42 },
-    { "name": "Белёный лён", "nameEn": "Bleached linen", "hex": "#EEE8DC", "role": "textiles", "share": 0.07, "lrv": 81 },
-    { "name": "Песочный лён", "nameEn": "Sand linen", "hex": "#DCCFB8", "role": "textiles", "share": 0.09, "lrv": 63 },
-    { "name": "Натуральное дерево", "nameEn": "Natural wood", "hex": "#B99A72", "role": "wood", "share": 0.05, "lrv": 35 },
-    { "name": "Ротанг", "nameEn": "Rattan", "hex": "#C4A57A", "role": "wood", "share": 0.06, "lrv": 40 },
-    { "name": "Солнечная терракота", "nameEn": "Sun-baked terracotta", "hex": "#C2704D", "role": "accent", "share": 0.05, "lrv": 24 },
-    { "name": "Олива", "nameEn": "Olive", "hex": "#76764B", "role": "accent", "share": 0.03, "lrv": 17 },
-    { "name": "Эгейский синий", "nameEn": "Aegean blue", "hex": "#2F5673", "role": "accent", "share": 0.015, "lrv": 9 },
-    { "name": "Известняк и глина", "nameEn": "Limestone and clay", "hex": "#D9C7A8", "role": "stone", "share": 0.02, "lrv": 58 },
-    { "name": "Кованое железо", "nameEn": "Wrought iron", "hex": "#262422", "role": "metal", "share": 0.015, "lrv": 2 }
+    {
+      "name": "Известковый белый",
+      "nameEn": "Limewash white",
+      "hex": "#F3EFE6",
+      "role": "walls",
+      "share": 0.36,
+      "lrv": 86
+    },
+    {
+      "name": "Облачный потолок",
+      "nameEn": "Cloud ceiling",
+      "hex": "#F2EFE8",
+      "role": "ceiling",
+      "share": 0.1,
+      "lrv": 86
+    },
+    {
+      "name": "Светлый дуб пола",
+      "nameEn": "Light oak floor",
+      "hex": "#C6A984",
+      "role": "floor",
+      "share": 0.14,
+      "lrv": 42
+    },
+    {
+      "name": "Белёный лён",
+      "nameEn": "Bleached linen",
+      "hex": "#EEE8DC",
+      "role": "textiles",
+      "share": 0.07,
+      "lrv": 81
+    },
+    {
+      "name": "Песочный лён",
+      "nameEn": "Sand linen",
+      "hex": "#DCCFB8",
+      "role": "textiles",
+      "share": 0.09,
+      "lrv": 63
+    },
+    {
+      "name": "Натуральное дерево",
+      "nameEn": "Natural wood",
+      "hex": "#B99A72",
+      "role": "wood",
+      "share": 0.05,
+      "lrv": 35
+    },
+    {
+      "name": "Ротанг",
+      "nameEn": "Rattan",
+      "hex": "#C4A57A",
+      "role": "wood",
+      "share": 0.06,
+      "lrv": 40
+    },
+    {
+      "name": "Солнечная терракота",
+      "nameEn": "Sun-baked terracotta",
+      "hex": "#C2704D",
+      "role": "accent",
+      "share": 0.05,
+      "lrv": 24
+    },
+    {
+      "name": "Олива",
+      "nameEn": "Olive",
+      "hex": "#76764B",
+      "role": "accent",
+      "share": 0.03,
+      "lrv": 17
+    },
+    {
+      "name": "Эгейский синий",
+      "nameEn": "Aegean blue",
+      "hex": "#2F5673",
+      "role": "accent",
+      "share": 0.015,
+      "lrv": 9
+    },
+    {
+      "name": "Известняк и глина",
+      "nameEn": "Limestone and clay",
+      "hex": "#D9C7A8",
+      "role": "stone",
+      "share": 0.02,
+      "lrv": 58
+    },
+    {
+      "name": "Кованое железо",
+      "nameEn": "Wrought iron",
+      "hex": "#262422",
+      "role": "metal",
+      "share": 0.015,
+      "lrv": 2
+    }
   ],
   "architecture": {
     "walls": "#F3EFE6",

@@ -2,28 +2,126 @@
   "id": "greige-luxe",
   "name": "Кашемир",
   "nameEn": "Cashmere",
-  "summary": "Тихая роскошь по-дубайски: тон в тон от слоновой кости до мокко, букле и матовый бархат, травертин и тёплый мрамор, мягкие скруглённые силуэты и шампань-латунь. Тёмных масс нет: глубину дают фактура и ступени светлоты, а не контраст.",
-  "summaryEn": "Dubai-style quiet luxury: tone-on-tone from ivory to mocha, bouclé and matte velvet, travertine and warm marble, soft rounded silhouettes and champagne brass. No dark masses: depth comes from texture and steps of lightness, not contrast.",
+  "summary": "Тихая роскошь тон в тон — от слоновой кости до мокко: букле и матовый бархат, травертин и тёплый мрамор, мягкие скруглённые формы и латунь цвета шампань. Никаких резких контрастов — только фактуры и мягкие переходы тона.",
+  "summaryEn": "Quiet luxury, tone on tone from ivory to mocha: bouclé and matte velvet, travertine and warm marble, soft rounded shapes and champagne brass. No harsh contrast, just texture and soft shifts of tone.",
   "roles": {
-    "base": ["#E8E2D4", "#F2EFE8", "#C6A984"],
-    "secondary": ["#EDE6DA", "#CFC4B4", "#D7C8AF", "#D6CFBF"],
-    "accent": ["#A69686", "#8B6F5E", "#B8A27A"],
-    "wood": ["#8C7462", "#C6A984"],
-    "metal": ["#B8A27A"],
-    "stone": ["#D7C8AF", "#E6DED2"]
+    "base": [
+      "#E8E2D4",
+      "#F2EFE8",
+      "#C6A984"
+    ],
+    "secondary": [
+      "#EDE6DA",
+      "#CFC4B4",
+      "#D7C8AF",
+      "#D6CFBF"
+    ],
+    "accent": [
+      "#A69686",
+      "#8B6F5E",
+      "#B8A27A"
+    ],
+    "wood": [
+      "#8C7462",
+      "#C6A984"
+    ],
+    "metal": [
+      "#B8A27A"
+    ],
+    "stone": [
+      "#D7C8AF",
+      "#E6DED2"
+    ]
   },
   "swatches": [
-    { "name": "Тёплый жемчужный", "nameEn": "Warm pearl", "hex": "#E8E2D4", "role": "walls", "share": 0.36, "lrv": 76 },
-    { "name": "Облачный потолок", "nameEn": "Cloud ceiling", "hex": "#F2EFE8", "role": "ceiling", "share": 0.1, "lrv": 86 },
-    { "name": "Светлый дуб (пол)", "nameEn": "Light oak floor", "hex": "#C6A984", "role": "floor", "share": 0.14, "lrv": 42 },
-    { "name": "Слоновая кость", "nameEn": "Ivory bouclé", "hex": "#EDE6DA", "role": "textiles", "share": 0.11, "lrv": 80 },
-    { "name": "Грейж", "nameEn": "Greige", "hex": "#CFC4B4", "role": "textiles", "share": 0.09, "lrv": 56 },
-    { "name": "Травертин", "nameEn": "Travertine", "hex": "#D7C8AF", "role": "stone", "share": 0.07, "lrv": 59 },
-    { "name": "Тёплый мрамор", "nameEn": "Warm marble", "hex": "#E6DED2", "role": "stone", "share": 0.02, "lrv": 74 },
-    { "name": "Тёплый тауп", "nameEn": "Warm taupe", "hex": "#A69686", "role": "textiles", "share": 0.04, "lrv": 32 },
-    { "name": "Мокко", "nameEn": "Mocha", "hex": "#8B6F5E", "role": "accent", "share": 0.025, "lrv": 18 },
-    { "name": "Копчёный дуб", "nameEn": "Smoked oak", "hex": "#8C7462", "role": "wood", "share": 0.025, "lrv": 19 },
-    { "name": "Шампань-латунь", "nameEn": "Champagne brass", "hex": "#B8A27A", "role": "metal", "share": 0.02, "lrv": 37 }
+    {
+      "name": "Тёплый жемчужный",
+      "nameEn": "Warm pearl",
+      "hex": "#E8E2D4",
+      "role": "walls",
+      "share": 0.36,
+      "lrv": 76
+    },
+    {
+      "name": "Облачный потолок",
+      "nameEn": "Cloud ceiling",
+      "hex": "#F2EFE8",
+      "role": "ceiling",
+      "share": 0.1,
+      "lrv": 86
+    },
+    {
+      "name": "Светлый дуб пола",
+      "nameEn": "Light oak floor",
+      "hex": "#C6A984",
+      "role": "floor",
+      "share": 0.14,
+      "lrv": 42
+    },
+    {
+      "name": "Слоновая кость",
+      "nameEn": "Ivory bouclé",
+      "hex": "#EDE6DA",
+      "role": "textiles",
+      "share": 0.11,
+      "lrv": 80
+    },
+    {
+      "name": "Грейж",
+      "nameEn": "Greige",
+      "hex": "#CFC4B4",
+      "role": "textiles",
+      "share": 0.09,
+      "lrv": 56
+    },
+    {
+      "name": "Травертин",
+      "nameEn": "Travertine",
+      "hex": "#D7C8AF",
+      "role": "stone",
+      "share": 0.07,
+      "lrv": 59
+    },
+    {
+      "name": "Тёплый мрамор",
+      "nameEn": "Warm marble",
+      "hex": "#E6DED2",
+      "role": "stone",
+      "share": 0.02,
+      "lrv": 74
+    },
+    {
+      "name": "Тёплый тауп",
+      "nameEn": "Warm taupe",
+      "hex": "#A69686",
+      "role": "textiles",
+      "share": 0.04,
+      "lrv": 32
+    },
+    {
+      "name": "Мокко",
+      "nameEn": "Mocha",
+      "hex": "#8B6F5E",
+      "role": "accent",
+      "share": 0.025,
+      "lrv": 18
+    },
+    {
+      "name": "Копчёный дуб",
+      "nameEn": "Smoked oak",
+      "hex": "#8C7462",
+      "role": "wood",
+      "share": 0.025,
+      "lrv": 19
+    },
+    {
+      "name": "Шампань-латунь",
+      "nameEn": "Champagne brass",
+      "hex": "#B8A27A",
+      "role": "metal",
+      "share": 0.02,
+      "lrv": 37
+    }
   ],
   "architecture": {
     "walls": "#E8E2D4",

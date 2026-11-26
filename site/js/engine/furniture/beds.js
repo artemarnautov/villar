@@ -1,5 +1,5 @@
 // Villar furniture — bed frame, mattress, bedding (duvet drape, pillows, throw). Owner: modeler.
-import * as THREE from 'three';
+import * as THREE from '../../../vendor/three/three.module.js';
 import { Builder, softBox, pillowGeometry, tube, roundedRectLoop, weldNormals, segs, V3, clamp, lerp, cm } from './geom.js';
 import { fabricMat, addLegs, isMetal } from './parts.js';
 import { rng } from '../textures.js';
@@ -260,7 +260,7 @@ function drapeMap({ z0, hx, hz, rc = 0.06, lift = 0.03, maxDrop = 0.3, footHang 
  * Thick cloth: top surface over a wFlat × lFlat grid (a ∈ [−w/2, w/2], s ∈ [0, l]) through `map`, and a rolled
  * hem of thickness t around the whole perimeter (semicircle from the top surface to the hidden underside).
  */
-function thickCloth(map, { wFlat, lFlat, nA = 56, nS = 60, t = 0.03, rimSeg = 6 }) {
+function thickCloth(map, { wFlat, lFlat, nA = 56, nS = 60, t = 0.03, rimSeg = 6, headT = null, footT = null }) {
   nA = segs(nA, 16); nS = segs(nS, 16); rimSeg = segs(rimSeg, 3);
   const m = nA + 1;
   const P = new Float32Array((nS + 1) * m * 3);
@@ -312,12 +312,17 @@ function thickCloth(map, { wFlat, lFlat, nA = 56, nS = 60, t = 0.03, rimSeg = 6 
     if (j === nS) dir(i, nS - 1, -1);
     E.addScaledVector(Nv, -E.dot(Nv)).normalize();
     if (li > 0) { const [pi, pj] = loop[li - 1]; const kp = (pj * m + pi) * 3; arc += Math.hypot(P[k] - P[kp], P[k + 1] - P[kp + 1], P[k + 2] - P[kp + 2]); }
+    // headT: a thicker rolled fold along the head edge (j = 0) — the turn-down's fold reaching down to the
+    // mattress — easing back to t over the first two rows of the sides
+    // footT: thin hem along the free edge (j = nS), easing over the last rows of the sides
+    let tt = headT ? t + (headT - t) * Math.max(0, 1 - j / 2) : t;
+    if (footT) { const k = Math.max(0, Math.min(1, (j - nS * 0.6) / (nS * 0.4))); tt = tt + (footT - tt) * k * k * (3 - 2 * k); }
     for (let r2 = 0; r2 <= rimSeg; r2++) {
       const th = (r2 / rimSeg) * Math.PI;
       const cn = Math.cos(th), sn = Math.sin(th);
-      pos.push(Pv.x - Nv.x * t / 2 + (Nv.x * cn + E.x * sn) * t / 2, Pv.y - Nv.y * t / 2 + (Nv.y * cn + E.y * sn) * t / 2, Pv.z - Nv.z * t / 2 + (Nv.z * cn + E.z * sn) * t / 2);
+      pos.push(Pv.x - Nv.x * tt / 2 + (Nv.x * cn + E.x * sn) * tt / 2, Pv.y - Nv.y * tt / 2 + (Nv.y * cn + E.y * sn) * tt / 2, Pv.z - Nv.z * tt / 2 + (Nv.z * cn + E.z * sn) * tt / 2);
       nor.push(Nv.x * cn + E.x * sn, Nv.y * cn + E.y * sn, Nv.z * cn + E.z * sn);
-      uv.push(arc, th * t / 2);
+      uv.push(arc, th * tt / 2);
     }
   }
   const rs = rimSeg + 1;
@@ -358,20 +363,32 @@ export function bedding(c) {
   const rc = 0.07;
   const lFlat = (hz - z0) + (rc * Math.PI) / 2 + maxDrop * 0.85;
   const wFlat = mw + 2 * ((rc * Math.PI) / 2 - rc) + 2 * maxDrop * 0.85 + 0.02;
-  const relief = clothRelief(c.seed, { creases: makeCreases(c.seed, hx, hz, z0, 8) });
-  const dmap = drapeMap({ z0, hx, hz, rc, lift: t, maxDrop, relief, seed: c.seed });
-  b.add(thickCloth(dmap, { wFlat, lFlat, nA: 60, nS: 64, t }), duvet, { uv: 'keep' });
-  // turn-down: the duvet folded back over its head end (double thickness, rolled fold edge)
-  const fmap = drapeMap({ z0: z0 - 0.002, hx, hz, rc, lift: 2 * t + 0.002, maxDrop: maxDrop - 0.01, footHang: false, relief, seed: c.seed + 5 });
-  b.add(thickCloth(fmap, { wFlat: wFlat - 0.01, lFlat: 0.27, nA: 60, nS: 10, t: 2 * t }), duvet, { uv: 'keep' });
+  // creases start below the turn-down (sampled finely there), so the fold edge stays a clean, smooth roll
+  const fold = 0.27;
+  const relief = clothRelief(c.seed, { creases: makeCreases(c.seed, hx, hz, z0 + fold, 8) });
+  // open duvet starts inside the fold roll (its own head rim is hidden)
+  const dz = t * 0.9;
+  const dmap = drapeMap({ z0: z0 + dz, hx, hz, rc, lift: t, maxDrop, relief, seed: c.seed });
+  b.add(thickCloth(dmap, { wFlat, lFlat: lFlat - dz, nA: 64, nS: 64, t }), duvet, { uv: 'keep' });
+  // R2-17 turn-down: the duvet folded back over its head end — one duvet thickness lying 2 mm above the open
+  // part (same relief, never intersecting), joined to the mattress by a rounded fold roll of full height (no
+  // stair-stepped polyline: 96 segments across, no creases under it)
+  const lift2 = 2 * t + 0.002;
+  const fmap0 = drapeMap({ z0, hx, hz, rc, lift: lift2, maxDrop: maxDrop - 0.012, footHang: false, relief, seed: c.seed + 5 });
+  // the folded part thins out toward its free edge (a duvet's sewn hem is ~1 cm): the top surface eases down over
+  // the last 40 % so the hem is a soft 12 mm edge lying on the open duvet, not a 3 cm sunlit step
+  const hemT = 0.012;
+  const fmap = (a, s) => { const p = fmap0(a, s); const k = Math.max(0, Math.min(1, (s - fold * 0.6) / (fold * 0.4))); p[1] -= (k * k * (3 - 2 * k)) * (t * 0.9 - hemT); return p; };
+  b.add(thickCloth(fmap, { wFlat: wFlat - 0.012, lFlat: fold, nA: 96, nS: 16, t: t * 0.9, headT: lift2, footT: hemT, rimSeg: 8 }), duvet, { uv: 'keep' });
 
   // throw folded across the foot (knit), lying on the duvet
   if (p.throwColor !== null && p.throw !== false) {
     const throwFab = fabricMat(c, p.throwFabric || 'knit', p.throwColor || '#7A7B55');
     const tt = 0.018, tl = 0.5, tz0 = hz - 0.62;
     const tw = Math.min(wFlat, mw + 0.34);
-    const tmap = drapeMap({ z0: tz0, hx: hx + t, hz: hz + t, rc: rc + t * 0.5, lift: t + tt + 0.004, maxDrop: maxDrop - 0.05, footHang: false, relief, seed: c.seed + 9 });
-    b.add(thickCloth(tmap, { wFlat: tw, lFlat: tl, nA: 48, nS: 14, t: tt }), throwFab, { uv: 'keep' });
+    // rests on the duvet (1.5 mm air gap, was 4 mm → read as a dark hem line, R2-17)
+    const tmap = drapeMap({ z0: tz0, hx, hz, rc, lift: t + tt + 0.0015, maxDrop: maxDrop - 0.05, footHang: false, relief, seed: c.seed + 9 });
+    b.add(thickCloth(tmap, { wFlat: tw, lFlat: tl, nA: 64, nS: 16, t: tt, rimSeg: 6 }), throwFab, { uv: 'keep' });
   }
 
   // pillows

@@ -2,10 +2,52 @@
 // All sizes in metres. Parts are collected per material and merged (few draw calls,
 // path-tracer friendly: no InstancedMesh, every geometry has position/normal/uv).
 
-import * as THREE from 'three';
-import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+// three is imported by URL (the same module the import map's 'three' resolves to — one instance), so the
+// generators also run inside a module Worker, where import maps do not apply (T8: furniture/worker.js)
+import * as THREE from '../../../vendor/three/three.module.js';
 import { boxProjectUVs, cylinderUVs } from '../materials.js';
 import { rng } from '../textures.js';
+
+/** Concatenate geometries with identical attribute sets (all indexed or all not). */
+export function mergeGeometries(list) {
+  const names = Object.keys(list[0].attributes);
+  const out = new THREE.BufferGeometry();
+  for (const k of names) {
+    const a0 = list[0].attributes[k];
+    let n = 0; for (const g of list) n += g.attributes[k].array.length;
+    const arr = new a0.array.constructor(n);
+    let o = 0; for (const g of list) { arr.set(g.attributes[k].array, o); o += g.attributes[k].array.length; }
+    out.setAttribute(k, new THREE.BufferAttribute(arr, a0.itemSize, a0.normalized));
+  }
+  if (list[0].index) {
+    let n = 0, verts = 0; for (const g of list) { n += g.index.count; verts += g.attributes.position.count; }
+    const idx = verts > 65535 ? new Uint32Array(n) : new Uint16Array(n);
+    let o = 0, base = 0;
+    for (const g of list) { const ia = g.index.array; for (let i = 0; i < ia.length; i++) idx[o + i] = ia[i] + base; o += ia.length; base += g.attributes.position.count; }
+    out.setIndex(new THREE.BufferAttribute(idx, 1));
+  }
+  return out;
+}
+
+/** Weld coincident vertices (position-only geometries, tolerance in metres). */
+export function mergeVertices(g, tol = 1e-6) {
+  const pos = g.attributes.position, map = new Map(), remap = new Uint32Array(pos.count), keep = [];
+  const q = 1 / tol;
+  for (let i = 0; i < pos.count; i++) {
+    const k = Math.round(pos.getX(i) * q) + '_' + Math.round(pos.getY(i) * q) + '_' + Math.round(pos.getZ(i) * q);
+    let j = map.get(k);
+    if (j === undefined) { j = keep.length; map.set(k, j); keep.push(i); }
+    remap[i] = j;
+  }
+  const out = new THREE.BufferGeometry();
+  const arr = new Float32Array(keep.length * 3);
+  keep.forEach((i, j) => { arr[j * 3] = pos.getX(i); arr[j * 3 + 1] = pos.getY(i); arr[j * 3 + 2] = pos.getZ(i); });
+  out.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+  const src = g.index ? g.index.array : Array.from({ length: pos.count }, (_, i) => i);
+  const idx = []; for (let i = 0; i < src.length; i += 3) { const a = remap[src[i]], b = remap[src[i + 1]], c = remap[src[i + 2]]; if (a !== b && b !== c && a !== c) idx.push(a, b, c); }
+  out.setIndex(idx);
+  return out;
+}
 
 export { boxProjectUVs };
 export const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);

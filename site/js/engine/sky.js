@@ -366,6 +366,14 @@ export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 
       for (const m of [M.glassDay, M.stoneDay, M.groundDay, M.water]) m.emissive.set(preset.haze).multiplyScalar(preset.hazeL * 0.55);
       M.water.envMapIntensity = night ? 0.6 : 1;
     },
+    /** Run fn with the night (or day) materials on — for pre-compiling the other set. */
+    withMaterials(nightOn, fn) {
+      const was = [meshes.glass.material, meshes.stone.material, meshes.ground.material];
+      meshes.glass.material = nightOn ? M.glassNight : M.glassDay;
+      meshes.stone.material = nightOn ? M.stoneNight : M.stoneDay;
+      meshes.ground.material = nightOn ? M.groundNight : M.groundDay;
+      try { return fn(); } finally { [meshes.glass.material, meshes.stone.material, meshes.ground.material] = was; }
+    },
     /** Path tracer snapshot: no PMREM envMaps (it lights with its own sky) and no uv1 haze ramp. */
     preparePhoto() {
       const saved = Object.values(M).map((m) => [m, m.envMap, m.emissiveMap, m.emissiveIntensity]);

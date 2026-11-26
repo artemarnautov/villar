@@ -22,9 +22,9 @@ export const TIMES = ['morning', 'day', 'golden', 'evening'];
 // alt/az in degrees; az measured from the window normal (+Z) towards +X. `wb` = camera white balance (K).
 // Sun:sky irradiance ≈ 4–6 : 1 (hazy clear sky); exposure = calibrated base for the reference eye view.
 export const TOD = {
-  morning: { sun: { alt: 17, az: 40, K: 4700, I: 8.5 }, exposure: 2.4, wb: 5300, lamps: false },
-  day:     { sun: { alt: 41, az: -24, K: 5500, I: 10.5 }, exposure: 2.3, wb: 6000, lamps: false },
-  golden:  { sun: { alt: 9, az: -47, K: 3500, I: 7.0 }, exposure: 2.6, wb: 4600, lamps: false },
+  morning: { sun: { alt: 17, az: 40, K: 4700, I: 8.5 }, exposure: 3.0, wb: 5300, lamps: false },
+  day:     { sun: { alt: 41, az: -24, K: 5500, I: 10.5 }, exposure: 3.0, wb: 6000, lamps: false },
+  golden:  { sun: { alt: 9, az: -47, K: 3500, I: 7.0 }, exposure: 2.9, wb: 4600, lamps: false },
   evening: { sun: { alt: -5, az: -60, K: 3000, I: 0 }, exposure: 1.5, wb: 3300, lamps: true },
 };
 
@@ -148,16 +148,22 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
     applyLamps(evening);
   }
 
-  /** Approximate ambient radiance (up/down) for the constant pre-bake SH and the dollhouse. */
+  /**
+   * Approximate ambient radiance (up/down) — the stand-in before a time of day has ever been baked, and the
+   * dollhouse fill. Interior: a little sky + the sun's floor bounce (warm, from below), fitted to the baked
+   * mean (day probe c0 luminance ≈ 0.5), so a stand-in never reads as a blue, sky-only room.
+   */
   function ambient(tod = current, { dollhouse = false } = {}) {
-    const P = SKY_PRESETS[tod];
+    const P = SKY_PRESETS[tod], cfg = TOD[tod];
     const sky = new THREE.Color(P.horizon).lerp(new THREE.Color(P.zenith), 0.5);
-    const k = dollhouse ? (TOD[tod].lamps ? 0.5 : 1.0) : 0.2;
-    const L = (P.horizonL * 0.6 + P.zenithL * 0.4) * k;
-    const lamps = TOD[tod].lamps ? (dollhouse ? 0.02 : 0.04) : 0;
-    const up = [sky.r * L + lamps, sky.g * L + lamps * 0.8, sky.b * L + lamps * 0.6];
-    const g = dollhouse ? 0.35 : 0.6;
-    const down = [up[0] * g * 1.05, up[1] * g, up[2] * g * 0.9];
+    const Ls = (P.horizonL * 0.6 + P.zenithL * 0.4) * (dollhouse ? (cfg.lamps ? 0.5 : 1.0) : 0.17);
+    const alt = Math.pow(Math.max(0, Math.sin(cfg.sun.alt * DEG)), 0.35); // low sun reaches deep into the room
+    const sunC = kelvin(cfg.sun.K), floorTint = [1.0, 0.86, 0.7];
+    const B = dollhouse ? 0 : cfg.sun.I * alt * 0.022;           // sun → floor/walls → room
+    const lamps = cfg.lamps ? (dollhouse ? 0.02 : 0.03) : 0;
+    const lampC = [1.0, 0.62, 0.32];
+    const up = [0, 1, 2].map((i) => [sky.r, sky.g, sky.b][i] * Ls + [sunC.r, sunC.g, sunC.b][i] * floorTint[i] * B * 0.55 + lampC[i] * lamps);
+    const down = [0, 1, 2].map((i) => [sky.r, sky.g, sky.b][i] * Ls * (dollhouse ? 0.35 : 0.5) + [sunC.r, sunC.g, sunC.b][i] * floorTint[i] * B + lampC[i] * lamps * 0.7);
     return { up, down };
   }
 

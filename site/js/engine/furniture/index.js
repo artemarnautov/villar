@@ -81,8 +81,24 @@
 //              group.userData.mount = 'wall' | 'leaning'
 //  sofa        + shape curved|organic (arc-shaped, rounded), modular true (separate blocks, no arms by default)
 //  bed         + style platform (Japandi low platform: wide deck reveal, low slatted/panel headboard)
-import * as THREE from 'three';
-import { hashStr } from '../textures.js';
+//  --- round 3 ---
+//  sofa        armPanel cane|rattan (+ armPanelColor): open wooden arm frames, cane on outer AND inner faces
+//  armchair    seat|back|fabric cane|rattan → frame-and-cane chair (frame, woodColor, caneColor, legs …splay, arm)
+//  floor_lamp  shade column (Ø = shadeDiameter) → paper-cord column lamp, even glow
+//  pendant     trimColor light → linen tape, dark → leather
+//  wall_art    motif relief-waves|amphora|abstract-shapes|textured-*, panels [[w,h],…] + gap (one image across),
+//              mirrored (same painting flipped); the image depends on motif + colors, not on the id
+//  plant       pot ribbed|glazed-ribbed
+//  decor_set   items box|bud-vase|sprig|candle|candles|tray … (material hints matched by affinity)
+//  throw       fabric cotton-weave|dense|textured → open cotton weave; fringe → alpha tassel strips on both ends
+//  kitchen_decor / tableware / centerpiece: the catalogue's structured params (kettle: { color }, colors: { kettle, … },
+//              plate: { color, glaze }, glass: { tint }, cutlery: { finish }, vase: { shape }, stems: { species },
+//              candles: { heights }, tray: { material }) + the materials text are normalised by
+//              tabletop.normalizeDetailParams() — card, thumbnail and 3D agree (PT-04)
+// Off-main-thread builds (T8): prebuildItems(items, ctx, { budget, shouldYield }), buildItemAsync, hasBuildWorker,
+// prebuildStats — generators run in furniture/worker.js.
+import * as THREE from '../../../vendor/three/three.module.js';
+import { hashStr, setArtRenderer } from '../textures.js';
 import { triCount, setLOD } from './geom.js';
 import { sofa, armchair, diningChair, cushions } from './seating.js';
 import { coffeeTable, sideTable, diningTable, nightstand, tvUnit } from './tables.js';
@@ -90,7 +106,7 @@ import { bed, mattress, bedding } from './beds.js';
 import { floorLamp, tableLamp, pendantLamp } from './lighting.js';
 import { rug, curtains, throwBlanket, runner } from './textiles.js';
 import { wallArt, plant, decorSet, mirror } from './decor.js';
-import { tableware, centerpiece, kitchenDecor } from './tabletop.js';
+import { tableware, centerpiece, kitchenDecor, normalizeDetailParams } from './tabletop.js';
 
 /** nightstand_decor — decor_set with bedside defaults (book stack + bud vase); same params as decor_set. */
 const nightstandDecor = (c) => decorSet({ ...c, params: { items: ['books', 'vase-round'], ...c.params } });
@@ -110,7 +126,8 @@ const FIT = {
   default: { axes: 'xyz', origin: 'bottom' },
   bedding: { axes: '', origin: 'none' },
   cushions: { axes: '', origin: 'none' },
-  decor_set: { axes: 'xyz', origin: 'bottom' },
+  // real-size objects: fit uniformly and never enlarge (a round bowl must stay round)
+  decor_set: { axes: 'xyz', origin: 'bottom', uniform: true, max: 1 },
   pendant_lamp: { axes: 'xz', origin: 'none' },
   wall_art: { axes: 'xy', origin: 'none' },
   curtains: { axes: 'y', origin: 'none' },
@@ -124,7 +141,7 @@ const FIT = {
   tableware: { axes: '', origin: 'none' },
   centerpiece: { axes: '', origin: 'none' },
   kitchen_decor: { axes: '', origin: 'none' },
-  nightstand_decor: { axes: 'xyz', origin: 'bottom', uniform: true },
+  nightstand_decor: { axes: 'xyz', origin: 'bottom', uniform: true, max: 1 },
   throw: { axes: '', origin: 'none' },
   mirror: { axes: 'xy', origin: 'none' }, // leaning mirrors override per build
 };
@@ -155,7 +172,9 @@ export function buildItem(item, ctx = {}) {
   const arch = archetypeOf(item);
   const dims = item?.dims || {};
   const W = (Number(dims.w) || 50) / 100, D = (Number(dims.d) || Number(dims.w) || 50) / 100, H = (Number(dims.h) || 50) / 100;
-  const params = sanitizeParams(item?.model?.params);
+  // PT-04: structured catalogue params ({ kettle: { color } }, plate: { color, glaze }, vase: { shape }, …) and the
+  // materials text are mapped onto the generator params first, so card, thumbnail and 3D always agree
+  const params = sanitizeParams(normalizeDetailParams(arch, item?.model?.params, item));
   const seed = ctx.seed ?? (hashStr(String(item?.id || arch)) % 100000);
   // material accessor: wood parts follow the catalogue woodColor (photo estimate) unless a part overrides it
   const WOODS = ['walnut-dark', 'walnut-medium', 'oak-light', 'oak-natural', 'oak-white', 'ash-light', 'ash-black', 'teak'];
@@ -196,7 +215,7 @@ export function buildItem(item, ctx = {}) {
   return group;
 }
 
-const ARRAY_KEYS = ['colors', 'items', 'pillowColors', 'fabrics', 'sizes', 'materials', 'heights', 'layers'];
+const ARRAY_KEYS = ['colors', 'items', 'pillowColors', 'fabrics', 'sizes', 'materials', 'heights', 'layers', 'candleHeights', 'patterns'];
 
 /** Russian catalogue material names → library keys (used as hints, e.g. per-object decor materials). */
 const RU = [
@@ -228,6 +247,7 @@ export function sanitizeParams(raw) {
       continue;
     }
     if (NUM_KEYS.includes(k)) {
+      if (Array.isArray(v)) { p[k] = v; continue; } // e.g. wall_art triptych panels [[w, h], …]
       if (typeof v === 'boolean' && (k === 'backCushions' || k === 'seatCushions')) { p[k] = v; continue; }
       const n = typeof v === 'number' ? v : parseFloat(v);
       if (isFinite(n)) p[k] = n; else if (k === 'backCushions' && v === 'tight') p[k] = v;
@@ -259,12 +279,21 @@ function fit(group, anchors, lights, info, arch, W, D, H, override = null) {
   const size = _box.getSize(new THREE.Vector3());
   const s = new THREE.Vector3(1, 1, 1);
   const want = { x: W, y: H, z: D };
-  for (const a of rule.axes) {
+  if (!rule.uniform) for (const a of rule.axes) {
     if (size[a] < 1e-4) continue;
     const k = want[a] / size[a];
-    if (Math.abs(k - 1) > 1e-4) s[a] = k; // exact fit (generators are built close to dims already)
+    // generators build close to dims; a large correction means a part is missing (R2-07: a 3 cm table top was
+    // stretched 30× into a floor-length block) — never distort that far, keep the real size instead
+    if (k > 1.6 || k < 0.5) { console.debug(`[furniture] ${arch}: bbox ${a} ${size[a].toFixed(3)} m vs dims ${want[a].toFixed(3)} m — not stretched`); continue; }
+    if (Math.abs(k - 1) > 1e-4) s[a] = k; // exact fit
   }
-  if (rule.uniform) { const k = s[rule.axes[0]]; s.set(k, k, k); }
+  if (rule.uniform) {
+    let k = Infinity;
+    for (const a of rule.axes) if (size[a] >= 1e-4) k = Math.min(k, want[a] / size[a]);
+    if (!isFinite(k)) k = 1;
+    k = Math.min(k, rule.max ?? Infinity);
+    s.set(k, k, k);
+  }
   const off = new THREE.Vector3();
   if (rule.origin === 'bottom') {
     const cx = (_box.min.x + _box.max.x) / 2, cz = (_box.min.z + _box.max.z) / 2;
@@ -366,23 +395,179 @@ export function clearItemCache(materials) {
   for (const cache of list) { for (const e of cache.values()) disposeProto(e.proto); cache.clear(); }
 }
 
-/** Warm the cache in idle slices (≈ budget ms per slice). Resolves with the number of items built. */
-export function prebuildItems(items, ctx = {}, { budget = 8 } = {}) {
-  if (!ctx.materials) return Promise.resolve(0);
-  const cache = cacheFor(ctx.materials);
-  const todo = (items || []).filter((it) => it && !cache.has(itemCacheKey(it, ctx)));
-  let built = 0;
-  const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 200 }) : setTimeout(fn, 16));
-  return new Promise((resolve) => {
-    const step = () => {
-      const t0 = performance.now();
-      while (todo.length && performance.now() - t0 < budget) {
-        const it = todo.shift(); const key = itemCacheKey(it, ctx);
-        if (!cache.has(key)) { cache.set(key, { proto: buildItem(it, ctx), refs: 0 }); built++; }
-      }
-      trim(cache);
-      if (todo.length) idle(step); else resolve(built);
+// ---------------------------------------------------------------- off-main-thread builds (T8)
+//
+// prebuildItems() runs the generators in a module Worker (furniture/worker.js) and only re-assembles the result on
+// the main thread, inside requestIdleCallback slices of ≤ budget ms (default 8): BufferGeometry from transferred
+// arrays + materials.get() — typically 0.2–2 ms per item. No `timeout` forcing the callback into busy frames, and
+// `shouldYield()` (engine: camera moving, fade, GI bake, photo) skips the slice. Without Worker support (or if the
+// worker fails to load) it falls back to main-thread builds, one per slice, only when the slice's remaining time
+// covers that archetype's measured build cost (or after the item was deferred for ~10 s of idle).
+
+let WORKER = null; // null = not tried, false = unavailable, Worker
+let WSEQ = 0;
+const WJOBS = new Map();
+function buildWorker() {
+  if (WORKER !== null) return WORKER || null;
+  WORKER = false;
+  try {
+    if (typeof Worker === 'undefined' || typeof window === 'undefined') return null;
+    const w = new Worker(new URL('./worker.js', import.meta.url), { type: 'module', name: 'villar-furniture' });
+    w.onmessage = (e) => { const j = WJOBS.get(e.data?.id); if (j) { WJOBS.delete(e.data.id); j(e.data); } };
+    w.onerror = (e) => {
+      console.debug('[furniture] build worker unavailable — main-thread fallback', e?.message || '');
+      WORKER = false; try { w.terminate(); } catch { /* ignore */ }
+      for (const j of WJOBS.values()) j({ error: 'worker' });
+      WJOBS.clear();
     };
-    idle(step);
+    WORKER = w;
+  } catch (e) { WORKER = false; }
+  return WORKER || null;
+}
+function remote(payload) {
+  const w = buildWorker();
+  if (!w) return Promise.resolve({ error: 'no-worker' });
+  const id = ++WSEQ;
+  return new Promise((res) => {
+    WJOBS.set(id, res);
+    try { w.postMessage({ id, ...payload }); } catch (e) { WJOBS.delete(id); res({ error: String(e) }); }
   });
 }
+function buildRemote(item, ctx) {
+  return remote({ item: JSON.parse(JSON.stringify(item)), ctx: { quality: ctx.quality, host: ctx.host || null, span: ctx.span ?? null, seed: ctx.seed } });
+}
+// artworks are painted in the same worker (no 50–150 ms canvas paint inside materials.get on the main thread)
+let ART_WORKER_OK = true;
+setArtRenderer((opts) => {
+  if (!ART_WORKER_OK || !buildWorker()) return null;
+  const o = {}; for (const [k, v] of Object.entries(opts || {})) if (v === null || ['string', 'number', 'boolean'].includes(typeof v) || Array.isArray(v)) o[k] = v;
+  return remote({ art: o }).then((r) => { if (r && r.art) return r.art; if (r && /OffscreenCanvas|getContext/.test(r.error || '')) ART_WORKER_OK = false; throw new Error(r?.error || 'art'); });
+});
+/** Re-assemble a worker build tree with the real materials (same materials.get calls as a direct build). */
+function fromTree(n, materials, root = true) {
+  let o;
+  if (n.m) {
+    const g = new THREE.BufferGeometry();
+    for (const [k, [arr, size, norm]] of Object.entries(n.g.a)) g.setAttribute(k, new THREE.BufferAttribute(arr, size, norm));
+    if (n.g.i) g.setIndex(new THREE.BufferAttribute(n.g.i, 1));
+    if (n.g.bs) { g.boundingSphere = new THREE.Sphere(new THREE.Vector3(n.g.bs[0], n.g.bs[1], n.g.bs[2]), n.g.bs[3]); g.boundingBox = new THREE.Box3(new THREE.Vector3(...n.g.bb.slice(0, 3)), new THREE.Vector3(...n.g.bb.slice(3))); }
+    else { g.computeBoundingBox(); g.computeBoundingSphere(); }
+    o = new THREE.Mesh(g, materials.get(n.mat.key, n.mat.opts));
+  } else o = new THREE.Group();
+  o.name = n.name; o.position.fromArray(n.p); o.quaternion.fromArray(n.q); o.scale.fromArray(n.s);
+  o.castShadow = n.cs; o.receiveShadow = n.rs;
+  if (root) {
+    const u = n.ud;
+    o.userData.anchors = Object.fromEntries(Object.entries(u.anchors || {}).map(([k, v]) => [k, new THREE.Vector3(...v)]));
+    o.userData.anchorInfo = u.anchorInfo || {}; o.userData.lights = u.lights || [];
+    if (u.mount) o.userData.mount = u.mount;
+    o.userData.archetype = u.archetype; o.userData.itemId = u.itemId; o.userData.triangles = u.triangles;
+  } else Object.assign(o.userData, n.ud);
+  for (const ch of n.c) o.add(fromTree(ch, materials, false));
+  return o;
+}
+
+// measured main-thread build cost per archetype (ms, EMA) — only used by the no-worker fallback
+const COST = new Map();
+const STATS = { slices: 0, maxSlice: 0, totalMs: 0, worst: null, worstMs: 0 };
+let MS_PER_VERT = 0.00012; // re-assembly cost estimate (learned)
+/** Main-thread cost of prebuild idle slices so far (QA: maxSlice should stay ≤ budget). */
+export function prebuildStats() { return { ...STATS, worker: !!WORKER }; }
+function timedBuild(item, ctx) {
+  const t0 = performance.now();
+  const g = buildItem(item, ctx);
+  const dt = performance.now() - t0, a = archetypeOf(item);
+  COST.set(a, COST.has(a) ? COST.get(a) * 0.7 + dt * 0.3 : dt);
+  return g;
+}
+
+/**
+ * Warm the cache off the main thread (T8). Resolves with the number of items built.
+ *   prebuildItems(items, { materials, quality, host?, span? }, { budget: 8, shouldYield: () => bool })
+ * Main-thread work happens only inside idle slices and stops at min(budget, deadline.timeRemaining()).
+ */
+export function prebuildItems(items, ctx = {}, { budget = 8, shouldYield = null, worker = true } = {}) {
+  if (!ctx.materials) return Promise.resolve(0);
+  const cache = cacheFor(ctx.materials);
+  const seen = new Set();
+  const todo = (items || []).filter((it) => { if (!it) return false; const k = itemCacheKey(it, ctx); if (cache.has(k) || seen.has(k)) return false; seen.add(k); return true; });
+  if (!todo.length) return Promise.resolve(0);
+  const useWorker = worker && !!buildWorker();
+  const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 5000 }) : setTimeout(() => fn({ timeRemaining: () => budget, didTimeout: false }), 50));
+  let built = 0, inflight = 0, scheduled = false, finished = false;
+  const ready = [], local = useWorker ? [] : todo.splice(0), deferred = new Map();
+  return new Promise((resolve) => {
+    const finish = () => { if (!finished && !todo.length && !inflight && !ready.length && !local.length) { finished = true; trim(cache); resolve(built); } };
+    const schedule = () => { if (!scheduled && !finished) { scheduled = true; idle(step); } };
+    const pump = () => {
+      while (WORKER && inflight < 2 && todo.length) {
+        const it = todo.shift();
+        if (cache.has(itemCacheKey(it, ctx))) continue;
+        inflight++;
+        buildRemote(it, ctx).then((r) => { inflight--; ready.push({ it, r }); schedule(); pump(); });
+      }
+      if (!WORKER && todo.length) local.push(...todo.splice(0)); // worker died: finish on the main thread
+      if (local.length) schedule();
+      finish();
+    };
+    const step = (deadline) => {
+      scheduled = false;
+      const t0 = performance.now();
+      const left = () => Math.min(budget - (performance.now() - t0), deadline && deadline.timeRemaining ? deadline.timeRemaining() : budget);
+      if (shouldYield && shouldYield()) { schedule(); return; }
+      // 1) re-assemble worker results while the slice lasts; an item starts only if its estimated cost (learned
+      //    ms per vertex) fits what is left — a big one waits for a fresh slice, and runs alone there
+      let first = true;
+      while (ready.length && left() > 0.3) {
+        const est = (ready[0].r?.verts || 0) * MS_PER_VERT;
+        if (!first && est > left()) break;
+        if (first && est > left() && left() < budget * 0.9) break; // a fresh, emptier slice comes next
+        first = false;
+        const { it, r } = ready.shift();
+        const key = itemCacheKey(it, ctx);
+        if (cache.has(key)) continue;
+        if (r && r.tree) {
+          const t1 = performance.now();
+          try { cache.set(key, { proto: fromTree(r.tree, ctx.materials), refs: 0 }); built++; } catch (e) { console.debug('[furniture] worker result rejected', it.id, e); local.push(it); }
+          const dt1 = performance.now() - t1;
+          if (r.verts > 2000) MS_PER_VERT = MS_PER_VERT * 0.7 + (dt1 / r.verts) * 0.3;
+          if (dt1 > STATS.worstMs) { STATS.worstMs = dt1; STATS.worst = it.id; }
+        } else local.push(it);
+      }
+      // 2) main-thread fallback: at most one build per slice, only if it fits what is left of the slice
+      if (local.length && left() > 0) {
+        const it = local[0];
+        const est = COST.get(archetypeOf(it)) ?? 25;
+        const n = (deferred.get(it) || 0) + 1; deferred.set(it, n);
+        if (est <= left() || (deadline && deadline.didTimeout) || n > 200) {
+          local.shift(); deferred.delete(it);
+          const key = itemCacheKey(it, ctx);
+          if (!cache.has(key)) { cache.set(key, { proto: timedBuild(it, ctx), refs: 0 }); built++; }
+        }
+      }
+      if (ready.length || local.length) schedule();
+      pump();
+      const dt = performance.now() - t0;
+      STATS.slices++; STATS.maxSlice = Math.max(STATS.maxSlice, dt); STATS.totalMs += dt;
+    };
+    if (useWorker) pump(); else schedule();
+  });
+}
+
+/**
+ * Build in the worker and resolve with a cached clone (same as buildItemCached, without main-thread generator time).
+ * Falls back to buildItemCached when no worker is available.
+ */
+export async function buildItemAsync(item, ctx = {}) {
+  if (!ctx.materials) return buildItem(item, ctx);
+  const cache = cacheFor(ctx.materials);
+  const key = itemCacheKey(item, ctx);
+  if (!cache.has(key) && buildWorker()) {
+    const r = await buildRemote(item, ctx);
+    if (!cache.has(key) && r && r.tree) cache.set(key, { proto: fromTree(r.tree, ctx.materials), refs: 0 });
+  }
+  return buildItemCached(item, ctx);
+}
+
+/** True when generators run off the main thread. */
+export function hasBuildWorker() { return !!buildWorker(); }

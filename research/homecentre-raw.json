@@ -3544,7 +3544,7 @@
    "inStock": true,
    "notes": "artificial olive tree in small white nursery pot; listed W/L 175 = data error, canopy ~60 est. from photo",
    "status": "accepted",
-   "reason": "Used in: plant-olive-themis",
+   "reason": "Used in: plant-olive-themis, plant-olive-charcoal",
    "brand": "Home Centre"
   },
   {
@@ -3935,7 +3935,7 @@
    "inStock": true,
    "notes": "footed travertine bowl",
    "status": "accepted",
-   "reason": "Used in: decor-sand-travertine-walnut",
+   "reason": "Used in: decor-sand-travertine-walnut, decor-walnut-low",
    "brand": "Touche Deco"
   },
   {
@@ -4004,7 +4004,7 @@
    "inStock": true,
    "notes": "footed terracotta bowl",
    "status": "accepted",
-   "reason": "Used in: decor-terracotta",
+   "reason": "Used in: decor-terracotta, decor-terracotta-low",
    "brand": "Knot Home"
   },
   {
@@ -4073,7 +4073,7 @@
    "inStock": true,
    "notes": "white textured low bowl",
    "status": "accepted",
-   "reason": "Used in: decor-white-ceramic, decor-cream-ceramic",
+   "reason": "Used in: decor-white-ceramic, decor-cream-ceramic, decor-tray-candles, decor-stoneware-low",
    "brand": "Home Centre"
   },
   {
@@ -4211,7 +4211,7 @@
    "inStock": true,
    "notes": "duvet cover + 2 pillowcases, warm white",
    "status": "accepted",
-   "reason": "Used in: bedding-white-oat-clay, bedding-white-oat",
+   "reason": "Used in: bedding-white-oat-clay, bedding-white-oat, bedding-white-terracotta-blue",
    "brand": "Home Centre"
   },
   {
@@ -6630,6 +6630,558 @@
    "brand": null
   },
   {
+   "pid": "170024143",
+   "sku": "170024143",
+   "title": "Elsin Alpaca Rug - 200x290 cm",
+   "slotType": "rug",
+   "url": "https://www.homecentre.com/ae/en/buy-elsin-alpaca-rug-200x290-cm/p/170024143",
+   "regularPrice": 749,
+   "salePrice": 749,
+   "dimsCm": {
+    "w": 290,
+    "d": 200,
+    "h": 1
+   },
+   "materials": "polypropylene flat weave",
+   "colour": "Beige",
+   "category": "Rugs",
+   "image": "https://media.homecentre.com/i/homecentre/170024143-170024143-HC14092026_01-2100.jpg",
+   "inStock": true,
+   "notes": "stone tone-on-tone pinstripe flatweave, matte - light-oak own rug (R2-12)",
+   "status": "accepted",
+   "reason": "Used in: rug-elsin-200x290",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "169726906",
+   "sku": "169726906",
+   "title": "Grant Queen Bed - 160x200 cm",
+   "slotType": "bed",
+   "url": "https://www.homecentre.com/ae/en/buy-grant-queen-bed-160x200-cm/p/169726906",
+   "regularPrice": 1699,
+   "salePrice": 1699,
+   "dimsCm": {
+    "w": 174,
+    "d": 210,
+    "h": 110
+   },
+   "materials": "engineered wood, light oak finish",
+   "colour": "Oak",
+   "category": "Queen Beds",
+   "image": "https://media.homecentre.com/i/homecentre/169726906-169726906-HC25092026_01-2100.jpg",
+   "inStock": true,
+   "notes": "pale oak low platform with textured slatted headboard - light-oak own bed (R2-12)",
+   "status": "accepted",
+   "reason": "Used in: bed-grant-160",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "165864212",
+   "sku": "165864212",
+   "title": "Laodica Ceramic Table Lamp - 38 cm",
+   "slotType": "table_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-laodica-ceramic-table-lamp-38-cm/p/165864212",
+   "regularPrice": 79,
+   "salePrice": 79,
+   "dimsCm": {
+    "w": 22,
+    "d": 22,
+    "h": 38
+   },
+   "materials": "speckled ceramic; linen drum shade; small brass neck",
+   "colour": "Cream",
+   "category": "Table & Desk Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/165864212-165864212-HC10172023_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "stoneware-look speckled ball base - light-oak own table lamp (shade Ø22, brass collar = exceptions)",
+   "status": "accepted",
+   "reason": "Used in: tablelamp-laodica",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "167808899",
+   "sku": "167808899",
+   "title": "Macaire Framed Wall Art - 60x120 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/buy-macaire-framed-wall-art-60x120-cm/p/167808899",
+   "regularPrice": 529,
+   "salePrice": 155,
+   "dimsCm": {
+    "w": 120,
+    "d": 5.2,
+    "h": 60
+   },
+   "materials": "MDF, 3D relief",
+   "colour": "Cream",
+   "category": "Wall Art",
+   "image": "https://media.homecentre.com/i/homecentre/167808899-167808899-HC01022025_01-2100.jpg",
+   "inStock": true,
+   "notes": "sand-dune relief in warm sand / white, light wood frame - mediterranean art_sofa",
+   "status": "accepted",
+   "reason": "Used in: art-macaire-120x60",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "167823048",
+   "sku": "167823048",
+   "title": "Erato Wall Accent",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/buy-erato-wall-accent/p/167823048",
+   "regularPrice": 329,
+   "salePrice": 98,
+   "dimsCm": {
+    "w": 80,
+    "d": 5,
+    "h": 80
+   },
+   "materials": "MDF, 3D relief",
+   "colour": "Brown",
+   "category": "Wall Art",
+   "image": "https://media.homecentre.com/i/homecentre/167823048-167823048-HC01022025_01-2100.jpg",
+   "inStock": true,
+   "notes": "amphora relief, clay-pink and cream - mediterranean art_dining",
+   "status": "accepted",
+   "reason": "Used in: art-erato-80",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "168570409",
+   "sku": "168570409",
+   "title": "Andreya Framed Wall Art - 60x90 cm",
+   "slotType": "wall_art",
+   "url": "https://www.homecentre.com/ae/en/buy-andreya-framed-wall-art-60x90-cm/p/168570409",
+   "regularPrice": 199,
+   "salePrice": 199,
+   "dimsCm": {
+    "w": 60,
+    "d": 3.3,
+    "h": 90
+   },
+   "materials": "fabric print, wooden frame",
+   "colour": "Green",
+   "category": "Wall Art",
+   "image": "https://media.homecentre.com/i/homecentre/168570409-168570409-HC09092025_01-2100.jpg?v=2",
+   "inStock": true,
+   "notes": "green banana-leaf botanical - mediterranean art_dining option",
+   "status": "accepted",
+   "reason": "Used in: art-andreya-60x90",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "168139405",
+   "sku": "168139405",
+   "title": "Tuscany Cushion Cover - 50x50 cm",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-tuscany-cushion-cover-50x50-cm/p/168139405",
+   "regularPrice": 49,
+   "salePrice": 49,
+   "dimsCm": {
+    "w": 50,
+    "d": null,
+    "h": 50
+   },
+   "materials": "polyester, textured",
+   "colour": "Orange",
+   "category": "Cushion Covers",
+   "image": "https://media.homecentre.com/i/homecentre/168139405-168139404-HC07092025_01-2100.jpg",
+   "inStock": true,
+   "notes": "terracotta cover (needs insert)",
+   "status": "accepted",
+   "reason": "Used in: cushions-tuscany-siena, bedding-white-terracotta-blue",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "166836283",
+   "sku": "166836283",
+   "title": "Siena Cushion Cover - 50x50 cm",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-siena-cushion-cover-50x50-cm/p/166836283",
+   "regularPrice": 59,
+   "salePrice": 59,
+   "dimsCm": {
+    "w": 50,
+    "d": null,
+    "h": 50
+   },
+   "materials": "polyester, woven stripes",
+   "colour": "Blue",
+   "category": "Cushion Covers",
+   "image": "https://media.homecentre.com/i/homecentre/166836283-166836280-HC08012024_01-2100.jpg",
+   "inStock": true,
+   "notes": "deep Aegean-blue woven stripe cover (needs insert)",
+   "status": "accepted",
+   "reason": "Used in: cushions-tuscany-siena, bedding-white-terracotta-blue",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "164533534",
+   "sku": "164533534",
+   "title": "Joe Cushion - 50x50 cm",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-joe-cushion-50x50-cm/p/164533534",
+   "regularPrice": 119,
+   "salePrice": 83,
+   "dimsCm": {
+    "w": 50,
+    "d": 15,
+    "h": 50
+   },
+   "materials": "cotton",
+   "colour": "Beige",
+   "category": "Decorative Cushions",
+   "image": "https://media.homecentre.com/i/homecentre/164533534-164533534-HC20220427_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "oat cotton with jute-tone band, filled",
+   "status": "accepted",
+   "reason": "Used in: cushions-tuscany-siena",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "164653236",
+   "sku": "164653236",
+   "title": "Tranquil Filled Cushion - 50x50 cm",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-tranquil-filled-cushion-50x50-cm/p/164653236",
+   "regularPrice": 15,
+   "salePrice": 15,
+   "dimsCm": {
+    "w": 50,
+    "d": 15,
+    "h": 50
+   },
+   "materials": "microfibre",
+   "colour": "White",
+   "category": "Cushion Inserts",
+   "image": "https://media.homecentre.com/i/homecentre/164653236-164653236-HC20220727_01-2100.jpg",
+   "inStock": true,
+   "notes": "plain filled cushion used as the insert for covers",
+   "status": "accepted",
+   "reason": "Used in: cushions-kyedae-sage, cushions-tuscany-siena, bedding-white-terracotta-blue",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "165927984",
+   "sku": "165927984",
+   "title": "Sultana Linen Throw - 130x170 cm",
+   "slotType": "throw",
+   "url": "https://www.homecentre.com/ae/en/buy-sultana-linen-throw-130x170-cm/p/165927984",
+   "regularPrice": 119,
+   "salePrice": 83,
+   "dimsCm": {
+    "w": 130,
+    "d": 170,
+    "h": null
+   },
+   "materials": "polyester linen-look",
+   "colour": "Beige",
+   "category": "Throws",
+   "image": "https://media.homecentre.com/i/homecentre/165927984-165927984-HC10182023_01-2100.jpg",
+   "inStock": true,
+   "notes": "sand linen-look throw with fringe - mediterranean own throw",
+   "status": "accepted",
+   "reason": "Used in: throw-sultana-sand",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "167414941",
+   "sku": "167414941",
+   "title": "Kyedae Woven Cushion Cover - 50x50 cm (sage)",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-kyedae-woven-cushion-cover-50x50-cm/p/167414941",
+   "regularPrice": 39,
+   "salePrice": 39,
+   "dimsCm": {
+    "w": 50,
+    "d": null,
+    "h": 50
+   },
+   "materials": "polyester woven",
+   "colour": "Green",
+   "category": "Cushion Covers",
+   "image": "https://media.homecentre.com/i/homecentre/167414941-167414937-HC12182024_01-2100.jpg",
+   "inStock": true,
+   "notes": "textured sage cover - light-oak",
+   "status": "accepted",
+   "reason": "Used in: cushions-kyedae-sage",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "167414938",
+   "sku": "167414938",
+   "title": "Kyedae Woven Cushion Cover - 50x50 cm (oat)",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-kyedae-woven-cushion-cover-50x50-cm/p/167414938",
+   "regularPrice": 39,
+   "salePrice": 39,
+   "dimsCm": {
+    "w": 50,
+    "d": null,
+    "h": 50
+   },
+   "materials": "polyester woven",
+   "colour": "Beige",
+   "category": "Cushion Covers",
+   "image": "https://media.homecentre.com/i/homecentre/167414938-167414937-HC12182024_01-2100.jpg",
+   "inStock": true,
+   "notes": "textured oat cover - light-oak",
+   "status": "accepted",
+   "reason": "Used in: cushions-kyedae-sage",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "165894404",
+   "sku": "165894404",
+   "title": "Eternity Cotton Percale 325 TC Queen Duvet Cover Set (Sage)",
+   "slotType": "bedding(unit)",
+   "url": "https://www.homecentre.com/ae/en/buy-eternity-cotton-percale-325-thread-count-3piece-queen-duvet-cover-set-200x200-cm/p/165894404",
+   "regularPrice": 229,
+   "salePrice": 159,
+   "dimsCm": {
+    "w": 200,
+    "d": 200,
+    "h": null
+   },
+   "materials": "cotton percale",
+   "colour": "Green",
+   "category": "Duvet Covers",
+   "image": "https://media.homecentre.com/i/homecentre/165894404-161124284-HC091218_01-2100.jpg",
+   "inStock": true,
+   "notes": "muted sage duvet + 2 pillowcases - light-oak",
+   "status": "accepted",
+   "reason": "Used in: bedding-sage-oat",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "167684891",
+   "sku": "167684891",
+   "title": "Avon Ceramic Planter - 28 cm",
+   "slotType": "plant(planter)",
+   "url": "https://www.homecentre.com/ae/en/buy-avon-ceramic-planter-28-cm/p/167684891",
+   "regularPrice": 99,
+   "salePrice": 69,
+   "dimsCm": {
+    "w": 30,
+    "d": 30,
+    "h": 28
+   },
+   "materials": "ceramic, ribbed",
+   "colour": "Black",
+   "category": "Planters",
+   "image": "https://media.homecentre.com/i/homecentre/167684891-167684891-HC25022025_01-2100.jpg",
+   "inStock": true,
+   "notes": "charcoal ribbed planter - light-oak charcoal accent",
+   "status": "accepted",
+   "reason": "Used in: plant-olive-charcoal",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "165177726",
+   "sku": "165177726",
+   "title": "Olive Tree - 180 cm",
+   "slotType": "plant",
+   "url": "https://www.homecentre.com/ae/en/buy-olive-tree-180-cm/p/165177726",
+   "regularPrice": 399,
+   "salePrice": 279,
+   "dimsCm": {
+    "w": 62,
+    "d": 62,
+    "h": 180
+   },
+   "materials": "artificial",
+   "colour": "Green",
+   "category": "Trees",
+   "image": "https://media.homecentre.com/i/homecentre/165177726-165177726-HC24042023_01-2100.jpg",
+   "inStock": true,
+   "notes": "olive tree in nursery pot - mediterranean (with Kerby planter)",
+   "status": "accepted",
+   "reason": "Used in: plant-olive-kerby",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "169766616",
+   "sku": "169766616",
+   "title": "Kerby Glazed Ceramic Planter - 30 cm",
+   "slotType": "plant(planter)",
+   "url": "https://www.homecentre.com/ae/en/buy-kerby-glazed-ceramic-planter-30-cm/p/169766616",
+   "regularPrice": 179,
+   "salePrice": 179,
+   "dimsCm": {
+    "w": 35,
+    "d": 35,
+    "h": 30
+   },
+   "materials": "glazed ceramic, ribbed",
+   "colour": "Brown",
+   "category": "Planters",
+   "image": "https://media.homecentre.com/i/homecentre/169766616-169766616-HC05052026_01-2100.jpg",
+   "inStock": true,
+   "notes": "olive-brown hand-glaze look - mediterranean",
+   "status": "accepted",
+   "reason": "Used in: plant-olive-kerby",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "167808750",
+   "sku": "167808750",
+   "title": "Jack Paper Rope Table Lamp - 49 cm",
+   "slotType": "table_lamp",
+   "url": "https://www.homecentre.com/ae/en/p/167808750",
+   "regularPrice": 149,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 40,
+    "d": 40,
+    "h": 49
+   },
+   "materials": "paper rope",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT out of stock online; shade 40 > 38",
+   "status": "rejected",
+   "reason": "REJECT out of stock online; shade 40 > 38",
+   "brand": null
+  },
+  {
+   "pid": "167406068",
+   "sku": "167406068",
+   "title": "Bosco Ceramic Table Lamp - 50 cm",
+   "slotType": "table_lamp",
+   "url": "https://www.homecentre.com/ae/en/p/167406068",
+   "regularPrice": 349,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 50,
+    "d": 50,
+    "h": 49.5
+   },
+   "materials": "charcoal speckled ceramic; linen shade",
+   "colour": "Black",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT shade Ø50 > 25–38 (ideal LO charcoal stoneware otherwise)",
+   "status": "rejected",
+   "reason": "REJECT shade Ø50 > 25–38 (ideal LO charcoal stoneware otherwise)",
+   "brand": null
+  },
+  {
+   "pid": "165838918",
+   "sku": "165838918",
+   "title": "Baldwin Cement Table Lamp - 43 cm",
+   "slotType": "table_lamp",
+   "url": "https://www.homecentre.com/ae/en/p/165838918",
+   "regularPrice": 119,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 20,
+    "d": 20,
+    "h": 43
+   },
+   "materials": "cement; opal globe; brass collar",
+   "colour": "Grey",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "not-selected: grey cement + brass collar",
+   "status": "not-selected",
+   "reason": "not-selected: grey cement + brass collar",
+   "brand": null
+  },
+  {
+   "pid": "163760887",
+   "sku": "163760887",
+   "title": "Double Trunk Ficus Tree - 150 cm",
+   "slotType": "plant",
+   "url": "https://www.homecentre.com/ae/en/p/163760887",
+   "regularPrice": 299,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 75,
+    "d": 75,
+    "h": 150
+   },
+   "materials": "plastic",
+   "colour": "Green",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT 75 wide > slot 70; glossy leaves",
+   "status": "rejected",
+   "reason": "REJECT 75 wide > slot 70; glossy leaves",
+   "brand": null
+  },
+  {
+   "pid": "165804966",
+   "sku": "165804966",
+   "title": "Arch Cushion Cover - 50x50 cm",
+   "slotType": "cushions(unit)",
+   "url": "https://www.homecentre.com/ae/en/p/165804966",
+   "regularPrice": 79,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 50,
+    "d": null,
+    "h": 50
+   },
+   "materials": "cotton",
+   "colour": "Blue",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT out of stock online",
+   "status": "rejected",
+   "reason": "REJECT out of stock online",
+   "brand": null
+  },
+  {
+   "pid": "168457582",
+   "sku": "168457582",
+   "title": "Hotel Stripe 3-Piece Queen Duvet Cover Set",
+   "slotType": "bedding(unit)",
+   "url": "https://www.homecentre.com/ae/en/p/168457582",
+   "regularPrice": 75,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 200,
+    "d": 200,
+    "h": null
+   },
+   "materials": "polyester",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "not-selected: polyester satin stripe",
+   "status": "not-selected",
+   "reason": "not-selected: polyester satin stripe",
+   "brand": null
+  },
+  {
+   "pid": "168167540",
+   "sku": "168167540",
+   "title": "Lea Jacquard Throw - 130x170 cm",
+   "slotType": "throw",
+   "url": "https://www.homecentre.com/ae/en/p/168167540",
+   "regularPrice": 69,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 130,
+    "d": 170,
+    "h": null
+   },
+   "materials": "acrylic jacquard, geometric",
+   "colour": "Green",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "not-selected: acrylic geometric jacquard (LO forbids geometric pattern)",
+   "status": "not-selected",
+   "reason": "not-selected: acrylic geometric jacquard (LO forbids geometric pattern)",
+   "brand": null
+  },
+  {
    "pid": "166976150",
    "sku": "166976150",
    "title": "Mia 12-piece Stoneware Dinner Set - Serves 4",
@@ -6892,7 +7444,7 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: centerpiece-candles-travertine",
+   "reason": "Used in: centerpiece-candles-travertine, decor-tray-candles",
    "brand": "Home Centre"
   },
   {
@@ -6911,7 +7463,7 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: centerpiece-candles-travertine, nsdecor-travertine-candle, kitchen-white-travertine, decor-travertine-cream",
+   "reason": "Used in: centerpiece-candles-travertine, nsdecor-travertine-candle, kitchen-white-travertine, decor-travertine-cream, decor-tray-candles",
    "brand": "Home Centre"
   },
   {
@@ -7043,9 +7595,9 @@
    "image": "https://media.homecentre.com/i/homecentre/169440272-169440272-HC27042026_01-2100.jpg?v=1",
    "inStock": true,
    "notes": "",
-   "status": "not-selected",
-   "reason": "Candidate checked, not needed",
-   "brand": null
+   "status": "accepted",
+   "reason": "Used in: decor-walnut-low",
+   "brand": "Home Centre"
   },
   {
    "pid": "166926343",
@@ -7215,7 +7767,7 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: throw-thorn-oat, bedding-white-sateen-oat",
+   "reason": "Used in: throw-thorn-oat, bedding-white-sateen-oat, bedding-sage-oat",
    "brand": "Home Centre"
   },
   {
@@ -7253,7 +7805,7 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: nsdecor-dara-box, nsdecor-bud-vase-tealight",
+   "reason": "Used in: nsdecor-dara-box, nsdecor-bud-vase-tealight, decor-terracotta-low, decor-stoneware-low",
    "brand": "Home Centre"
   },
   {
@@ -7272,7 +7824,7 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: nsdecor-travertine-candle",
+   "reason": "Used in: nsdecor-travertine-candle, decor-stoneware-low",
    "brand": "Home Centre"
   },
   {
@@ -7310,7 +7862,7 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: nsdecor-walnut-vase, nsdecor-bud-vase-tealight",
+   "reason": "Used in: nsdecor-walnut-vase, nsdecor-bud-vase-tealight, decor-terracotta-low, decor-walnut-low",
    "brand": "Home Centre"
   },
   {
@@ -10713,6 +11265,432 @@
    "publicPrice": 155,
    "offeredBy": [
     "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "bed-grant-160",
+   "type": "bed",
+   "components": [
+    {
+     "pid": "169726906",
+     "qty": 1,
+     "regular": 1699,
+     "sale": 1699
+    }
+   ],
+   "regularTotal": 1699,
+   "publicPrice": 2039,
+   "offeredBy": [
+    "light-oak"
+   ],
+   "note": ""
+  },
+  {
+   "id": "rug-elsin-200x290",
+   "type": "rug",
+   "components": [
+    {
+     "pid": "170024143",
+     "qty": 1,
+     "regular": 749,
+     "sale": 749
+    }
+   ],
+   "regularTotal": 749,
+   "publicPrice": 899,
+   "offeredBy": [
+    "light-oak"
+   ],
+   "note": ""
+  },
+  {
+   "id": "tablelamp-laodica",
+   "type": "table_lamp",
+   "components": [
+    {
+     "pid": "165864212",
+     "qty": 1,
+     "regular": 79,
+     "sale": 79
+    }
+   ],
+   "regularTotal": 79,
+   "publicPrice": 95,
+   "offeredBy": [
+    "light-oak"
+   ],
+   "note": ""
+  },
+  {
+   "id": "plant-olive-charcoal",
+   "type": "plant",
+   "components": [
+    {
+     "pid": "168518574",
+     "qty": 1,
+     "regular": 399,
+     "sale": 279
+    },
+    {
+     "pid": "167684891",
+     "qty": 1,
+     "regular": 99,
+     "sale": 69
+    }
+   ],
+   "regularTotal": 498,
+   "publicPrice": 598,
+   "offeredBy": [
+    "light-oak"
+   ],
+   "note": ""
+  },
+  {
+   "id": "cushions-kyedae-sage",
+   "type": "cushions",
+   "components": [
+    {
+     "pid": "167414941",
+     "qty": 1,
+     "regular": 39,
+     "sale": 39
+    },
+    {
+     "pid": "167414938",
+     "qty": 2,
+     "regular": 39,
+     "sale": 39
+    },
+    {
+     "pid": "164653236",
+     "qty": 3,
+     "regular": 15,
+     "sale": 15
+    }
+   ],
+   "regularTotal": 162,
+   "publicPrice": 194,
+   "offeredBy": [
+    "light-oak"
+   ],
+   "note": ""
+  },
+  {
+   "id": "bedding-sage-oat",
+   "type": "bedding",
+   "components": [
+    {
+     "pid": "165894404",
+     "qty": 1,
+     "regular": 229,
+     "sale": 159
+    },
+    {
+     "pid": "166836257",
+     "qty": 1,
+     "regular": 139,
+     "sale": 97
+    }
+   ],
+   "regularTotal": 368,
+   "publicPrice": 442,
+   "offeredBy": [
+    "light-oak"
+   ],
+   "note": ""
+  },
+  {
+   "id": "cushions-tuscany-siena",
+   "type": "cushions",
+   "components": [
+    {
+     "pid": "168139405",
+     "qty": 1,
+     "regular": 49,
+     "sale": 49
+    },
+    {
+     "pid": "166836283",
+     "qty": 1,
+     "regular": 59,
+     "sale": 59
+    },
+    {
+     "pid": "164653236",
+     "qty": 2,
+     "regular": 15,
+     "sale": 15
+    },
+    {
+     "pid": "164533534",
+     "qty": 1,
+     "regular": 119,
+     "sale": 83
+    }
+   ],
+   "regularTotal": 257,
+   "publicPrice": 308,
+   "offeredBy": [
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "bedding-white-terracotta-blue",
+   "type": "bedding",
+   "components": [
+    {
+     "pid": "161124290",
+     "qty": 1,
+     "regular": 229,
+     "sale": 159
+    },
+    {
+     "pid": "168139405",
+     "qty": 1,
+     "regular": 49,
+     "sale": 49
+    },
+    {
+     "pid": "166836283",
+     "qty": 1,
+     "regular": 59,
+     "sale": 59
+    },
+    {
+     "pid": "164653236",
+     "qty": 2,
+     "regular": 15,
+     "sale": 15
+    }
+   ],
+   "regularTotal": 367,
+   "publicPrice": 440,
+   "offeredBy": [
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "throw-sultana-sand",
+   "type": "throw",
+   "components": [
+    {
+     "pid": "165927984",
+     "qty": 1,
+     "regular": 119,
+     "sale": 83
+    }
+   ],
+   "regularTotal": 119,
+   "publicPrice": 143,
+   "offeredBy": [
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "art-macaire-120x60",
+   "type": "wall_art",
+   "components": [
+    {
+     "pid": "167808899",
+     "qty": 1,
+     "regular": 529,
+     "sale": 155
+    }
+   ],
+   "regularTotal": 529,
+   "publicPrice": 635,
+   "offeredBy": [
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "art-erato-80",
+   "type": "wall_art",
+   "components": [
+    {
+     "pid": "167823048",
+     "qty": 1,
+     "regular": 329,
+     "sale": 98
+    }
+   ],
+   "regularTotal": 329,
+   "publicPrice": 395,
+   "offeredBy": [
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "art-andreya-60x90",
+   "type": "wall_art",
+   "components": [
+    {
+     "pid": "168570409",
+     "qty": 1,
+     "regular": 199,
+     "sale": 199
+    }
+   ],
+   "regularTotal": 199,
+   "publicPrice": 239,
+   "offeredBy": [
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "plant-olive-kerby",
+   "type": "plant",
+   "components": [
+    {
+     "pid": "165177726",
+     "qty": 1,
+     "regular": 399,
+     "sale": 279
+    },
+    {
+     "pid": "169766616",
+     "qty": 1,
+     "regular": 179,
+     "sale": 179
+    }
+   ],
+   "regularTotal": 578,
+   "publicPrice": 694,
+   "offeredBy": [
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "decor-tray-candles",
+   "type": "decor_set",
+   "components": [
+    {
+     "pid": "165839835",
+     "qty": 1,
+     "regular": 49,
+     "sale": 49
+    },
+    {
+     "pid": "165282170",
+     "qty": 1,
+     "regular": 29,
+     "sale": 29
+    },
+    {
+     "pid": "165839004",
+     "qty": 1,
+     "regular": 99,
+     "sale": 99
+    }
+   ],
+   "regularTotal": 177,
+   "publicPrice": 212,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "decor-terracotta-low",
+   "type": "decor_set",
+   "components": [
+    {
+     "pid": "170590024",
+     "qty": 1,
+     "regular": 199,
+     "sale": 139
+    },
+    {
+     "pid": "165877266",
+     "qty": 1,
+     "regular": 15,
+     "sale": 10
+    },
+    {
+     "pid": "165629591",
+     "qty": 1,
+     "regular": 39,
+     "sale": 39
+    }
+   ],
+   "regularTotal": 253,
+   "publicPrice": 304,
+   "offeredBy": [
+    "dark-walnut",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "decor-walnut-low",
+   "type": "decor_set",
+   "components": [
+    {
+     "pid": "169440272",
+     "qty": 1,
+     "regular": 99,
+     "sale": 99
+    },
+    {
+     "pid": "169037988",
+     "qty": 1,
+     "regular": 179,
+     "sale": 179
+    },
+    {
+     "pid": "165629591",
+     "qty": 1,
+     "regular": 39,
+     "sale": 39
+    }
+   ],
+   "regularTotal": 317,
+   "publicPrice": 380,
+   "offeredBy": [
+    "dark-walnut"
+   ],
+   "note": ""
+  },
+  {
+   "id": "decor-stoneware-low",
+   "type": "decor_set",
+   "components": [
+    {
+     "pid": "165877244",
+     "qty": 1,
+     "regular": 35,
+     "sale": 24
+    },
+    {
+     "pid": "165877266",
+     "qty": 1,
+     "regular": 15,
+     "sale": 10
+    },
+    {
+     "pid": "165839004",
+     "qty": 1,
+     "regular": 99,
+     "sale": 99
+    }
+   ],
+   "regularTotal": 149,
+   "publicPrice": 179,
+   "offeredBy": [
     "light-oak",
     "greige-luxe",
     "mediterranean"

@@ -544,6 +544,8 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     return shadowClones.get(m);
   };
   for (const g of [full, cutGroup]) g.traverse((o) => { if (o.isMesh && o.castShadow) o.material = withDoubleShadow(o.material); });
+  // door meshes carry a stable tag (style changes swap their material)
+  for (const [key, d] of doorMats) for (const g of [full, cutGroup]) g.traverse((o) => { if (o.isMesh && o.material === d.mat) o.userData.doorKey = key; });
   // keep handles used by lighting.js pointing at the live instances
   M.diffuser = shadowClones.get(M.diffuser) || M.diffuser;
   M.led = shadowClones.get(M.led) || M.led;
@@ -578,26 +580,31 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
      * ones for a dissolve; `commit()` removes the old ones. Doors pinned by the layout are kept.
      */
     prepareDoorFinish(finish) {
+      // door meshes are found by a stable tag, never by material identity: a dissolve dresses them in
+      // temporary clones, and a second switch during it must still find them (T3)
       const inn = [], out = [], jobs = [];
-      for (const d of doorMats.values()) {
+      for (const [key, d] of doorMats) {
         if (!d.fromPack || d.finish === finish) continue;
         const mat = own(finishMaterial(finish, '#' + M.wall.color.getHexString()).clone());
         mat.shadowSide = THREE.DoubleSide;
         const found = [];
-        for (const g of [full, cutGroup]) g.traverse((o) => { if (o.isMesh && o.material === d.mat) found.push(o); });
+        for (const g of [full, cutGroup]) g.traverse((o) => { if (o.isMesh && o.userData.doorKey === key && !o.userData.doorOld) found.push(o); });
         for (const o of found) {
           const m2 = new THREE.Mesh(o.geometry, mat);
           m2.position.copy(o.position); m2.quaternion.copy(o.quaternion); m2.scale.copy(o.scale);
           m2.castShadow = o.castShadow; m2.receiveShadow = o.receiveShadow; m2.renderOrder = o.renderOrder;
-          m2.userData = { ...o.userData }; m2.name = o.name;
+          m2.userData = { ...o.userData, doorKey: key, doorOld: false }; m2.name = o.name;
+          o.userData.doorOld = true;
           o.parent.add(m2);
           inn.push(m2); out.push(o);
         }
         jobs.push({ d, mat });
       }
+      let done = false;
       return {
-        inn, out,
+        inn, out, finish,
         commit() {
+          if (done) return; done = true;
           for (const o of out) o.removeFromParent();
           for (const { d, mat } of jobs) { d.mat = mat; d.finish = finish; }
         },

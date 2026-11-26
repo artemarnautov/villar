@@ -9,7 +9,8 @@
 // "Detail" albedo maps for colour-option materials are near-white luminance maps
 // that multiply material.color.
 
-import * as THREE from 'three';
+// by URL = the module the import map's 'three' resolves to (one instance); also loadable in a Worker (T8)
+import * as THREE from '../../vendor/three/three.module.js';
 
 // ---------------------------------------------------------------- random & noise
 
@@ -144,22 +145,67 @@ export function dataTexture(data, w, h, { srgb = false, repeat = null, format = 
 // context is lost and restored, restoreTextures() regenerates every procedural texture in the
 // background (materials.js calls it on 'webglcontextrestored').
 
+// T4 — context loss / restore and self-healing:
+//  • data textures keep { width, height } and drop only `data`; restoreTextures() puts a placeholder-filled buffer
+//    back at once (so the first upload after a restore allocates full-size storage and is never `null`) and
+//    re-runs the generator time-sliced;
+//  • canvas textures (art, rug patterns) are shrunk to 1 × 1 after upload; restoreTextures() redraws them
+//    SYNCHRONOUSLY and drops their GL storage (texture.dispose() without forgetting them), so a full-size canvas
+//    is never sub-uploaded into a 1 × 1 immutable allocation;
+//  • if a released texture is ever uploaded again without its pixels (a clone with a new GL cache key, an engine
+//    needsUpdate), onUpdate heals it the same way (logged with console.debug, texture name).
+
 const REGEN = new Set();
+const HEAL = new WeakMap(); // texture Source → heal()
 let KEEP_CPU = false;
+let QUIET = 0; // >0 while restoring/healing: our own dispose() calls must not forget the regenerator
 /** Keep CPU copies (tests / tools that read texture data). */
 export function setKeepTextureData(v) { KEEP_CPU = !!v; }
 
+function released(tex) {
+  const img = tex && tex.image;
+  if (!img) return false;
+  if ('data' in img && !(typeof HTMLCanvasElement !== 'undefined' && img instanceof HTMLCanvasElement)) return img.data === null;
+  return img.width === 1 && img.height === 1 && !!HEAL.get(tex.source);
+}
+/** onUpdate for any texture sharing a procedural Source (originals and clones): heal uploads without pixels. */
+export function healOnUpdate(tex) {
+  if (!released(tex)) return;
+  const h = HEAL.get(tex.source);
+  if (!h) return;
+  console.debug('[textures] re-upload of a released texture — regenerating', tex.name || tex.uuid);
+  h();
+}
+
 function releaseAfterUpload(t, kind = 'data') {
-  if (KEEP_CPU) return;
-  t.onUpdate = () => {
-    t.onUpdate = null;
-    if (kind === 'data') t.image.data = null;
-    else if (t.image && 'width' in t.image) { t.image.width = 1; t.image.height = 1; }
+  if (KEEP_CPU) { t.onUpdate = healOnUpdate; return; }
+  t.onUpdate = (tex) => {
+    if (released(tex)) { healOnUpdate(tex); return; }
+    if (kind === 'data') tex.image.data = null;
+    else if (tex.image && 'width' in tex.image) { tex.image.width = 1; tex.image.height = 1; }
   };
 }
 
-/** Regenerate all live procedural textures (after a context restore). */
-export function restoreTextures() { for (const r of REGEN) r(); }
+/** Drop a texture's GL storage without forgetting how to regenerate it. */
+function reallocate(t) { QUIET++; try { t.dispose(); } finally { QUIET--; } }
+
+/**
+ * Regenerate every live procedural texture (after a WebGL context restore). Call it BEFORE the first render after
+ * 'webglcontextrestored' (materials.restore() does this); canvases are back immediately, data textures show their
+ * placeholder tone until the returned Promise resolves. Idempotent within one restore.
+ */
+export function restoreTextures() {
+  QUIET++;
+  try {
+    for (const r of REGEN) {
+      // the lost context's renderer left 'dispose' listeners on our textures; they would try to delete objects of
+      // the dead context (WebGL warnings) — keep only ours (call restore before the first render after a restore)
+      for (const t of r.textures || []) { const L = t._listeners && t._listeners.dispose; if (L) t._listeners.dispose = L.filter((f) => f.__villar); }
+      r();
+    }
+  } finally { QUIET--; }
+  return whenTexturesReady();
+}
 export function forgetTextures() { REGEN.clear(); }
 
 function canvasTexture(canvas, { srgb = true, redraw = null } = {}) {
@@ -171,10 +217,14 @@ function canvasTexture(canvas, { srgb = true, redraw = null } = {}) {
   t.minFilter = THREE.LinearMipmapLinearFilter;
   t.needsUpdate = true;
   if (redraw) {
+    const r = () => { t.image = redraw(); reallocate(t); t.needsUpdate = true; releaseAfterUpload(t, 'canvas'); };
+    r.textures = [t];
+    HEAL.set(t.source, r);
     releaseAfterUpload(t, 'canvas');
-    const r = () => { t.image = redraw(); t.needsUpdate = true; releaseAfterUpload(t, 'canvas'); };
     REGEN.add(r);
-    t.addEventListener('dispose', () => REGEN.delete(r));
+    const forget = () => { if (!QUIET) REGEN.delete(r); };
+    forget.__villar = true;
+    t.addEventListener('dispose', forget);
   }
   return t;
 }
@@ -199,23 +249,33 @@ if (channel) channel.port1.onmessage = () => runQueue();
 const post = () => (channel ? channel.port2.postMessage(0) : setTimeout(runQueue, 0));
 
 export function setTextureSync(v) { SYNC = !!v; }
-export function pendingTextures() { return QUEUE.length; }
+/** Textures still generating (procedural queue + artworks being painted). */
+export function pendingTextures() { return QUEUE.length + ART_PENDING; }
 export function whenTexturesReady() {
-  if (!QUEUE.length) return Promise.resolve();
+  if (!QUEUE.length && !ART_PENDING) return Promise.resolve();
   return new Promise((res) => IDLE_WAITERS.push(res));
+}
+function settle() {
+  if (QUEUE.length || ART_PENDING || !IDLE_WAITERS.length) return;
+  const w = IDLE_WAITERS; IDLE_WAITERS = []; w.forEach((f) => f());
 }
 export function flushTextures() {
   while (QUEUE.length) { const j = QUEUE[0]; while (!j.step(1e9)); QUEUE.shift(); j.finish(); }
-  const w = IDLE_WAITERS; IDLE_WAITERS = []; w.forEach((f) => f());
+  settle();
 }
+const QSTATS = { slices: 0, maxSlice: 0 };
+/** Texture-queue slice durations (QA). */
+export function textureQueueStats() { return { ...QSTATS, pending: QUEUE.length + ART_PENDING }; }
 function runQueue() {
   const t0 = performance.now();
   while (QUEUE.length && performance.now() - t0 < 10) {
     const j = QUEUE[0];
     if (j.step(t0 + 10)) { QUEUE.shift(); j.finish(); }
   }
+  const dt = performance.now() - t0;
+  QSTATS.slices++; if (dt > QSTATS.maxSlice) QSTATS.maxSlice = dt;
   if (QUEUE.length) post();
-  else { RUNNING = false; const w = IDLE_WAITERS; IDLE_WAITERS = []; w.forEach((f) => f()); }
+  else { RUNNING = false; settle(); }
 }
 function enqueue(job) {
   if (SYNC) { while (!job.step(1e9)); job.finish(); return; }
@@ -228,26 +288,33 @@ function enqueue(job) {
  * then derive the normal map. Returns { map, normalMap, roughnessMap, tile, mean, ready, onReady }.
  * `prep()` (optional) runs once before the first pixel (build coarse fields there).
  */
-function build(w, h, tile, fn, { normalStrength = 1, albedo = true, rough = true, height = true, placeholder = [0.8, 0.8, 0.8], prep = null } = {}) {
+function build(w, h, tile, fn, { normalStrength = 1, albedo = true, rough = true, height = true, placeholder = [0.8, 0.8, 0.8], prep = null, meanOpaque = false } = {}) {
   const N = w * h;
   const repeat = [1 / tile[0], 1 / tile[1]];
   const strength = normalStrength * QUALITY; // keep the physical slope when the resolution is scaled
   // placeholder mean in LINEAR space (same space as the final mean) so pre-ready colours are already close
   const pl = placeholder.map((x) => srgbToLinear(clamp01(x)));
   const out = { tile, mean: pl[0] * 0.3 + pl[1] * 0.59 + pl[2] * 0.11, meanRGB: pl, done: false };
+  // T8: creating a bundle (inside materials.get) must be cheap: full-size placeholder buffers are filled with native
+  // typed-array fills (no per-pixel JS loop); the generator later overwrites every texel of the same buffers. The
+  // size never changes (clones of these textures share one GL allocation — growing it is not possible safely).
+  const LE = new Uint8Array(new Uint16Array([1]).buffer)[0] === 1;
+  const pack4 = (a, b, c, d) => (LE ? ((d << 24) | (c << 16) | (b << 8) | a) >>> 0 : ((a << 24) | (b << 16) | (c << 8) | d) >>> 0);
   const fresh = () => {
+    const pr = placeholder.map((x) => Math.round(clamp01(x) * 255));
     const A = albedo ? new Uint8Array(N * 4) : null;
-    const R = rough ? new Uint8Array(N * 2) : null; // RG8: roughness lives in .g (three samples roughnessMap.g)
+    const R = rough ? new Uint8Array(N * 2).fill(160) : null; // RG8: roughness lives in .g (three samples roughnessMap.g)
     const NM = height ? new Uint8Array(N * 4) : null;
-    if (A) { const pr = placeholder.map((x) => Math.round(clamp01(x) * 255)); for (let i = 0; i < N * 4; i += 4) { A[i] = pr[0]; A[i + 1] = pr[1]; A[i + 2] = pr[2]; A[i + 3] = 255; } }
-    if (R) R.fill(160);
-    if (NM) for (let i = 0; i < N * 4; i += 4) { NM[i] = 128; NM[i + 1] = 128; NM[i + 2] = 255; NM[i + 3] = 255; }
+    if (A) new Uint32Array(A.buffer).fill(pack4(pr[0], pr[1], pr[2], 255));
+    if (NM) new Uint32Array(NM.buffer).fill(pack4(128, 128, 255, 255));
     return { A, R, NM };
   };
   const first = fresh();
   if (albedo) out.map = dataTexture(first.A, w, h, { srgb: true, repeat });
   if (rough) out.roughnessMap = dataTexture(first.R, w, h, { repeat, format: THREE.RGFormat });
   if (height) out.normalMap = dataTexture(first.NM, w, h, { repeat });
+  // placeholder uploads are not released (the generator is still writing into these buffers); heal-only hook
+  for (const t of [out.map, out.roughnessMap, out.normalMap]) if (t) t.onUpdate = healOnUpdate;
   const cbs = [];
   out.onReady = (cb) => { if (out.done) cb(out); else cbs.push(cb); };
   let resolve; out.ready = new Promise((r) => { resolve = r; });
@@ -255,11 +322,12 @@ function build(w, h, tile, fn, { normalStrength = 1, albedo = true, rough = true
 
   const run = (bufs) => {
     const { A, R, NM } = bufs;
-    const H = height ? new Float32Array(N) : null;
+    let H = null;
     const px = { r: 1, g: 1, b: 1, a: 1, rough: 0.5, h: 0 };
     let y = 0, ny = 0, pi = 0;
     enqueue({
       step(deadline) {
+        if (height && !H) { H = new Float32Array(N); if (performance.now() > deadline) return false; }
         while (pi < preps.length) { preps[pi++](); if (performance.now() > deadline) return false; }
         while (y < h) {
           const v = (y + 0.5) / h;
@@ -284,11 +352,13 @@ function build(w, h, tile, fn, { normalStrength = 1, albedo = true, rough = true
         return true;
       },
       finish() {
-        if (A) { out.mean = meanLinear(A); out.meanRGB = meanRGB(A); }
+        // meanOpaque: colour compensation over the visible texels only (alpha-cut cane, fringe)
+        if (A) { out.mean = meanLinear(A, meanOpaque); out.meanRGB = meanRGB(A, meanOpaque); }
         for (const [t, d] of [[out.map, A], [out.roughnessMap, R], [out.normalMap, NM]]) {
           if (!t) continue;
           t.image.data = d; t.needsUpdate = true; releaseAfterUpload(t, 'data');
         }
+        H = null;
         if (!out.done) {
           out.done = true;
           for (const cb of cbs) cb(out);
@@ -298,7 +368,19 @@ function build(w, h, tile, fn, { normalStrength = 1, albedo = true, rough = true
     });
   };
   run(first);
-  REGEN.add(() => run(fresh()));
+  // restore / heal: placeholder pixels go back immediately (never a null upload), the real ones follow time-sliced
+  let healing = false;
+  const regen = () => {
+    if (healing) return;
+    healing = true;
+    const bufs = fresh();
+    for (const [t, d] of [[out.map, bufs.A], [out.roughnessMap, bufs.R], [out.normalMap, bufs.NM]]) if (t) { t.image.data = d; t.needsUpdate = true; t.onUpdate = healOnUpdate; }
+    run(bufs);
+    whenTexturesReady().then(() => { healing = false; });
+  };
+  regen.textures = [out.map, out.roughnessMap, out.normalMap].filter(Boolean);
+  for (const t of regen.textures) HEAL.set(t.source, regen);
+  REGEN.add(regen);
   return out;
 }
 
@@ -320,13 +402,17 @@ function heightRowToNormal(H, w, h, strength, y, out) {
 
 /** Periodic coarse field: evaluates fn(u, v) on a gw × gh grid, returns bilinear periodic sampler s(u, v). */
 export function field(gw, gh, fn) {
-  const F = new Float32Array(gw * gh);
-  for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) F[j * gw + i] = fn(i / gw, j / gh);
+  // rows are evaluated lazily on first use (T8): building a field costs nothing up front, its work is spread over
+  // the time-sliced pixel loop instead of one atomic 20–70 ms prep step
+  const F = new Float32Array(gw * gh), done = new Uint8Array(gh);
+  const row = (j) => { const o = j * gw, v = j / gh; for (let i = 0; i < gw; i++) F[o + i] = fn(i / gw, v); done[j] = 1; };
   return (u, v) => {
     let x = u * gw, yy = v * gh;
     x -= Math.floor(x / gw) * gw; yy -= Math.floor(yy / gh) * gh;
     const x0 = x | 0, y0 = yy | 0; const fx = x - x0, fy = yy - y0;
     const x1 = x0 + 1 === gw ? 0 : x0 + 1, y1 = y0 + 1 === gh ? 0 : y0 + 1;
+    if (!done[y0]) row(y0);
+    if (!done[y1]) row(y1);
     const a = F[y0 * gw + x0], b = F[y0 * gw + x1], c = F[y1 * gw + x0], d = F[y1 * gw + x1];
     return a + (b - a) * fx + (c - a + (d - c - b + a) * fx) * fy;
   };
@@ -361,21 +447,25 @@ export function heightToNormal(H, w, h, strength = 1) {
 
 function srgbToLinear(c) { return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
 const LIN = new Float32Array(256); for (let i = 0; i < 256; i++) LIN[i] = srgbToLinear(i / 255);
-function meanRGB(A) {
+function meanRGB(A, opaque = false) {
   let r = 0, g = 0, b = 0, n = 0;
-  for (let i = 0; i < A.length; i += 16) { r += LIN[A[i]]; g += LIN[A[i + 1]]; b += LIN[A[i + 2]]; n++; }
-  return [r / n, g / n, b / n];
+  for (let i = 0; i < A.length; i += 16) { if (opaque && A[i + 3] < 128) continue; r += LIN[A[i]]; g += LIN[A[i + 1]]; b += LIN[A[i + 2]]; n++; }
+  return n ? [r / n, g / n, b / n] : [0.5, 0.5, 0.5];
 }
-function meanLinear(A) {
+function meanLinear(A, opaque = false) {
   let s = 0, n = 0;
-  for (let i = 0; i < A.length; i += 16) { s += LIN[A[i]] * 0.3 + LIN[A[i + 1]] * 0.59 + LIN[A[i + 2]] * 0.11; n++; }
-  return s / n;
+  for (let i = 0; i < A.length; i += 16) { if (opaque && A[i + 3] < 128) continue; s += LIN[A[i]] * 0.3 + LIN[A[i + 1]] * 0.59 + LIN[A[i + 2]] * 0.11; n++; }
+  return n ? s / n : 0.5;
 }
 
 // ---------------------------------------------------------------- WOOD
 
+// Optional figure controls (defaults in woodTextures): lateK = latewood darkening toward `dark`, broadK = broad
+// (10 cm) tone bands, streakK = light streak strength, flame = heartwood colour streaks (1–4 cm, long along the grain).
 export const WOOD_PALETTES = {
-  'walnut-dark':   { light: '#5f4231', mid: '#463022', dark: '#22150d', streak: '#6b4b36', rough: 0.46, rings: 40, figure: 1.0, pores: 1.0 },
+  // R2-04: oiled American black walnut — warm mid-brown, sRGB albedo mean ≈ #70503A (Y′ ≈ 86), clearly visible
+  // cathedral figure and heartwood streaks (Y′ p5–p95 ≈ 55–115). Dark tones kept low-chroma so B never collapses.
+  'walnut-dark':   { light: '#906c4d', mid: '#674530', dark: '#3c291c', streak: '#a98260', rough: 0.42, rings: 34, figure: 1.25, pores: 1.0, lateK: 0.8, broadK: 0.4, streakK: 1.1, flame: 0.55, ref: '#5A3F2E' },
   'walnut-medium': { light: '#8c6345', mid: '#6a4830', dark: '#3e2818', streak: '#98704f', rough: 0.48, rings: 40, figure: 1.0, pores: 0.9 },
   'oak-light':     { light: '#d9bb91', mid: '#c4a174', dark: '#9e7a52', streak: '#e0c49e', rough: 0.55, rings: 58, figure: 0.6, pores: 1.0 },
   'oak-natural':   { light: '#c9a274', mid: '#b08658', dark: '#866039', streak: '#d2ad80', rough: 0.55, rings: 58, figure: 0.6, pores: 1.0 },
@@ -407,8 +497,11 @@ function woodSampler(seed, P) {
     });
     ST = field(64, 512, (u, v) => N4.fbm(u, v, 2, 24, 3) * 0.6 + N1.n(u * 3, v * 7, 3, 7) * 0.4);
     BR = field(16, 64, (u, v) => N3.fbm(u, v, 1, 4, 2));
+    // heartwood colour streaks: long along the grain (u), 1–4 cm across (v)
+    if (P.flame) FL = field(32, 256, (u, v) => N2.fbm(u + 0.31, v, 2, 14, 3) * 0.75 + N3.n(u * 4 + 7, v * 34, 4, 34) * 0.35);
   };
-  const o = { late: 0, streak: 0, pore: 0, broad: 0 };
+  let FL = null;
+  const o = { late: 0, streak: 0, pore: 0, broad: 0, flame: 0 };
   const sample = (um, vm) => {
     const u = fract(um / LU), v = fract(vm / LV);
     const t = T(u, v);
@@ -416,7 +509,7 @@ function woodSampler(seed, P) {
     const k = smooth(0.55, 1.0, p);
     const late = k * k * 0.75 + smooth(0.93, 0.99, p) * (1 - smooth(0.99, 1.0, p)) * 0.25;
     const pn = N2.n(u * 220, v * 1100, 220, 1100);
-    o.late = late; o.streak = ST(u, v); o.broad = BR(u, v);
+    o.late = late; o.streak = ST(u, v); o.broad = BR(u, v); o.flame = FL ? FL(u, v) : 0;
     o.pore = smooth(0.42, 0.75, pn) * (0.5 + 0.5 * late) * P.pores;
     return o;
   };
@@ -431,11 +524,12 @@ export function woodTextures(species = 'walnut-dark', seed = 7) {
   const L = hexToRgb(P.light), M = hexToRgb(P.mid), D = hexToRgb(P.dark), S = hexToRgb(P.streak);
   const sample = woodSampler(seed, P);
   const tmp = [0, 0, 0], tmp2 = [0, 0, 0];
+  const lateK = P.lateK ?? 0.5, broadK = P.broadK ?? 0.25, streakK = P.streakK ?? 0.6, flame = P.flame || 0;
   return build(res(512), res(1024), [1.6, 0.4], (u, v, px) => {
     const s = sample(u * 1.6, v * 0.4);
-    mixRgb(L, M, clamp01(0.5 + 0.6 * s.streak + 0.4 * s.broad), tmp);
-    mixRgb(tmp, D, clamp01(s.late * 0.5 + Math.max(0, s.broad) * 0.25), tmp2);
-    if (s.streak > 0.3) mixRgb(tmp2, S, (s.streak - 0.3) * 0.6, tmp2);
+    mixRgb(L, M, clamp01(0.5 + 0.6 * s.streak + 0.4 * s.broad + flame * s.flame * 0.6), tmp);
+    mixRgb(tmp, D, clamp01(s.late * lateK + Math.max(0, s.broad) * broadK + Math.max(0, s.flame) * flame * 0.45), tmp2);
+    if (s.streak > 0.3) mixRgb(tmp2, S, (s.streak - 0.3) * streakK, tmp2);
     const pd = 1 - s.pore * 0.38;
     px.r = tmp2[0] * pd; px.g = tmp2[1] * pd; px.b = tmp2[2] * pd;
     px.rough = P.rough + s.late * 0.04 + s.pore * 0.18;
@@ -770,39 +864,47 @@ export function brushedTextures(seed = 91) {
 // ---------------------------------------------------------------- TEXTILES
 
 /** Bouclé: dense irregular yarn loops. Near-white detail map. */
+/**
+ * Bouclé (R2-18): irregular yarn loops 3–4 mm across, gathered in 1–2 cm clumps with deep shadowed valleys
+ * between them — the clumps are what reads as "nubby" at 1.5–3 m. Near-white detail map with baked AO,
+ * roughness higher in the valleys, strong height for the normal map. Tile 12 cm.
+ */
 export function boucleTextures(seed = 101) {
-  const C1 = new Cells(seed, 44, 44, 1), C2 = new Cells(seed + 1, 70, 70, 1);
+  const C1 = new Cells(seed, 32, 32, 1), C2 = new Cells(seed + 1, 52, 52, 1), CL = new Cells(seed + 5, 9, 9, 1);
   const N2 = new Noise(seed + 3);
   return build(res(512), res(512), [0.12, 0.12], (u, v, px, x, y) => {
     const a = C1.at(u, v); const f1 = a[0], f2a = a[1], id1 = a[2];
-    const b = C2.at(fract(u + 0.013), fract(v + 0.027)); const g1 = b[0];
-    const r0 = 0.32 + id1 * 0.18;
-    const ring = Math.exp(-Math.pow((f1 - r0) / 0.11, 2));
-    const dome = Math.max(0, 1 - f1 / 0.75);
-    const ring2 = Math.exp(-Math.pow((g1 - 0.3) / 0.12, 2)) * 0.6;
-    const fib = hash2(x, y, seed) * 0.12;
-    const edge = smooth(0, 0.25, f2a - f1);
-    let h = Math.max(ring * 0.9 + dome * 0.4, ring2) * (0.6 + 0.4 * edge) + fib;
-    h += N2.n(u * 8, v * 8, 8, 8) * 0.08;
-    const ao = 0.66 + 0.34 * clamp01(h);
-    px.r = px.g = px.b = ao * (0.98 + id1 * 0.04);
-    px.rough = 0.92;
-    px.h = h;
-  }, { normalStrength: 2.5, placeholder: [0.9, 0.9, 0.9] });
+    const b = C2.at(fract(u + 0.013), fract(v + 0.027)); const g1 = b[0], id2 = b[2];
+    const cl = CL.at(u, v);
+    // clump: domed tufts with crevices along the clump borders
+    const clump = Math.max(0, 1 - cl[0] / 0.85), crev = smooth(0.0, 0.22, cl[1] - cl[0]);
+    // loops: a ring of yarn round each cell centre, plus a second, smaller loop layer
+    const r0 = 0.3 + id1 * 0.2;
+    const ring = Math.exp(-Math.pow((f1 - r0) / 0.1, 2));
+    const dome = Math.max(0, 1 - f1 / 0.7);
+    const ring2 = Math.exp(-Math.pow((g1 - 0.28 - id2 * 0.1) / 0.1, 2)) * 0.7;
+    const fib = hash2(x, y, seed) * 0.1;
+    const edge = smooth(0, 0.22, f2a - f1);
+    let h = Math.max(ring * 0.9 + dome * 0.35, ring2) * (0.55 + 0.45 * edge) + fib;
+    h = h * (0.7 + 0.3 * crev) + clump * 0.45 + N2.n(u * 8, v * 8, 8, 8) * 0.06;
+    // AO mostly per loop (fine), only a little per clump — the clumps must read as relief, not as a print
+    const ao = (0.64 + 0.36 * clamp01(h * 0.8)) * (0.92 + 0.08 * crev);
+    px.r = px.g = px.b = ao * (0.97 + id1 * 0.05);
+    px.rough = 0.86 + (1 - crev) * 0.1 + (1 - clamp01(h)) * 0.04;
+    px.h = h * 1.25;
+  }, { normalStrength: 2.6, placeholder: [0.86, 0.86, 0.86] });
 }
 
 /** Linen: plain weave with slubs and thread colour variation. Near-white detail map. */
 export function linenTextures(seed = 111, { tile = 0.2, threads = 220, washed = false } = {}) {
   const N1 = new Noise(seed), N2 = new Noise(seed + 1), N3 = new Noise(seed + 2);
   const r = rng(seed); const tc = new Float32Array(threads * 2); for (let i = 0; i < tc.length; i++) tc[i] = r();
-  let SW, SF, MO;
+  let SW, SF, MO, SWd, SFd;
+  // slub thickness per thread along its length (threads × 128 samples), evaluated per thread on first use
+  const slubW = (t, k) => { if (!SWd[t]) { for (let q = 0; q < 128; q++) SW[t * 128 + q] = Math.max(0, N1.n(t * 0.37, (q / 128) * 40, 4096, 40)) * 0.9; SWd[t] = 1; } return SW[t * 128 + k]; };
+  const slubF = (t, k) => { if (!SFd[t]) { for (let q = 0; q < 128; q++) SF[t * 128 + q] = Math.max(0, N2.n((q / 128) * 40, t * 0.37, 40, 4096)) * 0.9; SFd[t] = 1; } return SF[t * 128 + k]; };
   const prep = () => {
-    // slub thickness per thread along its length (threads × 128 samples)
-    SW = new Float32Array(threads * 128); SF = new Float32Array(threads * 128);
-    for (let t = 0; t < threads; t++) for (let k = 0; k < 128; k++) {
-      SW[t * 128 + k] = Math.max(0, N1.n(t * 0.37, (k / 128) * 40, 4096, 40)) * 0.9;
-      SF[t * 128 + k] = Math.max(0, N2.n((k / 128) * 40, t * 0.37, 40, 4096)) * 0.9;
-    }
+    SW = new Float32Array(threads * 128); SF = new Float32Array(threads * 128); SWd = new Uint8Array(threads); SFd = new Uint8Array(threads);
     MO = field(64, 64, (u, v) => N3.fbm(u, v, 3, 3, 3));
     // stone-washed linen: soft random crinkles a few cm long (ridged noise), periodic over the tile
     if (washed) CR = field(128, 128, (u, v) => { const n = N3.fbm(u, v, 5, 3, 4) + N1.fbm(v, u, 3, 7, 3) * 0.5; return 1 - Math.abs(n) * 2.2; });
@@ -812,8 +914,8 @@ export function linenTextures(seed = 111, { tile = 0.2, threads = 220, washed = 
     const tx = u * threads, ty = v * threads;
     const ix = Math.floor(tx), iy = Math.floor(ty);
     const fx = tx - ix, fy = ty - iy;
-    const slubWarp = SW[ix * 128 + ((v * 128) | 0)];
-    const slubWeft = SF[iy * 128 + ((u * 128) | 0)];
+    const slubWarp = slubW(ix, (v * 128) | 0);
+    const slubWeft = slubF(iy, (u * 128) | 0);
     const pw = Math.pow(Math.sin(Math.PI * fx), 0.6 - slubWarp * 0.35);
     const pf = Math.pow(Math.sin(Math.PI * fy), 0.6 - slubWeft * 0.35);
     const warpTop = ((ix + iy) & 1) === 0;
@@ -966,31 +1068,87 @@ export function rattanTextures(seed = 151, color = '#c49a5e') {
   }, { normalStrength: 3.0, placeholder: base });
 }
 
-/** Vienna straw cane webbing: octagonal holes (alpha), interlaced strands. Tile 4 cm (3 cells). */
-export function caneTextures(seed = 155, color = '#d2ad74') {
-  const base = hexToRgb(color);
+/**
+ * Seven-step Vienna (French) cane webbing — R2-13. Near-white detail map (× material colour), alpha = open
+ * octagonal holes. Per 13.3 mm cell: a vertical and a horizontal PAIR of flat glossy strands on the cell borders,
+ * and two diagonals forming a diamond that cuts the hole corners (→ octagons). Diagonals lie on top, horizontals
+ * cross over verticals in a checker; strands go darker where they dive under another. Hole texels are dark
+ * (not just transparent) so mip levels average to a darker woven tone instead of a flat tan sheet.
+ * Tile 4 cm (3 × 3 cells).
+ */
+export function caneTextures(seed = 155) {
   const cells = 3;
+  const r = rng(seed); const tones = Float32Array.from({ length: 64 }, () => 0.9 + r() * 0.12);
+  const prof = (d, hw) => { const t = d / hw; return t >= 1 ? 0 : Math.sqrt(1 - t * t); }; // rounded flat strand
   return build(res(512), res(512), [0.04, 0.04], (u, v, px, x, y) => {
-    const cx = fract(u * cells) - 0.5, cy = fract(v * cells) - 0.5;
+    const gx = u * cells, gy = v * cells;
+    const ix = Math.floor(gx), iy = Math.floor(gy);
+    const cx = gx - ix - 0.5, cy = gy - iy - 0.5;
     const ax = Math.abs(cx), ay = Math.abs(cy);
-    // octagon hole centred in each cell
-    const oct = Math.max(ax, ay, (ax + ay) * 0.74);
-    const hole = oct < 0.3;
-    // strands: horizontal & vertical pairs on cell borders, diagonals through corners
-    const dH = Math.min(Math.abs(ay - 0.5), Math.abs(ay - 0.38));
-    const dV = Math.min(Math.abs(ax - 0.5), Math.abs(ax - 0.38));
-    const d1 = Math.abs(cx - cy) / Math.SQRT2, d2 = Math.abs(cx + cy) / Math.SQRT2;
-    const dD = Math.min(Math.abs(d1 - 0.0) + 0.0, Math.abs(d2));
-    const sH = Math.max(0, 1 - dH / 0.06), sV = Math.max(0, 1 - dV / 0.06), sD = Math.max(0, 1 - Math.abs(Math.min(d1, d2) - 0.355) / 0.05);
-    const h = Math.max(sH * 0.8, sV * 0.9, sD);
-    const fib = hash2(x, y, seed) * 0.05;
-    const tone = 0.82 + 0.18 * h + fib;
-    px.r = base[0] * tone; px.g = base[1] * tone; px.b = base[2] * tone;
-    px.a = hole ? 0 : 1;
-    px.rough = 0.45 + (1 - h) * 0.2;
-    px.h = h + fib;
-    void dD;
-  }, { normalStrength: 4.0, placeholder: base });
+    const hw = 0.06, hd = 0.05;
+    const sV = prof(Math.abs(ax - 0.43), hw), sH = prof(Math.abs(ay - 0.43), hw);
+    const sD = prof(Math.abs(ax + ay - 0.5) / Math.SQRT2, hd);
+    // which strand is on top here (crossings): diagonals > (checker) horizontal/vertical
+    const hOver = ((ix + iy) & 1) === 0;
+    let h = 0, tone = 1, cover = 0;
+    const lay = (s, level, tn) => { if (s <= 0) return; const z = level + 0.35 * s; if (z > h) { h = z; tone = tn; cover = s; } };
+    lay(sV, hOver ? 0.0 : 0.25, tones[(ix * 2 + (cx > 0 ? 1 : 0)) & 63]);
+    lay(sH, hOver ? 0.25 : 0.0, tones[(iy * 2 + (cy > 0 ? 1 : 0) + 17) & 63]);
+    lay(sD, 0.5, tones[((ix + iy) * 3 + (cx * cy > 0 ? 5 : 9)) & 63] * 1.02);
+    // strands dip (and darken) where another strand passes over them
+    const under = (sV > 0 ? 1 : 0) + (sH > 0 ? 1 : 0) + (sD > 0 ? 1 : 0) > 1 ? 1 : 0;
+    const fib = hash2(x, y, seed) * 0.04 + Math.sin((cx + cy) * 90) * 0.015;
+    if (h > 0) {
+      const k = tone * (0.8 + 0.2 * cover) * (under ? 0.92 : 1) + fib;
+      px.r = k; px.g = k * 0.985; px.b = k * 0.95; px.a = 1;
+      px.rough = 0.34 + (1 - cover) * 0.2 + (under ? 0.06 : 0);
+      px.h = h + fib * 0.5;
+    } else {
+      // open hole: dark (what you see through it at a distance) and transparent
+      px.r = 0.12; px.g = 0.1; px.b = 0.08; px.a = 0;
+      px.rough = 0.9; px.h = -0.2;
+    }
+  }, { normalStrength: 3.0, placeholder: [0.62, 0.58, 0.52], meanOpaque: true });
+}
+
+/**
+ * Rattan wrap / binding cane: glossy peel strips wound round a pole or panel edge (u = along the part, metres),
+ * 6 mm strips at a slight helix angle, dark gaps between turns, fibre streaks along each strip. Near-white detail
+ * map. Tile 6 cm.
+ */
+export function rattanWrapTextures(seed = 157) {
+  const N1 = new Noise(seed);
+  const turns = 10; // 6 cm / 10 → 6 mm strips
+  return build(res(256), res(256), [0.06, 0.06], (u, v, px, x, y) => {
+    const t = u * turns + v * 0.35 * turns / 10;
+    const i = Math.floor(t), f = t - i;
+    const prof = Math.pow(Math.max(0, Math.sin(Math.PI * f)), 0.35);
+    const fib = N1.n(u * 6, v * 220, 6, 220) * 0.06 + hash2(x, y, seed) * 0.025;
+    const tone = 0.88 + 0.1 * Math.sin(i * 12.9898) * 0.5 + fib;
+    const k = tone * (0.55 + 0.45 * prof);
+    px.r = k; px.g = k * 0.98; px.b = k * 0.93;
+    px.rough = 0.32 + (1 - prof) * 0.4;
+    px.h = prof + fib * 0.5;
+  }, { normalStrength: 2.2, placeholder: [0.85, 0.83, 0.79] });
+}
+
+/** Fringe / tassel card (alpha): twisted strands hanging from a knotted band, u across, v 0 (band) → 1 (tips). */
+export function fringeTextures(seed = 159) {
+  const r = rng(seed); const n = 26; // strands per 10 cm tile
+  const len = Float32Array.from({ length: n }, () => 0.78 + r() * 0.2), off = Float32Array.from({ length: n }, () => (r() - 0.5) * 0.25);
+  return build(res(256), res(128), [0.1, 1], (u, v, px, x, y) => {
+    const s = u * n, i = Math.floor(s) % n, f = s - Math.floor(s);
+    const knot = v < 0.14;
+    const sway = off[i] * v * v;
+    const d = Math.abs(f - 0.5 - sway);
+    const w = 0.3 - v * 0.08;
+    const on = knot ? (Math.abs(f - 0.5) < 0.48 ? 1 : 0) : (d < w && v < len[i] ? 1 : 0);
+    const twist = Math.sin((v * 40 + f * 3) * Math.PI) * 0.06;
+    const k = (knot ? 0.92 : 0.86 + twist) * (0.75 + 0.25 * Math.cos(Math.PI * d / Math.max(0.05, w)));
+    px.r = px.g = px.b = k;
+    px.a = on;
+    px.rough = 0.95; px.h = on ? (knot ? 0.8 : 0.5 + twist) : 0;
+  }, { normalStrength: 1.5, placeholder: [0.88, 0.88, 0.88], meanOpaque: true });
 }
 
 export function juteTextures(seed = 161, color = '#b89a6c') {
@@ -1025,6 +1183,31 @@ export function woolPileTextures(seed = 171) {
     px.r = px.g = px.b = (0.8 + 0.2 * clamp01(h)) * (0.97 + c[2] * 0.03);
     px.rough = 0.95; px.h = h;
   }, { normalStrength: 3.0, placeholder: [0.88, 0.88, 0.88] });
+}
+
+/**
+ * Olive bark (R2-17): grey-brown (#7f7566 ridges → #5e554a fissures), shallow 2–4 cm fissures running along the
+ * trunk with flaky plates between them, matte (0.9–0.97). u = around (m), v = along (m). Tile 12 × 30 cm.
+ */
+export function barkTextures(seed = 143) {
+  const N1 = new Noise(seed), N2 = new Noise(seed + 1), N3 = new Noise(seed + 2);
+  const hi = hexToRgb('#857a6a'), lo = hexToRgb('#4f473d'), lichen = hexToRgb('#8c8a74');
+  const tmp = [0, 0, 0];
+  let FI, PL;
+  const prep = [
+    () => { FI = field(128, 128, (u, v) => { const n = N1.fbm(u, v, 7, 2, 4) + 0.35 * N2.fbm(u, v, 14, 5, 3); return 1 - Math.min(1, Math.abs(n) * 2.4); }); },
+    () => { PL = field(128, 128, (u, v) => N3.fbm(u, v, 10, 6, 3)); },
+  ];
+  return build(res(256), res(512), [0.12, 0.3], (u, v, px, x, y) => {
+    const fis = FI(u, v), pl = PL(u, v);
+    const ridge = smooth(0.15, 0.75, fis);
+    mixRgb(lo, hi, ridge * (0.8 + 0.2 * pl), tmp);
+    if (pl > 0.45) mixRgb(tmp, lichen, (pl - 0.45) * 0.5, tmp);
+    const n = hash2(x, y, seed) * 0.03;
+    px.r = tmp[0] + n; px.g = tmp[1] + n; px.b = tmp[2] + n;
+    px.rough = 0.97 - ridge * 0.07;
+    px.h = ridge * 1.2 + pl * 0.25 + n;
+  }, { normalStrength: 2.2, placeholder: [0.42, 0.39, 0.34], prep });
 }
 
 /** Potting top dressing: dark-brown bark-mulch chips with a few pale pebbles. */
@@ -1177,33 +1360,89 @@ function drawRug({ w = 2.9, d = 2.0, color = '#e3dacb', patternColor = '#b9a88e'
 
 // ---------------------------------------------------------------- ART (canvas)
 
-const MOTIFS = ['abstract-arches', 'sun', 'organic', 'lines', 'landscape', 'botanical', 'stripes', 'grid', 'blocks', 'textured'];
+const MOTIFS = ['abstract-arches', 'sun', 'organic', 'line', 'landscape', 'botanical', 'stripes', 'grid', 'blocks', 'textured', 'wave', 'amphora', 'shapes', 'dune', 'vase', 'leaf'];
 
 /** Returns a CanvasTexture; with relief: true returns { map, normalMap } (impasto / plaster relief). */
+// Art is painted off the main thread when a renderer is registered (furniture/index.js → build worker, T8): the
+// texture starts as a full-size canvas in the painting's ground colour (+ flat relief normals), the pixels land a
+// few hundred ms later. Without a worker the paint runs in a separate task (never inside materials.get()).
+let ART_RENDERER = null;
+let ART_PENDING = 0;
+/** fn(opts) → Promise<{ w, h, rgba: Uint8ClampedArray, normal: { data, w, h } | null }> | null */
+export function setArtRenderer(fn) { ART_RENDERER = typeof fn === 'function' ? fn : null; }
+/** Paint an artwork and return its pixels (used by the build worker). */
+export function renderArtData(opts = {}) {
+  const r = renderArt(opts);
+  const img = r.canvas.getContext('2d').getImageData(0, 0, r.canvas.width, r.canvas.height);
+  return { w: r.canvas.width, h: r.canvas.height, rgba: img.data, normal: r.normal };
+}
+const artSize = (opts) => { const H = 1024; return [Math.max(64, Math.round(H * (opts.aspect || 0.7))), H]; };
+function artGround(opts) {
+  const cols = opts.colors && opts.colors.length ? opts.colors : ['#B5653F', '#E6DDCF', '#7A7B55'];
+  return cols.find((c) => lum(c) > 0.7) || '#efe8dc';
+}
+
 export function artTexture(opts = {}) {
-  const r0 = renderArt(opts);
-  const t = canvasTexture(r0.canvas);
+  const [W, H] = artSize(opts);
+  // full-size ground-colour placeholder (a native fill — cheap inside materials.get); the paint lands in the same size
+  const ground = () => { const cv = makeCanvas(W, H); const g = cv.getContext('2d'); g.fillStyle = artGround(opts); g.fillRect(0, 0, W, H); return cv; };
+  const t = canvasTexture(ground());
   t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
-  releaseAfterUpload(t, 'canvas');
+  t.name = 'art:' + (opts.motif || '');
+  t.onUpdate = healOnUpdate;
   let nt = null;
-  if (r0.normal) {
-    nt = new THREE.DataTexture(r0.normal.data, r0.normal.w, r0.normal.h, THREE.RGBAFormat, THREE.UnsignedByteType);
+  const RW = Math.min(512, W), RH = Math.round(RW * H / W);
+  const LE = new Uint8Array(new Uint16Array([1]).buffer)[0] === 1;
+  const flat = () => { const d = new Uint8Array(RW * RH * 4); new Uint32Array(d.buffer).fill(LE ? 0xFFFF8080 : 0x8080FFFF); return d; };
+  if (opts.relief) {
+    nt = new THREE.DataTexture(flat(), RW, RH, THREE.RGBAFormat, THREE.UnsignedByteType);
     nt.flipY = false; nt.colorSpace = THREE.NoColorSpace; nt.generateMipmaps = true; nt.minFilter = THREE.LinearMipmapLinearFilter; nt.magFilter = THREE.LinearFilter; nt.anisotropy = MAX_ANISO;
     nt.wrapS = nt.wrapT = THREE.ClampToEdgeWrapping;
+    nt.name = t.name + ':relief';
     // canvas rows run top→bottom while DataTexture rows run bottom→top: flip via the texture transform
     nt.repeat.set(1, -1); nt.offset.set(0, 1);
     nt.needsUpdate = true;
-    releaseAfterUpload(nt, 'data');
+    nt.onUpdate = healOnUpdate;
   }
-  const regen = () => {
-    const r = renderArt(opts);
-    t.image = r.canvas; t.needsUpdate = true; releaseAfterUpload(t, 'canvas');
-    if (nt && r.normal) { nt.image.data = r.normal.data; nt.needsUpdate = true; releaseAfterUpload(nt, 'data'); }
+  let gen = 0;
+  const apply = (r, my) => {
+    if (my !== gen || !r || r.w !== W || r.h !== H) return;
+    // the ground canvas may have been released (1 × 1) meanwhile: paint into a fresh one and reallocate
+    let cv = t.image;
+    if (!cv || cv.width !== W || cv.height !== H) { cv = makeCanvas(W, H); t.image = cv; reallocate(t); }
+    cv.getContext('2d').putImageData(new ImageData(r.rgba, W, H), 0, 0);
+    t.needsUpdate = true; releaseAfterUpload(t, 'canvas');
+    if (nt && r.normal && r.normal.w === RW && r.normal.h === RH) { nt.image.data = r.normal.data; nt.needsUpdate = true; releaseAfterUpload(nt, 'data'); }
   };
+  const paint = () => {
+    const my = ++gen;
+    ART_PENDING++;
+    const local = () => new Promise((res) => setTimeout(() => res(renderArtData(opts)), 0));
+    let job = null;
+    try { job = ART_RENDERER ? ART_RENDERER(opts) : null; } catch { job = null; }
+    (job || local()).catch(() => local()).then((r) => apply(r, my)).catch((e) => console.debug('[textures] art paint failed', e))
+      .finally(() => { ART_PENDING--; settle(); });
+  };
+  // T4 restore / heal: full-size ground canvas with fresh GL storage at once (never black, never 1 × 1), then repaint
+  const regen = () => {
+    t.image = ground(); reallocate(t); t.needsUpdate = true; t.onUpdate = healOnUpdate;
+    if (nt) { nt.image.data = flat(); nt.needsUpdate = true; nt.onUpdate = healOnUpdate; }
+    paint();
+  };
+  regen.art = true;
+  regen.textures = nt ? [t, nt] : [t];
+  HEAL.set(t.source, regen);
+  if (nt) HEAL.set(nt.source, regen);
   REGEN.add(regen);
-  t.addEventListener('dispose', () => REGEN.delete(regen));
+  const forget = () => { if (!QUIET) REGEN.delete(regen); };
+  forget.__villar = true;
+  t.addEventListener('dispose', forget);
+  paint();
   return nt ? { map: t, normalMap: nt } : t;
 }
+
+/** Re-upload every art canvas now (engine hook for context restore; restoreTextures() includes this). */
+export function restoreArt() { QUIET++; try { for (const r of REGEN) if (r.art) r(); } finally { QUIET--; } }
 
 function renderArt({ motif = 'abstract-arches', colors = ['#B5653F', '#E6DDCF', '#7A7B55'], aspect = 0.7, seed = 1, relief = false } = {}) {
   const H = 1024, W = Math.max(64, Math.round(H * aspect));
@@ -1219,16 +1458,62 @@ function renderArt({ motif = 'abstract-arches', colors = ['#B5653F', '#E6DDCF', 
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
   const others = cols.filter((c) => c !== bg);
   const oc = (i) => (others.length ? others[i % others.length] : pick(i));
-  if (m.includes('textur') || m.includes('impasto') || m.includes('plaster')) {
-    // palette-knife strokes, tone on tone
-    for (let i = 0; i < 160; i++) {
-      const x = r() * W, y = r() * H, w = W * (0.1 + r() * 0.3), h = H * (0.02 + r() * 0.05), a = (r() - 0.5) * 0.7;
-      g.save(); g.translate(x, y); g.rotate(a); g.globalAlpha = 0.35 + r() * 0.4; g.fillStyle = i % 4 === 0 ? oc(i) : shade(bg, (r() - 0.5) * 0.18);
-      g.beginPath(); g.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2); g.fill(); g.restore();
-      strokes.push([x, y, w, h, a, 0.4 + r() * 0.6]);
+  // painterly fill (R2-22): base colour, then 18–40 translucent brush drags clipped to the shape (±7 % tone),
+  // then a soft blurred edge — no flat vector fills
+  const paint = (path, color, { strokes = 26, soft = 2.2, dir = 0 } = {}) => {
+    g.save(); g.fillStyle = color; g.filter = `blur(${soft}px)`; g.fill(path); g.filter = 'none';
+    g.clip(path);
+    const bb = { w: W, h: H };
+    for (let i = 0; i < strokes; i++) {
+      g.globalAlpha = 0.08 + r() * 0.12; g.strokeStyle = shade(color, (r() - 0.5) * 0.14);
+      g.lineWidth = W * (0.03 + r() * 0.06); g.lineCap = 'round';
+      const x = r() * bb.w, y = r() * bb.h, a = dir + (r() - 0.5) * 0.6, L = W * (0.15 + r() * 0.35);
+      g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(a) * L * 0.5 + (r() - 0.5) * W * 0.05, y + Math.sin(a) * L * 0.5 + (r() - 0.5) * W * 0.05, x + Math.cos(a) * L, y + Math.sin(a) * L); g.stroke();
+    }
+    g.restore(); g.globalAlpha = 1;
+  };
+  const blob = (cx, cy, rx, ry, k, ph) => { const p2 = new Path2D(); for (let a = 0; a <= 48; a++) { const t = (a / 48) * Math.PI * 2; const rr = 1 + 0.12 * Math.sin(t * k + ph) + 0.05 * Math.sin(t * (k + 2) + ph * 2); const x = cx + Math.cos(t) * rx * rr, y = cy + Math.sin(t) * ry * rr; a ? p2.lineTo(x, y) : p2.moveTo(x, y); } p2.closePath(); return p2; };
+  if (m.includes('wave') || m.includes('dune') || m.includes('sand')) {
+    // sand-wave relief (Macaire): sinuous horizontal dune bands, each a step in tone and height
+    const bands = 7;
+    for (let i = 0; i < bands; i++) {
+      const p2 = new Path2D(); const y0 = H * (0.12 + i * 0.13), amp = H * (0.035 + r() * 0.03), k = 1 + r() * 1.4, ph = r() * 6.28;
+      p2.moveTo(0, H); for (let x = 0; x <= W; x += W / 48) p2.lineTo(x, y0 + Math.sin((x / W) * Math.PI * 2 * k + ph) * amp + Math.sin((x / W) * 17 + i) * amp * 0.12); p2.lineTo(W, H); p2.closePath();
+      paint(p2, shade(i % 2 ? oc(0) : (cols[2] || oc(1)), (i - bands / 2) * 0.025), { strokes: 14, soft: 1.5, dir: 0 });
+      strokes.push([W / 2, y0, W * 1.1, H * 0.02, 0, 0.35]);
+    }
+  } else if (m.includes('amphora') || m.includes('vase') || m.includes('urn')) {
+    // amphora relief (Erato): a turned vessel silhouette standing proud of a plaster ground
+    for (let i = 0; i < 40; i++) { g.globalAlpha = 0.06; g.fillStyle = shade(bg, (r() - 0.5) * 0.1); g.beginPath(); g.ellipse(r() * W, r() * H, W * (0.1 + r() * 0.2), H * (0.05 + r() * 0.1), r() * 3, 0, Math.PI * 2); g.fill(); }
+    g.globalAlpha = 1;
+    const cx = W / 2, top = H * 0.16, bot = H * 0.86, Rm = W * 0.21;
+    const prof = [[0.16, 0], [0.2, 0.04], [0.13, 0.1], [0.13, 0.17], [0.6, 0.32], [1, 0.5], [0.92, 0.68], [0.55, 0.86], [0.3, 0.96], [0.36, 1]];
+    const p2 = new Path2D(); prof.forEach(([q, t], i) => { const x = cx + q * Rm, y = top + t * (bot - top); i ? p2.lineTo(x, y) : p2.moveTo(x, y); });
+    for (let i = prof.length - 1; i >= 0; i--) { const [q, t] = prof[i]; p2.lineTo(cx - q * Rm, top + t * (bot - top)); } p2.closePath();
+    paint(p2, oc(0), { strokes: 30, soft: 2, dir: Math.PI / 2 });
+    // handles
+    g.strokeStyle = oc(0); g.lineWidth = W * 0.022; g.lineCap = 'round';
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx + s * Rm * 0.14, top + 0.12 * (bot - top)); g.bezierCurveTo(cx + s * Rm * 0.55, top + 0.05 * (bot - top), cx + s * Rm * 0.75, top + 0.2 * (bot - top), cx + s * Rm * 0.62, top + 0.32 * (bot - top)); g.stroke(); }
+  } else if ((m.includes('abstract') && m.includes('shape')) || m.includes('aquarelle') || m.includes('composition')) {
+    // composed abstract (soft-edged, painterly): a large arch / half-moon, a pebble, a thin brush line
+    const big = new Path2D(); const ax = W * (0.36 + r() * 0.12), aw = W * (0.3 + r() * 0.06), ay = H * (0.42 + r() * 0.1);
+    big.moveTo(ax - aw, H * 0.9); big.lineTo(ax - aw, ay); big.arc(ax, ay, aw, Math.PI, 0); big.lineTo(ax + aw, H * 0.9); big.closePath();
+    paint(big, oc(0), { strokes: 34, soft: 2.5, dir: Math.PI / 2 });
+    paint(blob(W * (0.66 + r() * 0.1), H * (0.62 + r() * 0.1), W * 0.16, H * 0.11, 3, r() * 6), oc(1), { strokes: 20, soft: 2.5 });
+    paint(blob(W * 0.3, H * 0.24, W * 0.08, W * 0.08, 2, r() * 6), cols[2] || shade(oc(1), -0.15), { strokes: 10, soft: 2 });
+    g.globalAlpha = 0.7; g.strokeStyle = shade(oc(0), -0.25); g.lineWidth = W * 0.006; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(W * 0.12, H * 0.8); g.bezierCurveTo(W * 0.4, H * 0.7, W * 0.6, H * 0.88, W * 0.88, H * 0.74); g.stroke(); g.globalAlpha = 1;
+  } else if (m.includes('textur') || m.includes('impasto') || m.includes('plaster')) {
+    // tone-on-tone plaster (Zuri): long sweeping palette-knife arcs close to the ground colour, a few faint accents
+    g.lineCap = 'round';
+    for (let i = 0; i < 70; i++) {
+      const x = r() * W, y = r() * H, L = W * (0.25 + r() * 0.45), a = (r() - 0.5) * 0.9, bend = (r() - 0.5) * H * 0.25;
+      g.globalAlpha = 0.18 + r() * 0.22; g.strokeStyle = i % 9 === 0 ? oc(1) : shade(bg, (r() - 0.45) * 0.12);
+      g.lineWidth = H * (0.02 + r() * 0.05);
+      g.beginPath(); g.moveTo(x - Math.cos(a) * L / 2, y - Math.sin(a) * L / 2); g.quadraticCurveTo(x, y + bend, x + Math.cos(a) * L / 2, y + Math.sin(a) * L / 2); g.stroke();
+      strokes.push([x, y + bend * 0.5, L, g.lineWidth, a, 0.3 + r() * 0.5]);
     }
     g.globalAlpha = 1;
-    g.fillStyle = oc(1); g.globalAlpha = 0.5; g.beginPath(); g.ellipse(W * 0.6, H * 0.42, W * 0.18, H * 0.1, -0.3, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
   } else if (m.includes('arch')) {
     const n = 3;
     for (let i = 0; i < n; i++) {
@@ -1244,13 +1529,9 @@ function renderArt({ motif = 'abstract-arches', colors = ['#B5653F', '#E6DDCF', 
     g.fillStyle = oc(1); g.fillRect(0, H * 0.62, W, H * 0.38);
     g.fillStyle = oc(2); g.fillRect(0, H * 0.8, W, H * 0.2);
   } else if (m.includes('organic') || m.includes('blob') || m.includes('abstract')) {
-    for (let i = 0; i < 6; i++) {
-      g.fillStyle = oc(i); g.globalAlpha = 0.9; g.beginPath();
-      const cx = r() * W, cy = r() * H, rr = W * (0.15 + r() * 0.25);
-      for (let a = 0; a <= 24; a++) { const t = a / 24 * Math.PI * 2; const rad = rr * (0.8 + 0.25 * Math.sin(t * 3 + i)); const x = cx + Math.cos(t) * rad, y = cy + Math.sin(t) * rad * 0.8; a ? g.lineTo(x, y) : g.moveTo(x, y); }
-      g.closePath(); g.fill();
-    }
-    g.globalAlpha = 1;
+    // three overlapping soft organic forms in a balanced diagonal (was six random flat blobs → "camouflage")
+    const spots = [[0.36, 0.38, 0.26], [0.64, 0.6, 0.22], [0.42, 0.74, 0.13]];
+    spots.forEach(([fx, fy, fr], i) => paint(blob(W * (fx + (r() - 0.5) * 0.06), H * (fy + (r() - 0.5) * 0.05), W * fr, W * fr * (0.75 + r() * 0.2), 3, r() * 6), oc(i), { strokes: 22, soft: 2.5 }));
   } else if (m.includes('line')) {
     g.strokeStyle = oc(0); g.lineWidth = W * 0.006; g.lineCap = 'round';
     g.beginPath(); let x = W * 0.3, y = H * 0.2; g.moveTo(x, y);

@@ -3,13 +3,195 @@
 // All three sit on a surface: origin = centre of the surface footprint at the surface height (y = 0),
 // front (+Z) = the side people stand/sit, back (−Z) = wall side for kitchen_decor. They are NOT rescaled to
 // item.dims (real object sizes are kept); dims only bound the layout. Deterministic (seeded by item id).
-import * as THREE from 'three';
+//
+// PT-04: every object builds from the item's OWN colour + material fields (card, thumbnail and 3D agree).
+// normalizeDetailParams() maps the catalogue's structured params ({ kettle: { color } }, colors: { kettle, … },
+// plate: { color, glaze }, vase: { shape, color }, …) and the materials text ("Matte black kettle", "Wooden
+// utensil caddy", "Dark wood board") onto the flat generator params below.
+import * as THREE from '../../../vendor/three/three.module.js';
 import { rng } from '../textures.js';
 import { Builder, lathe, smoothProfile, tube, softBox, slab, roundedRectShape, ellipseShape, V3, clamp, lerp, cm, segs } from './geom.js';
 import { fabricMat } from './parts.js';
 
 const _M = () => new THREE.Matrix4();
 const TRS = (x, y, z, ry = 0, rx = 0, rz = 0, s = 1) => _M().compose(V3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), V3(s, s, s));
+
+// -------------------------------------------------------------- catalogue param normalisation
+
+const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+const hex = (v) => (typeof v === 'string' && HEX.test(v.trim()) ? v.trim() : undefined);
+/** Linear relative luminance 0..1 of a hex colour. */
+export function lumOf(h) { const c = new THREE.Color(h); return c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722; }
+const WOOD_RE = /wood|walnut|oak|teak|acacia|bamboo|mango|\bash\b|дерев|орех|дуб|акаци|бамбук|ясен|манго/;
+const CERAMIC_RE = /ceram|stoneware|porcel|керамик|керамогранит|фарфор/;
+/** Furniture wood key for free text + optional colour (dark → walnut, mid → teak/acacia, light → oak). */
+export function woodFor(text, color) {
+  const t = String(text || '').toLowerCase();
+  if (/walnut|орех|espresso/.test(t)) return 'walnut-dark';
+  if (/acacia|акаци|teak|тик|mango|манго/.test(t)) return 'teak';
+  if (/bamboo|бамбук|\boak\b|дуб|beech|бук|birch|pale|light|светл/.test(t)) return 'oak-light';
+  if (/dark|тёмн|темн/.test(t)) return 'walnut-dark';
+  if (color) { const l = lumOf(color); return l < 0.06 ? 'walnut-dark' : l < 0.22 ? 'teak' : 'oak-light'; }
+  return 'oak-light';
+}
+const texts = (item) => [...(item?.materialsEn || []), ...(item?.materials || [])].map((s) => String(s).toLowerCase());
+const entry = (item, re) => texts(item).find((s) => re.test(s)) || '';
+/** Material for a small object: wood keys get a calibrated colour match, everything else a colour. */
+export function objMat(c, key, color, extra = {}) {
+  const k = String(key || 'stoneware');
+  if (/walnut|oak|teak|ash|wood|acacia|mango/.test(k)) return c.mat(WOOD_RE.test(k) && !/walnut|oak|teak|ash/.test(k) ? woodFor(k, color) : k, color ? { match: color, ...extra } : extra);
+  if (/travert|marble|terrazzo/.test(k)) return c.mat(k, color ? { match: color, ...extra } : extra);
+  if (/glass/.test(k)) return c.mat('glass-clear', { thickness: 0.004, ...(color ? { color } : {}), ...extra });
+  if (/leather|кож/.test(k)) return c.mat('leather-cognac', { color: color || '#D6CBB8', ...extra });
+  if (/^metal|brass|steel|chrome|nickel/.test(k)) return c.mat(k, color && !/brass/.test(k) ? { color, ...extra } : extra);
+  return c.mat(k, { color: color || '#E6DED1', ...extra });
+}
+
+/** Map structured catalogue params onto the flat generator params (pure; unknown archetypes pass through). */
+export function normalizeDetailParams(arch, raw, item) {
+  const p = isObj(raw) ? { ...raw } : {};
+  try {
+    if (arch === 'kitchen_decor') return normKitchen(p, item);
+    if (arch === 'tableware') return normTableware(p, item);
+    if (arch === 'centerpiece') return normCenterpiece(p, item);
+  } catch (e) { console.debug('[furniture] param normalisation failed', item?.id, e); }
+  return p;
+}
+
+function normKitchen(p, item) {
+  const cmap = isObj(p.colors) ? p.colors : {};
+  const sub = (k) => (isObj(p[k]) ? p[k] : {});
+  const col = (k, ...alts) => hex(sub(k).color) || hex(cmap[k]) || alts.map(hex).find(Boolean);
+  const o = { ...p };
+  for (const k of ['colors', 'kettle', 'crock', 'board', 'bottles', 'tray', 'bowl']) if (isObj(o[k])) delete o[k];
+  if (!Array.isArray(p.items) || !p.items.length) {
+    const have = ['board', 'crock', 'kettle', 'bottles', 'tray', 'bowl', 'canisters'].filter((k) => isObj(p[k]) || hex(cmap[k]) || (k === 'bottles' && hex(cmap.oil)));
+    if (have.length) o.items = have.map((k) => (k === 'bowl' ? 'fruit-bowl' : k));
+  }
+  // kettle: colour, finish (matte-black | matte-white | steel | brass) and type (electric plastic jug | stovetop)
+  const kt = entry(item, /kettle|чайник/);
+  const kc = col('kettle', p.kettleColor);
+  if (kc) o.kettleColor = kc;
+  let km = sub('kettle').material || (typeof p.kettle === 'string' ? p.kettle : null) || p.kettleMaterial;
+  if (!km) km = /black|чёрн|черн/.test(kt) ? 'matte-black' : /white|бел/.test(kt) ? 'matte-white' : /brass|латун|copper|мед/.test(kt) ? 'brass' : /steel|stainless|сталь|chrome/.test(kt) ? 'steel'
+    : kc ? (lumOf(kc) < 0.08 ? 'matte-black' : lumOf(kc) > 0.55 ? 'matte-white' : 'steel') : undefined;
+  if (km) o.kettleMaterial = km;
+  if (sub('kettle').type) o.kettleType = sub('kettle').type;
+  else if (!p.kettleType && (/plastic|пластик|electric|электр/.test(kt) || (kt && !/steel|сталь|brass|латун|enamel|эмал|stove|плит/.test(kt)))) o.kettleType = 'electric';
+  // utensil holder: ceramic crock or wooden caddy
+  const ct = entry(item, /utensil|caddy|holder|crock|подставк|держател/);
+  const cc = col('crock', p.crockColor);
+  if (cc) o.crockColor = cc;
+  if (!p.crockMaterial) {
+    if (sub('crock').material) o.crockMaterial = sub('crock').material;
+    else if (WOOD_RE.test(ct) && !CERAMIC_RE.test(ct)) o.crockMaterial = woodFor(ct, cc);
+    else if (CERAMIC_RE.test(ct)) o.crockMaterial = 'stoneware';
+  }
+  if (/caddy|box|ящик/.test(ct) || sub('crock').shape === 'caddy') o.crockShape = 'caddy';
+  // board: wood from the text ("Acacia board", "Dark wood board"), tone from its colour
+  const bt = entry(item, /board|доск/);
+  const bc = col('board', p.boardColor);
+  if (bc) o.boardColor = bc;
+  if (typeof p.board !== 'string') o.board = sub('board').material || woodFor(bt, bc);
+  if (sub('board').lean === false) o.boardLean = false;
+  // oil / vinegar bottles: glass or ceramic
+  const ot = entry(item, /bottle|бутыл|oil|масл|vinegar|уксус/);
+  const oc = col('bottles', cmap.oil, p.bottleColor);
+  if (oc) o.bottleColor = oc;
+  const kind = sub('bottles').kind || p.bottleKind;
+  o.bottleKind = kind ? (/ceram/.test(kind) ? 'ceramic' : 'glass') : CERAMIC_RE.test(ot) ? 'ceramic' : 'glass';
+  // fruit bowl
+  const wt = entry(item, /bowl|миск|чаш/);
+  const wc = col('bowl', p.bowlColor);
+  if (wc) o.bowlColor = wc;
+  if (!p.bowlMaterial) o.bowlMaterial = sub('bowl').material || (WOOD_RE.test(wt) && !CERAMIC_RE.test(wt) ? woodFor(wt, wc) : /glass|стекл/.test(wt) ? 'glass' : 'stoneware');
+  if (isObj(p.tray)) { o.trayMaterial = p.tray.material || 'travertine'; const tc = hex(p.tray.color); if (tc) o.trayColor = tc; }
+  return o;
+}
+
+function normTableware(p, item) {
+  const o = { ...p };
+  const plate = isObj(p.plate) ? p.plate : isObj(p.plates) ? p.plates : null;
+  const side = isObj(p.sidePlate) ? p.sidePlate : null;
+  const bowl = isObj(p.bowl) ? p.bowl : null;
+  const glass = isObj(p.glass) ? p.glass : null;
+  const cut = isObj(p.cutlery) ? p.cutlery : null;
+  const nap = isObj(p.napkin) ? p.napkin : null;
+  for (const k of ['plate', 'plates', 'sidePlate', 'bowl', 'glass', 'cutlery', 'napkin']) if (isObj(o[k])) delete o[k];
+  if (bowl) o.bowl = true;
+  const pc = hex(plate?.color), sc = hex(side?.color) || pc, bc = hex(bowl?.color) || sc;
+  if (pc && !(Array.isArray(p.colors) && p.colors.length)) o.colors = [pc, sc, bc];
+  const dt = entry(item, /stoneware|porcelain|ceramic|керамогранит|фарфор|керамик|dinner|сервиз/);
+  const glaze = String(plate?.glaze || '');
+  if (!p.material) o.material = /porcelain|фарфор/.test(dt) ? 'porcelain' : /stoneware|керамогранит/.test(dt) ? 'stoneware' : /ceramic|керамик/.test(dt) ? 'ceramic-matte' : 'stoneware';
+  if (/reactive|реактив/.test(glaze + ' ' + dt)) {
+    if (!p.rim) o.rim = 'organic';
+    const rc = hex(plate?.rimColor) || hex(p.rimColor); if (rc) o.rimColor = rc;
+  }
+  if (/rib/.test(glaze)) o.ribbed = true;
+  // glass: tint amber | smoke | clear, style tumbler | pebble | wine
+  const gt = entry(item, /glass|tumbler|стекл|стакан|бокал/);
+  if (glass) {
+    const tint = `${glass.tint || ''} ${glass.kind || ''} ${gt}`;
+    const st = `${glass.style || ''} ${gt}`;
+    o.glass = /wine|stem|бокал/.test(st) ? 'wine' : /pebble|organic/.test(st) ? 'pebble' : 'tumbler';
+    o.glassTint = /amber|янтар/.test(tint) ? 'amber' : /smok|дым|grey|gray/.test(tint) ? 'smoke' : 'clear';
+    const gc = hex(glass.color); if (gc) o.glassColor = gc;
+  } else if (!p.glassTint && gt) o.glassTint = /amber|янтар/.test(gt) ? 'amber' : /smok|дым/.test(gt) ? 'smoke' : 'clear';
+  // cutlery: steel | brass | black | wood (wood-handled steel)
+  if (cut || typeof p.cutlery !== 'string') {
+    const ct = entry(item, /cutlery|прибор|stainless|сталь|\bgold/);
+    const f = `${cut?.finish || ''} ${cut?.material || ''} ${ct}`;
+    o.cutlery = /wood|дерев/.test(f) ? 'wood' : /brass|gold|золот|латун/.test(f) ? 'brass' : /black|чёрн/.test(f) ? 'black' : 'steel';
+    const hc = hex(cut?.handleColor) || hex(cut?.color);
+    if (hc && o.cutlery === 'wood') o.handleColor = hc;
+    if (hc && o.cutlery === 'brass') o.cutleryColor = hc;
+  }
+  if (nap) { const nc = hex(nap.color); if (nc) o.napkinColor = nc; if (nap.fabric) o.napkinFabric = nap.fabric; }
+  if (!o.napkinFabric) { const nt = entry(item, /napkin|салфетк/); if (/linen|льн|лён/.test(nt)) o.napkinFabric = 'linen'; else if (/cotton|хлоп/.test(nt)) o.napkinFabric = 'cotton'; }
+  return o;
+}
+
+function normCenterpiece(p, item) {
+  const o = { ...p };
+  const kind = String(p.kind || p.style || '').toLowerCase();
+  if (!p.style) o.style = /candle/.test(kind) || isObj(p.candles) ? 'candles' : /bowl|fruit/.test(kind) ? 'bowl' : 'vase';
+  if (isObj(p.vase)) {
+    const v = p.vase; o.vase = v.shape || 'round';
+    const vc = hex(v.color); if (vc) o.vaseColor = vc;
+    if (v.height) o.vaseHeight = v.height; if (v.diameter) o.vaseDiameter = v.diameter; if (v.material) o.vaseMaterial = v.material;
+  }
+  if (!o.vaseMaterial && o.style === 'vase') {
+    const t = entry(item, /vase|ваз|ceramic|керамик|glass|стекл|terracotta|терракот|stoneware/);
+    o.vaseMaterial = /glass|стекл/.test(t) ? 'glass' : /terracotta|терракот/.test(t) ? 'terracotta' : /stoneware|speck|крап/.test(t) ? 'stoneware' : /ceramic|керамик/.test(t) ? 'ceramic-matte' : 'stoneware';
+  }
+  const st = entry(item, /eucalyp|эвкалипт|olive|олив|pampas|пампас|tulip|тюльпан|grass|трав|stem|ветк|bush|куст/);
+  if (isObj(p.stems)) {
+    const s = p.stems; o.stems = s.species || 'eucalyptus';
+    const n = Number(s.count) || 0;
+    if (n) o.stemCount = /bush|куст/.test(st) ? n * 4 : n;
+    const sc = hex(s.color); if (sc) o.leafColor = sc;
+    if (s.length) o.stemLength = s.length;
+  } else if (!p.stems && o.style === 'vase' && st) {
+    o.stems = /eucalyp|эвкалипт/.test(st) ? 'eucalyptus' : /olive|олив/.test(st) ? 'olive' : /pampas|пампас/.test(st) ? 'pampas' : /tulip|тюльпан/.test(st) ? 'tulip' : 'grass';
+  }
+  if (isObj(p.candles)) {
+    const cd = p.candles;
+    if (cd.count) o.count = cd.count;
+    const cc = hex(cd.color); if (cc) o.candleColor = cc;
+    if (Array.isArray(cd.heights)) o.candleHeights = cd.heights.map(Number).filter((x) => x > 0);
+    if (cd.diameter) o.candleDiameter = cd.diameter;
+    delete o.candles;
+  }
+  if (isObj(p.tray)) {
+    const t = p.tray; o.holder = 'tray'; o.holderMaterial = t.material || 'travertine';
+    const tc = hex(t.color); if (tc) o.holderColor = tc;
+    if (t.shape) o.trayShape = t.shape;
+    delete o.tray;
+  }
+  return o;
+}
 
 /** Ceramic / stoneware / porcelain / glass dish material from params. */
 function dishMat(c, material, color) {
@@ -21,12 +203,13 @@ function dishMat(c, material, color) {
   return c.mat('stoneware', { color: color || '#E9E2D6' });
 }
 
-function cutleryMat(c, kind) {
+function cutleryMats(c, kind, p) {
   const k = String(kind || 'steel').toLowerCase();
-  if (/brass|gold/.test(k)) return c.mat('metal-brass-brushed');
-  if (/black|matte/.test(k)) return c.mat('metal-black', { roughness: 0.4 });
-  if (/wood/.test(k)) return c.mat('walnut-medium');
-  return c.mat('metal-nickel', { roughness: 0.35 });
+  const steel = c.mat('metal-nickel', { roughness: 0.35 });
+  if (/brass|gold/.test(k)) return { blade: c.mat('metal-brass-brushed', p.cutleryColor ? { color: p.cutleryColor } : undefined), handle: null };
+  if (/black|matte/.test(k)) return { blade: c.mat('metal-black', { roughness: 0.4 }), handle: null };
+  if (/wood/.test(k)) { const hc = p.handleColor || '#8C6A4A'; return { blade: steel, handle: c.mat(woodFor('', hc), { match: hc }) }; }
+  return { blade: steel, handle: null };
 }
 
 // -------------------------------------------------------------- dishes (lathe profiles, [r, y])
@@ -42,6 +225,23 @@ function plateProfile(R, rim) {
 function bowlProfile(R, h) {
   return smoothProfile([[0.001, 0], [R * 0.48, 0], [R * 0.52, 0.006], [R * 0.84, h * 0.42], [R, h], [R * 0.965, h + 0.0025], [R * 0.93, h * 0.96], [R * 0.79, h * 0.46], [R * 0.45, 0.011], [0.001, 0.011]], 24);
 }
+/** Split a closed dish profile at radius rs into [inner-out, rim band, inner-back] (shared points → seamless). */
+function splitProfile(prof, rs) {
+  const out = [[], [], []]; let part = 0;
+  for (let i = 0; i < prof.length; i++) {
+    const q = prof[i];
+    if (i > 0) {
+      const a = prof[i - 1];
+      const crossOut = part === 0 && a[0] < rs && q[0] >= rs, crossIn = part === 1 && a[0] >= rs && q[0] < rs;
+      if (crossOut || crossIn) {
+        const t = (rs - a[0]) / (q[0] - a[0]); const m = [rs, a[1] + (q[1] - a[1]) * t];
+        out[part].push(m); part++; out[part].push(m);
+      }
+    }
+    out[part].push(q);
+  }
+  return part === 2 ? out : null;
+}
 /** Wobble a lathe slightly (hand-thrown look): radius × (1 + a·sin(kθ+φ)). */
 function handmade(g, amp, seed) {
   const r = rng(seed), k = 2 + ((r() * 2) | 0), ph = r() * 6.28;
@@ -56,8 +256,19 @@ function glassGeom(kind) {
   if (/wine|stem/.test(k)) {
     return lathe(smoothProfile([[0.001, 0], [0.036, 0], [0.037, 0.002], [0.034, 0.003], [0.006, 0.006], [0.0035, 0.02], [0.0035, 0.085], [0.012, 0.096], [0.036, 0.13], [0.04, 0.17], [0.036, 0.205], [0.0345, 0.205], [0.0385, 0.17], [0.0345, 0.132], [0.011, 0.1], [0.001, 0.098]], 32), 32);
   }
+  if (/pebble|organic/.test(k)) {
+    // low hand-blown tumbler: rounded heavy base, soft bulge, slightly irregular
+    return handmade(lathe(smoothProfile([[0.001, 0], [0.028, 0], [0.036, 0.008], [0.041, 0.04], [0.039, 0.085], [0.0375, 0.088], [0.0365, 0.084], [0.0378, 0.04], [0.031, 0.016], [0.001, 0.014]], 24), 32), 0.025, 7);
+  }
   // tumbler: heavy base, slight taper
   return lathe([[0.001, 0], [0.033, 0], [0.0345, 0.003], [0.0385, 0.1], [0.0365, 0.1], [0.0328, 0.012], [0.001, 0.012]], 32);
+}
+
+function glassMat(c, p) {
+  const tint = String(p.glassTint || (/amber/.test(String(p.glassColor || '')) ? 'amber' : '')).toLowerCase();
+  if (tint === 'amber') return c.mat('glass-amber', { thickness: 0.003, tint: p.glassColor || '#b8742a', distance: 0.03 });
+  if (tint === 'smoke') return c.mat('glass-amber', { thickness: 0.003, tint: p.glassColor || '#8a8378', distance: 0.05 });
+  return c.mat('glass-clear', { thickness: 0.003, color: /^#/.test(p.glassColor || '') ? p.glassColor : undefined });
 }
 
 // -------------------------------------------------------------- cutlery (flat extrusions lying on the table)
@@ -100,6 +311,12 @@ function spoonGeom() {
   const rim = new THREE.TorusGeometry(1, 0.06, 4, segs(24, 10)); rim.rotateX(Math.PI / 2); rim.scale(0.021, 0.02, 0.032); rim.translate(0, 0.009, -0.152);
   return [g1, bowl, rim];
 }
+/** Wooden handle scale over the first 10 cm of a piece (wood-handled cutlery). */
+function woodHandleGeom() {
+  const g = softBox(0.016, 0.009, 0.1, { r: 0.0035, seg: 2 });
+  g.translate(0, 0.0055, -0.05);
+  return g;
+}
 
 // -------------------------------------------------------------- napkin: soft folded linen with a slight drape
 
@@ -115,11 +332,13 @@ function napkinGeom(w, d, t, seed) {
 // -------------------------------------------------------------- tableware
 
 /**
- * tableware — place settings for the dining table. Params: settings (2), colors[] (plates, accent), material
- * stoneware|porcelain|ceramic-matte|terracotta|glass, rim coupe|rimmed|flat|organic, bowl bool (true),
- * glass tumbler|wine, glassColor, cutlery steel|brass|black|wood, napkinColor, napkinFabric, placemat
- * none|linen|jute|rattan|leather, placematColor, axis 'x' (settings face ±X, default — chairs at the table's
- * ends) | 'z'. ctx.host = { w, d } of the table top places the settings 4 cm in from the edge.
+ * tableware — place settings for the dining table. Params: settings (2), colors[] (plates, side, bowl), material
+ * stoneware|porcelain|ceramic-matte|terracotta|glass, rim coupe|rimmed|flat|organic, rimColor (reactive glaze
+ * breaking at the rim), bowl bool (true), glass tumbler|pebble|wine, glassTint amber|smoke|clear, glassColor,
+ * cutlery steel|brass|black|wood (wood = steel with wooden handles, handleColor), napkinColor, napkinFabric,
+ * placemat none|linen|jute|rattan|leather, placematColor, axis 'x' (settings face ±X, default) | 'z'.
+ * Structured catalogue params (plate/sidePlate/bowl/glass/cutlery/napkin objects) are normalised first.
+ * ctx.host = { w, d } of the table top places the settings 4 cm in from the edge.
  */
 export function tableware(c) {
   const p = c.params;
@@ -135,17 +354,26 @@ export function tableware(c) {
   const plateMat = dishMat(c, p.material, cols[0]);
   const sideMat = dishMat(c, p.material, cols[1] || cols[0]);
   const bowlMat = dishMat(c, p.bowlMaterial || p.material, cols[2] || cols[1] || cols[0]);
-  const glassMat = c.mat(/amber/.test(String(p.glassColor || '')) ? 'glass-amber' : 'glass-clear', { thickness: 0.003, color: /^#/.test(p.glassColor || '') ? p.glassColor : undefined });
-  const cut = cutleryMat(c, p.cutlery);
+  const rimMat = p.rimColor ? dishMat(c, p.material, p.rimColor) : null;
+  const gm = glassMat(c, p);
+  const cut = cutleryMats(c, p.cutlery, p);
   const napMat = fabricMat(c, p.napkinFabric || 'linen', p.napkinColor || '#D8CDBB');
   const pm = String(p.placemat || 'none').toLowerCase();
   const placeMat = pm === 'none' || pm === 'false' ? null : /jute|rattan|seagrass|woven/.test(pm) ? c.mat(/rattan/.test(pm) ? 'rattan' : 'jute', { color: p.placematColor }) : /leather/.test(pm) ? c.mat('leather-cognac', { color: p.placematColor || '#7a5a40' }) : fabricMat(c, 'linen', p.placematColor || '#CFC3AE');
   const rim = p.rim || 'coupe';
-  const pl = handmade(lathe(plateProfile(plateR, rim), 40), /organic|raw|reactive/.test(rim) ? 0.012 : 0.002, c.seed + 1);
-  const sp = handmade(lathe(plateProfile(plateR * 0.76, rim), 32), /organic|raw|reactive/.test(rim) ? 0.012 : 0.002, c.seed + 2);
-  const bw = p.bowl === false ? null : handmade(lathe(bowlProfile(0.074, 0.058), 32), 0.006, c.seed + 3);
+  const wob = /organic|raw|reactive/.test(rim) ? 0.012 : 0.002;
+  // dish → list of [geometry, material] (reactive glaze: the rim band breaks to rimColor)
+  const dish = (prof, seg, mat, seed) => {
+    const parts = rimMat ? splitProfile(prof, prof.reduce((m, q) => Math.max(m, q[0]), 0) * 0.86) : null;
+    if (!parts) return [[handmade(lathe(prof, seg), wob, seed), mat]];
+    return [[handmade(lathe(parts[0], seg), wob, seed), mat], [handmade(lathe(parts[1], seg), wob, seed), rimMat], [handmade(lathe(parts[2], seg), wob, seed), mat]];
+  };
+  const pl = dish(plateProfile(plateR, rim), 40, plateMat, c.seed + 1);
+  const sp = dish(plateProfile(plateR * 0.76, rim), 32, sideMat, c.seed + 2);
+  const bw = p.bowl === false ? null : dish(bowlProfile(0.074, 0.058), 32, bowlMat, c.seed + 3);
   const gl = glassGeom(p.glass);
   const kn = knifeGeom(), fk = forkGeom(), spn = spoonGeom();
+  const wh = cut.handle ? woodHandleGeom() : null;
   for (let i = 0; i < n; i++) {
     // settings around the table: n = 2 → opposite ends of the axis; more → spread round
     const a = n === 2 ? (i === 0 ? 0 : Math.PI) : (i / n) * Math.PI * 2;
@@ -160,19 +388,24 @@ export function tableware(c) {
       y = 0.004;
     }
     const jitter = () => (r() - 0.5) * 0.008;
-    b.add(pl.clone(), plateMat, { matrix: at(TRS(jitter(), y, jitter(), r() * 6.28)) });
-    b.add(sp.clone(), sideMat, { matrix: at(TRS(0, y + 0.0098, 0, r() * 6.28)) });
-    if (bw) b.add(bw.clone(), bowlMat, { matrix: at(TRS(0, y + 0.0098 + 0.0096, 0, r() * 6.28)) });
+    const put = (parts, m) => { for (const [g, mt] of parts) b.add(g.clone(), mt, { matrix: m }); };
+    put(pl, at(TRS(jitter(), y, jitter(), r() * 6.28)));
+    put(sp, at(TRS(0, y + 0.0098, 0, r() * 6.28)));
+    if (bw) put(bw, at(TRS(0, y + 0.0098 + 0.0096, 0, r() * 6.28)));
     // napkin: folded rectangle under the fork (left), or rolled on the plate when napkinStyle = 'plate'
     const nx = -(plateR + 0.075);
     if (String(p.napkinStyle || 'left') === 'plate' && !bw) b.add(napkinGeom(0.13, 0.2, 0.008, c.seed + i), napMat, { matrix: at(TRS(0, y + 0.03, 0, 0.1)), uv: 'box' });
     else b.add(napkinGeom(0.12, 0.21, 0.007, c.seed + i), napMat, { matrix: at(TRS(nx, y, 0.01, (r() - 0.5) * 0.05)) });
     // cutlery: fork on the napkin (left), knife (blade in) and spoon on the right
-    b.add(fk.clone(), cut, { matrix: at(TRS(nx + 0.012, y + 0.0075, 0.1, (r() - 0.5) * 0.03)) });
-    b.add(kn.clone(), cut, { matrix: at(TRS(plateR + 0.028, y, 0.105, (r() - 0.5) * 0.03, 0, 0)) });
-    for (const g of spn) b.add(g.clone(), cut, { matrix: at(TRS(plateR + 0.058, y, 0.115, (r() - 0.5) * 0.03)) });
+    const mf = at(TRS(nx + 0.012, y + 0.0075, 0.1, (r() - 0.5) * 0.03));
+    const mk = at(TRS(plateR + 0.028, y, 0.105, (r() - 0.5) * 0.03, 0, 0));
+    const ms = at(TRS(plateR + 0.058, y, 0.115, (r() - 0.5) * 0.03));
+    b.add(fk.clone(), cut.blade, { matrix: mf });
+    b.add(kn.clone(), cut.blade, { matrix: mk });
+    for (const g of spn) b.add(g.clone(), cut.blade, { matrix: ms });
+    if (wh) for (const m of [mf, mk, ms]) b.add(wh.clone(), cut.handle, { matrix: m, axis: 'z' });
     // glass above the knife
-    b.add(gl.clone(), glassMat, { matrix: at(TRS(plateR + 0.04, y, -plateR - 0.01)), uv: 'none' });
+    b.add(gl.clone(), gm, { matrix: at(TRS(plateR + 0.04, y, -plateR - 0.01)), uv: 'none' });
   }
   return { group: b.build('tableware'), anchors: { top: V3(0, 0.03, 0) } };
 }
@@ -182,6 +415,7 @@ export function tableware(c) {
 function vaseProfile(kind, R, H) {
   const k = String(kind || 'bottle');
   if (/bud|bottle|narrow/.test(k)) return smoothProfile([[0.001, 0], [R * 0.8, 0], [R, H * 0.08], [R, H * 0.45], [R * 0.45, H * 0.72], [R * 0.3, H * 0.9], [R * 0.34, H], [R * 0.27, H], [R * 0.24, H * 0.88], [R * 0.38, H * 0.72], [R * 0.86, H * 0.45], [R * 0.86, H * 0.1], [0.001, H * 0.06]], 32);
+  if (/ovoid|egg|ovo/.test(k)) return smoothProfile([[0.001, 0], [R * 0.5, 0], [R * 0.82, H * 0.14], [R, H * 0.42], [R * 0.92, H * 0.68], [R * 0.6, H * 0.9], [R * 0.42, H * 0.985], [R * 0.44, H], [R * 0.36, H], [R * 0.34, H * 0.96], [R * 0.52, H * 0.86], [R * 0.85, H * 0.65], [R * 0.9, H * 0.4], [R * 0.45, H * 0.08], [0.001, H * 0.07]], 36);
   if (/round|sphere|moon/.test(k)) return smoothProfile([[0.001, 0], [R * 0.45, 0], [R * 0.9, H * 0.2], [R, H * 0.5], [R * 0.8, H * 0.85], [R * 0.38, H * 0.97], [R * 0.4, H], [R * 0.33, H], [R * 0.31, H * 0.95], [R * 0.7, H * 0.82], [R * 0.86, H * 0.5], [R * 0.4, H * 0.08], [0.001, H * 0.07]], 32);
   if (/amphora|urn/.test(k)) return smoothProfile([[0.001, 0], [R * 0.45, 0], [R * 0.5, H * 0.05], [R, H * 0.4], [R * 0.75, H * 0.75], [R * 0.45, H * 0.88], [R * 0.55, H], [R * 0.48, H], [R * 0.38, H * 0.88], [R * 0.66, H * 0.75], [R * 0.9, H * 0.4], [R * 0.4, H * 0.07], [0.001, H * 0.06]], 32);
   // cylinder / tall
@@ -189,10 +423,10 @@ function vaseProfile(kind, R, H) {
 }
 
 /** Dried / fresh stems in a vase: olive branch, eucalyptus, pampas, grass, tulip, ranunculus. */
-function addStems(b, c, { kind, n, x0, y0, z0, H, spread, r }) {
+export function addStems(b, c, { kind, n, x0, y0, z0, H, spread, r, leafColor = null }) {
   const k = String(kind || 'olive').toLowerCase();
   const stemMat = c.mat('plant-stem', { color: /pampas|grass|dried|bunny/.test(k) ? '#b89f78' : '#5d6b42' });
-  const leafCol = /eucal/.test(k) ? '#8aa596' : /olive/.test(k) ? '#7f8f68' : /dried|grass|pampas|bunny/.test(k) ? '#c9b48e' : '#55703f';
+  const leafCol = leafColor || (/eucal/.test(k) ? '#8aa596' : /olive/.test(k) ? '#7f8f68' : /dried|grass|pampas|bunny/.test(k) ? '#c9b48e' : '#55703f');
   const leafMat = c.mat('plant-leaf', { color: leafCol, roughness: /eucal/.test(k) ? 0.6 : 0.5 });
   const flowerCol = String(c.params.flowerColor || (/tulip/.test(k) ? '#E9D9C6' : '#F1E8DA'));
   const flowerMat = c.mat('fabric-cotton', { color: flowerCol });
@@ -238,11 +472,20 @@ function addStems(b, c, { kind, n, x0, y0, z0, H, spread, r }) {
   }
 }
 
+/** Candle flame: tiny glowing lathe + its light descriptor (glows only while the lamps are on). */
+export function addFlame(b, c, x, y, z, lights) {
+  b.add(new THREE.CylinderGeometry(0.0008, 0.001, 0.012, 5).translate(0, 0.006, 0), c.mat('rubber', { color: '#1d1a17' }), { pos: [x, y, z], uv: 'none', cast: false });
+  const fl = lathe(smoothProfile([[0.001, 0], [0.0035, 0.004], [0.004, 0.009], [0.002, 0.018], [0.001, 0.022]], 10), 10);
+  b.add(fl, c.mat('flame'), { pos: [x, y + 0.008, z], uv: 'none', cast: false });
+  lights.push({ type: 'point', position: [x, y + 0.02, z], color: '#ffb46b', intensity: 0.06, distance: 1.2, decay: 2, shadow: false, flame: true });
+}
+
 /**
- * centerpiece — style vase|candles|bowl. vase: vase round|bottle|cylinder|amphora, vaseMaterial
- * (stoneware|terracotta|glass|travertine|ceramic-glazed), vaseColor, stems olive|eucalyptus|pampas|tulip|
- * ranunculus|grass|none, stemCount, flowerColor. candles: count (3), candleColor, holder tray|plate|
- * candlesticks, holderMaterial. bowl: bowlMaterial + fruit[] (lemon|orange|green-apple|pear|fig).
+ * centerpiece — style vase|candles|bowl. vase: vase round|ovoid|bottle|cylinder|amphora, vaseMaterial
+ * (stoneware|terracotta|glass|travertine|ceramic-matte|ceramic-glazed), vaseColor, vaseHeight, stems olive|
+ * eucalyptus|pampas|tulip|ranunculus|grass|none, stemCount, stemLength, leafColor, flowerColor. candles: count (3),
+ * candleColor, candleHeights[], candleDiameter, holder tray|plate|candlesticks, holderMaterial, holderColor,
+ * trayShape oval|rect. bowl: bowlMaterial + fruit[] (lemon|orange|green-apple|pear|fig).
  */
 export function centerpiece(c) {
   const { W, H, params: p } = c;
@@ -253,17 +496,20 @@ export function centerpiece(c) {
   if (/candle/.test(style)) {
     const nC = clamp(Math.round(p.count ?? 3), 1, 5);
     const hold = String(p.holder || 'tray').toLowerCase();
-    const hm = c.mat(p.holderMaterial || (/brass|stick/.test(hold) ? 'metal-brass-brushed' : 'travertine'));
+    const hk = p.holderMaterial || (/brass|stick/.test(hold) ? 'metal-brass-brushed' : 'travertine');
+    const hm = objMat(c, hk, p.holderColor);
     const wax = c.mat('wax', { color: p.candleColor || '#EFE7DA' });
+    const R0 = clamp(cm(p.candleDiameter, 0.07) / 2, 0.02, 0.05);
     let y0 = 0;
     if (/tray|plate/.test(hold)) {
       const tw = clamp(W, 0.24, 0.45);
-      b.add(slab(/round|plate/.test(hold) ? ellipseShape(tw, tw * 0.7) : roundedRectShape(tw, tw * 0.45, 0.03), 0.014, { bevel: 0.004 }), hm, {});
+      const oval = /oval|round/.test(String(p.trayShape || '')) || /plate|round/.test(hold);
+      b.add(slab(oval ? ellipseShape(tw, tw * 0.5) : roundedRectShape(tw, tw * 0.45, 0.03), 0.014, { bevel: 0.004 }), hm, {});
       y0 = 0.014;
     }
-    const hs = [0.2, 0.14, 0.1, 0.17, 0.12];
+    const hs = p.candleHeights && p.candleHeights.length ? p.candleHeights.map((h) => cm(h, 0.15)) : [0.2, 0.14, 0.1, 0.17, 0.12];
     for (let i = 0; i < nC; i++) {
-      const x = (i - (nC - 1) / 2) * 0.085, z = (i % 2 ? 0.02 : -0.015);
+      const x = (i - (nC - 1) / 2) * (R0 * 2 + 0.016), z = (i % 2 ? 0.012 : -0.01);
       let y = y0;
       if (/stick/.test(hold)) {
         const sh = [0.24, 0.18, 0.28, 0.2, 0.22][i % 5];
@@ -272,35 +518,33 @@ export function centerpiece(c) {
         b.add(lathe([[0.001, 0], [0.011, 0], [0.011, 0.24], [0.009, 0.245], [0.001, 0.246]], 18), wax, { pos: [x, y, z] });
         y += 0.246;
       } else {
-        const h = clamp(H ? H * hs[i % 5] / 0.2 : hs[i % 5], 0.06, 0.3), R = 0.035 + (i % 2) * 0.005;
+        const h = clamp(hs[i % hs.length], 0.05, 0.32), R = R0 + (i % 2) * 0.003;
         // pillar with a melted dish at the top
         b.add(lathe(smoothProfile([[0.001, 0], [R - 0.002, 0], [R, 0.003], [R, h - 0.004], [R - 0.003, h], [R * 0.7, h - 0.006], [0.004, h - 0.009], [0.001, h - 0.009]], 24), 24), wax, { pos: [x, y, z] });
         y += h - 0.009;
       }
-      b.add(new THREE.CylinderGeometry(0.0008, 0.001, 0.012, 5).translate(0, 0.006, 0), c.mat('rubber', { color: '#1d1a17' }), { pos: [x, y, z], uv: 'none', cast: false });
-      // flame (glows only when the lamps are on, like the shades)
-      const fl = lathe(smoothProfile([[0.001, 0], [0.0035, 0.004], [0.004, 0.009], [0.002, 0.018], [0.001, 0.022]], 10), 10);
-      b.add(fl, c.mat('flame'), { pos: [x, y + 0.008, z], uv: 'none', cast: false });
-      lights.push({ type: 'point', position: [x, y + 0.02, z], color: '#ffb46b', intensity: 0.06, distance: 1.2, decay: 2, shadow: false, flame: true });
+      addFlame(b, c, x, y, z, lights);
     }
     return { group: b.build('centerpiece'), anchors: {}, lights };
   }
   if (/bowl|fruit/.test(style)) {
     const R = clamp(W / 2, 0.1, 0.17);
-    const bm = c.mat(p.bowlMaterial || 'walnut-medium', { color: p.bowlColor });
-    b.add(lathe(bowlProfile(R, R * 0.42), 40), bm, { uv: /walnut|oak|teak|wood/.test(String(p.bowlMaterial || 'walnut')) ? 'box' : 'box' });
+    const bm = objMat(c, p.bowlMaterial || 'walnut-medium', p.bowlColor);
+    b.add(lathe(bowlProfile(R, R * 0.42), 40), bm, { uv: 'box' });
     addFruit(b, c, { cx: 0, cz: 0, y: 0.012, R: R * 0.8, kinds: p.fruit, r });
     return { group: b.build('centerpiece'), anchors: {} };
   }
   // vase with stems
-  const vk = p.vase || 'round';
-  const vH = clamp(cm(p.vaseHeight, /bottle|bud/.test(vk) ? 0.22 : 0.2), 0.08, 0.45), vR = clamp(cm(p.vaseDiameter, /bottle|bud/.test(vk) ? 0.09 : 0.16) / 2, 0.03, 0.15);
+  const vk = String(p.vase || 'round');
+  const vH = clamp(cm(p.vaseHeight, /bottle|bud/.test(vk) ? 0.22 : 0.2), 0.08, 0.45);
+  const vR = clamp(cm(p.vaseDiameter, (/bottle|bud/.test(vk) ? 0.09 : /ovoid|egg/.test(vk) ? vH * 0.62 : vH * 0.8)) / 2, 0.03, 0.15);
   const vmKey = String(p.vaseMaterial || 'stoneware');
-  const vm = /glass/.test(vmKey) ? c.mat('glass-clear', { thickness: 0.004, color: p.vaseColor }) : /terracotta/.test(vmKey) ? c.mat('terracotta', { color: p.vaseColor }) : c.mat(vmKey, { color: p.vaseColor || '#E2D9CB' });
+  const vm = /glass/.test(vmKey) ? c.mat('glass-clear', { thickness: 0.004, color: p.vaseColor }) : /terracotta/.test(vmKey) ? c.mat('terracotta', { color: p.vaseColor }) : objMat(c, vmKey, p.vaseColor || '#E2D9CB');
   b.add(handmade(lathe(vaseProfile(vk, vR, vH), 40), 0.006, c.seed + 4), vm, { uv: 'box' });
   if (/glass/.test(vmKey)) b.add(lathe([[0.001, vH * 0.06], [vR * 0.84, vH * 0.06], [vR * 0.84, vH * 0.4], [0.001, vH * 0.4]], 32), c.mat('glass-clear', { color: '#eef2ea', thickness: 0.05 }), { uv: 'none' });
   const stems = String(p.stems || 'olive');
-  if (stems !== 'none') addStems(b, c, { kind: stems, n: clamp(Math.round(p.stemCount ?? (/tulip|ranunc/.test(stems) ? 7 : 5)), 1, 14), x0: 0, y0: vH, z0: 0, H: clamp((H || 0.55) - vH, 0.15, 0.6), spread: clamp(W * 0.35, 0.05, 0.25), r });
+  const sH = p.stemLength ? clamp(cm(p.stemLength) - 0.08, 0.15, 0.6) : clamp((H || 0.55) - vH, 0.15, 0.6);
+  if (stems !== 'none') addStems(b, c, { kind: stems, n: clamp(Math.round(p.stemCount ?? (/tulip|ranunc/.test(stems) ? 7 : 5)), 1, 14), x0: 0, y0: vH, z0: 0, H: sH, spread: clamp(W * 0.35, 0.05, 0.25), r, leafColor: p.leafColor || null });
   return { group: b.build('centerpiece'), anchors: {} };
 }
 
@@ -335,90 +579,198 @@ function addFruit(b, c, { cx, cz, y, R, kinds, r }) {
 
 // -------------------------------------------------------------- kitchen_decor
 
+/** Electric jug kettle (plastic): base plate, tapered body with a pour lip at −X… handle at +X (local). */
+function electricKettle(b, mat, M) {
+  const H = 0.225, R0 = 0.073, R1 = 0.064;
+  b.add(lathe([[0.001, 0], [0.078, 0], [0.081, 0.004], [0.08, 0.017], [0.074, 0.02], [0.001, 0.02]], segs(40, 16)), mat, { matrix: M.clone() });
+  const g = lathe(smoothProfile([[0.001, 0.021], [R0 - 0.012, 0.021], [R0 - 0.002, 0.026], [R0, 0.04], [R0 * 1.005, 0.08], [lerp(R0, R1, 0.6), 0.16], [R1, H - 0.012], [R1 * 0.985, H], [0.001, H]], 32), segs(48, 18));
+  const pa = g.attributes.position;
+  for (let i = 0; i < pa.count; i++) {
+    const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i);
+    if (y < H * 0.78) continue;
+    const a = Math.atan2(z, x), lip = Math.max(0, -Math.cos(a)) ** 8; // spout toward −X
+    const k = ((y - H * 0.78) / (H * 0.22)) ** 2;
+    const s = 1 + (0.022 * k * lip) / R1;
+    pa.setX(i, x * s); pa.setZ(i, z * s); pa.setY(i, y + 0.006 * k * lip);
+  }
+  g.computeVertexNormals();
+  b.add(g, mat, { matrix: M.clone() });
+  // lid: shallow dome + push button
+  b.add(lathe([[0.058, H - 0.001], [0.056, H + 0.003], [0.04, H + 0.009], [0.001, H + 0.011]], segs(32, 12)), mat, { matrix: M.clone() });
+  b.add(new THREE.CylinderGeometry(0.012, 0.012, 0.006, 16).translate(0.02, H + 0.012, 0), mat, { matrix: M.clone() });
+  // D handle on +X
+  b.add(tube([V3(R1 * 0.92, H - 0.022, 0), V3(0.105, H - 0.028, 0), V3(0.116, H - 0.075, 0), V3(0.108, 0.075, 0), V3(R0 * 0.94, 0.055, 0)], 0.011, { tubular: 36, radial: 10, tension: 0.5 }), mat, { matrix: M.clone() });
+}
+
+/** Stovetop kettle (steel / brass / enamel): domed body, bail handle, spout. */
+function stovetopKettle(b, c, body, M) {
+  const dark = c.mat('metal-black', { color: '#1e1c1a', roughness: 0.5 });
+  const R = 0.085, h = 0.19;
+  const at = (g, m, uv = 'box') => b.add(g, m, { matrix: M.clone(), uv });
+  at(lathe(smoothProfile([[0.001, 0.002], [R * 0.95, 0.002], [R, 0.015], [R * 1.02, h * 0.45], [R * 0.85, h * 0.85], [R * 0.55, h], [0.001, h]], 24), 32).translate(0, 0.018, 0), body);
+  at(new THREE.CylinderGeometry(R * 0.98, R * 1.0, 0.018, segs(36, 12)).translate(0, 0.009, 0), dark);
+  at(lathe([[0.001, 0], [R * 0.5, 0], [R * 0.42, 0.012], [0.012, 0.016], [0.012, 0.03], [0.001, 0.032]], 28).translate(0, 0.018 + h, 0), dark);
+  at(tube([V3(-R * 0.6, 0.018 + h * 0.98, 0), V3(-R * 0.95, 0.018 + h * 1.2, 0), V3(-R * 0.2, 0.018 + h * 1.35, 0), V3(R * 0.55, 0.018 + h * 1.2, 0), V3(R * 0.75, 0.018 + h * 0.85, 0)], 0.009, { tubular: 30, radial: 8 }), dark);
+  at(tube([V3(-R * 0.9, 0.018 + h * 0.3, 0), V3(-R * 1.35, 0.018 + h * 0.6, 0), V3(-R * 1.55, 0.018 + h * 0.85, 0)], 0.011, { tubular: 16, radial: 8 }), body);
+}
+
+/** Wooden spoons / spatulas standing in a holder whose opening is centred at (x, y0, z). */
+function addUtensils(b, c, { x, z, y0, spread, r }) {
+  const uw = c.mat('teak');
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + r(), lean = 0.12 + r() * 0.1;
+    const L = 0.3 + r() * 0.06;
+    const dir = V3(Math.cos(a) * lean, 1, Math.sin(a) * lean).normalize();
+    const base = V3(x + Math.cos(a) * spread, y0, z + Math.sin(a) * spread);
+    const q = new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), dir);
+    const hdl = new THREE.CylinderGeometry(0.0055, 0.006, L, 8).translate(0, L / 2, 0);
+    b.add(hdl, uw, { matrix: _M().compose(base, q, V3(1, 1, 1)), axis: 'y' });
+    const head = i % 2 ? new THREE.SphereGeometry(1, 12, 8).scale(0.022, 0.035, 0.006) : new THREE.BoxGeometry(0.05, 0.065, 0.006);
+    head.translate(0, L + 0.025, 0);
+    b.add(head, uw, { matrix: _M().compose(base, q, V3(1, 1, 1)), axis: 'y' });
+  }
+}
+
 /**
- * kitchen_decor — worktop vignette, laid out left→right along X inside W×D, against the wall (−Z).
- * Params: items[] subset/order of kettle|crock|board|bottles|fruit-bowl|canisters (default all but canisters),
- * kettleColor/kettleMaterial (steel|matte-white|matte-black|brass), crockMaterial/crockColor,
- * board (wood key), fruit[] kinds, bottleTint ('#6a7a3a' oil), canisterMaterial.
+ * kitchen_decor — worktop vignette packed inside W × D (the engine clamps it to the free zone, 52 × 30 cm) with
+ * real object sizes: boards lean on the backsplash, the other objects are placed by a small collision-aware
+ * packer (wall-side or front, left/right preference) — nothing interpenetrates, objects that do not fit are left
+ * out. Params (after normalisation): items[] of board|crock|kettle|bottles|tray|fruit-bowl|canisters,
+ * kettleMaterial matte-black|matte-white|steel|brass, kettleColor, kettleType electric|stovetop, crockMaterial
+ * (wood key | stoneware | ceramic), crockColor, crockShape round|caddy, board (wood key), boardColor,
+ * bottleKind glass|ceramic, bottleColor, bottleTint, bowlMaterial, bowlColor, fruit[], trayMaterial, trayColor,
+ * canisterMaterial, canisterColor. Origin = worktop surface, back (−Z) against the wall.
  */
 export function kitchenDecor(c) {
   const { W, D, params: p } = c;
   const b = new Builder(c.seed);
   const r = rng(c.seed + 13);
-  const fp = { board: 0.3, crock: 0.14, kettle: 0.22, bottles: 0.14, 'fruit-bowl': 0.28, canisters: 0.24 };
-  const norm = (k) => (/fruit|bowl/.test(k) ? 'fruit-bowl' : /bottle|oil|vinegar/.test(k) ? 'bottles' : /board|chopping|cutting/.test(k) ? 'board' : /crock|utensil/.test(k) ? 'crock' : /canist|jar/.test(k) ? 'canisters' : /kettle/.test(k) ? 'kettle' : k);
-  let list = (Array.isArray(p.items) ? p.items : []).map((s) => norm(String(s && typeof s === 'object' ? s.type : s).toLowerCase())).filter((k) => fp[k]);
+  const norm = (k) => (/fruit|bowl/.test(k) ? 'fruit-bowl' : /bottle|oil|vinegar/.test(k) ? 'bottles' : /board|chopping|cutting/.test(k) ? 'board' : /crock|utensil|caddy/.test(k) ? 'crock' : /canist|jar/.test(k) ? 'canisters' : /kettle/.test(k) ? 'kettle' : /tray/.test(k) ? 'tray' : k);
+  const KNOWN = ['board', 'kettle', 'crock', 'bottles', 'tray', 'fruit-bowl', 'canisters'];
+  let list = (Array.isArray(p.items) ? p.items : []).map((s) => norm(String(s && typeof s === 'object' ? s.type : s).toLowerCase())).filter((k) => KNOWN.includes(k));
   if (!list.length) list = ['board', 'crock', 'kettle', 'bottles', 'fruit-bowl'];
-  const total = list.reduce((a, k) => a + (fp[k] || 0.15), 0) + 0.05 * (list.length - 1);
-  const k0 = Math.min(1, W / total);
-  let x = -Math.min(W, total) / 2;
-  const back = -D / 2 + 0.06;
-  for (const k of list) {
-    const w = (fp[k] || 0.15) * k0; const cx = x + w / 2; x += w + 0.05 * k0;
+  list = [...new Set(list)];
+  const km = String(p.kettleMaterial || 'steel').toLowerCase();
+  const electric = /^elec/.test(String(p.kettleType || '')) || (!p.kettleType && /matte|plastic/.test(km));
+  const caddy = p.crockShape === 'caddy';
+  const trayCarries = list.includes('tray');
+  const hw = Math.max(0.2, W / 2), hd = Math.max(0.12, D / 2), gap = 0.012;
+  // footprints x × z (m) + preferences
+  const F = {
+    board: { w: 0.31, d: 0.06, z: 'wall', x: 'left' },
+    kettle: { w: electric ? 0.205 : 0.23, d: electric ? 0.165 : 0.18, z: 'front', x: 'right' },
+    'fruit-bowl': { w: 0.175, d: 0.175, z: 'front', x: 'center' },
+    tray: { w: 0.28, d: 0.14, z: 'wall', x: 'right' },
+    crock: { w: caddy ? 0.115 : 0.12, d: caddy ? 0.1 : 0.12, z: 'wall', x: 'left' },
+    bottles: { w: 0.13, d: 0.065, z: 'wall', x: 'right', rot: true },
+    canisters: { w: 0.23, d: 0.11, z: 'wall', x: 'right' },
+  };
+  const placed = [];
+  const free = (x0, x1, z0, z1, ign) => x0 >= -hw - 1e-6 && x1 <= hw + 1e-6 && z0 >= -hd - 1e-6 && z1 <= hd + 1e-6
+    && placed.every((q) => q === ign || x1 + gap <= q.x0 || x0 >= q.x1 + gap || z1 + gap <= q.z0 || z0 >= q.z1 + gap);
+  const place = (k, f = F[k]) => {
+    const xs = [], zs = [];
+    for (let x = -hw + f.w / 2; x <= hw - f.w / 2 + 1e-6; x += 0.005) xs.push(x);
+    for (let z = -hd + f.d / 2; z <= hd - f.d / 2 + 1e-6; z += 0.005) zs.push(z);
+    if (f.x === 'right') xs.reverse(); else if (f.x === 'center') xs.sort((a, q) => Math.abs(a) - Math.abs(q));
+    if (f.z === 'front') zs.reverse();
+    for (const z of zs) for (const x of xs) if (free(x - f.w / 2, x + f.w / 2, z - f.d / 2, z + f.d / 2)) { const q = { k, x, z, w: f.w, d: f.d, x0: x - f.w / 2, x1: x + f.w / 2, z0: z - f.d / 2, z1: z + f.d / 2 }; placed.push(q); return q; }
+    return null;
+  };
+  const ORDER = ['board', 'kettle', 'tray', 'fruit-bowl', 'crock', 'bottles', 'canisters'];
+  const at = {};
+  for (const k of ORDER) if (list.includes(k)) {
+    at[k] = place(k);
+    // a pair (bottles) may also stand one behind the other
+    if (!at[k] && F[k].rot) { at[k] = place(k, { ...F[k], w: F[k].d, d: F[k].w, x: 'left' }); if (at[k]) at[k].rot = true; }
+  }
+  // the tray carries the bottles (and the crock when the bottles are absent)
+  const onTray = trayCarries && at.tray ? (list.includes('bottles') ? 'bottles' : list.includes('crock') ? 'crock' : null) : null;
+  if (onTray && at[onTray]) { placed.splice(placed.indexOf(at[onTray]), 1); }
+  if (onTray && at.tray) at[onTray] = { x: at.tray.x + (onTray === 'bottles' ? 0.055 : 0.07), z: at.tray.z, y: 0.016 };
+
+  for (const k of Object.keys(at)) {
+    const q = at[k]; if (!q) continue;
+    const y0 = q.y || 0;
     if (k === 'board') {
-      // two boards leaning against the backsplash, the front one smaller
-      const wood = c.mat(p.board || 'oak-light');
-      const boards = [[0.3, 0.42, 0.018, -0.02], [0.22, 0.32, 0.016, 0.05]];
+      // boards leaning against the backsplash (the front one smaller)
+      const wood = c.mat(p.board || 'oak-light', p.boardColor ? { match: p.boardColor } : undefined);
+      const boards = p.boardLean === false ? [[0.3, 0.2, 0.018, 0]] : [[0.3, 0.42, 0.018, -0.01], [0.22, 0.32, 0.016, 0.045]];
       boards.forEach(([bw, bh, t, dx], i) => {
         const g = slab(roundedRectShape(bw, bh, 0.03), t, { bevel: 0.004 });
-        // handle hole near the top
+        if (p.boardLean === false) { b.add(g, wood, { matrix: TRS(q.x, 0, q.z, 0), axis: 'x' }); return; }
         g.rotateX(Math.PI / 2); g.translate(0, bh / 2, 0);
         const tilt = -0.17 - i * 0.04;
-        b.add(g, wood, { matrix: TRS(cx + dx * k0, 0, -D / 2 + 0.03 + i * 0.03 + Math.sin(-tilt) * bh * 0.5, 0, tilt), axis: 'y' });
+        b.add(g, wood, { matrix: TRS(q.x + dx, 0, -hd + 0.012 + i * 0.022 + Math.sin(-tilt) * bh * 0.5, 0, tilt), axis: 'y' });
       });
-    } else if (k === 'crock') {
-      const cm2 = c.mat(p.crockMaterial || 'stoneware', { color: p.crockColor || '#D9D0C1' });
-      const R = 0.06, h = 0.16;
-      b.add(handmade(lathe(smoothProfile([[0.001, 0], [R * 0.9, 0], [R, 0.01], [R, h], [R * 0.92, h + 0.002], [R * 0.9, h * 0.1], [0.001, h * 0.08]], 30), 28), 0.008, c.seed + 6), cm2, { pos: [cx, 0, back + 0.01] });
-      // wooden spoons / spatula / whisk
-      const uw = c.mat('teak');
-      for (let i = 0; i < 5; i++) {
-        const a = (i / 5) * Math.PI * 2 + r(), lean = 0.12 + r() * 0.1;
-        const L = 0.3 + r() * 0.06;
-        const dir = V3(Math.cos(a) * lean, 1, Math.sin(a) * lean).normalize();
-        const base = V3(cx + Math.cos(a) * 0.015, 0.02, back + 0.01 + Math.sin(a) * 0.015);
-        const q = new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), dir);
-        const hdl = new THREE.CylinderGeometry(0.0055, 0.006, L, 8).translate(0, L / 2, 0);
-        b.add(hdl, uw, { matrix: _M().compose(base, q, V3(1, 1, 1)), axis: 'y' });
-        const head = i % 2 ? new THREE.SphereGeometry(1, 12, 8).scale(0.022, 0.035, 0.006) : new THREE.BoxGeometry(0.05, 0.065, 0.006);
-        head.translate(0, L + 0.025, 0);
-        b.add(head, uw, { matrix: _M().compose(base, q, V3(1, 1, 1)), axis: 'y' });
-      }
     } else if (k === 'kettle') {
-      const km = String(p.kettleMaterial || p.kettle || 'steel').toLowerCase();
-      const body = /white/.test(km) ? c.mat('ceramic-glazed', { color: p.kettleColor || '#EEEBE4', roughness: 0.35 }) : /black/.test(km) ? c.mat('metal-black', { color: p.kettleColor || '#26231f', roughness: 0.45 }) : /brass|copper/.test(km) ? c.mat('metal-brass-brushed', { color: p.kettleColor }) : c.mat('metal-nickel', { roughness: 0.25, color: p.kettleColor || '#d9d9d6' });
-      const dark = c.mat('metal-black', { color: '#1e1c1a', roughness: 0.5 });
-      const R = 0.085, h = 0.19;
-      b.add(lathe(smoothProfile([[0.001, 0.002], [R * 0.95, 0.002], [R, 0.015], [R * 1.02, h * 0.45], [R * 0.85, h * 0.85], [R * 0.55, h], [0.001, h]], 24), 32), body, { pos: [cx, 0.018, back + 0.06] });
-      b.add(new THREE.CylinderGeometry(R * 0.98, R * 1.0, 0.018, segs(36, 12)).translate(0, 0.009, 0), dark, { pos: [cx, 0, back + 0.06] });
-      b.add(lathe([[0.001, 0], [R * 0.5, 0], [R * 0.42, 0.012], [0.012, 0.016], [0.012, 0.03], [0.001, 0.032]], 28), dark, { pos: [cx, 0.018 + h, back + 0.06] });
-      b.add(tube([V3(cx - R * 0.6, 0.018 + h * 0.98, back + 0.06), V3(cx - R * 0.95, 0.018 + h * 1.2, back + 0.06), V3(cx - R * 0.2, 0.018 + h * 1.35, back + 0.06), V3(cx + R * 0.55, 0.018 + h * 1.2, back + 0.06), V3(cx + R * 0.75, 0.018 + h * 0.85, back + 0.06)], 0.009, { tubular: 30, radial: 8 }), dark, { uv: 'box' });
-      b.add(tube([V3(cx - R * 0.9, 0.018 + h * 0.3, back + 0.06), V3(cx - R * 1.35, 0.018 + h * 0.6, back + 0.06), V3(cx - R * 1.55, 0.018 + h * 0.85, back + 0.06)], 0.011, { tubular: 16, radial: 8 }), body, { uv: 'box' });
+      const kc = p.kettleColor;
+      // handle (local +X) toward the nearer end of the zone, spout toward the centre
+      const M = TRS(q.x, y0, q.z, (q.x >= 0 ? 0 : Math.PI) + (r() - 0.5) * 0.3);
+      if (electric) {
+        const black = /black/.test(km) || (kc && lumOf(kc) < 0.08);
+        const m = c.mat('plastic-white', { color: kc || (black ? '#1F1E1C' : '#F2F0EC'), roughness: black ? 0.62 : 0.45, clearcoat: black ? 0.05 : 0.15 });
+        electricKettle(b, m, M);
+      } else {
+        const body = /white|enamel/.test(km) ? c.mat('ceramic-glazed', { color: kc || '#EEEBE4', roughness: 0.35 }) : /black/.test(km) ? c.mat('metal-black', { color: kc || '#26231f', roughness: 0.45 }) : /brass|copper/.test(km) ? c.mat('metal-brass-brushed', kc ? { color: kc } : undefined) : c.mat('metal-nickel', { roughness: 0.25, color: kc || '#d9d9d6' });
+        stovetopKettle(b, c, body, M);
+      }
+    } else if (k === 'crock') {
+      const cmk = p.crockMaterial || 'stoneware';
+      const cm2 = objMat(c, cmk, p.crockColor || (/walnut|oak|teak|wood/.test(cmk) ? undefined : '#D9D0C1'));
+      if (caddy) {
+        // wooden utensil caddy: open box, dark interior
+        b.add(softBox(0.11, 0.13, 0.095, { r: 0.006, seg: 2 }), cm2, { pos: [q.x, y0 + 0.065, q.z], axis: 'y' });
+        b.add(new THREE.BoxGeometry(0.094, 0.003, 0.079), c.mat('paper', { color: '#2a2622' }), { pos: [q.x, y0 + 0.1305, q.z], cast: false });
+        addUtensils(b, c, { x: q.x, z: q.z, y0: y0 + 0.03, spread: 0.018, r });
+      } else {
+        const R = 0.058, h = 0.16;
+        b.add(handmade(lathe(smoothProfile([[0.001, 0], [R * 0.9, 0], [R, 0.01], [R, h], [R * 0.92, h + 0.002], [R * 0.9, h * 0.1], [0.001, h * 0.08]], 30), 28), 0.008, c.seed + 6), cm2, { pos: [q.x, y0, q.z] });
+        addUtensils(b, c, { x: q.x, z: q.z, y0: y0 + 0.02, spread: 0.015, r });
+      }
     } else if (k === 'bottles') {
-      const glass = c.mat('glass-clear', { thickness: 0.004 });
-      const oil = c.mat('glass-amber', { tint: p.bottleTint || '#8a7a2a' });
-      const vin = c.mat('glass-amber', { tint: '#5a1e1a' });
       const cork = c.mat('cork');
-      [[-0.035, 0.27, oil], [0.035, 0.23, vin]].forEach(([dx, h, liquid]) => {
-        const R = 0.03;
-        const prof = smoothProfile([[0.001, 0], [R, 0], [R, h * 0.62], [R * 0.4, h * 0.82], [R * 0.32, h], [R * 0.27, h], [R * 0.27, h * 0.84], [R * 0.93, h * 0.62], [R * 0.93, 0.006], [0.001, 0.006]], 24);
-        b.add(lathe(prof, 32), glass, { pos: [cx + dx, 0, back + 0.04], uv: 'none' });
-        b.add(lathe([[0.001, 0.006], [R * 0.9, 0.006], [R * 0.9, h * 0.5], [0.001, h * 0.5]], 28), liquid, { pos: [cx + dx, 0, back + 0.04], uv: 'none' });
-        b.add(new THREE.CylinderGeometry(R * 0.3, R * 0.26, 0.025, 14).translate(0, h + 0.006, 0), cork, { pos: [cx + dx, 0, back + 0.04] });
-      });
+      // pair side by side along X, or one behind the other (q.rot): offset d → (dx, dz)
+      const off = (d) => (q.rot ? [q.x, q.z + d] : [q.x + d, q.z]);
+      if (p.bottleKind === 'ceramic') {
+        // ceramic oil / vinegar cruets with wooden stoppers
+        const cmat = c.mat('ceramic-matte', { color: p.bottleColor || '#E8E1D6' });
+        const stop = c.mat('teak');
+        [[-0.032, 0.2], [0.032, 0.17]].forEach(([dx, h]) => {
+          const R = 0.028;
+          const [bx, bz] = off(dx);
+          b.add(handmade(lathe(smoothProfile([[0.001, 0], [R * 0.85, 0], [R, h * 0.08], [R, h * 0.55], [R * 0.45, h * 0.78], [R * 0.3, h * 0.9], [R * 0.32, h], [0.001, h]], 28), 28), 0.01, c.seed + 20 + h * 100), cmat, { pos: [bx, y0, bz] });
+          b.add(new THREE.CylinderGeometry(R * 0.36, R * 0.3, 0.022, 14).translate(0, h + 0.008, 0), stop, { pos: [bx, y0, bz], axis: 'y' });
+        });
+      } else {
+        const glass = c.mat('glass-clear', { thickness: 0.004 });
+        const oil = c.mat('glass-amber', { tint: p.bottleTint || '#8a7a2a' });
+        const vin = c.mat('glass-amber', { tint: '#5a1e1a' });
+        [[-0.033, 0.27, oil], [0.033, 0.23, vin]].forEach(([dx, h, liquid]) => {
+          const R = 0.029;
+          const prof = smoothProfile([[0.001, 0], [R, 0], [R, h * 0.62], [R * 0.4, h * 0.82], [R * 0.32, h], [R * 0.27, h], [R * 0.27, h * 0.84], [R * 0.93, h * 0.62], [R * 0.93, 0.006], [0.001, 0.006]], 24);
+          const [bx, bz] = off(dx);
+          b.add(lathe(prof, 32), glass, { pos: [bx, y0, bz], uv: 'none' });
+          b.add(lathe([[0.001, 0.006], [R * 0.9, 0.006], [R * 0.9, h * 0.5], [0.001, h * 0.5]], 28), liquid, { pos: [bx, y0, bz], uv: 'none' });
+          b.add(new THREE.CylinderGeometry(R * 0.3, R * 0.26, 0.025, 14).translate(0, h + 0.006, 0), cork, { pos: [bx, y0, bz] });
+        });
+      }
+    } else if (k === 'tray') {
+      const tm = objMat(c, p.trayMaterial || 'travertine', p.trayColor);
+      b.add(slab(roundedRectShape(q.w - 0.01, q.d - 0.01, 0.02), 0.016, { bevel: 0.004 }), tm, { pos: [q.x, 0, q.z] });
     } else if (k === 'fruit-bowl') {
-      const R = 0.13;
-      const bm = c.mat(p.bowlMaterial || 'stoneware', { color: p.bowlColor || '#E6DED1' });
-      b.add(handmade(lathe(bowlProfile(R, 0.075), 40), 0.006, c.seed + 8), bm, { pos: [cx, 0, back + 0.17] });
-      addFruit(b, c, { cx, cz: back + 0.17, y: 0.012, R: R * 0.82, kinds: p.fruit, r });
+      const R = 0.084;
+      const bm = objMat(c, p.bowlMaterial || 'stoneware', p.bowlColor || (/walnut|oak|teak|wood/.test(String(p.bowlMaterial || '')) ? undefined : '#E6DED1'));
+      b.add(handmade(lathe(bowlProfile(R, 0.068), 40), 0.006, c.seed + 8), bm, { pos: [q.x, 0, q.z] });
+      addFruit(b, c, { cx: q.x, cz: q.z, y: 0.012, R: R * 0.82, kinds: p.fruit, r });
     } else if (k === 'canisters') {
       const cmat = c.mat(p.canisterMaterial || 'ceramic-matte', { color: p.canisterColor || '#ECE6DC' });
       const lid = c.mat('oak-light');
-      [[0.15, -0.06], [0.12, 0.06]].forEach(([h, dx]) => {
-        b.add(lathe([[0.001, 0], [0.05, 0], [0.052, 0.004], [0.052, h], [0.001, h]], 32), cmat, { pos: [cx + dx * k0, 0, back + 0.04] });
-        b.add(new THREE.CylinderGeometry(0.053, 0.053, 0.02, 32).translate(0, h + 0.01, 0), lid, { pos: [cx + dx * k0, 0, back + 0.04] });
+      [[0.15, -0.058], [0.12, 0.058]].forEach(([h, dx]) => {
+        b.add(lathe([[0.001, 0], [0.05, 0], [0.052, 0.004], [0.052, h], [0.001, h]], 32), cmat, { pos: [q.x + dx, 0, q.z] });
+        b.add(new THREE.CylinderGeometry(0.053, 0.053, 0.02, 32).translate(0, h + 0.01, 0), lid, { pos: [q.x + dx, 0, q.z] });
       });
     }
   }
-  return { group: b.build('kitchen_decor'), anchors: {} };
+  return { group: b.build('kitchen_decor'), anchors: {}, layout: placed.map((q) => [q.k, +q.x.toFixed(3), +q.z.toFixed(3)]) };
 }

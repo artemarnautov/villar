@@ -2,7 +2,7 @@
  "id": "dark-walnut",
  "name": "Тёмный орех",
  "tagline": "Тёмный орех. Тёплый лён. Ничего лишнего.",
- "description": "Спокойная студия, собранная вокруг тёмного ореха: молочные и овсяные ткани, травертин, сатинированная латунь и одно коньячное кресло. Олива и терракота — малыми дозами. Каждый предмет реален и доступен к покупке.",
+ "description": "Спокойная студия, собранная вокруг тёмного ореха: молочные и овсяные ткани, травертин, сатинированная латунь и одно коньячное кресло. Олива и терракота — малыми дозами. Всё это настоящие вещи — их можно заказать.",
  "palette": "palette-dark-walnut.json",
  "architecture": {
   "walls": "#ECE7DE",
@@ -40,16 +40,6 @@
     "coffee-moxie",
     "coffee-selric",
     "coffee-arras"
-   ]
-  },
-  "decor_set": {
-   "default": "decor-sand-travertine-walnut",
-   "options": [
-    "decor-sand-travertine-walnut",
-    "decor-terracotta",
-    "decor-white-ceramic",
-    "decor-cream-ceramic",
-    "decor-travertine-cream"
    ]
   },
   "rug": {
@@ -265,6 +255,24 @@
     "mirror-artemis-arch-60",
     "mirror-artemis-arch-80"
    ]
+  },
+  "decor_coffee": {
+   "default": "decor-walnut-low",
+   "options": [
+    "decor-walnut-low",
+    "decor-tray-candles",
+    "decor-terracotta-low"
+   ]
+  },
+  "decor_tv": {
+   "default": "decor-sand-travertine-walnut",
+   "options": [
+    "decor-sand-travertine-walnut",
+    "decor-terracotta",
+    "decor-white-ceramic",
+    "decor-cream-ceramic",
+    "decor-travertine-cream"
+   ]
   }
  },
  "rules": [
@@ -317,5 +325,41 @@
  },
  "nameEn": "Dark Walnut",
  "taglineEn": "Dark walnut. Warm linen. Nothing extra.",
- "descriptionEn": "A calm studio built around dark walnut: cream and oat fabrics, travertine, satin brass and one cognac armchair, with olive and terracotta in small doses. Every piece is real and available to buy."
+ "descriptionEn": "A calm studio built around dark walnut: cream and oat fabrics, travertine, satin brass and one cognac armchair, with olive and terracotta in small doses. Every piece is real, and you can order it.",
+ "consumerRules": [
+  {
+   "title": "Орех — главный акцент.",
+   "body": "Тёмного дерева немного: оно задаёт характер, а не заполняет комнату. Между тёмными вещами всегда есть светлое — ковёр, ткани или камень."
+  },
+  {
+   "title": "Два тона дерева.",
+   "body": "Тёмный орех в мебели, светлый дуб на полу. Без вишни, махагона и белёного дерева."
+  },
+  {
+   "title": "Два акцентных цвета.",
+   "body": "Олива и терракота — в подушках, керамике и искусстве. Всё крупное остаётся тёплым и светлым."
+  },
+  {
+   "title": "Одна кожаная вещь.",
+   "body": "Коньячная кожа только на кресле. Диван остаётся светлым."
+  }
+ ],
+ "consumerRulesEn": [
+  {
+   "title": "Walnut is the main accent.",
+   "body": "Only a little dark wood: it sets the character instead of filling the room. There is always something light between dark pieces — a rug, textiles or stone."
+  },
+  {
+   "title": "Two wood tones.",
+   "body": "Dark walnut for furniture, light oak for the floor. No cherry, mahogany or bleached woods."
+  },
+  {
+   "title": "Two accent colours.",
+   "body": "Olive and terracotta live in cushions, ceramics and art. Everything large stays warm and light."
+  },
+  {
+   "title": "One leather piece.",
+   "body": "Cognac leather only on the armchair. The sofa stays light."
+  }
+ ]
 }

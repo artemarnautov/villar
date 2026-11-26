@@ -17,6 +17,7 @@ const villar = await createVillar({
   ...(q.get('tm') ? { toneMapping: q.get('tm') } : {}),
   forceQuality: q.has('force'),
   autoFocus: q.get('focus') !== '0',
+  ...(q.get('prewarm') ? { prewarm: q.get('prewarm') } : {}),
   gi: q.get('gi') !== '0',
   autoExposure: q.get('ae') !== '0',
 });

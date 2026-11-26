@@ -11,7 +11,7 @@ import { clamp } from './util.js';
 
 const smooth = (t) => t * t * (3 - 2 * t);
 
-export function createFader({ renderer, scene, camera, onShadow = () => {}, decorate = () => {} }) {
+export function createFader({ renderer, scene, camera, target = () => null, onShadow = () => {}, decorate = () => {} }) {
   const pool = new Map();       // source material → [clone]
   const runs = new Set();
   const parallel = renderer.extensions.has('KHR_parallel_shader_compile');
@@ -19,13 +19,12 @@ export function createFader({ renderer, scene, camera, onShadow = () => {}, deco
   function cloneFor(m) {
     let list = pool.get(m);
     if (!list) { list = []; pool.set(m, list); }
-    const c = list.pop() || (() => {
-      const k = m.clone();
-      k.alphaHash = true; k.transparent = false; k.depthWrite = true;
-      k.userData = { ...m.userData, fadeOf: m, villarSSAO: false };
-      decorate(k);
-      return k;
-    })();
+    let c = list.pop();
+    if (c) c.copy(m);                     // re-sync: colour fixes, lamp glow, visibility may have changed (T6)
+    else c = m.clone();
+    c.alphaHash = true; c.transparent = false; c.depthWrite = true;
+    c.userData = { ...m.userData, fadeOf: m, villarSSAO: false };
+    decorate(c);
     c.opacity = 0;
     return c;
   }
@@ -74,8 +73,13 @@ export function createFader({ renderer, scene, camera, onShadow = () => {}, deco
 
   async function compile(objs) {
     try {
-      if (parallel) await Promise.race([Promise.all(objs.map((o) => renderer.compileAsync(o, camera, scene))), new Promise((r) => setTimeout(r, 2000))]);
-      else for (const o of objs) renderer.compile(o, camera, scene);
+      // compile against the beauty pass's render target (tone mapping / colour space are in the key)
+      const prev = renderer.getRenderTarget();
+      renderer.setRenderTarget(target());
+      let ps;
+      try { ps = parallel ? objs.map((o) => renderer.compileAsync(o, camera, scene)) : (objs.forEach((o) => renderer.compile(o, camera, scene)), null); }
+      finally { renderer.setRenderTarget(prev); }
+      if (ps) await Promise.race([Promise.all(ps), new Promise((r) => setTimeout(r, 2000))]);
     } catch { /* compiles on first draw */ }
   }
   /** Idle-time warm-up: compile a (detached) group's normal and fade variants. */
@@ -122,6 +126,9 @@ export function createFader({ renderer, scene, camera, onShadow = () => {}, deco
 
   return {
     swap, step, warm,
+    /** Warm-up helpers: wear the fade clones (for a compile), then take them off again. */
+    dressForWarm: (group) => dress(group),
+    undress: (meshes) => undress(meshes),
     get active() { return runs.size > 0; },
     /** Finish everything at once (photo mode, dispose). */
     flush() { for (const run of [...runs]) { run.t0 = -Infinity; } step(performance.now()); },

@@ -622,8 +622,8 @@
   {
    "id": "bed-cloud-160",
    "type": "bed",
-   "name": "Кровать Cloud, 160×200, мягкая",
-   "nameEn": "Cloud upholstered bed, 160×200",
+   "name": "Кровать Cloud, мягкая, под матрас 160×200",
+   "nameEn": "Cloud upholstered bed, for a 160×200 mattress",
    "price": 2159,
    "dims": {
     "w": 182,
@@ -666,8 +666,8 @@
   {
    "id": "bed-maison-160",
    "type": "bed",
-   "name": "Кровать Maison, 160×200, с мягкой подсветкой",
-   "nameEn": "Maison bed with soft underglow, 160×200",
+   "name": "Кровать Maison с мягкой подсветкой, под матрас 160×200",
+   "nameEn": "Maison bed with soft underglow, for a 160×200 mattress",
    "price": 2879,
    "dims": {
     "w": 167,
@@ -1486,7 +1486,7 @@
      "body": "fabric",
      "shade": "drum",
      "shadeColor": "#E6DFD3",
-     "trimColor": "#8E5B34",
+     "trimColor": "#C9B99F",
      "drop": 1.04
     }
    }
@@ -1643,8 +1643,8 @@
   {
    "id": "rug-heaton-200x290",
    "type": "rug",
-   "name": "Ковёр Heaton, шерсть, 200×290",
-   "nameEn": "Heaton wool rug, 200×290",
+   "name": "Ковёр Heaton, шерсть, 290×200",
+   "nameEn": "Heaton wool rug, 290×200",
    "price": 1979,
    "dims": {
     "w": 290,
@@ -1684,8 +1684,8 @@
   {
    "id": "rug-dione-200x290",
    "type": "rug",
-   "name": "Ковёр Dione, шерсть ручной работы, 200×290",
-   "nameEn": "Dione handmade wool rug, 200×290",
+   "name": "Ковёр Dione, шерсть ручной работы, 290×200",
+   "nameEn": "Dione handmade wool rug, 290×200",
    "price": 1319,
    "dims": {
     "w": 290,
@@ -1722,8 +1722,8 @@
   {
    "id": "rug-pulara-160x230",
    "type": "rug",
-   "name": "Дхурри Pulara, шерсть и джут, 160×230",
-   "nameEn": "Pulara wool and jute dhurrie, 160×230",
+   "name": "Дхурри Pulara, шерсть и джут, 230×160",
+   "nameEn": "Pulara wool and jute dhurrie, 230×160",
    "price": 779,
    "dims": {
     "w": 230,
@@ -1762,8 +1762,8 @@
   {
    "id": "rug-marlow-200x290",
    "type": "rug",
-   "name": "Ковёр Marlow, 200×290",
-   "nameEn": "Marlow rug, 200×290",
+   "name": "Ковёр Marlow, 290×200",
+   "nameEn": "Marlow rug, 290×200",
    "price": 899,
    "dims": {
     "w": 290,
@@ -2789,8 +2789,8 @@
   {
    "id": "tableware-mia-amber",
    "type": "tableware",
-   "name": "Сервировка на двоих: песочный керамогранит, янтарное стекло, латунные приборы",
-   "nameEn": "Table for two: sand stoneware, amber glass, brass cutlery",
+   "name": "Сервиз Mia на 4 персоны, янтарные стаканы, латунные приборы",
+   "nameEn": "Mia stoneware set for 4, amber glasses, brass cutlery",
    "price": 571,
    "dims": {
     "w": 90,
@@ -2843,13 +2843,17 @@
       "fabric": "linen"
      }
     }
-   }
+   },
+   "shortName": "Mia · янтарь и латунь",
+   "shortNameEn": "Mia · amber and brass",
+   "setNote": "Доставляется полный комплект (см. состав); в 3D стол накрыт на двоих.",
+   "setNoteEn": "You receive the full set listed below; the 3D view lays the table for two."
   },
   {
    "id": "tableware-stoneage-olive",
    "type": "tableware",
-   "name": "Сервировка на двоих: тёмная глазурь, дымчатое стекло, деревянные приборы",
-   "nameEn": "Table for two: dark reactive glaze, smoked glass, wooden cutlery",
+   "name": "Сервиз Stone Age на 4 персоны, дымчатые стаканы, деревянные приборы",
+   "nameEn": "Stone Age stoneware set for 4, smoked glasses, wooden cutlery",
    "price": 594,
    "dims": {
     "w": 90,
@@ -2903,13 +2907,17 @@
       "fabric": "cotton"
      }
     }
-   }
+   },
+   "shortName": "Stone Age · тёмная глазурь",
+   "shortNameEn": "Stone Age · dark glaze",
+   "setNote": "Доставляется полный комплект (см. состав); в 3D стол накрыт на двоих.",
+   "setNoteEn": "You receive the full set listed below; the 3D view lays the table for two."
   },
   {
    "id": "tableware-lillian-smoke",
    "type": "tableware",
-   "name": "Сервировка на двоих: бежевый керамогранит с крапом, дымчатое стекло",
-   "nameEn": "Table for two: speckled beige stoneware, smoked glass",
+   "name": "Сервиз Lillian на 6 персон, дымчатые стаканы, деревянные приборы",
+   "nameEn": "Lillian speckled stoneware set for 6, smoked glasses, wooden cutlery",
    "price": 439,
    "dims": {
     "w": 90,
@@ -2965,7 +2973,11 @@
       "fabric": "cotton"
      }
     }
-   }
+   },
+   "shortName": "Lillian · дым и дерево",
+   "shortNameEn": "Lillian · smoke and wood",
+   "setNote": "Доставляется полный комплект (см. состав); в 3D стол накрыт на двоих.",
+   "setNoteEn": "You receive the full set listed below; the 3D view lays the table for two."
   },
   {
    "id": "centerpiece-sable-eucalyptus",
@@ -3549,8 +3561,8 @@
   {
    "id": "runner-zen-bianca",
    "type": "runner",
-   "name": "Дорожка Zen Bianca, 70×220",
-   "nameEn": "Zen Bianca runner, 70×220",
+   "name": "Дорожка Zen Bianca, 220×70",
+   "nameEn": "Zen Bianca runner, 220×70",
    "price": 479,
    "dims": {
     "w": 220,
@@ -3588,8 +3600,8 @@
   {
    "id": "runner-marco-sandy",
    "type": "runner",
-   "name": "Дорожка Marco Sandy, 80×220",
-   "nameEn": "Marco Sandy runner, 80×220",
+   "name": "Дорожка Marco Sandy, 220×80",
+   "nameEn": "Marco Sandy runner, 220×80",
    "price": 599,
    "dims": {
     "w": 220,
@@ -3627,8 +3639,8 @@
   {
    "id": "runner-zen-alba",
    "type": "runner",
-   "name": "Дорожка Zen Alba, 70×220",
-   "nameEn": "Zen Alba runner, 70×220",
+   "name": "Дорожка Zen Alba, 220×70",
+   "nameEn": "Zen Alba runner, 220×70",
    "price": 479,
    "dims": {
     "w": 220,
@@ -3666,8 +3678,8 @@
   {
    "id": "runner-kaela",
    "type": "runner",
-   "name": "Дорожка Kaela, 80×150",
-   "nameEn": "Kaela runner, 80×150",
+   "name": "Дорожка Kaela, 150×80",
+   "nameEn": "Kaela runner, 150×80",
    "price": 239,
    "dims": {
     "w": 150,
@@ -4375,13 +4387,17 @@
    "model": {
     "archetype": "armchair",
     "params": {
-     "style": "lounge",
+     "style": "frame",
+     "frameVisible": true,
      "arm": "none",
-     "legs": "wood-taper",
-     "fabric": "cane",
-     "fabricColor": "#C4A57A",
+     "legs": "wood-splay",
      "frame": "oak-light",
      "woodColor": "#8E6446",
+     "seat": "cane",
+     "back": "cane",
+     "caneColor": "#C4A57A",
+     "fabric": "cane",
+     "fabricColor": "#C4A57A",
      "cushion": "none",
      "backHeight": "low"
     }
@@ -4581,8 +4597,8 @@
   {
    "id": "bed-forren-160",
    "type": "bed",
-   "name": "Кровать Forren, 160×200",
-   "nameEn": "Forren queen bed, 160×200",
+   "name": "Кровать Forren, тёплый дуб, под матрас 160×200",
+   "nameEn": "Forren warm-oak bed, for a 160×200 mattress",
    "price": 1559,
    "dims": {
     "w": 170,
@@ -5471,8 +5487,8 @@
   {
    "id": "tableware-mia-smoke-wood",
    "type": "tableware",
-   "name": "Сервировка на двоих: песочный керамогранит, дымчатое стекло, деревянные приборы",
-   "nameEn": "Table for two: sand stoneware, smoked glass, wooden cutlery",
+   "name": "Сервиз Mia на 4 персоны, дымчатые стаканы, деревянные приборы",
+   "nameEn": "Mia stoneware set for 4, smoked glasses, wooden cutlery",
    "price": 379,
    "dims": {
     "w": 90,
@@ -5521,13 +5537,17 @@
       "color": "#D8CFC0"
      }
     }
-   }
+   },
+   "shortName": "Mia · дым и дерево",
+   "shortNameEn": "Mia · smoke and wood",
+   "setNote": "Доставляется полный комплект (см. состав); в 3D стол накрыт на двоих.",
+   "setNoteEn": "You receive the full set listed below; the 3D view lays the table for two."
   },
   {
    "id": "tableware-lillian-amber-brass",
    "type": "tableware",
-   "name": "Сервировка на двоих: бежевый керамогранит с крапом, янтарное стекло, латунные приборы",
-   "nameEn": "Table for two: speckled beige stoneware, amber glass, brass cutlery",
+   "name": "Сервиз Lillian на 6 персон, янтарные стаканы, латунные приборы",
+   "nameEn": "Lillian speckled stoneware set for 6, amber glasses, brass cutlery",
    "price": 643,
    "dims": {
     "w": 90,
@@ -5575,7 +5595,11 @@
       "color": "#E3DACB"
      }
     }
-   }
+   },
+   "shortName": "Lillian · янтарь и латунь",
+   "shortNameEn": "Lillian · amber and brass",
+   "setNote": "Доставляется полный комплект (см. состав); в 3D стол накрыт на двоих.",
+   "setNoteEn": "You receive the full set listed below; the 3D view lays the table for two."
   },
   {
    "id": "kitchen-black-basic",
@@ -5906,6 +5930,727 @@
      "size": [
       1.3,
       1.7
+     ]
+    }
+   }
+  },
+  {
+   "id": "bed-grant-160",
+   "type": "bed",
+   "name": "Кровать Grant, светлый дуб, под матрас 160×200",
+   "nameEn": "Grant light-oak bed, for a 160×200 mattress",
+   "price": 2039,
+   "dims": {
+    "w": 174,
+    "d": 210,
+    "h": 110
+   },
+   "materials": [
+    "МДФ, отделка под светлый дуб",
+    "Изголовье — рельефная рейка"
+   ],
+   "materialsEn": [
+    "Light oak finish MDF",
+    "Textured slatted headboard"
+   ],
+   "color": "Светлый дуб",
+   "colorEn": "Light oak",
+   "colorHex": "#D6C2A2",
+   "tags": [
+    "light-oak"
+   ],
+   "model": {
+    "archetype": "bed",
+    "params": {
+     "style": "platform",
+     "headboard": "slatted",
+     "headboardColor": "#D6C2A2",
+     "headboardHeight": 1.1,
+     "frame": "oak-light",
+     "woodColor": "#D6C2A2",
+     "legs": "plinth",
+     "railHeight": 0.28
+    }
+   }
+  },
+  {
+   "id": "rug-elsin-200x290",
+   "type": "rug",
+   "name": "Ковёр Elsin, плоское плетение, 290×200",
+   "nameEn": "Elsin flat-weave rug, 290×200",
+   "price": 899,
+   "dims": {
+    "w": 290,
+    "d": 200,
+    "h": 1
+   },
+   "materials": [
+    "Полипропилен, плоское плетение"
+   ],
+   "materialsEn": [
+    "Polypropylene flat weave"
+   ],
+   "color": "Лён-камень",
+   "colorEn": "Stone linen",
+   "colorHex": "#CFC7B8",
+   "tags": [
+    "light-oak"
+   ],
+   "model": {
+    "archetype": "rug",
+    "params": {
+     "shape": "rect",
+     "material": "flat-weave",
+     "color": "#CFC7B8",
+     "pattern": "pinstripe",
+     "patternColor": "#BDB3A2",
+     "texture": "flat-weave"
+    }
+   }
+  },
+  {
+   "id": "tablelamp-laodica",
+   "type": "table_lamp",
+   "name": "Настольная лампа Laodica, керамика с крапом",
+   "nameEn": "Laodica speckled ceramic table lamp",
+   "price": 95,
+   "dims": {
+    "w": 22,
+    "d": 22,
+    "h": 38,
+    "round": true
+   },
+   "materials": [
+    "Основание — керамика с крапом",
+    "Абажур — лён"
+   ],
+   "materialsEn": [
+    "Speckled ceramic base",
+    "Linen shade"
+   ],
+   "color": "Молочный с крапом / лён",
+   "colorEn": "Speckled cream / linen",
+   "colorHex": "#E2DCD0",
+   "tags": [
+    "light-oak"
+   ],
+   "model": {
+    "archetype": "table_lamp",
+    "params": {
+     "base": "stoneware",
+     "body": "ball",
+     "baseColor": "#E2DCD0",
+     "speckle": true,
+     "shade": "drum",
+     "shadeColor": "#EDE7DC",
+     "shadeDiameter": 0.22
+    }
+   }
+  },
+  {
+   "id": "plant-olive-charcoal",
+   "type": "plant",
+   "name": "Оливковое дерево в угольном кашпо, 180 см",
+   "nameEn": "Olive tree in a charcoal ribbed pot, 180 cm",
+   "price": 598,
+   "dims": {
+    "w": 60,
+    "d": 60,
+    "h": 180
+   },
+   "materials": [
+    "Искусственная олива",
+    "Кашпо — керамика, рифлёная, угольная"
+   ],
+   "materialsEn": [
+    "Artificial olive tree",
+    "Ribbed charcoal ceramic planter"
+   ],
+   "color": "Олива / уголь",
+   "colorEn": "Olive / charcoal",
+   "colorHex": "#2B2926",
+   "tags": [
+    "light-oak"
+   ],
+   "model": {
+    "archetype": "plant",
+    "params": {
+     "species": "olive",
+     "potColor": "#2B2926",
+     "potDiameter": 0.3,
+     "potHeight": 0.28,
+     "pot": "ribbed"
+    }
+   }
+  },
+  {
+   "id": "cushions-kyedae-sage",
+   "type": "cushions",
+   "name": "Подушки: шалфей и овсяная рогожка — комплект из 3",
+   "nameEn": "Cushions: sage and oat weave, set of 3",
+   "price": 194,
+   "dims": {
+    "w": 50,
+    "d": 15,
+    "h": 50
+   },
+   "materials": [
+    "Фактурная рогожка (чехлы)",
+    "Наполнитель — микрофибра"
+   ],
+   "materialsEn": [
+    "Textured woven covers",
+    "Microfibre inserts"
+   ],
+   "color": "Шалфей / овсяный",
+   "colorEn": "Sage / oat",
+   "colorHex": "#868A6C",
+   "tags": [
+    "light-oak"
+   ],
+   "model": {
+    "archetype": "cushions",
+    "params": {
+     "count": 3,
+     "colors": [
+      "#868A6C",
+      "#D3C8B6",
+      "#D3C8B6"
+     ],
+     "fabric": "weave",
+     "sizes": [
+      [
+       0.5,
+       0.5
+      ],
+      [
+       0.5,
+       0.5
+      ],
+      [
+       0.5,
+       0.5
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "bedding-sage-oat",
+   "type": "bedding",
+   "name": "Постель: шалфейный перкаль, овсяный плед",
+   "nameEn": "Bedding: sage percale, oat throw",
+   "price": 442,
+   "dims": {
+    "w": 200,
+    "d": 200,
+    "h": 5
+   },
+   "materials": [
+    "Хлопок-перкаль 325 TC",
+    "Плотный плетёный плед"
+   ],
+   "materialsEn": [
+    "Cotton percale 325 TC",
+    "Dense woven throw"
+   ],
+   "color": "Шалфей / овсяный",
+   "colorEn": "Sage / oat",
+   "colorHex": "#A9AE97",
+   "tags": [
+    "light-oak"
+   ],
+   "model": {
+    "archetype": "bedding",
+    "params": {
+     "duvetColor": "#A9AE97",
+     "throwColor": "#D6CBB8",
+     "pillows": 2,
+     "pillowColors": [
+      "#A9AE97",
+      "#A9AE97"
+     ]
+    }
+   }
+  },
+  {
+   "id": "cushions-tuscany-siena",
+   "type": "cushions",
+   "name": "Подушки: терракота, синяя полоска, джут — комплект из 3",
+   "nameEn": "Cushions: terracotta, blue stripe, jute band, set of 3",
+   "price": 308,
+   "dims": {
+    "w": 50,
+    "d": 15,
+    "h": 50
+   },
+   "materials": [
+    "Фактурная ткань (чехлы)",
+    "Тканая полоска",
+    "Хлопок",
+    "Наполнитель — микрофибра"
+   ],
+   "materialsEn": [
+    "Textured covers",
+    "Woven stripe",
+    "Cotton",
+    "Microfibre inserts"
+   ],
+   "color": "Терракота / эгейский синий / овсяный",
+   "colorEn": "Terracotta / Aegean blue / oat",
+   "colorHex": "#C2704D",
+   "tags": [
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "cushions",
+    "params": {
+     "count": 3,
+     "colors": [
+      "#C2704D",
+      "#2F5673",
+      "#D8CCB6"
+     ],
+     "fabric": "weave",
+     "patterns": [
+      "plain",
+      "stripes",
+      "band"
+     ],
+     "sizes": [
+      [
+       0.5,
+       0.5
+      ],
+      [
+       0.5,
+       0.5
+      ],
+      [
+       0.5,
+       0.5
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "bedding-white-terracotta-blue",
+   "type": "bedding",
+   "name": "Постель: белый перкаль, подушки терракота и синяя полоска",
+   "nameEn": "Bedding: white percale, terracotta and blue-stripe cushions",
+   "price": 440,
+   "dims": {
+    "w": 200,
+    "d": 200,
+    "h": 5
+   },
+   "materials": [
+    "Хлопок-перкаль 325 TC",
+    "Чехлы — фактурная ткань и тканая полоска",
+    "Наполнитель — микрофибра"
+   ],
+   "materialsEn": [
+    "Cotton percale 325 TC",
+    "Textured and woven-stripe covers",
+    "Microfibre inserts"
+   ],
+   "color": "Белый / терракота / синий",
+   "colorEn": "White / terracotta / blue",
+   "colorHex": "#F1EEE8",
+   "tags": [
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "bedding",
+    "params": {
+     "duvetColor": "#F1EEE8",
+     "throwColor": "#DCCFB8",
+     "pillows": 4,
+     "pillowColors": [
+      "#F1EEE8",
+      "#F1EEE8",
+      "#C2704D",
+      "#2F5673"
+     ]
+    }
+   }
+  },
+  {
+   "id": "throw-sultana-sand",
+   "type": "throw",
+   "name": "Плед Sultana, песочный, с бахромой, 130×170",
+   "nameEn": "Sultana sand throw with fringe, 130×170",
+   "price": 143,
+   "dims": {
+    "w": 130,
+    "d": 170,
+    "h": 1
+   },
+   "materials": [
+    "Полиэстер под лён",
+    "Бахрома"
+   ],
+   "materialsEn": [
+    "Linen-look polyester",
+    "Fringed edge"
+   ],
+   "color": "Песочный лён",
+   "colorEn": "Sand linen",
+   "colorHex": "#DCCFB8",
+   "tags": [
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "throw",
+    "params": {
+     "fabric": "linen",
+     "color": "#DCCFB8",
+     "fringe": true,
+     "size": [
+      1.3,
+      1.7
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-macaire-120x60",
+   "type": "wall_art",
+   "name": "Рельеф Macaire, песчаные волны, 120×60",
+   "nameEn": "Macaire sand-wave relief, 120×60",
+   "price": 635,
+   "dims": {
+    "w": 120,
+    "d": 5,
+    "h": 60
+   },
+   "materials": [
+    "МДФ, объёмный рельеф",
+    "Рама — дерево"
+   ],
+   "materialsEn": [
+    "MDF 3D relief",
+    "Wooden frame"
+   ],
+   "color": "Песочный / белый",
+   "colorEn": "Sand / white",
+   "colorHex": "#E6C9AE",
+   "tags": [
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-light",
+     "motif": "relief-waves",
+     "relief": true,
+     "colors": [
+      "#E6C9AE",
+      "#F3EFE6",
+      "#D9B99A"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-erato-80",
+   "type": "wall_art",
+   "name": "Рельеф Erato, амфоры, 80×80",
+   "nameEn": "Erato amphora relief, 80×80",
+   "price": 395,
+   "dims": {
+    "w": 80,
+    "d": 5,
+    "h": 80
+   },
+   "materials": [
+    "МДФ, объёмный рельеф"
+   ],
+   "materialsEn": [
+    "MDF 3D relief"
+   ],
+   "color": "Глина / молочный",
+   "colorEn": "Clay / milk",
+   "colorHex": "#A9766C",
+   "tags": [
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "none",
+     "motif": "amphora-relief",
+     "relief": true,
+     "colors": [
+      "#A9766C",
+      "#EEE8DC"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-andreya-60x90",
+   "type": "wall_art",
+   "name": "Картина Andreya, листья банана, 60×90",
+   "nameEn": "Andreya banana-leaf print, 60×90",
+   "price": 239,
+   "dims": {
+    "w": 60,
+    "d": 3,
+    "h": 90
+   },
+   "materials": [
+    "Печать на ткани",
+    "Рама — дерево"
+   ],
+   "materialsEn": [
+    "Print on fabric",
+    "Wooden frame"
+   ],
+   "color": "Зелёный / песочный",
+   "colorEn": "Green / sand",
+   "colorHex": "#6E7A52",
+   "tags": [
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-light",
+     "motif": "botanical",
+     "colors": [
+      "#6E7A52",
+      "#D9CFBD",
+      "#3F4A33"
+     ]
+    }
+   }
+  },
+  {
+   "id": "plant-olive-kerby",
+   "type": "plant",
+   "name": "Оливковое дерево в глазурованном кашпо, 185 см",
+   "nameEn": "Olive tree in a hand-glazed pot, 185 cm",
+   "price": 694,
+   "dims": {
+    "w": 62,
+    "d": 62,
+    "h": 185
+   },
+   "materials": [
+    "Искусственная олива",
+    "Кашпо — керамика, ручная глазурь"
+   ],
+   "materialsEn": [
+    "Artificial olive tree",
+    "Glazed ceramic planter"
+   ],
+   "color": "Олива / оливковая глазурь",
+   "colorEn": "Olive / olive glaze",
+   "colorHex": "#76764B",
+   "tags": [
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "plant",
+    "params": {
+     "species": "olive",
+     "potColor": "#6F6247",
+     "potDiameter": 0.35,
+     "potHeight": 0.3,
+     "pot": "glazed-ribbed"
+    }
+   }
+  },
+  {
+   "id": "decor-tray-candles",
+   "type": "decor_set",
+   "name": "Декор: травертиновый поднос, три свечи, белая чаша",
+   "nameEn": "Decor: travertine tray, three candles, white bowl",
+   "price": 212,
+   "dims": {
+    "w": 45,
+    "d": 30,
+    "h": 26
+   },
+   "materials": [
+    "Травертин",
+    "Воск, без запаха",
+    "Матовая керамика"
+   ],
+   "materialsEn": [
+    "Travertine",
+    "Unscented wax",
+    "Matte ceramic"
+   ],
+   "color": "Травертин / белый",
+   "colorEn": "Travertine / white",
+   "colorHex": "#D7C8AF",
+   "tags": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "decor_set",
+    "params": {
+     "items": [
+      "tray",
+      "candles",
+      "bowl"
+     ],
+     "colors": [
+      "#D7C8AF",
+      "#F1EEE6",
+      "#ECE7DE"
+     ],
+     "heights": [
+      0.02,
+      0.26,
+      0.1
+     ]
+    }
+   }
+  },
+  {
+   "id": "decor-terracotta-low",
+   "type": "decor_set",
+   "name": "Декор: глиняная чаша, мини-ваза, подсвечник",
+   "nameEn": "Decor: clay bowl, bud vase, candle holder",
+   "price": 304,
+   "dims": {
+    "w": 40,
+    "d": 25,
+    "h": 16
+   },
+   "materials": [
+    "Терракотовая глина",
+    "Керамика"
+   ],
+   "materialsEn": [
+    "Terracotta clay",
+    "Ceramic"
+   ],
+   "color": "Терракота / тауп / белый",
+   "colorEn": "Terracotta / taupe / white",
+   "colorHex": "#B5674A",
+   "tags": [
+    "dark-walnut",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "decor_set",
+    "params": {
+     "items": [
+      "bowl",
+      "bud-vase",
+      "candle"
+     ],
+     "colors": [
+      "#B5674A",
+      "#8C7B6B",
+      "#EEE9E1"
+     ],
+     "heights": [
+      0.16,
+      0.1,
+      0.08
+     ]
+    }
+   }
+  },
+  {
+   "id": "decor-walnut-low",
+   "type": "decor_set",
+   "name": "Декор: деревянная чаша, травертин, подсвечник",
+   "nameEn": "Decor: wooden bowl, travertine bowl, candle holder",
+   "price": 380,
+   "dims": {
+    "w": 45,
+    "d": 25,
+    "h": 17
+   },
+   "materials": [
+    "Дерево, тон орех",
+    "Травертин",
+    "Керамика"
+   ],
+   "materialsEn": [
+    "Walnut-tone wood",
+    "Travertine",
+    "Ceramic"
+   ],
+   "color": "Орех / травертин / белый",
+   "colorEn": "Walnut / travertine / white",
+   "colorHex": "#5E4230",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "decor_set",
+    "params": {
+     "items": [
+      "bowl",
+      "bowl",
+      "candle"
+     ],
+     "colors": [
+      "#5E4230",
+      "#D7C8AF",
+      "#EEE9E1"
+     ],
+     "heights": [
+      0.08,
+      0.17,
+      0.08
+     ]
+    }
+   }
+  },
+  {
+   "id": "decor-stoneware-low",
+   "type": "decor_set",
+   "name": "Декор: две мини-вазы и белая чаша",
+   "nameEn": "Decor: two bud vases and a white bowl",
+   "price": 179,
+   "dims": {
+    "w": 45,
+    "d": 30,
+    "h": 10
+   },
+   "materials": [
+    "Матовая керамика"
+   ],
+   "materialsEn": [
+    "Matte ceramic"
+   ],
+   "color": "Молочный / тауп",
+   "colorEn": "Milk / taupe",
+   "colorHex": "#E3DACB",
+   "tags": [
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "decor_set",
+    "params": {
+     "items": [
+      "bud-vase",
+      "bud-vase",
+      "bowl"
+     ],
+     "colors": [
+      "#E3DACB",
+      "#8C7B6B",
+      "#ECE7DE"
+     ],
+     "heights": [
+      0.1,
+      0.1,
+      0.1
      ]
     }
    }

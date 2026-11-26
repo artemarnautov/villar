@@ -1,5 +1,5 @@
 // Villar furniture — shared parts & param helpers. Owner: modeler.
-import * as THREE from 'three';
+import * as THREE from '../../../vendor/three/three.module.js';
 import { softBox, roundLeg, squareLeg, tube, V3, clamp, lerp } from './geom.js';
 
 export const FABRICS = {

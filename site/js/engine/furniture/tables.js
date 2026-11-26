@@ -1,5 +1,5 @@
 // Villar furniture — tables & case goods. Owner: modeler.
-import * as THREE from 'three';
+import * as THREE from '../../../vendor/three/three.module.js';
 import { Builder, softBox, roundLeg, squareLeg, lathe, smoothProfile, slab, roundedRectShape, ellipseShape, superellipseShape, tube, V3, clamp, cm } from './geom.js';
 import { addLegs, addHandle, addFlutes, addSlats, isMetal } from './parts.js';
 
@@ -30,9 +30,15 @@ function table(c, kind) {
   const b = new Builder(c.seed);
   const topKey = p.top || p.wood || 'walnut-dark';
   const topCol = p.topColor || null;
-  const topMat = c.mat(topKey, topCol ? (/ceram|paint|lacq|kitchen/.test(topKey) ? { color: topCol } : { match: topCol }) : undefined);
-  const legKey = p.legMaterial || (String(p.legs || '').includes('metal') ? 'metal-black' : topKey);
-  const legMat = c.mat(legKey, p.legColor ? (isMetal(legKey) || /ceram/.test(legKey) ? { color: p.legColor } : { match: p.legColor }) : undefined);
+  const txt = [...(c.item?.materialsEn || []), ...(c.item?.materials || [])].join(' ').toLowerCase();
+  // marble-look sintered ceramic tops are honed/satin, not polished stone (R2-07)
+  const ceramicTop = /marble|stone/.test(topKey) && /ceramic|керамик|porcelain|sinter/.test(txt);
+  const topOpts = topCol ? (/ceram|paint|lacq|kitchen/.test(topKey) ? { color: topCol } : { match: topCol }) : {};
+  const topMat = c.mat(topKey, ceramicTop ? { ...topOpts, finish: 'satin' } : topCol ? topOpts : undefined);
+  let legKey = p.legMaterial || (String(p.legs || '').includes('metal') ? 'metal-black' : topKey);
+  // "painted metal" → matte powder coat; other painted bases → satin lacquer (never the wall paint)
+  if (/^paint/.test(legKey)) legKey = /metal|металл/.test(txt) ? 'metal-white' : 'kitchen-front';
+  const legMat = c.mat(legKey, p.legColor ? (isMetal(legKey) || /ceram|kitchen|lacq/.test(legKey) ? { color: p.legColor } : { match: p.legColor }) : undefined);
   const isStone = /marble|travert|stone|quartz|glass/.test(topKey);
   const tt = clamp(cm(p.topThickness, isStone ? 0.025 : kind === 'dining' ? 0.034 : 0.03), 0.012, 0.06);
   const { shape, round } = topShape(p.shape, W, D);
@@ -42,6 +48,20 @@ function table(c, kind) {
   const ps = String(p.pedestalStyle || '').toLowerCase();
   const fluted = p.fluted || legs.includes('flut') || ps.includes('flut');
 
+  const tulip = legs.includes('tulip') || /tulip|trumpet/.test(ps);
+  if (tulip) {
+    // R2-07 tulip / trumpet pedestal: thin top on a recessed painted sub-frame (knee space all round),
+    // slim stem (Ø 12 cm) flaring into a cup under the top and a low domed foot (Ø ≈ 50 cm)
+    const R0 = Math.min(W, D);
+    const foot = clamp(R0 * 0.28, 0.2, 0.27), stem = clamp(R0 * 0.065, 0.05, 0.065), cup = clamp(R0 * 0.2, 0.14, 0.22);
+    const subH = 0.028, subW = Math.min(W, D) - 0.18;
+    b.add(slab(topShape(p.shape, W - 0.16, D - 0.16).shape, subH, { bevel: 0.004 }), legMat, { pos: [0, under - subH, 0] });
+    const top = under - subH;
+    const prof = smoothProfile([[0.001, 0], [foot, 0], [foot, 0.006], [foot * 0.96, 0.014], [foot * 0.62, 0.032], [stem * 1.9, 0.07], [stem * 1.15, top * 0.2], [stem, top * 0.45], [stem * 1.05, top * 0.68], [cup * 0.45, top * 0.9], [cup * 0.85, top - 0.01], [cup, top], [0.001, top]], 64);
+    b.add(lathe(prof, 64), legMat, { uv: 'cyl' });
+    void subW;
+    return { group: b.build(kind + '_table'), anchors: { top: V3(0, H, 0) }, anchorInfo: { top: { w: W, d: D } } };
+  }
   if (legs.includes('pedestal') && ps && !ps.includes('drum') || ps.includes('slat')) {
     const R0 = Math.min(W, D);
     if (ps.includes('block')) {

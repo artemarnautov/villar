@@ -1,7 +1,8 @@
 // Villar furniture — wall art, plants, decor sets. Owner: modeler.
-import * as THREE from 'three';
+import * as THREE from '../../../vendor/three/three.module.js';
 import { Builder, softBox, lathe, smoothProfile, slab, ellipseShape, roundedRectShape, tube, segs, getLOD, V3, clamp, lerp, cm } from './geom.js';
 import { rng, hashStr } from '../textures.js';
+import { objMat, addStems, addFlame } from './tabletop.js';
 
 // ---------------------------------------------------------------- wall art
 
@@ -11,13 +12,37 @@ export function wallArt(c) {
   const frameKey = String(p.frame || 'walnut-dark').toLowerCase();
   const depth = clamp(D, 0.015, 0.06);
   const isMirror = /mirror/.test(String(p.kind || p.motif || c.item?.type || ''));
+  // the image is a function of motif + palette (not of the product id), so a mirrored pair (params.mirrored) is
+  // the same painting flipped
+  const artSeed = hashStr(String(p.motif || '') + (p.colors || []).join(',')) % 100000;
+  const relief = !!p.relief || /textur|impasto|paste|plaster|relief/.test(String(p.motif || ''));
+  const flipU = (g) => { if (!p.mirrored) return g; const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, 1 - uv.getX(i)); return g; };
   if (frameKey === 'none' || frameKey.includes('canvas') || frameKey.includes('wrap')) {
-    // gallery-wrapped canvas on a stretcher
-    const art = c.mat('canvas', { motif: p.motif, colors: p.colors, w: W, h: H, seed: c.seed, relief: !!p.relief || /textur|impasto|paste|plaster/.test(String(p.motif || '')) });
-    const g = new THREE.PlaneGeometry(W, H);
-    b.add(g, art, { pos: [0, 0, depth], uv: 'keep' });
+    // gallery-wrapped canvas on a stretcher; params.panels = [[w, h], …] (m) + gap → one painting across a
+    // triptych/diptych (each panel shows its own slice of the same image)
+    const panels = Array.isArray(p.panels) && p.panels.length > 1 ? p.panels.map((q) => (Array.isArray(q) ? q : [q?.w, q?.h]).map((v) => cm(v, 0.5))) : null;
+    const gap = panels ? clamp(cm(p.gap, 0.03), 0, 0.2) : 0;
+    const art = c.mat('canvas', { motif: p.motif, colors: p.colors, w: W, h: H, seed: artSeed, relief, mirrored: p.mirrored ? true : undefined });
     const bgc = (p.colors || []).find((x) => new THREE.Color(x).getHSL({}).l > 0.75) || '#efe8dc';
-    b.add(softBox(W, H, depth - 0.001, { r: 0.002, seg: 1 }), c.mat('paper', { color: bgc }), { pos: [0, 0, depth / 2 - 0.0005] });
+    const edge = c.mat('paper', { color: bgc });
+    if (panels) {
+      const tw = panels.reduce((s, q) => s + q[0], 0) + gap * (panels.length - 1), th = Math.max(...panels.map((q) => q[1]));
+      const k = Math.min(W / tw, H / th);
+      let x = -tw * k / 2;
+      for (const [pw0, ph0] of panels) {
+        const pw = pw0 * k, ph = ph0 * k;
+        const g = new THREE.PlaneGeometry(pw, ph);
+        const uv = g.attributes.uv;
+        const u0 = (x + tw * k / 2) / (tw * k), u1 = (x + pw + tw * k / 2) / (tw * k), v0 = 0.5 - ph / (th * k) / 2;
+        for (let i = 0; i < uv.count; i++) uv.setXY(i, u0 + uv.getX(i) * (u1 - u0), v0 + uv.getY(i) * (ph / (th * k)));
+        b.add(flipU(g), art, { pos: [x + pw / 2, 0, depth], uv: 'keep' });
+        b.add(softBox(pw, ph, depth - 0.001, { r: 0.002, seg: 1 }), edge, { pos: [x + pw / 2, 0, depth / 2 - 0.0005] });
+        x += pw + gap * k;
+      }
+      return { group: b.build('wall_art') };
+    }
+    b.add(flipU(new THREE.PlaneGeometry(W, H)), art, { pos: [0, 0, depth], uv: 'keep' });
+    b.add(softBox(W, H, depth - 0.001, { r: 0.002, seg: 1 }), edge, { pos: [0, 0, depth / 2 - 0.0005] });
     return { group: b.build('wall_art') };
   }
   const frameMat = frameKey.includes('white') ? c.mat('kitchen-front', { color: '#f2efe9' }) : frameKey.includes('black') ? c.mat('lacquer', { color: '#1c1b1a', roughness: 0.45 }) : frameKey.includes('brass') || frameKey.includes('gold') ? c.mat('metal-brass') : c.mat(frameKey);
@@ -32,7 +57,7 @@ export function wallArt(c) {
     const ag = new THREE.ShapeGeometry(inner, 48);
     const pa = ag.attributes.position, uv = ag.attributes.uv; const iw = W - 2 * fw, ih = H - 2 * fw;
     for (let i = 0; i < pa.count; i++) uv.setXY(i, (pa.getX(i) + iw / 2) / iw, (pa.getY(i) + ih / 2) / ih);
-    const art = c.mat('canvas', { motif: p.motif, colors: p.colors, w: iw, h: ih, seed: c.seed, relief: !!p.relief || /textur|impasto|paste|plaster/.test(String(p.motif || '')) });
+    const art = c.mat('canvas', { motif: p.motif, colors: p.colors, w: iw, h: ih, seed: artSeed, relief, mirrored: p.mirrored ? true : undefined });
     b.add(ag, art, { pos: [0, 0, depth - 0.006], uv: 'keep' });
     b.add(new THREE.ShapeGeometry(inner, 24), c.mat('paper', { color: '#3b342e' }), { pos: [0, 0, 0.003], uv: 'keep' });
     return { group: b.build('wall_art') };
@@ -52,8 +77,8 @@ export function wallArt(c) {
   }
   const matW = p.mat === false || p.passepartout === false || p.relief || /canvas|холст/i.test(String((c.item?.materials || [])[0] || '')) ? 0 : clamp(cm(p.matWidth, Math.min(iw, ih) * 0.12), 0, Math.min(iw, ih) * 0.3);
   const aw = iw - 2 * matW, ah = ih - 2 * matW;
-  const art = c.mat('canvas', { motif: p.motif, colors: p.colors, w: aw, h: ah, seed: c.seed, relief: !!p.relief || /textur|impasto|paste|plaster/.test(String(p.motif || '')) });
-  b.add(new THREE.PlaneGeometry(aw, ah), art, { pos: [0, 0, depth - 0.008], uv: 'keep' });
+  const art = c.mat('canvas', { motif: p.motif, colors: p.colors, w: aw, h: ah, seed: artSeed, relief, mirrored: p.mirrored ? true : undefined });
+  b.add(flipU(new THREE.PlaneGeometry(aw, ah)), art, { pos: [0, 0, depth - 0.008], uv: 'keep' });
   if (matW > 0) {
     const mm = c.mat('paper', { color: p.matColor || '#f3efe7' });
     const mt = 0.002, z = depth - 0.006;
@@ -75,13 +100,15 @@ function sweep(points, radius, { radial: radial0 = 7, tubular = null } = {}) {
   const frames = curve.computeFrenetFrames(n, false);
   const pos = [], nor = [], uv = [], idx = [];
   const P = new THREE.Vector3(), N = new THREE.Vector3();
+  // UVs in metres: u around (mirrored → no seam), v along the curve (bark fissures run along the trunk)
+  const len = curve.getLength(), r0 = radius(0);
   for (let i = 0; i <= n; i++) {
     const t = i / n; curve.getPointAt(t, P);
     const r = radius(t);
     for (let j = 0; j <= radial; j++) {
       const a = (j / radial) * Math.PI * 2;
       N.copy(frames.normals[i]).multiplyScalar(Math.cos(a)).addScaledVector(frames.binormals[i], Math.sin(a));
-      pos.push(P.x + N.x * r, P.y + N.y * r, P.z + N.z * r); nor.push(N.x, N.y, N.z); uv.push(j / radial * 0.05, t * 0.5);
+      pos.push(P.x + N.x * r, P.y + N.y * r, P.z + N.z * r); nor.push(N.x, N.y, N.z); uv.push((0.5 - Math.abs(j / radial - 0.5)) * 2 * Math.PI * r0, t * len);
     }
   }
   for (let i = 0; i < n; i++) for (let j = 0; j < radial; j++) {
@@ -237,7 +264,7 @@ function addPot(b, c, { r, h, style, color }) {
   else if (/concrete|cement|stone/.test(s)) mat = c.mat('stone-worktop');
   else if (/terracotta|clay/.test(s)) mat = c.mat('ceramic-matte', { color: color || '#b5653f' });
   else if (/travert/.test(s)) mat = c.mat('travertine');
-  else if (/glaze/.test(s)) mat = c.mat('ceramic-glazed', { color: color || '#e8e2d6' });
+  else if (/glaze/.test(s)) mat = c.mat('ceramic-glazed', { color: color || '#e8e2d6', roughness: 0.3 });
   else mat = c.mat('ceramic-matte', { color: color || '#CBB89A' });
   const shape = String(c.params.potShape || (/basket|rattan/.test(s) ? 'basket' : 'cylinder')).toLowerCase();
   let prof;
@@ -245,7 +272,19 @@ function addPot(b, c, { r, h, style, color }) {
   else if (shape.includes('taper')) prof = [[0.001, 0], [r * 0.72, 0], [r * 0.75, 0.008], [r * 0.98, h * 0.94], [r, h], [r * 0.93, h], [r * 0.9, h * 0.85]];
   else if (shape.includes('egg') || shape.includes('round')) prof = [[0.001, 0], [r * 0.5, 0], [r * 0.85, h * 0.25], [r, h * 0.6], [r * 0.85, h * 0.95], [r * 0.8, h], [r * 0.74, h * 0.97], [r * 0.7, h * 0.85]];
   else prof = [[0.001, 0], [r * 0.9, 0], [r * 0.94, 0.006], [r * 0.97, h * 0.5], [r, h * 0.985], [r * 0.985, h], [r * 0.93, h], [r * 0.91, h * 0.9]];
-  b.add(lathe(smoothProfile(prof, 48), 48), mat, { uv: 'cyl', axis: 'around' });
+  const pg = lathe(smoothProfile(prof, 48), /rib|flut/.test(s) ? 144 : 48);
+  if (/rib|flut/.test(s)) {
+    // vertical ribs (~2.4 cm pitch) on the outer wall only, fading at the foot and the rim
+    const pa = pg.attributes.position, n = Math.max(16, Math.round((2 * Math.PI * r) / 0.024));
+    for (let i = 0; i < pa.count; i++) {
+      const x = pa.getX(i), z = pa.getZ(i), y = pa.getY(i), rr = Math.hypot(x, z);
+      if (rr < r * 0.8 || y > h * 0.97 || y < 0.004) continue;
+      const k = 1 + 0.035 * Math.pow(Math.abs(Math.cos(Math.atan2(z, x) * n / 2)), 0.6) * Math.min(1, y / 0.03);
+      pa.setX(i, x * k); pa.setZ(i, z * k);
+    }
+    pg.computeVertexNormals();
+  }
+  b.add(pg, mat, { uv: 'cyl', axis: 'around' });
   b.potMats = [mat];
   const soilY = h * 0.9;
   const sr = (shape.includes('egg') ? r * 0.72 : r * 0.9);
@@ -274,7 +313,8 @@ export function plant(c) {
   const stems = [];
   const leafMat = c.mat('plant-leaf', { vertexColors: true, roughness: species.includes('fiddle') || species.includes('rubber') ? 0.32 : 0.5 });
   const stemMat = c.mat('plant-stem', { color: /monstera|philo|calathea|alocasia|bird|strelitzia|banana|musa/.test(species) ? '#5b6e3a' : '#6b6248' });
-  const barkMat = c.mat('bark', { color: '#cfc4b4' });
+  // grey-brown fissured bark (R2-17), always darker than the pot; fiddle/rubber stems are smoother and greener
+  const barkMat = c.mat('bark', { color: /fiddle|lyrata|rubber|elastica|audrey|ficus/.test(species) ? '#b9b39a' : '#ffffff' });
   let kind = 'olive';
   if (/fiddle|lyrata|rubber|elastica|audrey|benghal|ficus/.test(species)) kind = 'fiddle';
   else if (/bird|strelitzia|banana|musa|heliconia/.test(species)) kind = 'bird';
@@ -514,22 +554,56 @@ function vaseProfile(kind, h, r) {
   }
 }
 
+/**
+ * Catalogue material hints → objects. Parallel lists map 1:1; shorter lists are assigned by affinity (stone/wood →
+ * tray, terracotta → the most terracotta-coloured piece, wood → the darkest piece, wax → candle, leather → box);
+ * objects left over take the set's ceramic hint.
+ */
+function assignHints(kinds, hints, colors) {
+  const H = hints.filter(Boolean);
+  if (!H.length) return null;
+  if (hints.length === kinds.length) return hints;
+  const out = kinds.map(() => null);
+  const lum = (i) => { const h = colors[i % (colors.length || 1)]; if (!h) return 0.5; const c3 = new THREE.Color(h); return c3.r * 0.2126 + c3.g * 0.7152 + c3.b * 0.0722; };
+  const warm = (i) => { const h = colors[i % (colors.length || 1)]; if (!h) return 0; const c3 = new THREE.Color(h); return c3.r - c3.b; };
+  const score = (k, i, h) => {
+    if (/travert|marble|stone/.test(h)) return (/tray/.test(k) ? 3 : 0) + (/bowl/.test(k) ? 1 : 0);
+    if (/walnut|oak|teak|ash|wood/.test(h)) return (/tray|box/.test(k) ? 1.5 : 0) + (lum(i) < 0.12 ? 2 : 0);
+    if (/terracotta/.test(h)) return warm(i) > 0.25 ? 3 : 0;
+    if (/leather/.test(h)) return /box/.test(k) ? 3 : 0;
+    if (/metal|brass/.test(h)) return /candlestick|tray/.test(k) ? 2 : 0;
+    if (/glass/.test(h)) return /vase|bottle/.test(k) ? 1 : 0;
+    return 0;
+  };
+  for (const h of H) {
+    let best = -1, bs = 0;
+    kinds.forEach((k, i) => { if (out[i]) return; const s = score(k, i, h); if (s > bs) { bs = s; best = i; } });
+    if (best >= 0) out[best] = h;
+  }
+  const ceramic = H.find((h) => /ceram|stoneware/.test(h));
+  return out.map((h, i) => h || (ceramic && !/candle|sprig|stem|book/.test(kinds[i]) ? ceramic : null));
+}
+
 export function decorSet(c) {
   const { W, D, H, params: p } = c;
   const b = new Builder(c.seed);
   const r = rng(c.seed + 3);
   // items: 'vase-tall' | 'vase-tall:travertine' | { type, material, color }; params.materials[i] also accepted
   const raw = p.items && p.items.length ? p.items : ['vase-tall', 'books', 'bowl'];
-  const hints = p.materialHints && p.materialHints.length >= raw.length ? p.materialHints : null;
+  const hints = assignHints(raw.map((s) => String(typeof s === 'object' ? s.type || s.kind || 'vase' : s).split(':')[0].toLowerCase()), p.materialHints || [], p.colors || []);
   const itemMats = raw.map((s, i) => (typeof s === 'object' ? s.material : String(s).split(':')[1]) || (p.materials && p.materials[i]) || (hints && hints[i]) || null);
   const heights = (p.heights || []).map((h) => cm(h, null));
   const itemCols = raw.map((s) => (typeof s === 'object' ? s.color : null));
   const list = raw.map((s) => String(typeof s === 'object' ? s.type || s.kind || 'vase' : s).split(':')[0].toLowerCase());
   let curIdx = 0;
+  const lights = [];
   const colors = p.colors && p.colors.length ? p.colors : ['#CBB89A', '#3B3B3B', '#B5653F'];
   const col = (i) => colors[i % colors.length];
-  // footprint per item
-  const fp = list.map((k) => (k.includes('book') ? 0.24 : k.includes('tray') ? Math.min(W, 0.36) : k.includes('bowl') ? Math.min(0.22, W * 0.45) : k.includes('tall') || k.includes('bottle') ? 0.12 : k.includes('candle') ? 0.08 : 0.13));
+  // footprint per item ('sprig' goes into the preceding vase: no footprint of its own)
+  const fp = list.map((k, i) => (k.includes('sprig') || k.includes('stem') ? (i > 0 && /vase|bottle/.test(list[i - 1]) ? 0 : 0.06)
+    : k.includes('book') ? 0.24 : k.includes('tray') ? Math.min(W, 0.36) : k.includes('candles') ? 0.17 : k.includes('bowl') ? Math.min(0.22, W * 0.45)
+      : k.includes('bud') ? 0.075 : k.includes('box') ? 0.15 : k.includes('tall') || k.includes('bottle') ? 0.12 : k.includes('candle') ? 0.08 : 0.13));
+  let lastVase = null;
   const total = fp.reduce((a, v) => a + v, 0) + 0.03 * (list.length - 1);
   const k0 = Math.min(1, W / total);
   let x = -Math.min(W, total) / 2;
@@ -539,7 +613,7 @@ export function decorSet(c) {
   if (trayIdx >= 0) {
     // the tray carries the other objects: draw it first, full width, then lay the rest out on it
     const tw = Math.min(W, Math.max(0.3, total * 0.8)), td = Math.min(D, 0.26);
-    const tm = itemMats[trayIdx] ? c.mat(itemMats[trayIdx]) : c.mat(p.trayMaterial || 'walnut-dark');
+    const tm = objMat(c, itemMats[trayIdx] || p.trayMaterial || 'walnut-dark', itemCols[trayIdx] || col(trayIdx));
     b.add(slab(roundedRectShape(tw, td, 0.03), 0.012, { bevel: 0.003 }), tm, {});
     b.add(tube([...Array(33)].map((_, j) => { const a = (j / 32) * Math.PI * 2; const ca = Math.cos(a), sa = Math.sin(a); return V3(Math.sign(ca) * Math.pow(Math.abs(ca), 0.4) * (tw / 2 - 0.004), 0.018, Math.sign(sa) * Math.pow(Math.abs(sa), 0.4) * (td / 2 - 0.004)); }), 0.0045, { tubular: 96, radial: 5, closed: true }), tm, {});
     trayY = 0.012;
@@ -579,10 +653,46 @@ export function decorSet(c) {
     let mk = itemMats[curIdx];
     if (mk && mk.includes(':')) { color = mk.split(':')[1]; mk = mk.split(':')[0]; }
     const HH = heights[curIdx];
-    const ceramic = mk ? c.mat(mk, /ceram|glaze|paint|matte/.test(mk) ? { color } : {}) : c.mat(/glaze|gloss/.test(kind) ? 'ceramic-glazed' : /amber|glass/.test(kind) ? 'glass-amber' : /brass|candlestick/.test(kind) ? 'metal-brass' : /travert/.test(kind) ? 'travertine' : /marble/.test(kind) ? 'marble-white' : /wood|walnut/.test(kind) ? 'walnut-dark' : 'ceramic-matte', { color });
+    // PT-04: every object uses its own material hint + colour (wood/travertine get a calibrated colour match)
+    const auto = /glaze|gloss/.test(kind) ? 'ceramic-glazed' : /brass|candlestick/.test(kind) ? 'metal-brass' : /travert/.test(kind) ? 'travertine' : /marble/.test(kind) ? 'marble-white' : /wood|walnut/.test(kind) ? 'walnut-dark' : 'ceramic-matte';
+    const mkey = mk && !/wax|paper|воск/.test(mk) ? mk : auto;
+    const ceramic = /amber|glass/.test(kind) && !mk ? c.mat('glass-amber') : objMat(c, mkey, color);
+    if (kind.includes('sprig') || kind.includes('stem')) {
+      // a few stems (eucalyptus by default) in the preceding vase, or a single sprig laid down
+      const v = lastVase || { x: cx, y: y0 + 0.004, z: cz };
+      addStems(b, c, { kind: /olive/.test(kind) ? 'olive' : /grass|pampas/.test(kind) ? 'grass' : 'eucalyptus', n: lastVase ? 3 : 1, x0: v.x, y0: v.y, z0: v.z, H: Math.max(0.08, (HH || Math.min(0.2, H * 0.6))), spread: 0.035, r, leafColor: color && /^#/.test(color) ? color : null });
+      return;
+    }
+    if (kind.includes('candle') && !kind.includes('stick') && !kind.includes('holder')) {
+      // pillar candles (wax, own colour) with a flame that glows at night; 'candles' = a trio of heights
+      const wax = c.mat('wax', { color: color || '#F1EEE6' });
+      const many = kind.includes('candles');
+      const top = HH || (many ? 0.2 : 0.09);
+      const hs = many ? [top, top * 0.7, top * 0.48] : [top];
+      const R = many ? 0.034 : Math.min(0.04, Math.max(0.03, top * 0.4));
+      hs.forEach((h, k) => {
+        const x = cx + (many ? (k - 1) * (R * 2 + 0.012) : 0), z = cz + (many ? (k % 2 ? 0.014 : -0.01) : 0);
+        if (mk && /ceram|stone|travert|glass/.test(mk) && !many) {
+          // candle in a holder (ceramic / travertine tealight cup)
+          b.add(lathe(smoothProfile([[0.001, 0], [R + 0.012, 0], [R + 0.014, 0.008], [R + 0.01, Math.min(0.06, h * 0.55)], [R + 0.004, Math.min(0.06, h * 0.55)], [R + 0.004, 0.008], [0.001, 0.008]], 20), 32), ceramic, { pos: [x, y0, z], uv: 'box' });
+        }
+        b.add(lathe(smoothProfile([[0.001, 0], [R - 0.002, 0], [R, 0.003], [R, h - 0.004], [R - 0.003, h], [R * 0.7, h - 0.006], [0.004, h - 0.009], [0.001, h - 0.009]], 24), 24), wax, { pos: [x, y0 + (mk && !many && /ceram|stone|travert|glass/.test(mk) ? 0.008 : 0), z], uv: 'box' });
+        addFlame(b, c, x, y0 + h - 0.009 + (mk && !many && /ceram|stone|travert|glass/.test(mk) ? 0.008 : 0), z, lights);
+      });
+      return;
+    }
+    if (kind.includes('bud')) {
+      // bud vase: small bottle with a narrow neck
+      const h = HH || 0.12, rr = Math.min(0.036, Math.max(0.026, h * 0.3));
+      b.add(lathe(smoothProfile([[0.001, 0], [rr * 0.8, 0], [rr, h * 0.12], [rr, h * 0.45], [rr * 0.5, h * 0.72], [rr * 0.32, h * 0.9], [rr * 0.38, h], [rr * 0.26, h], [rr * 0.22, h * 0.9], [rr * 0.3, h * 0.72], [rr * 0.85, h * 0.45], [rr * 0.85, h * 0.1], [0.001, h * 0.06]], 28), 32), ceramic, { pos: [cx, y0, cz], uv: 'box' });
+      lastVase = { x: cx, y: y0 + h, z: cz };
+      return;
+    }
     if (kind.includes('tall') || kind.includes('bottle')) {
       const h = HH || Math.min(H * 0.92, 0.34), rr = Math.min(0.07, h * 0.18);
       b.add(lathe(smoothProfile(vaseProfile('vase-tall', h, rr), 40), 40), ceramic, { pos: [cx, y0, cz], uv: 'box' });
+      lastVase = { x: cx, y: y0 + h, z: cz };
+      if (list[curIdx + 1] && /sprig|stem/.test(list[curIdx + 1])) return;
       // dried branches
       if (p.stems !== false && H - (y0 + h) > 0.08) {
         const stem = c.mat('plant-stem', { color: '#8a7a5c' });
@@ -625,16 +735,21 @@ export function decorSet(c) {
     } else if (kind.includes('stone') || kind.includes('pebble')) {
       for (let k = 0; k < 3; k++) { const g = new THREE.SphereGeometry(0.03 - k * 0.006, 16, 10); g.scale(1, 0.45, 0.8); b.add(g, c.mat('stone-worktop'), { pos: [cx + (k - 1) * 0.045, y0 + 0.012, cz + (r() - 0.5) * 0.03] }); }
     } else if (kind.includes('box')) {
-      b.add(softBox(0.14, 0.07, 0.1, { r: 0.004, seg: 2 }), c.mat('walnut-dark'), { pos: [cx, y0 + 0.035, cz] });
+      // lidded box (leather / wood / ceramic from its own material hint + colour), lid seam 1 cm below the top
+      const bm = mk ? ceramic : objMat(c, 'walnut-dark', color);
+      const bh = HH || 0.07;
+      b.add(softBox(0.14, bh - 0.012, 0.1, { r: 0.004, seg: 2 }), bm, { pos: [cx, y0 + (bh - 0.012) / 2, cz] });
+      b.add(softBox(0.143, 0.0115, 0.103, { r: 0.004, seg: 2 }), bm, { pos: [cx, y0 + bh - 0.006, cz] });
     } else if (kind.includes('jar')) {
       const h = HH || Math.min(0.16, H * 0.5), rr = 0.05;
       b.add(lathe(smoothProfile(vaseProfile('jar', h, rr), 30), 40), ceramic, { pos: [cx, y0, cz], uv: 'box' });
     } else {
       const h = HH || Math.min(0.2, H * 0.6), rr = Math.min(0.09, Math.max(0.05, h * 0.38));
       b.add(lathe(smoothProfile(vaseProfile('vase-round', h, rr), 40), 40), ceramic, { pos: [cx, y0, cz], uv: 'box' });
+      lastVase = { x: cx, y: y0 + h, z: cz };
     }
   }
-  return { group: b.build('decor_set') };
+  return { group: b.build('decor_set'), lights };
 }
 
 export { leafTemplate, sweep, LeafBatch, leafMatrix };

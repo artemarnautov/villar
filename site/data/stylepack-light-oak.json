@@ -2,7 +2,7 @@
  "id": "light-oak",
  "name": "Светлый дуб",
  "tagline": "Светлый дуб. Лён цвета камня. Тишина.",
- "description": "Японди для солнечной студии: мебель из светлого дуба на ступень светлее пола, лён цвета камня, рисовая бумага и матовая керамика. Контраст дают угольно-чёрное дерево и тонкий чёрный металл, акцент — приглушённый шалфей. Без латуни и терракоты, с пустым местом вокруг вещей.",
+ "description": "Японди для солнечной студии: светлый дуб, лён цвета камня, рисовая бумага и матовая керамика. Немного угольного дерева и тонкого чёрного металла для графики, шалфей для свежести — и много воздуха вокруг вещей.",
  "palette": "palette-light-oak.json",
  "architecture": {
   "walls": "#E4E2D7",
@@ -23,8 +23,9 @@
    ]
   },
   "cushions": {
-   "default": "cushions-linen-olive",
+   "default": "cushions-kyedae-sage",
    "options": [
+    "cushions-kyedae-sage",
     "cushions-linen-olive",
     "cushions-linen-oat",
     "cushions-oat-ivory-4"
@@ -36,16 +37,10 @@
     "coffee-echo"
    ]
   },
-  "decor_set": {
-   "default": "decor-cream-ceramic",
-   "options": [
-    "decor-cream-ceramic",
-    "decor-travertine-cream"
-   ]
-  },
   "rug": {
-   "default": "rug-heaton-200x290",
+   "default": "rug-elsin-200x290",
    "options": [
+    "rug-elsin-200x290",
     "rug-heaton-200x290",
     "rug-dione-200x290",
     "rug-pulara-160x230"
@@ -76,8 +71,9 @@
    ]
   },
   "bed": {
-   "default": "bed-cloud-160",
+   "default": "bed-grant-160",
    "options": [
+    "bed-grant-160",
     "bed-cloud-160",
     "bed-maison-160"
    ]
@@ -90,8 +86,9 @@
    ]
   },
   "bedding": {
-   "default": "bedding-white-oat-olive",
+   "default": "bedding-sage-oat",
    "options": [
+    "bedding-sage-oat",
     "bedding-white-oat-olive",
     "bedding-white-oat",
     "bedding-white-sateen-oat"
@@ -104,8 +101,9 @@
    ]
   },
   "table_lamp": {
-   "default": "tablelamp-crosby",
+   "default": "tablelamp-laodica",
    "options": [
+    "tablelamp-laodica",
     "tablelamp-crosby"
    ]
   },
@@ -149,8 +147,9 @@
    ]
   },
   "plant": {
-   "default": "plant-olive-themis",
+   "default": "plant-olive-charcoal",
    "options": [
+    "plant-olive-charcoal",
     "plant-olive-themis",
     "plant-olive-urbano",
     "plant-olive-180"
@@ -216,6 +215,20 @@
     "mirror-artemis-round-black",
     "mirror-mackenzie-arch"
    ]
+  },
+  "decor_coffee": {
+   "default": "decor-stoneware-low",
+   "options": [
+    "decor-stoneware-low",
+    "decor-tray-candles"
+   ]
+  },
+  "decor_tv": {
+   "default": "decor-cream-ceramic",
+   "options": [
+    "decor-cream-ceramic",
+    "decor-travertine-cream"
+   ]
   }
  },
  "rules": [
@@ -236,16 +249,16 @@
  ],
  "pairings": {
   "sofa-rockwell-3": {
-   "cushions": "cushions-linen-olive",
+   "cushions": "cushions-kyedae-sage",
    "throw": "throw-vayu-sage",
-   "rug": "rug-heaton-200x290",
+   "rug": "rug-elsin-200x290",
    "coffee_table": "coffee-echo",
    "side_table": "side-pavia"
   },
   "bed-cloud-160": {
-   "bedding": "bedding-white-oat-olive",
+   "bedding": "bedding-sage-oat",
    "nightstand": "nightstand-forren",
-   "table_lamp": "tablelamp-crosby",
+   "table_lamp": "tablelamp-laodica",
    "nightstand_decor": "nsdecor-travertine-candle",
    "art_bed": "art-ember-90x60"
   },
@@ -258,7 +271,8 @@
   },
   "rug-heaton-200x290": {
    "sofa": "sofa-rockwell-3",
-   "coffee_table": "coffee-echo"
+   "coffee_table": "coffee-echo",
+   "bed": "bed-grant-160"
   },
   "pendant-cosme": {
    "dining_table": "dining-keira-100",
@@ -274,9 +288,57 @@
   "chair-emily": {
    "dining_table": "dining-keira-100",
    "pendant_lamp": "pendant-berit"
+  },
+  "bed-grant-160": {
+   "bedding": "bedding-sage-oat",
+   "nightstand": "nightstand-forren",
+   "table_lamp": "tablelamp-laodica",
+   "nightstand_decor": "nsdecor-travertine-candle",
+   "art_bed": "art-ember-90x60"
+  },
+  "rug-elsin-200x290": {
+   "sofa": "sofa-rockwell-3",
+   "coffee_table": "coffee-echo",
+   "decor_coffee": "decor-stoneware-low"
   }
  },
  "nameEn": "Light Oak",
  "taglineEn": "Light oak. Stone linen. Quiet.",
- "descriptionEn": "Japandi for a sunny studio: light oak furniture one step lighter than the floor, stone-coloured linen, rice paper and matte stoneware. Charcoal-black wood and thin black metal give the contrast, a muted sage the accent. No brass, no terracotta, and room to breathe around every piece."
+ "descriptionEn": "Japandi for a sunny studio: light oak, stone-coloured linen, rice paper and matte stoneware. A touch of charcoal wood and fine black metal for definition, sage for freshness, and plenty of air around every piece.",
+ "consumerRules": [
+  {
+   "title": "Светлый дуб и немного угля.",
+   "body": "Мебель из светлого дуба, а для графики — один-два угольных или чёрных акцента: кашпо, рама зеркала, тонкие ножки."
+  },
+  {
+   "title": "Один зелёный.",
+   "body": "Шалфей и олива — единственный цвет: в подушке, пледе или постели и в растении. Терракоты и латуни здесь нет."
+  },
+  {
+   "title": "Бумага и лён.",
+   "body": "Свет проходит через бумагу и лён — мягкий, без бликов. Все лампы тёплые."
+  },
+  {
+   "title": "Воздух вокруг вещей.",
+   "body": "Низкие силуэты и два-три предмета на поверхности — пустое место тоже часть стиля."
+  }
+ ],
+ "consumerRulesEn": [
+  {
+   "title": "Light oak, a touch of charcoal.",
+   "body": "Light oak furniture, with one or two charcoal or black accents for definition: a planter, a mirror frame, slim legs."
+  },
+  {
+   "title": "One green.",
+   "body": "Sage and olive are the only colour: in a cushion, a throw or the bedding, and in the plant. No terracotta, no brass."
+  },
+  {
+   "title": "Paper and linen.",
+   "body": "Light comes through paper and linen: soft, with no glare. Every bulb is warm."
+  },
+  {
+   "title": "Air around things.",
+   "body": "Low silhouettes and two or three objects per surface: empty space is part of the look."
+  }
+ ]
 }

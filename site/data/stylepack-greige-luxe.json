@@ -2,7 +2,7 @@
  "id": "greige-luxe",
  "name": "Кашемир",
  "tagline": "Тон в тон: букле, травертин, шампань.",
- "description": "Тихая роскошь по-дубайски: тон в тон от слоновой кости до мокко, букле и матовый бархат, травертин и тёплый мрамор, мягкие скруглённые силуэты и шампань-латунь. Тёмных масс нет: глубину дают фактура и ступени светлоты, а не контраст.",
+ "description": "Тихая роскошь тон в тон: букле цвета слоновой кости, травертин, кремовый мрамор и латунь цвета шампань. Никаких резких контрастов — только фактуры и мягкие переходы тона.",
  "palette": "palette-greige-luxe.json",
  "architecture": {
   "walls": "#E8E2D4",
@@ -34,13 +34,6 @@
    "options": [
     "coffee-arkas",
     "coffee-joyce"
-   ]
-  },
-  "decor_set": {
-   "default": "decor-cream-ceramic",
-   "options": [
-    "decor-cream-ceramic",
-    "decor-travertine-cream"
    ]
   },
   "rug": {
@@ -218,6 +211,20 @@
     "mirror-artemis-arch-60",
     "mirror-agnek-80"
    ]
+  },
+  "decor_coffee": {
+   "default": "decor-tray-candles",
+   "options": [
+    "decor-tray-candles",
+    "decor-stoneware-low"
+   ]
+  },
+  "decor_tv": {
+   "default": "decor-cream-ceramic",
+   "options": [
+    "decor-cream-ceramic",
+    "decor-travertine-cream"
+   ]
   }
  },
  "rules": [
@@ -288,5 +295,41 @@
  },
  "nameEn": "Cashmere",
  "taglineEn": "Tone on tone: bouclé, travertine, champagne.",
- "descriptionEn": "Dubai-style quiet luxury: tone-on-tone from ivory to mocha, bouclé and matte velvet, travertine and warm marble, soft rounded silhouettes and champagne brass. No dark masses: depth comes from texture and steps of lightness, not contrast."
+ "descriptionEn": "Quiet luxury, tone on tone: ivory bouclé, travertine, cream marble and champagne brass. No harsh contrast, just texture and soft shifts of tone.",
+ "consumerRules": [
+  {
+   "title": "Тон в тон.",
+   "body": "Слоновая кость, грейж и тауп без ярких акцентов. Глубину дают фактуры: букле, камень, лён, матовый лак."
+  },
+  {
+   "title": "Мягкие формы.",
+   "body": "Скруглённый диван, кресло-«бочка», округлые углы у тумб — ничего острого."
+  },
+  {
+   "title": "Камень и шампань.",
+   "body": "Травертин и кремовый мрамор на столах, латунь цвета шампань — один металл на всю комнату."
+  },
+  {
+   "title": "Без тёмных пятен.",
+   "body": "Тёмной мебели нет: самая глубокая нота — мокко в пледе или подушке."
+  }
+ ],
+ "consumerRulesEn": [
+  {
+   "title": "Tone on tone.",
+   "body": "Ivory, greige and taupe with no bright accents. Depth comes from texture: bouclé, stone, linen, matte lacquer."
+  },
+  {
+   "title": "Soft shapes.",
+   "body": "A curved sofa, a barrel chair, rounded corners on cabinets: nothing sharp."
+  },
+  {
+   "title": "Stone and champagne.",
+   "body": "Travertine and cream marble on the tables, and champagne brass as the only metal."
+  },
+  {
+   "title": "No dark patches.",
+   "body": "No dark furniture: the deepest note is mocha in a throw or a cushion."
+  }
+ ]
 }

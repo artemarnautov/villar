@@ -2,28 +2,127 @@
   "id": "light-oak",
   "name": "Светлый дуб",
   "nameEn": "Light Oak",
-  "summary": "Японди для солнечной студии: мебель из светлого дуба на ступень светлее пола, лён цвета камня, рисовая бумага и матовая керамика. Контраст дают угольно-чёрное дерево и тонкий чёрный металл, акцент — приглушённый шалфей. Без латуни и терракоты, с пустым местом вокруг вещей.",
-  "summaryEn": "Japandi for a sunny studio: light oak furniture one step lighter than the floor, stone-coloured linen, rice paper and matte stoneware. Charcoal-black wood and thin black metal give the contrast, a muted sage the accent. No brass, no terracotta, and room to breathe around every piece.",
+  "summary": "Японди для солнечной студии: светлый дуб, лён цвета камня, рисовая бумага и матовая керамика. Немного угольного дерева и тонкого чёрного металла для графики, шалфей для свежести — и много воздуха вокруг вещей.",
+  "summaryEn": "Japandi for a sunny studio: light oak, stone-coloured linen, rice paper and matte stoneware. A touch of charcoal wood and fine black metal for definition, sage for freshness, and plenty of air around every piece.",
   "roles": {
-    "base": ["#E4E2D7", "#F2EFE8", "#C6A984"],
-    "secondary": ["#ECE7DC", "#D6CDBE", "#D2BA94", "#D6CFBF"],
-    "accent": ["#868A6C", "#A99E8F", "#2B2926"],
-    "wood": ["#D2BA94", "#C6A984", "#2B2926"],
-    "metal": ["#1F1E1C"],
-    "stone": ["#B8AC9A", "#D7C8AF"]
+    "base": [
+      "#E4E2D7",
+      "#F2EFE8",
+      "#C6A984"
+    ],
+    "secondary": [
+      "#ECE7DC",
+      "#D6CDBE",
+      "#D2BA94",
+      "#D6CFBF"
+    ],
+    "accent": [
+      "#868A6C",
+      "#A99E8F",
+      "#2B2926"
+    ],
+    "wood": [
+      "#D2BA94",
+      "#C6A984",
+      "#2B2926"
+    ],
+    "metal": [
+      "#1F1E1C"
+    ],
+    "stone": [
+      "#B8AC9A",
+      "#D7C8AF"
+    ]
   },
   "swatches": [
-    { "name": "Тёплый серо-белый", "nameEn": "Warm grey-white", "hex": "#E4E2D7", "role": "walls", "share": 0.36, "lrv": 76 },
-    { "name": "Облачный потолок", "nameEn": "Cloud ceiling", "hex": "#F2EFE8", "role": "ceiling", "share": 0.1, "lrv": 86 },
-    { "name": "Светлый дуб (пол)", "nameEn": "Light oak floor", "hex": "#C6A984", "role": "floor", "share": 0.14, "lrv": 42 },
-    { "name": "Рисовая бумага", "nameEn": "Rice paper", "hex": "#ECE7DC", "role": "textiles", "share": 0.09, "lrv": 80 },
-    { "name": "Лён-камень", "nameEn": "Stone linen", "hex": "#D6CDBE", "role": "textiles", "share": 0.09, "lrv": 62 },
-    { "name": "Угольное дерево", "nameEn": "Charcoal wood", "hex": "#2B2926", "role": "wood", "share": 0.03, "lrv": 2 },
-    { "name": "Светлый дуб мебели", "nameEn": "Light oak furniture", "hex": "#D2BA94", "role": "wood", "share": 0.09, "lrv": 51 },
-    { "name": "Грибной тауп", "nameEn": "Mushroom taupe", "hex": "#A99E8F", "role": "textiles", "share": 0.05, "lrv": 35 },
-    { "name": "Шалфей-мох", "nameEn": "Moss sage", "hex": "#868A6C", "role": "accent", "share": 0.025, "lrv": 24 },
-    { "name": "Стоунвер", "nameEn": "Stoneware", "hex": "#B8AC9A", "role": "stone", "share": 0.015, "lrv": 42 },
-    { "name": "Матовый чёрный", "nameEn": "Matte black", "hex": "#1F1E1C", "role": "metal", "share": 0.01, "lrv": 1 }
+    {
+      "name": "Тёплый серо-белый",
+      "nameEn": "Warm grey-white",
+      "hex": "#E4E2D7",
+      "role": "walls",
+      "share": 0.36,
+      "lrv": 76
+    },
+    {
+      "name": "Облачный потолок",
+      "nameEn": "Cloud ceiling",
+      "hex": "#F2EFE8",
+      "role": "ceiling",
+      "share": 0.1,
+      "lrv": 86
+    },
+    {
+      "name": "Светлый дуб пола",
+      "nameEn": "Light oak floor",
+      "hex": "#C6A984",
+      "role": "floor",
+      "share": 0.14,
+      "lrv": 42
+    },
+    {
+      "name": "Рисовая бумага",
+      "nameEn": "Rice paper",
+      "hex": "#ECE7DC",
+      "role": "textiles",
+      "share": 0.09,
+      "lrv": 80
+    },
+    {
+      "name": "Лён-камень",
+      "nameEn": "Stone linen",
+      "hex": "#D6CDBE",
+      "role": "textiles",
+      "share": 0.09,
+      "lrv": 62
+    },
+    {
+      "name": "Угольное дерево",
+      "nameEn": "Charcoal wood",
+      "hex": "#2B2926",
+      "role": "wood",
+      "share": 0.03,
+      "lrv": 2
+    },
+    {
+      "name": "Светлый дуб мебели",
+      "nameEn": "Light oak furniture",
+      "hex": "#D2BA94",
+      "role": "wood",
+      "share": 0.09,
+      "lrv": 51
+    },
+    {
+      "name": "Грибной тауп",
+      "nameEn": "Mushroom taupe",
+      "hex": "#A99E8F",
+      "role": "textiles",
+      "share": 0.05,
+      "lrv": 35
+    },
+    {
+      "name": "Шалфей-мох",
+      "nameEn": "Moss sage",
+      "hex": "#868A6C",
+      "role": "accent",
+      "share": 0.025,
+      "lrv": 24
+    },
+    {
+      "name": "Стоунвер",
+      "nameEn": "Stoneware",
+      "hex": "#B8AC9A",
+      "role": "stone",
+      "share": 0.015,
+      "lrv": 42
+    },
+    {
+      "name": "Матовый чёрный",
+      "nameEn": "Matte black",
+      "hex": "#1F1E1C",
+      "role": "metal",
+      "share": 0.01,
+      "lrv": 1
+    }
   ],
   "architecture": {
     "walls": "#E4E2D7",

@@ -1,6 +1,6 @@
 // Villar furniture — floor / table / pendant lamps. Owner: modeler.
 // userData.lights: positions are inside the shades; colour warm 2700 K.
-import * as THREE from 'three';
+import * as THREE from '../../../vendor/three/three.module.js';
 import { Builder, softBox, lathe, smoothProfile, slab, ellipseShape, tube, roundLeg, segs, V3, clamp, cm } from './geom.js';
 
 const WARM = '#ffd2a1';
@@ -44,10 +44,29 @@ function shadeMatFor(c, p, color) {
   return c.mat('lamp-shade', { color: color || '#EDE5D6' });
 }
 
+/** Turn a surface inside out (normals and winding), e.g. a shade lining seen from inside. */
+function insideOut(g) {
+  const n = g.attributes.normal; for (let i = 0; i < n.count; i++) n.setXYZ(i, -n.getX(i), -n.getY(i), -n.getZ(i));
+  if (g.index) { const ix = g.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; } }
+  return g;
+}
+/**
+ * R2-08: the styrene lining laminated inside a fabric shade — opaque, never emissive, so it is the shade's solid
+ * shadow caster in the sun (the glowing fabric itself is kept out of shadow maps by the engine). It sits 2.5 mm
+ * inside the fabric, outside every lamp spot cone (down spots aim at the bottom rim), and faces inward: at night it
+ * is the bright inside of the shade seen from above.
+ */
+function addLining(b, c, { rb, rt, h, yb, shadeColor }) {
+  const g = new THREE.CylinderGeometry(rt - 0.0025, rb - 0.0025, h - 0.004, segs(48, 18), 1, true);
+  b.add(insideOut(g), c.mat('lining', { color: '#F4EFE6' }), { pos: [0, yb + h / 2, 0], uv: 'none' });
+  void shadeColor;
+}
+
 /** Adds a shade (centre axis at origin x/z), bottom at yb, of given style. Returns light centre y. */
-function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null, open = 0, wave = 0 }) {
+function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null, open = 0, wave = 0, lining = true }) {
   const s = String(style).toLowerCase();
   const seg = 72;
+  const lined = lining && mat && mat.userData?.glow && !/opal|rattan|glass/.test(mat.name || '');
   if (s.includes('pleat')) {
     // knife-pleated paper/fabric shade: zig-zag radius, slight taper
     const rt = R * 0.82, n = Math.max(24, Math.round((2 * Math.PI * R) / 0.022));
@@ -64,6 +83,7 @@ function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null, o
     g.computeVertexNormals();
     b.add(g, mat, { uv: 'keep' });
     for (const [rr, y] of [[R * 0.97, yb], [rt * 0.97, yb + h]]) b.add(new THREE.TorusGeometry(rr, 0.002, 6, seg).rotateX(Math.PI / 2), rimMat, { pos: [0, y, 0] });
+    if (lined) addLining(b, c, { rb: R * 0.94, rt: rt * 0.94, h, yb });
     return yb + h * 0.45;
   }
   if (s.includes('mushroom')) {
@@ -76,6 +96,7 @@ function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null, o
     const rt = R * (s.includes('empire') ? 0.55 : 0.68);
     b.add(shadeUV(new THREE.CylinderGeometry(rt, R, h, segs(seg, 24), 1, true), R), mat, { pos: [0, yb + h / 2, 0], uv: 'keep' });
     for (const [rr, y] of [[R, yb], [rt, yb + h]]) b.add(new THREE.TorusGeometry(rr, 0.0028, 6, seg).rotateX(Math.PI / 2), rimMat, { pos: [0, y, 0] });
+    if (lined) addLining(b, c, { rb: R, rt, h, yb });
     return yb + h * 0.45;
   }
   if (s.includes('dome') || s.includes('bell') || s.includes('mushroom')) {
@@ -111,6 +132,7 @@ function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null, o
   // drum (default)
   b.add(shadeUV(new THREE.CylinderGeometry(R, R, h, segs(seg, 24), 1, true), R), mat, { pos: [0, yb + h / 2, 0], uv: 'keep' });
   for (const y of [yb, yb + h]) b.add(new THREE.TorusGeometry(R, 0.003, 6, seg).rotateX(Math.PI / 2), rimMat, { pos: [0, y, 0] });
+  if (lined) addLining(b, c, { rb: R, rt: R, h, yb });
   return yb + h * 0.45;
 }
 
@@ -138,6 +160,7 @@ export function floorLamp(c) {
   const R = clamp(cm(p.shadeDiameter, W) / 2, 0.1, 0.35);
   const stem = String(p.stem || '').toLowerCase();
   if (stem.includes('swing') || stem.includes('arm')) return swingArmLamp(c, { b, baseMat, shade, style, R });
+  if (/column|cylinder|tube/.test(style) || /column/.test(stem) && /column|cylinder/.test(style)) return columnLamp(c);
   const sh = clamp(cm(p.shadeHeight, Math.min(0.36, W * 0.72)), 0.12, 0.5);
   const yb = H - sh;
   const woodBase = String(baseKey).includes('wood') || /walnut|oak|teak/.test(baseKey);
@@ -182,6 +205,45 @@ export function floorLamp(c) {
 }
 
 const isMetalKey = (k) => /metal|brass|chrome|nickel|black|gold/.test(String(k || ''));
+
+/**
+ * Column floor lamp (Diamant-type): a full-height diffuser of wound paper cord, Ø = dims.w (≈ 0.2 m), on a slim
+ * dark base disc, with a top cap. The cord column glows evenly at night (paper-shade, cord weave, no rim falloff);
+ * one diffuser point light at mid-height + a weak up spot through the open top.
+ */
+function columnLamp(c) {
+  const { W, H, params: p } = c;
+  const b = new Builder(c.seed);
+  const R = clamp(cm(p.shadeDiameter, W) / 2, 0.06, 0.2);
+  const color = p.shadeColor || p.baseColor || '#EEE8DE';
+  const paper = c.mat('paper-shade', { color, cord: true });
+  const foot = 0.022, capH = 0.01, h = H - foot - capH;
+  // wound cord column: UV u = height (m) so the cord rings run round the column, v = arc (m)
+  const g = new THREE.CylinderGeometry(R, R, h, segs(48, 18), segs(24, 6), true);
+  const pos = g.attributes.position, uv = g.attributes.uv;
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i), a = Math.atan2(pos.getX(i), pos.getZ(i));
+    // very slight barrel (the cord stack bellies ~3 mm mid-height)
+    const k = 1 + 0.015 * Math.sin(Math.PI * (y / h + 0.5));
+    pos.setX(i, pos.getX(i) * k); pos.setZ(i, pos.getZ(i) * k);
+    uv.setXY(i, y + h / 2, Math.abs(a) * R);
+  }
+  g.computeVertexNormals();
+  b.add(g, paper, { pos: [0, foot + h / 2, 0], uv: 'keep' });
+  b.add(insideOut(new THREE.CylinderGeometry(R - 0.004, R - 0.004, h - 0.01, segs(32, 12), 1, true)), paper, { pos: [0, foot + h / 2, 0], uv: 'none' });
+  const dark = c.mat('metal-black', { color: '#2a2724', roughness: 0.6 });
+  b.add(slab(ellipseShape(R * 2 + 0.01, R * 2 + 0.01), foot, { bevel: 0.004, bevelSeg: 2 }), dark, {});
+  b.add(new THREE.TorusGeometry(R - 0.002, 0.004, 6, segs(48, 16)).rotateX(Math.PI / 2), c.mat('metal-white', { color: p.capColor || color }), { pos: [0, foot + h, 0] });
+  const ly = foot + h * 0.55;
+  bulb(b, c, ly, 0.03);
+  return {
+    group: b.build('floor_lamp'),
+    lights: [
+      { type: 'point', position: [0, ly, 0], color: WARM, intensity: (p.lumens ? p.lumens / 800 : 1) * 0.8, distance: 4.5, decay: 2, shadow: true },
+      { type: 'spot', position: [0, ly, 0], target: [0, ly + 1, 0], angle: clamp(Math.atan2(R, foot + h - ly), 0.15, 0.6), penumbra: 0.6, color: WARM, intensity: 0.2, distance: 3, decay: 2, shadow: false },
+    ],
+  };
+}
 
 /** Swing-arm floor lamp: disc base, upright stem, horizontal arm, shade hanging at the arm end. */
 function swingArmLamp(c, { b, baseMat, shade, style, R }) {
@@ -280,7 +342,9 @@ export function pendantLamp(c) {
   else if (shape.includes('linen') || shape.includes('fabric') || shape.includes('drum') || shape.includes('pleat')) mat = c.mat('lamp-shade', { color });
   else mat = c.mat(p.material || (shape.includes('brass') ? 'metal-brass' : 'metal-black'), { color: p.material ? undefined : color === '#F3EEE4' ? undefined : color });
   const metal = c.mat(p.fitting || 'metal-black');
-  const trim = p.trimColor ? c.mat('leather-cognac', { color: p.trimColor }) : metal;
+  // R2-18 trim bands: light trims are tone-on-tone linen tape, dark/saturated ones leather
+  const trimLight = p.trimColor && new THREE.Color(p.trimColor).getHSL({}).l > 0.55;
+  const trim = p.trimColor ? (trimLight ? c.mat('fabric-linen', { color: p.trimColor, side: THREE.DoubleSide }) : c.mat('leather-cognac', { color: p.trimColor })) : metal;
   // canopy + cord
   b.add(slab(ellipseShape(0.11, 0.11), 0.025, { bevel: 0.005 }), metal, { pos: [0, -0.025, 0] });
   b.add(new THREE.CylinderGeometry(0.0025, 0.0025, drop - 0.025, 6), c.mat('cord'), { pos: [0, -0.025 - (drop - 0.025) / 2, 0], cast: false });

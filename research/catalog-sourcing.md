@@ -331,3 +331,71 @@ Each new pack has `pairings` on its anchors and its main bridges, so a cross-sty
 | DW | 0 | – |
 
 Each of these needs new sourcing.
+
+### 9.6 Round-2 review fixes (26.11.2026)
+
+**R2-12 — Light Oak's own layer.** New defaults, sourced and checked in stock on the product page:
+
+| Slot | Item |
+| --- | --- |
+| Bed | Grant: pale oak, low platform, textured slatted headboard 110 |
+| Rug | Elsin: stone pin-stripe flat weave, 290×200 |
+| Table lamps | Laodica: speckled stoneware-look base, linen shade; exception: shade Ø22 vs 25–38 |
+| Plant | olive in a charcoal ribbed pot; the pot is the charcoal accent the review asked for, next to the black mirror at the entrance |
+| Cushions | sage and oat woven covers |
+| Bedding | sage percale with an oat throw |
+
+The paper lamps were already Light Oak's own (Berit pendant, Diamant column floor lamp).
+
+Rejected:
+- Jack paper-rope table lamp: out of stock online.
+- Bosco charcoal stoneware lamp: Ø50 shade.
+- Double-trunk ficus: 75 cm wide, glossy leaves.
+- Lea jacquard throw: geometric acrylic.
+
+Light Oak now shares only the mattress, the bed art and the runner with DW's defaults.
+
+**PT-11 — Mediterranean's own layer.** New defaults:
+
+| Slot | Item |
+| --- | --- |
+| Cushions | terracotta + Aegean-blue woven stripe + oat/jute band |
+| Bedding | white percale + terracotta and blue-stripe cushions |
+| Throw | Sultana: sand, fringed |
+| Art | Macaire sand-wave relief over the sofa; Caitlin palm triptych over the bed (no longer in DW); Erato amphora relief at the dining table (Andreya banana leaves as the option) |
+| Plant | a different olive in an olive-glazed pot |
+
+Mediterranean now shares only the mattress with DW's defaults. The Arch blue cushion cover was rejected: out of stock online.
+
+**PT-10 — decor.**
+- `decor_set` is split into the slot keys `decor_coffee` (low: tray + candles, bowls, bud vases) and `decor_tv` (taller vase sets).
+- The option sets are disjoint, and the validator enforces it.
+- No layout change: the store already resolves the slot ids `decor_coffee` and `decor_tv`.
+
+**PT-12 / PT-13 — tableware and rug names.**
+- Tableware names now describe the delivered set, e.g. «Сервиз Mia на 4 персоны, янтарные стаканы, латунные приборы».
+- Each tableware item has a `shortName` / `shortNameEn` that differs within the first 20 characters, plus `setNote` / `setNoteEn` ("you receive the full set; the 3D lays a table for two").
+- Rug and runner names now follow the card's w × d order, and the validator checks it.
+- Bed names say «под матрас 160×200» / "for a 160×200 mattress".
+
+**D2-03 / D2-14 — copy and rules.**
+- The Dark Walnut palette has `nameEn`, `summaryEn` and `nameEn` on all 12 swatches.
+- All four pack descriptions and palette summaries use the reviewers' plain wording.
+- «Светлый дуб (пол)» → «Светлый дуб пола».
+- Every pack ships 4 `consumerRules` + `consumerRulesEn`.
+- The validator fails if a display field has no `…En` twin.
+
+**R2-18 — pendant trim.** The Cosme trim is now `#C9B99F`, a tone-on-tone natural linen stitch that suits every pack. It replaces the cognac `#8E5B34`.
+
+**R2-13 — cane the modeler should render.**
+
+| Archetype | Parameter → expected render |
+| --- | --- |
+| sofa | `armPanel: 'cane'\|'rattan'` + `armPanelColor` → cane panel on the outer, **front and inner** arm faces (Oshawa) |
+| armchair | Sukhna is now `style: 'frame', frameVisible: true, seat: 'cane', back: 'cane', caneColor, woodColor` → exposed wood frame with cane seat and back panels, as in the dining-chair cane path; no upholstery |
+| dining_chair | `back: 'cane'` + `caneColor` (Canovia); `seat: 'cord'` (Emily) and `seat: 'rattan'` (Wishbone), both with `backStyle: 'y-splat'` → woven seat texture |
+| tv_unit | `fronts: 'cane'` (Windsor), already rendered |
+| bed | `style: 'platform'`, `headboard: 'slatted'` (Grant); `headboard: 'cane'\|'rattan'` is supported for future items |
+| pendant / floor lamp | `body: 'rattan'` or `'paper'`; `shadeMaterial: 'rattan'\|'paper'`. Diamant (`stem/shade: 'column'`, `base/shadeMaterial: 'paper'`) needs the paper-cord column, Ø 0.2 × 1.4 m, glowing at night |
+| rug | `material: 'flat-weave'`, `pattern: 'pinstripe'` (Elsin) |
+| wall_art | `relief: true` (Macaire, Erato) |

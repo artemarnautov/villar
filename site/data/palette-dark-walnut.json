@@ -1,28 +1,134 @@
 {
   "id": "dark-walnut",
   "name": "Тёмный орех",
-  "summary": "Светлая тёплая оболочка — тёплый белый, светлый дуб, травертин и овсяный текстиль — держит тёмный орех как главный контрастный якорь. Акценты — олива и терракота с коньячной кожей и сатинированной латунью, малыми дозами: «тёплый минимализм» для солнечной дубайской студии.",
+  "nameEn": "Dark Walnut",
+  "summary": "Светлая тёплая основа — тёплый белый, светлый дуб, травертин и овсяные ткани — и тёмный орех как главный акцент. Олива и терракота, коньячная кожа и сатинированная латунь — понемногу: тёплый минимализм для солнечной студии.",
+  "summaryEn": "A light, warm base of warm white, light oak, travertine and oat fabrics, with dark walnut as the main accent. Olive and terracotta, cognac leather and satin brass in small doses: warm minimalism for a sunny studio.",
   "roles": {
-    "base": ["#ECE7DE", "#F2EFE8", "#C6A984"],
-    "secondary": ["#D3C6B1", "#E8E1D6", "#D6CFBF"],
-    "accent": ["#6B6A45", "#B5674A", "#8E5B34"],
-    "wood": ["#553C2C", "#C6A984"],
-    "metal": ["#A88B55", "#1F1E1C"],
-    "stone": ["#D7C8AF", "#E9E3D9"]
+    "base": [
+      "#ECE7DE",
+      "#F2EFE8",
+      "#C6A984"
+    ],
+    "secondary": [
+      "#D3C6B1",
+      "#E8E1D6",
+      "#D6CFBF"
+    ],
+    "accent": [
+      "#6B6A45",
+      "#B5674A",
+      "#8E5B34"
+    ],
+    "wood": [
+      "#553C2C",
+      "#C6A984"
+    ],
+    "metal": [
+      "#A88B55",
+      "#1F1E1C"
+    ],
+    "stone": [
+      "#D7C8AF",
+      "#E9E3D9"
+    ]
   },
   "swatches": [
-    { "name": "Тёплый белый", "hex": "#ECE7DE", "role": "walls", "share": 0.36, "lrv": 80 },
-    { "name": "Облачный потолок", "hex": "#F2EFE8", "role": "ceiling", "share": 0.1, "lrv": 86 },
-    { "name": "Светлый дуб", "hex": "#C6A984", "role": "floor", "share": 0.14, "lrv": 42 },
-    { "name": "Овсяный", "hex": "#D3C6B1", "role": "textiles", "share": 0.1, "lrv": 57 },
-    { "name": "Молочный лён", "hex": "#E8E1D6", "role": "textiles", "share": 0.08, "lrv": 76 },
-    { "name": "Тёмный орех", "hex": "#553C2C", "role": "wood", "share": 0.12, "lrv": 5 },
-    { "name": "Травертин", "hex": "#D7C8AF", "role": "stone", "share": 0.02, "lrv": 59 },
-    { "name": "Коньячная кожа", "hex": "#8E5B34", "role": "accent", "share": 0.02, "lrv": 13 },
-    { "name": "Олива", "hex": "#6B6A45", "role": "accent", "share": 0.025, "lrv": 14 },
-    { "name": "Терракота", "hex": "#B5674A", "role": "accent", "share": 0.015, "lrv": 20 },
-    { "name": "Сатинированная латунь", "hex": "#A88B55", "role": "metal", "share": 0.01 },
-    { "name": "Тёплый матовый чёрный", "hex": "#1F1E1C", "role": "metal", "share": 0.01, "lrv": 1 }
+    {
+      "name": "Тёплый белый",
+      "nameEn": "Warm white",
+      "hex": "#ECE7DE",
+      "role": "walls",
+      "share": 0.36,
+      "lrv": 80
+    },
+    {
+      "name": "Облачный потолок",
+      "nameEn": "Cloud ceiling",
+      "hex": "#F2EFE8",
+      "role": "ceiling",
+      "share": 0.1,
+      "lrv": 86
+    },
+    {
+      "name": "Светлый дуб",
+      "nameEn": "Light oak",
+      "hex": "#C6A984",
+      "role": "floor",
+      "share": 0.14,
+      "lrv": 42
+    },
+    {
+      "name": "Овсяный",
+      "nameEn": "Oat",
+      "hex": "#D3C6B1",
+      "role": "textiles",
+      "share": 0.1,
+      "lrv": 57
+    },
+    {
+      "name": "Молочный лён",
+      "nameEn": "Milky linen",
+      "hex": "#E8E1D6",
+      "role": "textiles",
+      "share": 0.08,
+      "lrv": 76
+    },
+    {
+      "name": "Тёмный орех",
+      "nameEn": "Dark walnut",
+      "hex": "#553C2C",
+      "role": "wood",
+      "share": 0.12,
+      "lrv": 5
+    },
+    {
+      "name": "Травертин",
+      "nameEn": "Travertine",
+      "hex": "#D7C8AF",
+      "role": "stone",
+      "share": 0.02,
+      "lrv": 59
+    },
+    {
+      "name": "Коньячная кожа",
+      "nameEn": "Cognac leather",
+      "hex": "#8E5B34",
+      "role": "accent",
+      "share": 0.02,
+      "lrv": 13
+    },
+    {
+      "name": "Олива",
+      "nameEn": "Olive",
+      "hex": "#6B6A45",
+      "role": "accent",
+      "share": 0.025,
+      "lrv": 14
+    },
+    {
+      "name": "Терракота",
+      "nameEn": "Terracotta",
+      "hex": "#B5674A",
+      "role": "accent",
+      "share": 0.015,
+      "lrv": 20
+    },
+    {
+      "name": "Сатинированная латунь",
+      "nameEn": "Satin brass",
+      "hex": "#A88B55",
+      "role": "metal",
+      "share": 0.01
+    },
+    {
+      "name": "Тёплый матовый чёрный",
+      "nameEn": "Warm matte black",
+      "hex": "#1F1E1C",
+      "role": "metal",
+      "share": 0.01,
+      "lrv": 1
+    }
   ],
   "architecture": {
     "walls": "#ECE7DE",

@@ -1,10 +1,120 @@
 // Villar furniture — sofas, armchairs, dining chairs, throw cushions. Owner: modeler.
-import * as THREE from 'three';
+import * as THREE from '../../../vendor/three/three.module.js';
 import { rng } from '../textures.js';
 import { Builder, softBox, pillowGeometry, roundLeg, tube, roundedRectLoop, lathe, weldNormals, segs, V3, clamp, lerp, cm } from './geom.js';
 import { fabricMat, addLegs, isMetal } from './parts.js';
 
 const smoothstep = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+// ---------------------------------------------------------------- cane & rattan (R2-13)
+
+/** Free-text / param value that means woven cane or rattan. */
+export const CANE_RE = /cane|rattan|wicker|webbing|ротанг|плетён|плетен|венск/;
+const isCane = (v) => CANE_RE.test(String(v || '').toLowerCase());
+
+/** Tube along a closed loop with UVs in metres (u along, v around) — for rattan-wrap bindings. */
+function bindingLoop(pts, r) {
+  const curve = new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.05);
+  const L = curve.getLength();
+  const g = new THREE.TubeGeometry(curve, segs(Math.max(24, Math.round(L / 0.02)), 12), r, segs(6, 4), true);
+  const uv = g.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * L, uv.getY(i) * 2 * Math.PI * r);
+  return g;
+}
+/** Rounded-rectangle loop in a local (a, b) plane, mapped by fn(a, b) → Vector3. */
+function rectLoop(wa, hb, rc, fn) {
+  return roundedRectLoop(wa, hb, rc, 0, 3).map((q) => fn(q.x, q.z));
+}
+/** Woven-cane panel grid: f(s, t) → Vector3 for s, t ∈ [0, 1]; UVs are metres along the panel. */
+function canePanel(f, w, h, nx = 10, ny = 8) {
+  nx = segs(nx, 3); ny = segs(ny, 2);
+  const pos = [], uv = [], idx = [];
+  for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) { const p = f(i / nx, j / ny); pos.push(p.x, p.y, p.z); uv.push((i / nx) * w, (j / ny) * h); }
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const a = j * (nx + 1) + i, b2 = a + 1, c2 = a + nx + 1, d = c2 + 1; idx.push(a, b2, d, a, d, c2); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * Open wooden arm frame with Vienna-cane panels on BOTH the outer and the inner face (R2-13: the cane must be
+ * visible from the room and from the seat), a rattan binding round each panel, posts front and back, a solid
+ * arm rest on top. cx = arm centre x, w = arm width, y0..y1 = bottom..top of the arm, depth d (centred on z = 0).
+ */
+function caneArm(b, { cx, w, y0, y1, d, frame, cane, wrap }) {
+  const post = 0.05, rail = 0.05, top = 0.045, h = y1 - y0;
+  for (const z of [d / 2 - post / 2, -d / 2 + post / 2]) b.add(softBox(w, h - top + 0.004, post, { r: 0.012, seg: 3 }), frame, { pos: [cx, y0 + (h - top) / 2, z], axis: 'y' });
+  b.add(softBox(w + 0.008, top, d + 0.006, { r: 0.018, seg: 4 }), frame, { pos: [cx, y1 - top / 2, 0], axis: 'z' });
+  b.add(softBox(w, rail, d - 2 * post + 0.004, { r: 0.006, seg: 2 }), frame, { pos: [cx, y0 + rail / 2, 0], axis: 'z' });
+  const pw = d - 2 * post + 0.004, ph = h - top - rail + 0.004, py = y0 + rail + ph / 2 - 0.002;
+  for (const sx of [-1, 1]) {
+    const x = cx + sx * (w / 2 - 0.01);
+    b.add(canePanel((s, t) => V3(x, py - ph / 2 + t * ph, -pw / 2 + s * pw), pw, ph, 6, 4), cane, { uv: 'keep' });
+    b.add(bindingLoop(rectLoop(pw - 0.006, ph - 0.006, 0.006, (a, bb) => V3(x + sx * 0.0015, py + bb, a)), 0.0035), wrap, { uv: 'keep' });
+  }
+}
+
+/**
+ * Frame-and-cane armchair (Sukhna-type lounge, or a caned easy chair): exposed solid-wood frame, woven cane seat
+ * stretched in the seat rails (1 cm sag), raked cane back between two stiles, rattan bindings round both panels,
+ * optional wooden arms (params.arm ≠ none). Params: frame/wood (+ woodColor), caneColor (or fabricColor when
+ * fabric = cane), seatHeight, legs (… splay), arm.
+ */
+function caneChair(c) {
+  const { W, D, H, params: p } = c;
+  const b = new Builder(c.seed);
+  const wood = c.mat(p.frame && !isCane(p.frame) ? p.frame : p.wood || 'oak-light');
+  const caneCol = p.caneColor || (isCane(p.fabric) || isCane(p.seat) ? p.fabricColor || p.seatColor : null) || '#C4A57A';
+  const cane = c.mat('cane', { color: caneCol });
+  const wrap = c.mat('rattan-wrap', { color: caneCol });
+  const low = H < 0.78;
+  const seatH = clamp(cm(p.seatHeight, low ? 0.385 : 0.44), 0.33, 0.48);
+  const legR = 0.019, fx = W / 2 - 0.04;
+  const zF = D / 2 - 0.06, zB = -D / 2 + (low ? 0.17 : 0.12);
+  const tilt = low ? 0.07 : 0.03, rake = low ? 0.33 : 0.18;
+  const yF = seatH, yB = seatH - (zF - zB) * Math.tan(tilt);
+  const splay = /splay|taper/.test(String(p.legs || 'splay')) ? 0.06 : 0.02;
+  // legs: front splayed, back raked out behind
+  for (const s of [-1, 1]) {
+    // (rotation about Z by +s·splay sends the foot outward; about X: − → forward, + → backward)
+    b.add(roundLeg(legR, legR * 0.68, yF - 0.02, 14), wood, { pos: [s * fx, yF - 0.02, zF], rot: [-splay * 0.6, 0, s * splay], axis: 'y' });
+    b.add(roundLeg(legR, legR * 0.68, yB - 0.02, 14), wood, { pos: [s * fx, yB - 0.02, zB], rot: [0.16, 0, s * splay], axis: 'y' });
+  }
+  // seat frame (rails follow the seat tilt) + stretchers
+  const rh = 0.046, rt = 0.03, sl = Math.hypot(zF - zB, yF - yB);
+  b.add(softBox(2 * fx + 0.03, rh, rt, { r: 0.008, seg: 2 }), wood, { pos: [0, yF - rh / 2, zF] });
+  b.add(softBox(2 * fx + 0.03, rh, rt, { r: 0.008, seg: 2 }), wood, { pos: [0, yB - rh / 2, zB] });
+  for (const s of [-1, 1]) b.add(softBox(rt, rh, sl, { r: 0.008, seg: 2 }), wood, { pos: [s * fx, (yF + yB) / 2 - rh / 2, (zF + zB) / 2], rot: [-tilt, 0, 0], axis: 'z' });
+  for (const s of [-1, 1]) b.add(new THREE.CylinderGeometry(0.009, 0.009, zF - zB, 10).rotateX(Math.PI / 2), wood, { pos: [s * (fx - 0.004), 0.13, (zF + zB) / 2 + 0.01], axis: 'z' });
+  // cane seat, stretched inside the rails with a soft sag
+  const sx0 = fx - rt / 2 - 0.004, sz0 = zB + rt / 2 + 0.004, sz1 = zF - rt / 2 - 0.004;
+  const seatY = (z) => yB + (z - zB) / (zF - zB) * (yF - yB) - 0.012;
+  b.add(canePanel((s, t) => { const x = -sx0 + 2 * sx0 * s, z = sz0 + (sz1 - sz0) * t; const fxs = 2 * s - 1, fz = 2 * t - 1; return V3(x, seatY(z) - 0.011 * (1 - fxs * fxs) * (1 - fz * fz), z); }, 2 * sx0, sz1 - sz0, 10, 10), cane, { uv: 'keep' });
+  b.add(bindingLoop(rectLoop(2 * sx0 - 0.004, sz1 - sz0 - 0.004, 0.008, (a, bb) => V3(a, seatY((sz0 + sz1) / 2 + bb) + 0.004, (sz0 + sz1) / 2 + bb)), 0.004), wrap, { uv: 'keep' });
+  // back: two raked stiles from the back rail to the top, crest rail, low rail, concave cane panel
+  const bl = (H - yB) / Math.cos(rake);
+  const at = (t) => V3(0, yB + t * (H - yB), zB - t * (H - yB) * Math.tan(rake)); // along the back plane
+  for (const s of [-1, 1]) b.add(roundLeg(0.018, 0.017, bl, 12), wood, { pos: [s * fx, H, at(1).z], rot: [-rake, 0, 0], axis: 'y' });
+  const crest = at(1 - 0.05 / bl), low2 = at(0.17);
+  b.add(softBox(2 * fx + 0.03, 0.055, 0.032, { r: 0.012, seg: 3 }), wood, { pos: [0, crest.y - 0.012, crest.z - 0.004], rot: [-rake, 0, 0] });
+  b.add(softBox(2 * fx + 0.02, 0.035, 0.026, { r: 0.008, seg: 2 }), wood, { pos: [0, low2.y, low2.z], rot: [-rake, 0, 0] });
+  const t0 = 0.17 + 0.035 / bl, t1 = 1 - 0.085 / bl, bw = fx - 0.017 - 0.004;
+  const dir = V3(0, Math.cos(rake), -Math.sin(rake)), nrm = V3(0, Math.sin(rake), Math.cos(rake));
+  b.add(canePanel((s, t) => { const q = at(t0 + (t1 - t0) * t); const xs = 2 * s - 1; return q.clone().add(V3(-bw + 2 * bw * s, 0, 0)).addScaledVector(nrm, -0.025 * (1 - xs * xs)); }, 2 * bw, (t1 - t0) * bl, 10, 6), cane, { uv: 'keep' });
+  const mid = at((t0 + t1) / 2), half = (t1 - t0) * bl / 2;
+  b.add(bindingLoop(rectLoop(2 * bw - 0.004, 2 * half - 0.004, 0.008, (a, bb) => { const xs = a / bw; return mid.clone().add(V3(a, 0, 0)).addScaledVector(dir, bb).addScaledVector(nrm, -0.025 * (1 - xs * xs) + 0.003); }), 0.004), wrap, { uv: 'keep' });
+  // optional arms: front posts continue up, flat arm rests back to the stiles
+  if (p.arm && !/none|armless|false/.test(String(p.arm))) {
+    const armY = seatH + 0.2, back = at((armY - yB) / (H - yB));
+    for (const s of [-1, 1]) {
+      b.add(roundLeg(legR * 0.9, legR * 0.85, armY - yF + 0.02, 12), wood, { pos: [s * fx, armY, zF], axis: 'y' });
+      b.add(softBox(0.05, 0.024, zF - back.z + 0.05, { r: 0.01, seg: 3 }), wood, { pos: [s * fx, armY + 0.01, (zF + back.z) / 2], axis: 'z' });
+    }
+  }
+  return { group: b.build('armchair'), anchors: { seat: V3(0, seatH, (zF + zB) / 2) } };
+}
 
 // ---------------------------------------------------------------- upholstered body (sofa / armchair)
 
@@ -43,8 +153,13 @@ function upholstered(c, o) {
   const baseH = Math.max(0.05, baseTop - legH);
   b.add(softBox(innerW + 0.04, baseH, D - 0.01, { r: 0.015, seg: 2 }), fab, { pos: [0, legH + baseH / 2, 0.0] });
 
-  // arms
-  if (armW > 0) {
+  // arms (cane-sided sofas: open wooden frames with cane on the outer AND inner faces, R2-13)
+  const caneArms = armW > 0 && isCane(p.armPanel);
+  if (caneArms) {
+    const caneCol = p.armPanelColor || p.caneColor || '#C4A57A';
+    const frame = legMat;
+    for (const s of [-1, 1]) caneArm(b, { cx: s * (W / 2 - armW / 2), w: armW, y0: legH, y1: armH, d: D, frame, cane: c.mat('cane', { color: caneCol }), wrap: c.mat('rattan-wrap', { color: caneCol }) });
+  } else if (armW > 0) {
     const ah = armH - legH;
     for (const s of [-1, 1]) {
       const g = softBox(armW, ah, D, { r: rArm, seg: 4, cell: 0.07, bulge: { top: 0.006, left: 0.004, right: 0.004, front: 0.004 }, seed: c.seed + s });
@@ -146,15 +261,6 @@ function upholstered(c, o) {
     const railMat = c.mat(woodKey && !isMetal(woodKey) ? woodKey : 'walnut-dark');
     b.add(softBox(W + 0.004, rh, D + 0.004, { r: 0.006, seg: 2 }), railMat, { pos: [0, legH + rh / 2, 0] });
   }
-  if (String(p.armPanel || '').match(/rattan|cane/) && armW > 0) {
-    const pm = c.mat('cane', { color: p.armPanelColor || '#C2A77D' });
-    const ah = armH - legH;
-    for (const s of [-1, 1]) {
-      b.add(new THREE.PlaneGeometry(D - 0.16, ah - 0.16), pm, { pos: [s * (W / 2 + 0.006), legH + ah / 2, 0], rot: [0, s * Math.PI / 2, 0] });
-      b.add(new THREE.PlaneGeometry(D - 0.12, ah - 0.12), c.mat('walnut-dark'), { pos: [s * (W / 2 + 0.003), legH + ah / 2, 0], rot: [0, s * Math.PI / 2, 0] });
-    }
-  }
-
   const group = b.build(o.name || 'sofa');
   const seatAnchor = V3(0, seatH + 0.008, Math.min(D / 2 - 0.12, backFrontZ + 0.085));
   // throw anchors (agreed with the engine): attach a `throw` item at one of these, passing anchorInfo[name] as ctx.host.
@@ -297,6 +403,9 @@ export function sofa(c) {
 export function armchair(c) {
   const p = c.params;
   const style = String(p.style || 'lounge').toLowerCase();
+  // woven cane / rattan seat or back (or "fabric: cane") → exposed frame + cane panels, never upholstery (R2-13)
+  const hint = (c.params.materialHints || []).join(' ') + ' ' + (c.item?.materialsEn || []).join(' ');
+  if (isCane(p.seat) || isCane(p.back) || isCane(p.fabric) || (/frame/.test(style) && /cane|rattan/i.test(hint))) return caneChair(c);
   if (/barrel|tub/.test(style)) return barrelChair(c);
   if (/frame|scandi|wood|mid|danish|paddle/.test(style) || /wood|open|paddle/.test(String(p.arm || '')) || p.frameVisible || (/leather/.test(String(p.fabric || '')) && !/club|slipper/.test(style))) return woodFrameChair(c);
   const map = {

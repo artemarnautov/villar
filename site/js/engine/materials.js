@@ -18,15 +18,16 @@
 //
 // All materials are MeshStandardMaterial / MeshPhysicalMaterial (path-tracer compatible).
 
-import * as THREE from 'three';
+// by URL = the module the import map's 'three' resolves to (one instance); also loadable in a Worker (T8)
+import * as THREE from '../../vendor/three/three.module.js';
 import * as T from './textures.js';
 
 export const MATERIAL_KEYS = [
   'walnut-dark', 'walnut-medium', 'oak-light', 'oak-natural', 'ash-black', 'teak', 'oak-floor', 'porcelain-tile', 'plaster-wall', 'paint',
-  'fabric-boucle', 'fabric-linen', 'fabric-velvet', 'fabric-cotton', 'fabric-wool', 'fabric-knit', 'fabric-sheer', 'paper-cord', 'leather-cognac', 'metal-black', 'metal-white', 'metal-brass',
+  'fabric-boucle', 'fabric-linen', 'fabric-velvet', 'fabric-cotton', 'fabric-wool', 'fabric-knit', 'fabric-sheer', 'fabric-weave', 'paper-cord', 'leather-cognac', 'metal-black', 'metal-white', 'metal-brass',
   'metal-chrome', 'metal-nickel', 'marble-white', 'travertine', 'stone-worktop', 'ceramic-matte', 'ceramic-glazed', 'glass-clear', 'glass-frosted',
   'ash-light', 'oak-white', 'terrazzo', 'metal-brass-brushed', 'terracotta', 'stoneware', 'fabric-linen-washed', 'wax', 'flame', 'fruit', 'cork',
-  'rattan', 'cane', 'jute', 'wool-rug', 'glass-amber', 'opal-glass', 'plant-leaf', 'plant-stem', 'bark', 'soil', 'lamp-shade', 'paper-shade', 'bulb', 'kitchen-front', 'lacquer',
+  'rattan', 'cane', 'rattan-wrap', 'fringe', 'lining', 'jute', 'wool-rug', 'glass-amber', 'opal-glass', 'plant-leaf', 'plant-stem', 'bark', 'soil', 'lamp-shade', 'paper-shade', 'bulb', 'kitchen-front', 'lacquer',
   'mirror', 'canvas', 'paper', 'pages', 'cord', 'rubber', 'plastic-white',
 ];
 
@@ -41,6 +42,9 @@ const ALIASES = [
   [/oak|beech|birch|pine|light.?wood|maple/, 'oak-light'],
   [/black.*(ash|oak|wood)|ash-black|ebon/, 'ash-black'],
   [/teak|mango|acacia|sheesham|rosewood|solid.?wood|wood|veneer|timber/, 'teak'],
+  [/rattan.?wrap|wrapped|binding/, 'rattan-wrap'],
+  [/fringe|tassel/, 'fringe'],
+  [/lining|liner/, 'lining'],
   [/vienna|cane|straw|webbing|сетк/, 'cane'],
   [/rattan|wicker|bamboo|woven|basket/, 'rattan'],
   [/jute|sisal|seagrass|rope|hemp/, 'jute'],
@@ -190,8 +194,16 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
   T.setMaxAnisotropy(Math.min(16, maxAniso));
   // texture resolution per tier (GPU memory: high ≈ 1, medium ¼, low ⅛ of the texels)
   T.setTextureQuality(quality === 'low' ? 0.35 : quality === 'medium' ? 0.5 : 1);
-  // CPU copies are released after upload; regenerate procedurally if the GL context comes back
-  const onRestore = () => T.restoreTextures();
+  // CPU copies are released after upload; regenerate procedurally if the GL context comes back (T4).
+  // The engine should call materials.restore() FIRST in its own 'webglcontextrestored' handler (before any render
+  // or bake) and bake when the returned Promise resolves; this listener is the fallback (deduped).
+  let lastRestore = -1e9;
+  const restore = () => {
+    const now = performance.now();
+    if (now - lastRestore > 1500) { lastRestore = now; T.restoreTextures(); }
+    return T.whenTexturesReady();
+  };
+  const onRestore = () => { restore(); };
   renderer?.domElement?.addEventListener?.('webglcontextrestored', onRestore);
 
   const texCache = new Map();
@@ -205,13 +217,15 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     return texCache.get(name);
   };
 
+  /** Texture clone sharing the procedural Source; heals itself if ever uploaded after the pixels were released. */
+  const tclone = (t) => { const c = t.clone(); c.onUpdate = T.healOnUpdate; return c; };
   /** Clone a texture bundle with a different tile scale (shares GPU source). */
   const scaled = (bundle, s = 1, off = null) => {
     if (s === 1 && !off) return bundle;
     const out = { ...bundle };
     for (const k of ['map', 'normalMap', 'roughnessMap']) {
       if (!bundle[k]) continue;
-      const t = bundle[k].clone();
+      const t = tclone(bundle[k]);
       t.repeat.copy(bundle[k].repeat).multiplyScalar(1 / s);
       if (off) t.offset.set(off[0], off[1]);
       out[k] = t;
@@ -241,10 +255,19 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
    * Shift a full-colour albedo texture so its average matches a catalogue hex (e.g. woodColor,
    * topColor). strength 0..1 (photo-estimated colours are trusted at 75 %).
    */
-  const matchColor = (m, bundle, hex, strength = 0.75) => {
+  const matchColor = (m, bundle, hex, strength = 0.75, ref = null) => {
     if (!hex || !bundle) return m;
     const apply = (b) => {
       const t = new THREE.Color(hex); const mr = b.meanRGB || [b.mean, b.mean, b.mean];
+      if (ref) {
+        // calibrated species (R2-04): catalogue photo estimates of dark woods read 1–1.5 stops under the real
+        // albedo. Keep their hue and their tone *relative* to the species reference (√ compressed) and anchor the
+        // level to the palette mean, so '#5A3F2E' → palette mean (≈ #73523A), '#4A3528' → ≈ #69492F, '#6E4A33' → ≈ #7D5940.
+        const lum = (c) => c.r * 0.3 + c.g * 0.59 + c.b * 0.11;
+        const Lt = Math.max(1e-4, lum(t)), Lr = Math.max(1e-4, lum(new THREE.Color(ref)));
+        const Lp = mr[0] * 0.3 + mr[1] * 0.59 + mr[2] * 0.11;
+        t.multiplyScalar((Lp * Math.sqrt(Lt / Lr)) / Lt);
+      }
       const k = [t.r / Math.max(1e-3, mr[0]), t.g / Math.max(1e-3, mr[1]), t.b / Math.max(1e-3, mr[2])].map((x) => 1 + (Math.min(3, x) - 1) * strength);
       m.color.setRGB(k[0], k[1], k[2]);
     };
@@ -272,7 +295,7 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       clearcoat: o.clearcoat ?? extra.clearcoat ?? 0.18, clearcoatRoughness: extra.clearcoatRoughness ?? 0.42,
       specularIntensity: 0.6,
     });
-    if (o.match) matchColor(m, b0, o.match, o.matchStrength ?? 0.75);
+    if (o.match) matchColor(m, b0, o.match, o.matchStrength ?? 0.75, T.WOOD_PALETTES[species]?.ref || null);
     return m;
   };
 
@@ -337,13 +360,15 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       return physical({ normalMap: b.normalMap, normalScale: new THREE.Vector2(0.05, 0.05), color: col(o.color, '#2b2724'), roughness: o.roughness ?? 0.3, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.12 });
     },
     // textiles ------------------------------------------------
-    'fabric-boucle': (o) => fabric('boucle', () => T.boucleTextures(), o, { color: '#E8E1D5', sheen: 0.8, sheenRoughness: 0.95, normalScale: 1.0, sheenWhite: 0.12, specular: 0.12 }),
+    'fabric-boucle': (o) => fabric('boucle', () => T.boucleTextures(), o, { color: '#E8E1D5', sheen: 0.8, sheenRoughness: 0.95, normalScale: 1.2, sheenWhite: 0.12, specular: 0.12 }),
     'fabric-linen': (o) => fabric('linen', () => T.linenTextures(), o, { color: '#D9CDB8', sheen: 0.25, sheenRoughness: 0.8, normalScale: 1.0, specular: 0.15 }),
     'fabric-velvet': (o) => fabric('velvet', () => T.velvetTextures(), o, { color: '#6b6a4a', sheen: 1.0, sheenRoughness: 0.45, normalScale: 0.6, sheenWhite: 0.2, specular: 0.15 }),
     'fabric-cotton': (o) => fabric('cotton', () => T.cottonTextures(), o, { color: '#F2EFE9', sheen: 0.5, sheenRoughness: 0.85, normalScale: 0.6, specular: 0.12 }),
     'fabric-wool': (o) => fabric('woolpile', () => T.woolPileTextures(), o, { color: '#cfc6b8', sheen: 0.6, sheenRoughness: 0.9, normalScale: 0.6, specular: 0.1 }),
     'fabric-knit': (o) => fabric('knit', () => T.knitTextures(), o, { color: '#D3C6B1', sheen: 0.6, sheenRoughness: 0.9, normalScale: 1.2, specular: 0.1 }),
     'fabric-sheer': (o) => DEF['fabric-linen']({ ...o, sheer: true }),
+    // woven cotton throw: open plain weave of ≈ 3 mm yarns with slubs (reads as cloth, not percale or felt)
+    'fabric-weave': (o) => fabric('weave', () => T.linenTextures(119, { tile: 0.2, threads: 64 }), o, { color: '#D8CDBA', sheen: 0.45, sheenRoughness: 0.85, normalScale: 1.4, specular: 0.12 }),
     // stone-washed linen: same weave + soft crinkle relief, a touch more sheen from the broken fibres
     'fabric-linen-washed': (o) => fabric('linen-washed', () => T.linenTextures(113, { washed: true }), o, { color: '#D6CBB8', sheen: 0.35, sheenRoughness: 0.85, normalScale: 1.1, specular: 0.14 }),
     'paper-cord': (o) => {
@@ -364,8 +389,8 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
         // pattern map in rug UV (0..1 over the rug); pile normal repeats in metres
         const w = o.w || 2.9, d = o.d || 2.0;
         const pattern = T.rugPatternTexture({ w, d, color: o.color || '#E3DACB', patternColor: o.patternColor || '#B9A88E', pattern: o.pattern, seed: o.seed || 1, shape: o.shape || 'rect' });
-        const n = pile.normalMap.clone(); n.repeat.set(w / pile.tile[0], d / pile.tile[1]);
-        const r = pile.roughnessMap.clone(); r.repeat.copy(n.repeat);
+        const n = tclone(pile.normalMap); n.repeat.set(w / pile.tile[0], d / pile.tile[1]);
+        const r = tclone(pile.roughnessMap); r.repeat.copy(n.repeat);
         return physical({ map: pattern, normalMap: n, normalScale: new THREE.Vector2(1, 1), roughnessMap: r, roughness: 1, color: detailColor('#ebebeb', pile, '#ebebeb'), sheen: 0.6, sheenRoughness: 0.9, sheenColor: new THREE.Color(o.color || '#E3DACB').lerp(new THREE.Color(0xffffff), 0.3), specularIntensity: 0.2 });
       }
       return physical({ ...withTex(scaled(pile, o.scale || 1), 1), color: c, roughness: 1, sheen: 0.5, sheenRoughness: 0.9, sheenColor: new THREE.Color(o.color || '#E3DACB').lerp(new THREE.Color(0xffffff), 0.3), specularIntensity: 0.2 });
@@ -376,17 +401,35 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
         const w = o.w || 2.3, d = o.d || 1.6;
         const jb = tex('jute:' + c, () => T.juteTextures(161, c));
         const pattern = T.rugPatternTexture({ w, d, color: c, patternColor: o.patternColor || '#C2A77D', pattern: o.pattern, seed: o.seed || 1, shape: o.shape || 'rect' });
-        const n = jb.normalMap.clone(); n.repeat.set(w / jb.tile[0], d / jb.tile[1]);
+        const n = tclone(jb.normalMap); n.repeat.set(w / jb.tile[0], d / jb.tile[1]);
         return physical({ map: pattern, normalMap: n, normalScale: new THREE.Vector2(1, 1), roughness: 0.95, metalness: 0, sheen: 0.3, sheenRoughness: 0.9, sheenColor: new THREE.Color(c), specularIntensity: 0.3 });
       }
       const b = scaled(tex('jute:' + c, () => T.juteTextures(161, c)), o.scale || 1);
       return physical({ ...withTex(b, 1), roughness: 1, metalness: 0, sheen: 0.3, sheenRoughness: 0.9, sheenColor: new THREE.Color(c), specularIntensity: 0.3 });
     },
+    // Vienna cane webbing (R2-13): one detail map for every colour, open octagonal holes via alphaTest (they also
+    // cut the shadow), glossy strands. Use on double-sided planes; behind it is the room, not a backing.
     'cane': (o) => {
-      const c = o.color || '#d2ad74';
-      const b = scaled(tex('cane:' + c, () => T.caneTextures(155, c)), o.scale || 1);
-      return physical({ ...withTex(b, 0.8), roughness: 1, metalness: 0, alphaTest: 0.5, side: THREE.DoubleSide, clearcoat: 0.1, clearcoatRoughness: 0.4, specularIntensity: 0.5 });
+      const b = scaled(tex('cane', () => T.caneTextures(155)), o.scale || 1);
+      const m = physical({ ...withTex(b, 0.9), color: detailColor(o.color, b, '#d2ad74'), roughness: 1, metalness: 0, alphaTest: 0.5, side: THREE.DoubleSide, clearcoat: 0.15, clearcoatRoughness: 0.35, specularIntensity: 0.55, sheen: 0.15, sheenRoughness: 0.5, sheenColor: new THREE.Color(o.color || '#d2ad74') });
+      m.shadowSide = THREE.DoubleSide;
+      return m;
     },
+    // rattan / cane binding wrapped round frames and panel edges (u along the part)
+    'rattan-wrap': (o) => {
+      const b = scaled(tex('rattan-wrap', () => T.rattanWrapTextures()), o.scale || 1);
+      return physical({ ...withTex(b, 1), color: detailColor(o.color, b, '#C4A57A'), roughness: 1, metalness: 0, clearcoat: 0.2, clearcoatRoughness: 0.3, specularIntensity: 0.55 });
+    },
+    // fringe / tassel card strip (alpha), coloured like its textile
+    'fringe': (o) => {
+      const b = tex('fringe', () => T.fringeTextures());
+      const m = physical({ map: b.map, normalMap: b.normalMap, normalScale: new THREE.Vector2(0.6, 0.6), color: detailColor(o.color, b, '#D8CDBA'), roughness: 1, metalness: 0, alphaTest: 0.5, side: THREE.DoubleSide, sheen: 0.5, sheenRoughness: 0.9, sheenColor: new THREE.Color(o.color || '#D8CDBA'), specularIntensity: 0.1 });
+      m.shadowSide = THREE.DoubleSide;
+      return m;
+    },
+    // lamp-shade lining (styrene laminate inside fabric shades): matte, opaque, never glows → it is the shade's
+    // shadow caster by day (R2-08) and the bright inner surface at night
+    'lining': (o) => standard({ color: col(o.color, '#F4EFE6'), roughness: 0.85, metalness: 0 }),
     'rattan': (o) => {
       const c = o.color || '#c49a5e';
       const b = scaled(tex('rattan:' + c, () => T.rattanTextures(151, c)), o.scale || 1);
@@ -417,9 +460,11 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     },
     'mirror': (o) => standard({ color: col(o.color, '#f4f6f6'), roughness: 0.015, metalness: 1 }),
     // stone & ceramic ----------------------------------------
+    // finish: polished (default) | satin (marble-look sintered ceramic, honed stone): broader, softer highlight
     'marble-white': (o) => {
       const b0 = tex('marble', () => T.marbleTextures()); const b = scaled(b0, o.scale || 1);
-      return matchColor(physical({ map: b.map, roughness: o.roughness ?? 0.12, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.06, specularIntensity: 0.8 }), b0, o.match, 0.5);
+      const satin = o.finish === 'satin' || o.finish === 'honed';
+      return matchColor(physical({ map: b.map, roughness: o.roughness ?? (satin ? 0.24 : 0.12), metalness: 0, clearcoat: satin ? 0.3 : 0.6, clearcoatRoughness: satin ? 0.16 : 0.06, specularIntensity: satin ? 0.65 : 0.8 }), b0, o.match, 0.5);
     },
     'travertine': (o) => {
       const b0 = tex('travertine', () => T.travertineTextures()); const b = scaled(b0, o.scale || 1);
@@ -469,14 +514,19 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       return physical({ ...withTex(b, 1.4), color: detailColor(o.color, b, '#B48E64'), roughness: 1, metalness: 0, specularIntensity: 0.2 });
     },
     'glass-clear': (o) => physical({ color: col(o.color, '#ffffff'), roughness: 0.02, metalness: 0, transmission: 1, thickness: o.thickness ?? 0.006, ior: 1.5, specularIntensity: 1, attenuationColor: new THREE.Color('#e9f3ef'), attenuationDistance: 0.6 }),
-    'glass-amber': (o) => physical({ color: col(o.color, '#ffffff'), roughness: 0.04, metalness: 0, transmission: 1, thickness: o.thickness ?? 0.006, ior: 1.5, attenuationColor: new THREE.Color(o.tint || '#b8742a'), attenuationDistance: 0.02, specularIntensity: 1 }),
+    // tinted glass: amber (default) or smoke (pass a grey-brown tint and a longer distance → lighter)
+    'glass-amber': (o) => physical({ color: col(o.color, '#ffffff'), roughness: 0.04, metalness: 0, transmission: 1, thickness: o.thickness ?? 0.006, ior: 1.5, attenuationColor: new THREE.Color(o.tint || '#b8742a'), attenuationDistance: o.distance ?? 0.02, specularIntensity: 1 }),
     'opal-glass': (o) => {
       const m = physical({ color: col(o.color, '#f6f3ee'), roughness: 0.25, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.05, emissive: new THREE.Color('#ffcf96'), emissiveIntensity: 0, specularIntensity: 0.8, side: THREE.DoubleSide });
       registerGlow(m, o, 0.9);
       return m;
     },
     'glass-frosted': (o) => physical({ color: col(o.color, '#f7f7f5'), roughness: 0.4, metalness: 0, transmission: 1, thickness: o.thickness ?? 0.01, ior: 1.5, specularIntensity: 1 }),
-    'plastic-white': (o) => physical({ color: col(o.color, '#f0eee9'), roughness: 0.4, metalness: 0, clearcoat: 0.2 }),
+    // moulded plastic (kettles, appliances): colour + roughness (matte black ≈ 0.6) with a faint orange-peel
+    'plastic-white': (o) => {
+      const b = tex('peel', () => T.orangePeelTextures(81, 0.15));
+      return physical({ normalMap: b.normalMap, normalScale: new THREE.Vector2(0.08, 0.08), color: col(o.color, '#f0eee9'), roughness: o.roughness ?? 0.4, metalness: 0, clearcoat: o.clearcoat ?? 0.2, clearcoatRoughness: 0.3, specularIntensity: 0.6 });
+    },
     'rubber': (o) => standard({ color: col(o.color, '#1a1a1a'), roughness: 0.8, metalness: 0 }),
     'cord': (o) => physical({ color: col(o.color, '#151515'), roughness: 0.7, sheen: 0.4, sheenRoughness: 0.6, sheenColor: new THREE.Color('#555') }),
     // plants --------------------------------------------------
@@ -486,9 +536,10 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       return physical({ map: b.map, normalMap: b.normalMap, normalScale: new THREE.Vector2(0.6, 0.6), color: col(o.color, '#ffffff'), vertexColors: !!o.vertexColors, roughness: o.roughness ?? 0.5, metalness: 0, side: THREE.DoubleSide, sheen: 0.35, sheenRoughness: 0.5, sheenColor: new THREE.Color('#b7cf8f'), specularIntensity: 0.5 });
     },
     'plant-stem': (o) => standard({ color: col(o.color, '#5d5a3c'), roughness: 0.7, metalness: 0, vertexColors: !!o.vertexColors }),
+    // olive / tree bark (R2-17): grey-brown, darker than any pot, fissured; o.color tints it
     'bark': (o) => {
-      const b = tex('bark', () => T.leatherTextures(143, '#6e6356', 512));
-      return standard({ map: b.map, normalMap: b.normalMap, roughness: 0.95, color: col(o.color, '#ffffff') });
+      const b = tex('bark2', () => T.barkTextures());
+      return standard({ map: b.map, normalMap: b.normalMap, normalScale: new THREE.Vector2(1.2, 1.2), roughnessMap: b.roughnessMap, roughness: 1, metalness: 0, color: col(o.color, '#ffffff') });
     },
     'soil': (o) => {
       const b = scaled(tex('soil', () => T.soilTextures()), o.scale || 1);
@@ -505,7 +556,14 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       registerGlow(m, o, 0.7);
       return m;
     },
+    // paper shade; o.cord = wound paper cord (column lamps: UV u along the height) with an even glow
     'paper-shade': (o) => {
+      if (o.cord) {
+        const w = tex('rattan-wrap', () => T.rattanWrapTextures());
+        const m = physical({ map: w.map, normalMap: w.normalMap, normalScale: new THREE.Vector2(0.9, 0.9), roughnessMap: w.roughnessMap, color: detailColor(o.color, w, '#EEE8DE'), roughness: 2.4, metalness: 0, side: THREE.FrontSide, sheen: 0.4, sheenRoughness: 0.8, sheenColor: new THREE.Color(o.color || '#EEE8DE'), emissive: new THREE.Color('#ffcf96').lerp(new THREE.Color(o.color || '#EEE8DE'), 0.35), emissiveIntensity: 0, specularIntensity: 0.1 });
+        registerGlow(m, o, 0.55);
+        return m;
+      }
       const b = tex('cotton', () => T.cottonTextures());
       const glow = tex('shadeglow', () => T.shadeGlowTextures());
       const m = physical({ map: b.map, normalMap: b.normalMap, normalScale: new THREE.Vector2(0.3, 0.3), color: col(o.color, '#F3EEE4'), roughness: 0.9, metalness: 0, side: THREE.DoubleSide, emissive: new THREE.Color('#ffcf96').lerp(new THREE.Color(o.color || '#F3EEE4'), 0.3), emissiveMap: glow.map, emissiveIntensity: 0, specularIntensity: 0.12 });
@@ -526,9 +584,10 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     'canvas': (o) => {
       const w = o.w || 0.6, h = o.h || 0.8;
       const weave = tex('canvasweave', () => T.canvasWeaveTextures());
-      const n = weave.normalMap.clone(); n.repeat.set(w / weave.tile[0], h / weave.tile[1]);
+      const n = tclone(weave.normalMap); n.repeat.set(w / weave.tile[0], h / weave.tile[1]);
       const art = o.map || T.artTexture({ motif: o.motif, colors: o.colors, aspect: w / h, seed: o.seed || 1, relief: !!o.relief });
-      if (art && art.normalMap) return standard({ map: art.map, normalMap: art.normalMap, normalScale: new THREE.Vector2(0.9, -0.9), roughness: 0.9, metalness: 0 });
+      // relief art (mirrored = the pair hung flipped: the relief's x slope flips with it)
+      if (art && art.normalMap) return standard({ map: art.map, normalMap: art.normalMap, normalScale: new THREE.Vector2(o.mirrored ? -0.9 : 0.9, -0.9), roughness: 0.86, metalness: 0 });
       return standard({ map: art, normalMap: n, normalScale: new THREE.Vector2(0.35, 0.35), roughness: 0.88, metalness: 0 });
     },
   };
@@ -614,6 +673,14 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     pending: () => T.pendingTextures(),
     /** Generate everything still queued synchronously (blocking). */
     flush: () => T.flushTextures(),
+    /**
+     * T4: after 'webglcontextrestored', call before the first render: art/rug canvases are redrawn synchronously
+     * with fresh GL storage, procedural maps get placeholder pixels at once and their real pixels time-sliced.
+     * Resolves when every texture is back (bake GI / capture reflections then). Idempotent per restore.
+     */
+    restore,
+    /** Redraw + re-upload only the art canvases (cheap, synchronous). */
+    restoreArt: () => T.restoreArt(),
     get lampsOn() { return lampsOn; },
     keys: MATERIAL_KEYS.slice(),
     resolve: resolveMaterialKey,

@@ -2,7 +2,7 @@
  "id": "mediterranean",
  "name": "Средиземноморье",
  "tagline": "Побелка, ротанг, терракота.",
- "description": "Стены и потолок как одна побелка, натуральный ротанг и венская сетка, тёплое светлое дерево, льняной песок и солнечная терракота с оливой. Полоска, арки и ручная керамика — как в отеле на Майорке, без морских штампов. Пак собран для посуточной аренды у моря.",
+ "description": "Побелка, ротанг и венская сетка, тёплое светлое дерево и песочный лён. Солнечная терракота, олива и эгейский синий, полоска, арки и ручная керамика — без морских штампов.",
  "palette": "palette-mediterranean.json",
  "architecture": {
   "walls": "#F3EFE6",
@@ -23,8 +23,9 @@
    ]
   },
   "cushions": {
-   "default": "cushions-linen-olive-rust",
+   "default": "cushions-tuscany-siena",
    "options": [
+    "cushions-tuscany-siena",
     "cushions-linen-olive-rust",
     "cushions-linen-clay",
     "cushions-linen-olive",
@@ -35,14 +36,6 @@
    "default": "coffee-corta",
    "options": [
     "coffee-corta"
-   ]
-  },
-  "decor_set": {
-   "default": "decor-terracotta",
-   "options": [
-    "decor-terracotta",
-    "decor-cream-ceramic",
-    "decor-travertine-cream"
    ]
   },
   "rug": {
@@ -94,8 +87,9 @@
    ]
   },
   "bedding": {
-   "default": "bedding-white-oat-clay",
+   "default": "bedding-white-terracotta-blue",
    "options": [
+    "bedding-white-terracotta-blue",
     "bedding-white-oat-clay",
     "bedding-oat-rust",
     "bedding-white-oat-olive",
@@ -139,29 +133,33 @@
    ]
   },
   "art_sofa": {
-   "default": "art-madar-aziza-100",
+   "default": "art-macaire-120x60",
    "options": [
+    "art-macaire-120x60",
     "art-madar-aziza-100",
     "art-madar-hiba-100"
    ]
   },
   "art_bed": {
-   "default": "art-ember-90x60",
+   "default": "art-caitlin-triptych",
    "options": [
-    "art-ember-90x60",
-    "art-caitlin-triptych"
+    "art-caitlin-triptych",
+    "art-ember-90x60"
    ]
   },
   "art_dining": {
-   "default": "art-aquarelle-53x80",
+   "default": "art-erato-80",
    "options": [
+    "art-erato-80",
+    "art-andreya-60x90",
     "art-aquarelle-53x80",
     "art-vaseo-53x80"
    ]
   },
   "plant": {
-   "default": "plant-olive-themis",
+   "default": "plant-olive-kerby",
    "options": [
+    "plant-olive-kerby",
     "plant-olive-themis",
     "plant-olive-urbano",
     "plant-olive-180"
@@ -199,8 +197,9 @@
    ]
   },
   "throw": {
-   "default": "throw-olivia-terracotta",
+   "default": "throw-sultana-sand",
    "options": [
+    "throw-sultana-sand",
     "throw-olivia-terracotta",
     "throw-vayu-sage",
     "throw-norham-olive",
@@ -230,6 +229,22 @@
     "mirror-mackenzie-arch",
     "mirror-artemis-round-black"
    ]
+  },
+  "decor_coffee": {
+   "default": "decor-terracotta-low",
+   "options": [
+    "decor-terracotta-low",
+    "decor-tray-candles",
+    "decor-stoneware-low"
+   ]
+  },
+  "decor_tv": {
+   "default": "decor-terracotta",
+   "options": [
+    "decor-terracotta",
+    "decor-cream-ceramic",
+    "decor-travertine-cream"
+   ]
   }
  },
  "rules": [
@@ -249,28 +264,29 @@
  ],
  "pairings": {
   "sofa-oshawa-3": {
-   "cushions": "cushions-linen-olive-rust",
-   "throw": "throw-olivia-terracotta",
+   "cushions": "cushions-tuscany-siena",
+   "throw": "throw-sultana-sand",
    "rug": "rug-pulara-160x230",
    "coffee_table": "coffee-corta",
-   "armchair": "armchair-sukhna"
+   "armchair": "armchair-sukhna",
+   "art_sofa": "art-macaire-120x60"
   },
   "bed-forren-160": {
    "nightstand": "nightstand-forren",
-   "bedding": "bedding-white-oat-clay",
+   "bedding": "bedding-white-terracotta-blue",
    "table_lamp": "tablelamp-tolima",
-   "art_bed": "art-ember-90x60"
+   "art_bed": "art-caitlin-triptych"
   },
   "bed-cloud-160": {
    "nightstand": "nightstand-forren",
-   "bedding": "bedding-white-oat-clay",
+   "bedding": "bedding-white-terracotta-blue",
    "table_lamp": "tablelamp-tolima"
   },
   "dining-keira-100": {
    "pendant_lamp": "pendant-tobin",
    "dining_chair": "chair-emily",
    "centerpiece": "centerpiece-maya-eucalyptus",
-   "art_dining": "art-aquarelle-53x80"
+   "art_dining": "art-erato-80"
   },
   "pendant-tobin": {
    "dining_table": "dining-keira-100"
@@ -280,13 +296,15 @@
   },
   "cushions-linen-olive-rust": {
    "throw": "throw-olivia-terracotta",
-   "sofa": "sofa-oshawa-3"
+   "bedding": "bedding-white-oat-clay"
   },
   "decor-terracotta": {
+   "decor_coffee": "decor-terracotta-low",
    "coffee_table": "coffee-corta"
   },
   "art-madar-aziza-100": {
-   "sofa": "sofa-oshawa-3"
+   "sofa": "sofa-oshawa-3",
+   "cushions": "cushions-tuscany-siena"
   },
   "chair-emily": {
    "dining_table": "dining-keira-100",
@@ -295,5 +313,41 @@
  },
  "nameEn": "Mediterranean",
  "taglineEn": "Limewash, rattan, terracotta.",
- "descriptionEn": "Walls and ceiling read as one coat of limewash, with natural rattan and cane, warm light wood, sand linen, and sun-baked terracotta with olive. Stripes, arches and handmade ceramics, like a hotel on Mallorca, with no nautical clichés. Made for short-term rentals by the sea."
+ "descriptionEn": "Limewash, rattan and cane, warm light wood and sand linen. Sun-baked terracotta, olive and Aegean blue, stripes, arches and handmade ceramics, with no nautical clichés.",
+ "consumerRules": [
+  {
+   "title": "Ротанг и сетка.",
+   "body": "Плетение в мебели и светильниках — главная подпись стиля: тумба с сеткой, ротанговый торшер и подвес, сетка на стульях."
+  },
+  {
+   "title": "Солнечные акценты.",
+   "body": "Терракота плюс олива или эгейский синий — в подушках, керамике и искусстве. Не больше двух цветов сразу."
+  },
+  {
+   "title": "Тёплое светлое дерево.",
+   "body": "Дуб, манго и акация в натуральном цвете, без тёмных пород."
+  },
+  {
+   "title": "Полоска и рукотворное.",
+   "body": "Полосатый текстиль, ручная керамика, арки и амфоры в искусстве — без морских штампов."
+  }
+ ],
+ "consumerRulesEn": [
+  {
+   "title": "Rattan and cane.",
+   "body": "Weave in furniture and lighting is the signature: a cane-front TV unit, a rattan floor lamp and pendant, cane on the chairs."
+  },
+  {
+   "title": "Sunny accents.",
+   "body": "Terracotta plus olive or Aegean blue, in cushions, ceramics and art. Never more than two at once."
+  },
+  {
+   "title": "Warm light wood.",
+   "body": "Oak, mango and acacia in their natural tone, and no dark woods."
+  },
+  {
+   "title": "Stripes and the handmade.",
+   "body": "Striped textiles, handmade ceramics, arches and amphorae in the art, and no nautical clichés."
+  }
+ ]
 }

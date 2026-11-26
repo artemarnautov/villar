@@ -1,5 +1,5 @@
 // Villar furniture — rugs and curtains. Owner: modeler.
-import * as THREE from 'three';
+import * as THREE from '../../../vendor/three/three.module.js';
 import { Builder, roundedRectShape, ellipseShape, tube, softBox, V3, clamp, lerp, cm, segs } from './geom.js';
 import { rng, Noise } from '../textures.js';
 import { fabricMat } from './parts.js';
@@ -227,10 +227,14 @@ export function throwBlanket(c) {
   const r = rng(c.seed + 21);
   const N = new Noise(c.seed + 3);
   const fk = String(p.fabric || 'knit').toLowerCase();
-  const mat = /knit|chunky|waffle/.test(fk) ? c.mat('fabric-knit', { color: p.color || c.item?.colorHex || '#D3C6B1' })
-    : /wash/.test(fk) ? c.mat('fabric-linen-washed', { color: p.color || c.item?.colorHex || '#D6CBB8' })
-      : fabricMat(c, fk, p.color || c.item?.colorHex || '#D9CDB8');
-  const t = /knit|chunky|wool|bouc/.test(fk) ? 0.012 : 0.006;
+  const color = p.color || c.item?.colorHex || '#D9CDB8';
+  const mat = /knit|chunky|waffle/.test(fk) ? c.mat('fabric-knit', { color })
+    : /wash/.test(fk) ? c.mat('fabric-linen-washed', { color })
+      // woven cotton throws: a heavier, open weave (≈ 3 mm yarn), not bed percale
+      : /cotton|weave|dense|textur/.test(fk) ? c.mat('fabric-weave', { color })
+        : fabricMat(c, fk, color);
+  // R2-17: real cloth thickness (8–12 mm folded throw), rounded hems
+  const t = /knit|chunky|wool|bouc|waffle/.test(fk) ? 0.012 : /linen/.test(fk) ? 0.008 : 0.009;
   const host = c.host || {};
   const drape = String(p.drape || host.mode || 'arm').toLowerCase();
   if (drape === 'folded') {
@@ -263,43 +267,69 @@ export function throwBlanket(c) {
     V3(armW / 2 + 0.016, -outLen * 0.6, 0),
     V3(armW / 2 + 0.03, -outLen, 0),
   ], false, 'catmullrom', 0.4);
-  const ns = segs(70, 24), nw = segs(26, 10);
-  const ph = r() * 6.28;
+  const ns = segs(66, 28), nw = segs(36, 14);
+  const ph = r() * 6.28, ph2 = r() * 6.28;
+  const nFolds = 2 + (r() < 0.5 ? 0.5 : 1); // 2–3 soft folds across the width where the cloth hangs free
   const P = (s, w) => {
     const q = prof.getPointAt(s), tan = prof.getTangentAt(s);
     const n = V3(-tan.y, tan.x, 0); // in-plane normal (outward/up)
     const z = (w - 0.5) * wF;
-    // fold amplitude: tight over the top, loose where hanging or lying
-    const freeOut = clamp((q.x - armW / 2) / 0.02, 0, 1) * clamp(-q.y / outLen, 0, 1);
-    const freeIn = clamp((-armW / 2 - q.x) / 0.03, 0, 1);
-    const hangOut = freeOut, amp = 0.002 + hangOut * 0.016 + freeIn * 0.01;
-    const folds = Math.sin(z / wF * Math.PI * (2.5 + hangOut) * 2 + ph) * 0.6 + N.n(z * 9, s * 6) * 0.6;
+    // fold amplitude: taut over the arm top, soft deep folds where it hangs (±2.5 cm), gentle rumple where it lies
+    const freeOut = clamp((q.x - armW / 2) / 0.03, 0, 1) * clamp(-q.y / outLen, 0, 1);
+    const freeIn = clamp((-armW / 2 - q.x) / 0.04, 0, 1);
+    const amp = 0.0015 + freeOut * 0.024 + freeIn * 0.007;
+    const folds = Math.sin((z / wF) * Math.PI * 2 * nFolds + ph) * 0.75 + N.n(z * 3.5 + 7, s * 2.5) * 0.45;
     const p3 = q.clone().addScaledVector(n, folds * amp);
     // hanging hem flares out a little and the corners drop
-    p3.x += hangOut * hangOut * 0.02 * Math.abs(w - 0.5) * 2;
-    p3.y -= hangOut * Math.pow(Math.abs(w - 0.5) * 2, 3) * 0.03;
-    // seat part: lumpy rumple; clear the crowned arm top (+1.2 cm) and the seat cushion crown (+2.2 cm)
-    p3.y += freeIn * Math.max(0, N.n(z * 6 + 3, s * 5)) * 0.012;
-    p3.y += 0.012 + clamp((-armW / 2 - q.x) / 0.04, 0, 1) * clamp((-q.y - inLen * 0.6) / (inLen * 0.4), 0, 1) * (isBack ? 0 : 0.022);
+    p3.x += freeOut * freeOut * 0.022 * Math.abs(w - 0.5) * 2;
+    p3.y -= freeOut * Math.pow(Math.abs(w - 0.5) * 2, 3) * 0.035;
+    // seat part: low, smooth rumple; clear the crowned arm top (+1.2 cm) and the crowned seat cushion (up to +2.6 cm)
+    p3.y += freeIn * Math.max(0, N.n(z * 3 + 3, s * 2.5)) * 0.01;
+    p3.y += 0.012 + clamp((-armW / 2 - q.x) / 0.05, 0, 1) * clamp((-q.y - inLen * 0.55) / (inLen * 0.45), 0, 1) * (isBack ? 0 : 0.026);
     if (q.x > armW / 2) p3.x += 0.006; else if (q.x < -armW / 2) p3.x -= 0.006;
-    p3.z = z + Math.sin(s * 9 + ph) * 0.006;
+    p3.z = z + Math.sin(s * 7 + ph2) * 0.006;
     return p3;
   };
   const g = clothSlab(P, ns, nw, t);
   // into the anchor frame: arm → x across (mirrored for the left arm); back → x across becomes −z
-  if (isBack) g.rotateY(Math.PI / 2); else if (side < 0) { g.scale(-1, 1, 1); const ix = g.index.array; for (let k = 0; k < ix.length; k += 3) { const tmp = ix[k + 1]; ix[k + 1] = ix[k + 2]; ix[k + 2] = tmp; } g.computeVertexNormals(); }
-  b.add(g, mat, { uv: 'keep' });
-  if (p.fringe) {
-    // tassel fringe along the hanging hem
-    const hem = [];
-    for (let j = 0; j <= 24; j++) hem.push(P(1, j / 24));
-    const fm = mat;
-    for (const q of hem) {
-      const tg = new THREE.CylinderGeometry(0.0025, 0.0015, 0.05, 4).translate(0, -0.025, 0);
-      const m4 = new THREE.Matrix4().makeTranslation(q.x, q.y, q.z);
-      if (isBack) m4.premultiply(new THREE.Matrix4().makeRotationY(Math.PI / 2)); else if (side < 0) m4.premultiply(new THREE.Matrix4().makeScale(-1, 1, 1));
-      b.add(tg, fm, { matrix: m4 });
+  const toAnchor = (geo) => {
+    if (isBack) geo.rotateY(Math.PI / 2);
+    else if (side < 0) {
+      geo.scale(-1, 1, 1);
+      if (geo.index) { const ix = geo.index.array; for (let k = 0; k < ix.length; k += 3) { const tmp = ix[k + 1]; ix[k + 1] = ix[k + 2]; ix[k + 2] = tmp; } }
+      geo.computeVertexNormals();
     }
+    return geo;
+  };
+  b.add(toAnchor(g), mat, { uv: 'keep' });
+  if (p.fringe) {
+    // R2-17 fringe: an alpha card strip (7 cm of twisted tassels) on both short hems — hanging under gravity on the
+    // outside, lying out across the seat on the inside
+    const fm = c.mat('fringe', { color });
+    const card = (sEnd) => {
+      const nn = segs(40, 14), pos = [], uv = [], idx = [];
+      const ds = sEnd > 0.5 ? 1 : -1;
+      let arc = 0, prev = null;
+      for (let j = 0; j <= nn; j++) {
+        const w = 0.02 + 0.96 * (j / nn);
+        const a = P(sEnd, w), bb = P(sEnd - ds * 0.01, w);
+        const out = a.clone().sub(bb).normalize();
+        const hang = sEnd > 0.5 ? V3(0, -1, 0).lerp(out, 0.25).normalize() : V3(out.x, 0, out.z).normalize();
+        const tip = a.clone().addScaledVector(hang, 0.07);
+        if (sEnd < 0.5) { tip.y = a.y - t * 0.5 + 0.002; a.y -= t * 0.25; }
+        if (prev) arc += a.distanceTo(prev);
+        prev = a;
+        pos.push(a.x, a.y - (sEnd > 0.5 ? t * 0.5 : 0), a.z, tip.x, tip.y, tip.z);
+        uv.push(arc, 0, arc, 1);
+      }
+      for (let j = 0; j < nn; j++) { const k = j * 2; idx.push(k, k + 1, k + 3, k, k + 3, k + 2); }
+      const fg = new THREE.BufferGeometry();
+      fg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      fg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      fg.setIndex(idx); fg.computeVertexNormals();
+      return fg;
+    };
+    for (const sEnd of [1, 0]) b.add(toAnchor(card(sEnd)), fm, { uv: 'keep' });
   }
   return { group: b.build('throw') };
 }
