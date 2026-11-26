@@ -157,6 +157,17 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
      */
     restore(snap) {
       if (!snap || !packs[snap.style]) return false;
+      // Other styles' remembered picks (snapshot().memory), e.g. undoing an AI switch that reset a style to its set.
+      if (snap.memory && typeof snap.memory === 'object') {
+        for (const [pid, m] of Object.entries(snap.memory)) {
+          if (pid === snap.style || !packs[pid] || !m || typeof m !== 'object') continue;
+          const pslots = packs[pid].slots || {};
+          const keep = { ...defaultsOf[pid] };
+          for (const [k, id] of Object.entries(m)) if (pslots[k]?.options?.includes(id) && byId.has(id)) keep[k] = id;
+          selections[pid] = keep;
+        }
+        save();
+      }
       const ps = packs[snap.style].slots || {};
       const next = { ...defaultsOf[snap.style], ...selections[snap.style] };
       for (const [k, id] of Object.entries(snap.selection || {})) if (ps[k]?.options?.includes(id) && byId.has(id)) next[k] = id;
@@ -225,7 +236,11 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
     },
 
     /** Compact state for the AI assistant. */
-    snapshot() { return { style: active, total: store.total(), selection: { ...sel() } }; },
+    snapshot() {
+      const memory = {};
+      for (const [pid, m] of Object.entries(selections)) memory[pid] = { ...m };
+      return { style: active, total: store.total(), selection: { ...sel() }, memory };
+    },
 
     on(evt, fn) {
       if (!listeners.has(evt)) listeners.set(evt, []);

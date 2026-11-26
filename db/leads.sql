@@ -53,11 +53,110 @@ revoke all on function public.submit_lead(jsonb) from public;
 grant execute on function public.submit_lead(jsonb) to anon, authenticated;
 
 -- ---------------------------------------------------------------------------------------------------------
--- Migration 2: style display name + Telegram notification on every new lead.
--- Bot token and chat id live in Supabase Vault (names telegram_bot_token, telegram_chat_id); until both exist
--- the trigger does nothing. A notification problem never blocks or loses a lead.
+-- Migration 2 (applied 26.11): style display name + pg_net for Telegram notifications.
 create extension if not exists pg_net with schema extensions;
 alter table public.leads add column if not exists style_name text check (style_name is null or char_length(style_name) <= 60);
--- submit_lead(): same as above, plus  style_name := left(nullif(p->>'styleName',''), 60)
--- notify_lead_telegram(): AFTER INSERT trigger → net.http_post(https://api.telegram.org/bot<token>/sendMessage)
--- (full text applied via migration "leads_style_name_and_telegram").
+
+drop trigger if exists leads_notify_telegram on public.leads;
+-- (trigger function body: see migration 3, which replaced it)
+
+-- ---------------------------------------------------------------------------------------------------------
+-- Migration 3 (applied 26.11, R3-01): the publishable key lives in a public repo, so submit_lead defends
+-- itself (consistent items, totals that add up, global and per-phone caps) and Telegram notifications are
+-- flood-limited. Secrets: Supabase Vault names telegram_bot_token, telegram_chat_id.
+create or replace function public.submit_lead(p jsonb)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_id uuid;
+  v_phone text := p->>'phone';
+  v_items jsonb := coalesce(p->'items', '[]'::jsonb);
+  v_total integer := (p->>'total')::integer;
+  v_sum bigint;
+  v_bad integer;
+begin
+  if (select count(*) from public.leads where created_at > now() - interval '1 hour') >= 60 then
+    raise exception 'busy' using errcode = 'P0001';
+  end if;
+  if (select count(*) from public.leads where phone = v_phone and created_at > now() - interval '1 day') >= 5 then
+    raise exception 'too_many_requests' using errcode = 'P0001';
+  end if;
+  if jsonb_typeof(v_items) <> 'array' or jsonb_array_length(v_items) not between 1 and 80 then
+    raise exception 'bad_items' using errcode = 'P0001';
+  end if;
+  select count(*) into v_bad
+    from jsonb_array_elements(v_items) i
+   where jsonb_typeof(i) <> 'object'
+      or char_length(coalesce(i->>'name', '')) not between 1 and 120
+      or char_length(coalesce(i->>'id', '')) not between 1 and 80
+      or (i->>'qty') !~ '^[0-9]{1,2}$' or (i->>'qty')::int not between 1 and 10
+      or (i->>'price') !~ '^[0-9]{1,7}$' or (i->>'sum') !~ '^[0-9]{1,8}$'
+      or (i->>'sum')::bigint <> (i->>'price')::bigint * (i->>'qty')::int;
+  if v_bad > 0 then raise exception 'bad_items' using errcode = 'P0001'; end if;
+  select sum((i->>'sum')::bigint) into v_sum from jsonb_array_elements(v_items) i;
+  if v_total is null or v_sum <> v_total then raise exception 'bad_total' using errcode = 'P0001'; end if;
+
+  insert into public.leads (name, phone, email, comment, contact, lang, style, style_name, total_aed, items)
+  values (
+    p->>'name', v_phone, nullif(p->>'email', ''), nullif(p->>'comment', ''),
+    coalesce(p->>'contact', 'whatsapp'), coalesce(p->>'lang', 'ru'), p->>'style', left(nullif(p->>'styleName', ''), 60),
+    v_total,
+    (select jsonb_agg(jsonb_build_object('id', i->>'id', 'name', i->>'name', 'qty', (i->>'qty')::int,
+                                         'price', (i->>'price')::int, 'sum', (i->>'sum')::int))
+       from jsonb_array_elements(v_items) i)
+  )
+  returning id into new_id;
+  return new_id;
+end;
+$$;
+revoke all on function public.submit_lead(jsonb) from public;
+grant execute on function public.submit_lead(jsonb) to anon, authenticated;
+
+create or replace function public.notify_lead_telegram()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  tok text; chat text; txt text; lines text; recent integer;
+  fmt constant text := 'FM999G999G999';
+begin
+  select decrypted_secret into tok from vault.decrypted_secrets where name = 'telegram_bot_token' limit 1;
+  select decrypted_secret into chat from vault.decrypted_secrets where name = 'telegram_chat_id' limit 1;
+  if tok is null or chat is null then return new; end if;
+  select count(*) into recent from public.leads where created_at > now() - interval '1 hour';
+  if recent > 21 then return new; end if;            -- flood: stay quiet, the table still has everything
+  if recent = 21 then
+    txt := 'Villar: больше 20 заявок за час — уведомления на час приостановлены. Проверьте таблицу leads (возможен спам).';
+  else
+    select string_agg('• ' || (i->>'name')
+             || case when coalesce((i->>'qty')::int, 1) > 1 then ' × ' || (i->>'qty') else '' end
+             || ' — ' || replace(to_char((i->>'sum')::int, fmt), ',', ' ') || ' AED', E'\n')
+      into lines from jsonb_array_elements(new.items) i;
+    txt := 'Новая заявка Villar · ' || left(new.id::text, 8) || E'\n'
+        || new.name || ' · ' || new.phone || coalesce(' · ' || new.email, '') || E'\n'
+        || 'Связаться: ' || case new.contact when 'phone' then 'звонок' when 'email' then 'e-mail' else 'WhatsApp' end
+        || ' · язык: ' || upper(new.lang) || E'\n'
+        || 'Стиль: ' || coalesce(new.style_name, new.style) || ' · итого ' || replace(to_char(new.total_aed, fmt), ',', ' ')
+        || ' AED · ' || jsonb_array_length(new.items) || ' позиций'
+        || coalesce(E'\nКомментарий: ' || new.comment, '')
+        || E'\n\n' || coalesce(lines, '');
+  end if;
+  perform net.http_post(
+    url := 'https://api.telegram.org/bot' || tok || '/sendMessage',
+    body := jsonb_build_object('chat_id', chat, 'text', left(txt, 4000), 'disable_web_page_preview', true),
+    headers := '{"Content-Type": "application/json"}'::jsonb
+  );
+  return new;
+exception when others then
+  return new;
+end;
+$$;
+revoke all on function public.notify_lead_telegram() from public, anon, authenticated;
+
+create trigger leads_notify_telegram after insert on public.leads
+  for each row execute function public.notify_lead_telegram();

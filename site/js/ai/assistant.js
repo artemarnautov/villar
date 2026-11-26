@@ -265,7 +265,7 @@ export function mountAssistant(opts = {}) {
 
   function apply(actions) {
     const lng = getLang();
-    const before = { ...stateNow() };
+    const before = { ...stateNow(), memory: store.snapshot?.().memory };
     const lines = [];
     const safe = (fn) => { try { return fn(); } catch (err) { console.warn('[villar:ai] action failed', err); return false; } };
     for (const a of actions) {
@@ -308,7 +308,7 @@ export function mountAssistant(opts = {}) {
       if (styleChanged && styleNow() === b.after.style && typeof store.restore === 'function') {
         // The AI switched style: go back to the previous style exactly as it was (picks made in the new style
         // since then stay remembered there — nothing is lost).
-        store.restore({ style: b.before.style, selection: b.before.selection });
+        store.restore({ style: b.before.style, selection: b.before.selection, memory: b.before.memory });
       } else if (!styleChanged || styleNow() === b.before.style) {
         // Same style: revert only the picks the AI made that the customer hasn't changed since.
         for (const [key, itemId] of Object.entries(b.before.selection || {})) {
