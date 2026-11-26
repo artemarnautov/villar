@@ -36,49 +36,49 @@
   <script type="module" src="/js/main.js"></script>
 </head>
 <body>
-  <a class="skip-link" href="#studio" data-i18n="skip">Перейти к квартире в 3D</a>
+  <a class="skip-link" href="#studio" data-i18n="skip" data-en="Skip to the apartment in 3D">Перейти к квартире в 3D</a>
 
   <header class="nav" role="banner">
-    <nav class="nav-inner" aria-label="Основная навигация" data-i18n-attr="aria-label:nav.label">
-      <a class="wordmark" href="#top" aria-label="Villar — на главную" data-i18n-attr="aria-label:nav.home">
-        <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false" style="color:var(--accent)"><rect width="32" height="32" rx="8.5" fill="currentColor"/><path d="M9.2 9.5 16 22.6l6.8-13.1" fill="none" stroke="#f6f1ea" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <nav class="nav-inner" aria-label="Основная навигация" data-i18n-attr="aria-label:nav.label" data-en-aria-label="Main navigation">
+      <a class="wordmark" href="#top" aria-label="Villar — на главную" data-i18n-attr="aria-label:nav.home" data-en-aria-label="Villar — home">
+        <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false" style="color:var(--brand)"><rect width="32" height="32" rx="8.5" fill="currentColor"/><path d="M9.2 9.5 16 22.6l6.8-13.1" fill="none" stroke="#f6f1ea" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>Villar</span>
       </a>
       <div class="nav-links">
-        <a href="#studio" data-scroll-studio data-i18n="nav.apartment">Квартира</a>
-        <a href="#style" data-i18n="nav.style">Стиль</a>
-        <a href="#how" data-i18n="nav.how">Как это работает</a>
+        <a href="#studio" data-scroll-studio data-i18n="nav.apartment" data-en="Apartment">Квартира</a>
+        <a href="#style" data-i18n="nav.style" data-en="Style">Стиль</a>
+        <a href="#how" data-i18n="nav.how" data-en="How it works">Как это работает</a>
       </div>
-      <button type="button" class="lang-toggle" id="lang-toggle">EN</button>
-      <button type="button" class="btn btn-primary btn-sm nav-cta" data-order data-i18n="nav.order">Заказать</button>
+      <button type="button" class="lang-toggle" id="lang-toggle" data-i18n="lang.toggle" data-en="RU" data-i18n-attr="aria-label:lang.aria" data-en-aria-label="Переключить на русский" aria-label="Switch to English">EN</button>
+      <button type="button" class="btn btn-primary btn-sm nav-cta" data-order data-i18n="nav.order" data-en="Order">Заказать</button>
     </nav>
   </header>
 
   <main id="top">
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-inner">
-        <p class="t-eyebrow intro" style="--i:0" data-i18n="hero.eyebrow">Villar&nbsp;— ИИ-студия интерьера</p>
-        <h1 id="hero-title" class="t-hero intro" style="--i:1"><span data-i18n="hero.title1">Квартира, готовая к&nbsp;жизни.</span> <span class="tone" data-i18n="hero.title2">За&nbsp;один день.</span></h1>
-        <p class="t-lead hero-sub intro" style="--i:2" data-i18n="hero.sub">Выберите стиль&nbsp;— мы обставим квартиру настоящей мебелью, покажем её&nbsp;в&nbsp;3D и&nbsp;привезём всё в&nbsp;один клик, вместе со&nbsp;сборкой.</p>
+        <p class="t-eyebrow intro" style="--i:0" data-i18n="hero.eyebrow" data-en="Villar — AI interior studio">Villar&nbsp;— ИИ-студия интерьера</p>
+        <h1 id="hero-title" class="t-hero intro" style="--i:1"><span data-i18n="hero.title1" data-en="A home ready to live in.">Квартира, готовая к&nbsp;жизни.</span> <span class="tone" data-i18n="hero.title2" data-en="In&nbsp;one day.">За&nbsp;один день.</span></h1>
+        <p class="t-lead hero-sub intro" style="--i:2" data-i18n="hero.sub" data-en="Pick a style — we furnish the apartment with real furniture, show it to you in 3D and deliver everything in one click, assembled.">Выберите стиль&nbsp;— мы обставим квартиру настоящей мебелью, покажем её&nbsp;в&nbsp;3D и&nbsp;привезём всё в&nbsp;один клик, вместе со&nbsp;сборкой.</p>
         <div class="hero-ctas intro" style="--i:3">
-          <a class="btn btn-primary btn-lg" href="#studio" data-scroll-studio data-i18n="hero.cta">Смотреть в&nbsp;3D</a>
-          <a class="link hero-link" href="#how"><span data-i18n="hero.how">Как это работает</span> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
+          <a class="btn btn-primary btn-lg" href="#studio" data-scroll-studio data-i18n="hero.cta" data-en="View in&nbsp;3D">Смотреть в&nbsp;3D</a>
+          <a class="link hero-link" href="#how"><span data-i18n="hero.how" data-en="How it works">Как это работает</span> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></a>
         </div>
         <p class="hero-note t-small intro num" style="--i:4" data-hero-note hidden></p>
       </div>
     </section>
 
     <section id="studio" class="studio" aria-labelledby="studio-title" tabindex="-1">
-      <h2 id="studio-title" class="sr-only" data-i18n="studio.title">Квартира в 3D</h2>
+      <h2 id="studio-title" class="sr-only" data-i18n="studio.title" data-en="The apartment in 3D">Квартира в 3D</h2>
       <div class="style-picker-wrap"><div id="style-picker"></div></div>
       <div class="studio-shell">
-        <div class="stage" id="stage" role="region" aria-roledescription="3D" aria-label="Квартира в 3D. Перетаскивайте, чтобы осмотреться; выбирайте предметы, чтобы заменить их." data-i18n-attr="aria-label:stage.aria">
-          <img class="stage-poster" src="/assets/poster.jpg" width="1552" height="780" alt="Студия: светлый диван, коньячное кресло, кровать у окна и ореховая ТВ-тумба" data-i18n-attr="alt:poster.alt" decoding="async" fetchpriority="high">
+        <div class="stage" id="stage" role="region" aria-roledescription="3D" aria-label="Квартира в 3D. Перетаскивайте, чтобы осмотреться; выбирайте предметы, чтобы заменить их." data-i18n-attr="aria-label:stage.aria" data-en-aria-label="The apartment in 3D. Drag to look around; select items to replace them.">
+          <img class="stage-poster" src="/assets/poster.jpg" width="1552" height="780" alt="Студия: светлый диван, коньячное кресло, кровать у окна и ореховая ТВ-тумба" data-i18n-attr="alt:poster.alt" data-en-alt="Studio apartment: light sofa, cognac armchair, bed by the window and a walnut TV unit" decoding="async" fetchpriority="high">
           <div class="stage-canvas" id="stage-canvas"></div>
           <div class="stage-plan" hidden></div>
-          <div class="stage-loading" role="progressbar" aria-label="Загрузка 3D-сцены" data-i18n-attr="aria-label:load.aria" aria-valuemin="0" aria-valuemax="100">
+          <div class="stage-loading" role="progressbar" aria-label="Загрузка 3D-сцены" data-i18n-attr="aria-label:load.aria" data-en-aria-label="Loading the 3D scene" aria-valuemin="0" aria-valuemax="100">
             <div class="loading-chip glass">
-              <span class="loading-label" data-i18n="load.label">Собираем квартиру</span>
+              <span class="loading-label" data-i18n="load.label" data-en="Setting up the apartment">Собираем квартиру</span>
               <span class="loading-bar is-indeterminate"><i></i></span>
               <span class="loading-pct" aria-hidden="true"></span>
             </div>
@@ -90,14 +90,14 @@
 
       <div class="assistant-slot" id="assistant" hidden></div>
 
-      <div class="budget" id="budget" role="region" aria-label="Бюджет квартиры">
-        <div class="budget-main"><div class="budget-sum"><div class="budget-label">Итого за квартиру</div></div></div>
+      <div class="budget" id="budget" role="region" aria-label="Бюджет квартиры" data-i18n-attr="aria-label:budget.aria" data-en-aria-label="Apartment budget">
+        <div class="budget-main"><div class="budget-sum"><div class="budget-label" data-i18n="budget.label" data-en="Apartment total">Итого за квартиру</div></div></div>
       </div>
     </section>
 
     <section id="style" class="style" aria-labelledby="style-title">
       <div class="section-head reveal">
-        <p class="t-eyebrow" data-i18n="style.eyebrow">Стиль</p>
+        <p class="t-eyebrow" data-i18n="style.eyebrow" data-en="Style">Стиль</p>
         <h2 id="style-title" class="t-h2" data-pack-name>Тёмный орех.</h2>
         <p class="t-lead" data-pack-tagline></p>
         <p class="t-body style-desc" data-pack-desc hidden></p>
@@ -105,44 +105,44 @@
       <div class="style-body" data-palette>
         <div class="ratio reveal">
           <div class="palette-head">
-            <h3 class="t-h3" data-i18n="style.palette">Палитра</h3>
-            <p class="t-small" data-ratio-label>Пропорция 60 / 30 / 10</p>
+            <h3 class="t-h3" data-i18n="style.palette" data-en="Palette">Палитра</h3>
+            <p class="t-small" data-ratio-label data-en="How the colours are used">Как распределены цвета</p>
           </div>
-          <div class="ratio-bar" role="list" aria-label="Пропорции цветов палитры" data-i18n-attr="aria-label:style.ratioAria" data-ratio-bar></div>
+          <div class="ratio-bar" role="list" aria-label="Как распределены цвета палитры" data-i18n-attr="aria-label:style.ratioAria" data-en-aria-label="How the palette colours are used" data-ratio-bar></div>
           <div class="ratio-tiers" data-ratio-tiers></div>
         </div>
-        <ul class="swatches reveal" role="list" aria-label="Цвета палитры" data-i18n-attr="aria-label:style.swatchesAria" data-swatches></ul>
+        <ul class="swatches reveal" role="list" aria-label="Цвета палитры" data-i18n-attr="aria-label:style.swatchesAria" data-en-aria-label="Palette colours" data-swatches></ul>
         <div class="rules reveal" data-rules></div>
       </div>
     </section>
 
     <section id="how" class="how" aria-labelledby="how-title">
       <div class="section-head reveal">
-        <p class="t-eyebrow" data-i18n="how.eyebrow">Как это работает</p>
-        <h2 id="how-title" class="t-h2" data-i18n="how.title">Три шага до готовой квартиры.</h2>
+        <p class="t-eyebrow" data-i18n="how.eyebrow" data-en="How it works">Как это работает</p>
+        <h2 id="how-title" class="t-h2" data-i18n="how.title" data-en="Three steps to a finished home.">Три шага до готовой квартиры.</h2>
       </div>
       <ol class="steps">
         <li class="step reveal" style="--i:0">
           <div class="step-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2a8.8 8.8 0 1 0 0 17.6c1.2 0 1.9-.8 1.9-1.8 0-.5-.2-.9-.5-1.3-.3-.3-.5-.8-.5-1.2 0-1 .8-1.8 1.8-1.8h2.1a4.4 4.4 0 0 0 4.4-4.4c0-3.9-4-7.1-9.2-7.1z"/><circle cx="7.6" cy="11.4" r="1.2"/><circle cx="10.4" cy="7.4" r="1.2"/><circle cx="15.2" cy="7.6" r="1.2"/></svg></div>
-          <p class="step-n" data-i18n="how.s1">Шаг 1</p>
-          <h3 class="t-h3" data-i18n="how.s1t">Выберите стиль</h3>
-          <p data-i18n="how.s1b">Стилевой пакет&nbsp;— это палитра, материалы и&nbsp;правила сочетаний, собранные дизайнерами.</p>
+          <p class="step-n" data-i18n="how.s1" data-en="Step 1">Шаг 1</p>
+          <h3 class="t-h3" data-i18n="how.s1t" data-en="Pick a style">Выберите стиль</h3>
+          <p data-i18n="how.s1b" data-en="A style pack is a palette, materials and pairing rules put together by designers.">Стилевой пакет&nbsp;— это палитра, материалы и&nbsp;правила сочетаний, собранные дизайнерами.</p>
         </li>
         <li class="step reveal" style="--i:1">
           <div class="step-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.8l8 4.4v9.6l-8 4.4-8-4.4V7.2z"/><path d="M4.3 7.4 12 11.8l7.7-4.4M12 11.8v9.2"/></svg></div>
-          <p class="step-n" data-i18n="how.s2">Шаг 2</p>
-          <h3 class="t-h3" data-i18n="how.s2t">Осмотрите в&nbsp;3D, замените что&nbsp;угодно</h3>
-          <p data-i18n="how.s2b">Пройдитесь по&nbsp;квартире, узнайте цену и&nbsp;размеры любого предмета. Замены&nbsp;— только из&nbsp;вариантов, которые подходят стилю.</p>
+          <p class="step-n" data-i18n="how.s2" data-en="Step 2">Шаг 2</p>
+          <h3 class="t-h3" data-i18n="how.s2t" data-en="Explore in&nbsp;3D, replace anything">Осмотрите в&nbsp;3D, замените что&nbsp;угодно</h3>
+          <p data-i18n="how.s2b" data-en="Walk through the apartment and see the price and size of every item. Replacements come only from options that fit the style.">Пройдитесь по&nbsp;квартире, узнайте цену и&nbsp;размеры любого предмета. Замены&nbsp;— только из&nbsp;вариантов, которые подходят стилю.</p>
         </li>
         <li class="step reveal" style="--i:2">
           <div class="step-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 6.5h11v9.5h-11zM13.8 9.5h4l2.6 3.2v3.3h-6.6"/><circle cx="7" cy="17.4" r="1.9"/><circle cx="17" cy="17.4" r="1.9"/></svg></div>
-          <p class="step-n" data-i18n="how.s3">Шаг 3</p>
-          <h3 class="t-h3" data-i18n="how.s3t">Закажите всё в&nbsp;один клик</h3>
-          <p data-i18n="how.s3b">Привезём мебель, текстиль и&nbsp;декор&nbsp;— и&nbsp;соберём всё за&nbsp;один день. Останется только въехать.</p>
+          <p class="step-n" data-i18n="how.s3" data-en="Step 3">Шаг 3</p>
+          <h3 class="t-h3" data-i18n="how.s3t" data-en="Order it all in&nbsp;one click">Закажите всё в&nbsp;один клик</h3>
+          <p data-i18n="how.s3b" data-en="We deliver the furniture, textiles and decor&nbsp;— and assemble everything in one day. All that’s left is to move in.">Привезём мебель, текстиль и&nbsp;декор&nbsp;— и&nbsp;соберём всё за&nbsp;один день. Останется только въехать.</p>
         </li>
       </ol>
       <div class="how-cta reveal">
-        <a class="btn btn-primary btn-lg" href="#studio" data-scroll-studio data-i18n="how.cta">Смотреть квартиру в&nbsp;3D</a>
+        <a class="btn btn-primary btn-lg" href="#studio" data-scroll-studio data-i18n="how.cta" data-en="View the apartment in&nbsp;3D">Смотреть квартиру в&nbsp;3D</a>
       </div>
     </section>
   </main>
@@ -150,15 +150,16 @@
   <footer class="footer">
     <div class="footer-inner">
       <span class="wordmark" aria-hidden="true">
-        <svg viewBox="0 0 32 32" style="color:var(--accent)"><rect width="32" height="32" rx="8.5" fill="currentColor"/><path d="M9.2 9.5 16 22.6l6.8-13.1" fill="none" stroke="#f6f1ea" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg viewBox="0 0 32 32" style="color:var(--brand)"><rect width="32" height="32" rx="8.5" fill="currentColor"/><path d="M9.2 9.5 16 22.6l6.8-13.1" fill="none" stroke="#f6f1ea" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>Villar</span>
       </span>
-      <span data-i18n="footer">© Villar 2026. Цены указаны в&nbsp;AED. Визуализация может немного отличаться от&nbsp;реальных изделий.</span>
+      <span data-i18n="footer" data-en="© Villar 2026. Prices in&nbsp;AED. Renders may differ slightly from the actual products.">© Villar 2026. Цены указаны в&nbsp;AED. Визуализация может немного отличаться от&nbsp;реальных изделий.</span>
     </div>
   </footer>
 
   <div class="hovercard" id="hovercard"></div>
   <dialog id="order"></dialog>
   <div class="sr-only" id="announcer" aria-live="polite" aria-atomic="true"></div>
+  <script src="/js/boot.js"></script>
 </body>
 </html>

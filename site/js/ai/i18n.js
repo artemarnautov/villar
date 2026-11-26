@@ -24,7 +24,7 @@ const TYPES = {
 };
 // Per-key overrides (wall art keys are per placement).
 const KEYS = {
-  ru: { art_sofa: 'Картина над диваном', art_bed: 'Картина над кроватью', art_dining: 'Картина в столовой', decor_coffee: 'Декор на столике', decor_tv: 'Декор на тумбе' },
+  ru: { art_sofa: 'Картина над диваном', art_bed: 'Картина над кроватью', art_dining: 'Картина в столовой', decor_coffee: 'Декор на столике', decor_tv: 'Декор на ТВ-тумбе' },
   en: { art_sofa: 'Art above the sofa', art_bed: 'Art above the bed', art_dining: 'Dining art', decor_coffee: 'Coffee-table decor', decor_tv: 'TV-unit decor' },
 };
 
@@ -65,21 +65,26 @@ export const ITEMS = { ru: ['предмет', 'предмета', 'предме�
 const PREFIX_RU = /^(диван|кресло|журнальный стол(ик)?|приставной стол(ик)?|тв-тумба|тумба под тв|кровать|матрас|постельное бель[её]|комплект постельного белья|прикроватная тумба|тумба|настольная лампа|лампа|обеденный стол|стол|обеденный стул|стул|торшер|подвесной светильник|светильник|ков[её]р|шторы|картина|подушки|декор|растение|искусственная олива|плед|зеркало)[\s,:—–-]+/i;
 const PREFIX_EN = /^(sofa|armchair|coffee table|side table|tv unit|bed|mattress|bedding( set)?|nightstand|bedside table|table lamp|lamp|dining table|table|dining chair|chair|floor lamp|pendant( lamp| light)?|rug|curtains?|art|wall art|cushions?|decor( set)?|plant|throw|mirror)[\s,:—–-]+/i;
 
+/** Spaced sizes, as on the rest of the page: "80×80" → "80 × 80", "Ø90" → "Ø 90" (non-breaking). */
+export const pretty = (s) => String(s || '')
+  .replace(/(\d)\s*[×x]\s*(\d)/g, `$1${NBSP}×${NBSP}$2`)
+  .replace(/Ø\s*(\d)/g, `Ø${NBSP}$1`);
+
 /** Display name in the active language, category word stripped: "Диван Lansbury, трёхместный" → "Lansbury, трёхместный". */
 export function itemName(lang, item) {
   if (!item) return '';
   const en = L(lang) === 'en';
-  if (!en && item.shortName) return item.shortName;
-  if (en && item.shortNameEn) return item.shortNameEn;
+  if (!en && item.shortName) return pretty(item.shortName);
+  if (en && item.shortNameEn) return pretty(item.shortNameEn);
   const name = String((en ? item.nameEn : item.name) || item.name || item.nameEn || '').trim();
   const rest = name.replace(en ? PREFIX_EN : PREFIX_RU, '');
-  const out = rest.length >= 2 ? rest : name;
+  const out = pretty(rest.length >= 2 ? rest : name);
   return out.charAt(0).toUpperCase() + out.slice(1);
 }
 export const itemColor = (lang, item) => (L(lang) === 'en' ? item?.colorEn || item?.color : item?.color || item?.colorEn) || '';
 export const itemMaterials = (lang, item) => (L(lang) === 'en' ? item?.materialsEn || item?.materials : item?.materials || item?.materialsEn) || [];
 export const styleName = (lang, pack) => (L(lang) === 'en' ? pack?.nameEn || pack?.name : pack?.name || pack?.nameEn) || '';
-export const quoted = (lang, s) => (L(lang) === 'en' ? `“${s}”` : `«${s}»`);
+export const quoted = (lang, s) => (L(lang) === 'en' ? String(s) : `«${s}»`); // EN: bare names (D2-15)
 
 /** UI strings. */
 export const UI = {
@@ -88,8 +93,8 @@ export const UI = {
     inputLabel: 'Попросите Villar',
     placeholder: 'Спросите или попросите что угодно',
     placeholderShort: 'Попросите что угодно',
-    examples: ['«сделай уютнее»', '«уложись в 25 000»', '«покажи вечер»', '«замени диван на что-то светлее»', '«покажи спальню»', '«подушки потеплее»'],
-    hint: 'Например: «покажи вечер», «уложись в 25 000», «диван светлее». Enter — отправить.',
+    examples: ['«сделай уютнее»', '«уложись в 25 000 AED»', '«покажи вечер»', '«замени диван на что-то светлее»', '«покажи спальню»', '«подушки потеплее»'],
+    hint: 'Например: «покажи вечер», «уложись в 25 000 AED», «диван светлее». Enter — отправить.',
     send: 'Отправить',
     thinking: 'Подбираю',
     undo: 'Отменить',
@@ -101,6 +106,9 @@ export const UI = {
     clear: 'Очистить',
     chips: 'Подсказки',
     applied: 'Изменения',
+    show: 'Показать', hide: 'Скрыть', more: 'Ещё', go: 'Перейти', back: 'Вернуть',
+    swaps: (n, d) => `${n}${NBSP}${plural('ru', n, ['замена', 'замены', 'замен'])}${d ? ` · ${d}` : ''}`,
+    changes: (n, d) => `${n}${NBSP}${plural('ru', n, ['изменение', 'изменения', 'изменений'])}${d ? ` · ${d}` : ''}`,
     offline: 'Без сети — работаю локально',
     budgetOk: (t, n) => `Итог ${t} · в пределах ${n}`,
     budgetMin: (t) => `Итог ${t} · самый экономный вариант`,
@@ -111,8 +119,8 @@ export const UI = {
     inputLabel: 'Ask Villar',
     placeholder: 'Ask or request anything',
     placeholderShort: 'Ask for anything',
-    examples: ['“make it cosier”', '“keep it under 25,000”', '“show the evening”', '“a lighter sofa”', '“show the bedroom”', '“warmer cushions”'],
-    hint: 'For example: “show the evening”, “keep it under 25,000”, “a lighter sofa”. Press Enter to send.',
+    examples: ['“make it cosier”', '“keep it under 25,000 AED”', '“show the evening”', '“a lighter sofa”', '“show the bedroom”', '“warmer cushions”'],
+    hint: 'For example: “show the evening”, “keep it under 25,000 AED”, “a lighter sofa”. Press Enter to send.',
     send: 'Send',
     thinking: 'Working on it',
     undo: 'Undo',
@@ -124,6 +132,9 @@ export const UI = {
     clear: 'Clear',
     chips: 'Suggestions',
     applied: 'Changes',
+    show: 'Show', hide: 'Hide', more: 'More', go: 'Switch', back: 'Go back',
+    swaps: (n, d) => `${n}${NBSP}${plural('en', n, ['swap', 'swaps'])}${d ? ` · ${d}` : ''}`,
+    changes: (n, d) => `${n}${NBSP}${plural('en', n, ['change', 'changes'])}${d ? ` · ${d}` : ''}`,
     offline: 'Offline — working locally',
     budgetOk: (t, n) => `Total ${t} · within ${n}`,
     budgetMin: (t) => `Total ${t} · the most economical set`,
@@ -138,7 +149,7 @@ export function defaultChips(lang, { total = 0, time = 'day', view = 'eye' } = {
   const budget = Math.max(5000, Math.floor((total * 0.85) / 1000) * 1000);
   const out = [];
   out.push(time === 'evening' || time === 'golden' ? (en ? 'Show the morning' : 'Покажи утро') : (en ? 'Show the evening' : 'Покажи вечер'));
-  out.push(en ? `Keep it under ${num(lang, budget)}` : `Уложись в ${num(lang, budget)}`);
+  out.push(en ? `Keep it under ${num(lang, budget)}${NBSP}AED` : `Уложись в ${num(lang, budget)}${NBSP}AED`);
   out.push(en ? 'A lighter sofa' : 'Диван светлее');
   out.push(view === 'bed' ? (en ? 'Show the living area' : 'Покажи гостиную') : (en ? 'Show the bedroom' : 'Покажи спальню'));
   return out.slice(0, 3);

@@ -77,6 +77,8 @@ export function materialsList(item) {
 }
 
 export const colorHex = (item) => safeHex(item?.colorHex);
+/** Sets (tableware): what is delivered vs what the 3D view shows. */
+export const setNoteOf = (item) => String(L(item?.setNote, item?.setNoteEn) || '').trim();
 export const colorName = (item) => L(item?.color, item?.colorEn) || '';
 
 export const dot = (item, cls = '') =>

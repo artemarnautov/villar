@@ -587,7 +587,8 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
     viewW = w; viewH = h;
     camera.aspect = w / h;
     const hfov = camera.aspect >= 1 ? H_FOV : H_FOV_PORTRAIT_MIN;
-    camera.fov = clamp(2 * Math.atan(Math.tan(hfov / 2) / camera.aspect) / DEG, 40, 82);
+    // the lens is defined horizontally; very wide stages (2.5:1 product strip) keep 74° h by going down to 28° v (R2-19)
+    camera.fov = clamp(2 * Math.atan(Math.tan(hfov / 2) / camera.aspect) / DEG, 28, 82);
     applyCurrent();
   }
 

@@ -1,9 +1,9 @@
 // Floating item card that follows the cursor over the 3D stage. Owner: interface.
 // Content: category eyebrow, short name, price (set price for pairs), dimensions. Clamped to the stage.
 import { h, clamp } from './dom.js';
-import { typeLabel } from './labels.js';
+import { slotLabel } from './labels.js';
 import { onLang } from './i18n.js';
-import { shortNameOf, price, unitNote, dims } from './format.js';
+import { shortNameOf, price, unitNote, dims, setNoteOf } from './format.js';
 
 export function createHoverCard({ el, store, bounds }) {
   el.setAttribute('role', 'tooltip');
@@ -22,10 +22,11 @@ export function createHoverCard({ el, store, bounds }) {
     const dm = dims(item);
     const note = unitNote(item, qty);
     el.replaceChildren(...[
-      h('div', { class: 'hc-type' }, typeLabel(p.slotType || item.type)),
+      h('div', { class: 'hc-type' }, slotLabel(p.slotId, p.slotType || item.type)),
       h('div', { class: 'hc-name' }, shortNameOf(item)),
       h('div', { class: 'hc-price' }, price(item, qty), note ? h('small', null, note) : null),
       dm ? h('div', { class: 'hc-dims' }, dm.value) : null,
+      setNoteOf(item) ? h('div', { class: 'hc-note' }, setNoteOf(item)) : null,
     ].filter(Boolean));
     size = { w: el.offsetWidth, h: el.offsetHeight };
     return true;

@@ -75,7 +75,7 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
       const l = new THREE.SpotLight(color, cd, distance, a, clamp(penumbra, 0, 1), 2);
       l.position.set(...pos);
       l.target.position.set(pos[0] + dir[0], pos[1] + dir[1], pos[2] + dir[2]);
-      l.shadow.camera.near = 0.04;
+      l.shadow.camera.near = 0.12; // past the shade lining: no rim acne, the shade never shadows its own lamp
       l.shadow.focus = clamp(65 * DEG / a, 0.5, 1); // wide globes: keep shadow texels usable
       l.radius = 0.04; // soft source for the path tracer
       return l;

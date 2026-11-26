@@ -4,7 +4,7 @@
 import { h, svg, safeHex, isTouch, NBSP } from './dom.js';
 import { icon } from './icons.js';
 import { views as viewItems, times as timeItems, VIEW_IDS, TIME_IDS } from './labels.js';
-import { t, onLang } from './i18n.js';
+import { t, onLang, isEn } from './i18n.js';
 import { packName } from './format.js';
 import { createSegmented } from './segmented.js';
 import { createPlan } from './plan.js';
@@ -40,13 +40,44 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
   let generation = 0;        // bumps on every mount/fail so late engine instances get disposed
   let mountArgs = null;      // for «Попробовать 3D снова»
   let quality = 'high';
-  const thumbCache = new Map();
+  // T7: thumbnails are rendered one per idle frame, and not while the camera is flying to an object.
+  const thumbCache = new Map();   // itemId → Promise<url|null>
+  let thumbQueue = [], thumbBusy = false, thumbHoldUntil = 0, thumbTimer = 0;
+  function pumpThumbs() {
+    if (thumbBusy || !thumbQueue.length || thumbTimer) return;
+    const wait = thumbHoldUntil - performance.now();
+    if (wait > 0) { thumbTimer = setTimeout(() => { thumbTimer = 0; pumpThumbs(); }, wait + 16); return; }
+    thumbBusy = true;
+    const run = () => {
+      if (thumbHoldUntil > performance.now()) { thumbBusy = false; pumpThumbs(); return; }
+      const job = thumbQueue.shift();
+      if (!job) { thumbBusy = false; return; }
+      let p;
+      try { p = Promise.resolve(villar?.thumbnail?.(job.id, { size: 256 })); } catch (e) { p = Promise.reject(e); }
+      p.then((url) => job.resolve(url || null), () => job.resolve(null)).finally(() => { thumbBusy = false; pumpThumbs(); });
+    };
+    if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 500 }); else setTimeout(run, 32);
+  }
+  function clearThumbs() {
+    for (const j of thumbQueue) j.resolve(null);
+    thumbQueue = []; thumbCache.clear();
+    clearTimeout(thumbTimer); thumbTimer = 0;
+  }
+  // D2-08: let the pressed state paint before the engine does heavy work in the same task.
+  const defer = (fn) => requestAnimationFrame(() => setTimeout(fn, 0));
+  const roomName = () => (isEn()
+    ? (layout.nameEn || (layout.areaM2 ? `Studio ${Math.round(layout.areaM2)}${NBSP}m²` : 'Studio'))
+    : (layout.name || ''));
+  const narrowMq = window.matchMedia('(max-width: 734px)');
+  const viewList = () => (narrowMq.matches ? VIEW_IDS.map((v) => ({ value: v, label: t(`vshort.${v}`) })) : viewItems());
+  const labelCanvas = () => canvasHost.querySelector('canvas')?.setAttribute('aria-label', t('stage.canvas'));
   const warn = (...a) => console.warn('[villar:ui]', ...a);
   const call = (fn, ...args) => {
     if (!villar || typeof villar[fn] !== 'function') return undefined;
     try { return villar[fn](...args); } catch (e) { warn(`engine.${fn} failed`, e); return undefined; }
   };
   const setMode = (m) => { mode = m; root.dataset.mode = m; onModeChange?.(m); };
+  let focused = null; // { slotId, inset } while the HUD holds focus — replayed when the engine becomes ready
 
   if (poster) {
     poster.addEventListener('error', () => poster.remove(), { once: true });
@@ -61,12 +92,12 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
     const pal = palettes?.[store.styleId?.()] || null;
     chipDot.style.setProperty('--c', safeHex((pal?.swatches || []).find((s) => /wood/i.test(s.role))?.hex, '#4a3426'));
     chipLabel.textContent = mode === 'plan' ? t('stage.plan') : packName(store.style?.()) || t('style');
-    chipRoom.textContent = `·${NBSP}${layout.name || ''}`;
+    chipRoom.textContent = `·${NBSP}${roomName()}`;
   }
 
   const views = createSegmented({
-    label: t('stage.views'), items: viewItems(), value: 'eye',
-    onChange: (v) => { cancelPhoto(); call('setView', v); },
+    label: t('stage.views'), items: viewList(), value: 'eye',
+    onChange: (v) => { cancelPhoto(); defer(() => call('setView', v)); },
   });
   const times = createSegmented({
     label: t('stage.times'), items: timeItems().map((x) => ({ ...x, icon: x.value })), value: 'day', className: 'time-seg',
@@ -111,12 +142,18 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
     svg(icon('chevronLeft')), backLbl);
   backBtn.addEventListener('click', () => onBack?.());
   const live = h('div', { class: 'sr-only', 'aria-live': 'polite' });
+  const busyLbl = h('span', { class: 'loading-label' });
+  const busyChip = h('div', { class: 'busy-chip', 'aria-hidden': 'true', hidden: true },
+    h('div', { class: 'loading-chip glass' }, busyLbl, h('span', { class: 'loading-bar is-indeterminate' }, h('i'))));
 
   const topL = h('div', { class: 'stage-top-l' }, chip);
   const topBack = h('div', { class: 'stage-back' }, backBtn);
   const topR = h('div', { class: 'stage-top-r' }, times.el, timeCycle, photoBtn, retryBtn);
   const dock = h('div', { class: 'stage-dock' }, views.el);
-  ui.replaceChildren(topL, topBack, topR, dock, hint, photoNote, live);
+  ui.replaceChildren(topL, topBack, topR, dock, hint, photoNote, busyChip, live);
+  const syncDockOverflow = () => views.el.classList.toggle('is-overflow', views.el.scrollWidth > views.el.clientWidth + 1);
+  narrowMq.addEventListener?.('change', () => { views.relabel(viewList()); requestAnimationFrame(syncDockOverflow); });
+  if ('ResizeObserver' in window) new ResizeObserver(syncDockOverflow).observe(views.el);
   const show3dControls = (on) => {
     for (const n of [times.el, timeCycle, photoBtn, dock]) n.hidden = !on;
     if (on) photoBtn.hidden = !(quality === 'high' && typeof villar?.startPhoto === 'function');
@@ -130,7 +167,7 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
   }
   function setTime(v) {
     cancelPhoto();
-    call('setTimeOfDay', v);
+    defer(() => call('setTimeOfDay', v));
     syncTimeCycle();
     live.textContent = `${t('stage.times')}: ${t(`time.${v}`)}`;
   }
@@ -302,7 +339,8 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
 
   // ---------- Language ----------
   onLang(() => {
-    views.relabel(viewItems(), t('stage.views'));
+    views.relabel(viewList(), t('stage.views'));
+    labelCanvas();
     times.relabel(timeItems(), t('stage.times'));
     syncTimeCycle(); syncChip(); setHint(hintKind);
     retryLbl.textContent = t('retry'); backLbl.textContent = t('back');
@@ -357,6 +395,7 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
     root.classList.add('is-3d', 'is-ready');
     root.classList.remove('is-plan');
     syncChip();
+    labelCanvas();
     setHint('3d');
     hideLoading();
     if (info?.quality) quality = info.quality;
@@ -368,7 +407,13 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
     if (time && TIME_IDS.includes(time)) times.set(time);
     else call('setTimeOfDay', times.value);
     syncTimeCycle();
-    setTimeout(() => { if (mode === '3d') showHint(); }, 700);
+    // The HUD was opened while the engine was still loading: fly there now that it can.
+    if (focused) {
+      call('highlight', focused.slotId);
+      if (typeof villar?.focus === 'function') call('focus', focused.slotId, { inset: focused.inset });
+      else call('setInsets', focused.inset);
+    }
+    setTimeout(() => { if (mode === '3d' && !focused) showHint(); }, 700);
   }
 
   async function mountEngine(create, opts) {
@@ -431,7 +476,7 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
     resetPhotoUI();
     onHover(null);
     if (villar) { call('dispose'); villar = null; }
-    thumbCache.clear();
+    clearThumbs();
     canvasHost.replaceChildren();
     showPlan();
     retryBtn.hidden = !(canRetry && mountArgs);
@@ -465,10 +510,14 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
       else plan?.highlight(slotId ?? null);
     },
     /** Tell the engine which part of the stage the HUD covers (feature-detected). */
-    setInsets(insets) { if (mode === '3d') call('setInsets', insets || { right: 0, bottom: 0 }); },
+    setInsets(insets) {
+      if (focused) focused.inset = insets;
+      if (mode === '3d') call('setInsets', insets || { right: 0, bottom: 0 });
+    },
     /** Game-like focus on an object (engine flies the camera); falls back to highlight + insets. */
     focus(slotId, inset) {
       setFocusMode(true);
+      focused = { slotId, inset };
       if (mode !== '3d') { plan?.highlight(slotId); return; }
       call('highlight', slotId);
       if (typeof villar?.focus === 'function') call('focus', slotId, { inset });
@@ -476,23 +525,32 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
     },
     unfocus() {
       setFocusMode(false);
+      focused = null;
       if (mode !== '3d') { plan?.highlight(null); return; }
       call('highlight', null);
       if (typeof villar?.unfocus === 'function') call('unfocus');
       call('setInsets', { right: 0, bottom: 0 });
     },
     syncStyle() { syncChip(); },
-    /** Product thumbnails rendered by the engine (feature-detected; cached per item). */
+    /** Quiet glass chip at the top of the stage while something heavy happens (style switch). Returns hide(). */
+    busy(text) {
+      busyLbl.textContent = text;
+      busyChip.hidden = false;
+      requestAnimationFrame(() => busyChip.classList.add('is-visible'));
+      return () => { busyChip.classList.remove('is-visible'); setTimeout(() => { if (!busyChip.classList.contains('is-visible')) busyChip.hidden = true; }, 320); };
+    },
+    /** Product thumbnails rendered by the engine (feature-detected; cached per item; queued — T7). */
     thumbs: {
       available: () => mode === '3d' && typeof villar?.thumbnail === 'function',
       get(id) {
         if (!thumbCache.has(id)) {
-          let p;
-          try { p = Promise.resolve(villar.thumbnail(id, { size: 256 })); } catch (e) { p = Promise.reject(e); }
-          thumbCache.set(id, p.catch(() => null));
+          thumbCache.set(id, new Promise((resolve) => thumbQueue.push({ id, resolve })));
+          pumpThumbs();
         }
         return thumbCache.get(id);
       },
+      /** Hold rendering (e.g. for the duration of a camera flight). */
+      hold(ms) { thumbHoldUntil = Math.max(thumbHoldUntil, performance.now() + ms); },
     },
     cancelPhoto,
   };

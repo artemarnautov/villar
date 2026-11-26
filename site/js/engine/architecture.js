@@ -20,8 +20,13 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
 
   // ---------------------------------------------------------------- materials
   const floorKey = A.floor || 'oak-light';
+  // wall finish: paint, or a mottled limewash plaster (Mediterranean, R2-13)
+  let wallFinish = A.wallFinish || (stylepack?.id === 'mediterranean' ? 'limewash' : 'paint');
+  const wallMaterial = (finish, color) => (finish === 'limewash'
+    ? materials.get('plaster-wall', { color: color || '#EDE7DE', mottle: 1.4 })
+    : materials.get('paint', { color: color || '#EDE7DE' }));
   const M = {
-    wall: own(materials.get('paint', { color: A.walls || '#EDE7DE' }).clone()),      // own: wall colour follows the style
+    wall: own(wallMaterial(wallFinish, A.walls).clone()),      // own: wall colour / finish follow the style
     ceiling: materials.get('paint', { color: A.ceiling || '#F5F2EC' }),
     floor: own(satin(WOOD_SPECIES.includes(floorKey) ? materials.get('oak-floor', { species: floorKey }) : materials.get(floorKey))),
     skirting: own(materials.get('kitchen-front', { color: A.walls || '#EDE7DE', roughness: 0.5 }).clone()),
@@ -544,6 +549,8 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     return shadowClones.get(m);
   };
   for (const g of [full, cutGroup]) g.traverse((o) => { if (o.isMesh && o.castShadow) o.material = withDoubleShadow(o.material); });
+  // wall meshes carry a stable tag too (finish changes swap their material)
+  for (const g of [full, cutGroup]) g.traverse((o) => { if (o.isMesh && o.material === M.wall) o.userData.wallKey = true; });
   // door meshes carry a stable tag (style changes swap their material)
   for (const [key, d] of doorMats) for (const g of [full, cutGroup]) g.traverse((o) => { if (o.isMesh && o.material === d.mat) o.userData.doorKey = key; });
   // keep handles used by lighting.js pointing at the live instances
@@ -575,6 +582,29 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     /** Materials that carry the wall colour (walls, skirting, painted doors) — animated on style changes. */
     get wallMaterials() { return [M.wall, M.skirting, ...[...doorMats.values()].filter((d) => d.finish === 'paint').map((d) => d.mat)]; },
     get doorFinish() { return [...doorMats.values()].find((d) => d.fromPack)?.finish || null; },
+    get wallFinish() { return wallFinish; },
+    /** Stage a wall-finish change (paint ↔ limewash) for a dissolve, like prepareDoorFinish. */
+    prepareWallFinish(finish, color) {
+      if (finish === wallFinish) return null;
+      const mat = own(wallMaterial(finish, color || '#' + M.wall.color.getHexString()).clone());
+      mat.shadowSide = THREE.DoubleSide;
+      const inn = [], out = [], found = [];
+      for (const g of [full, cutGroup]) g.traverse((o) => { if (o.isMesh && o.userData.wallKey && !o.userData.wallOld) found.push(o); });
+      for (const o of found) {
+        const m2 = new THREE.Mesh(o.geometry, mat);
+        m2.position.copy(o.position); m2.quaternion.copy(o.quaternion); m2.scale.copy(o.scale);
+        m2.castShadow = o.castShadow; m2.receiveShadow = o.receiveShadow; m2.renderOrder = o.renderOrder;
+        m2.userData = { ...o.userData, wallKey: true, wallOld: false }; m2.name = o.name;
+        o.userData.wallOld = true;
+        o.parent.add(m2);
+        inn.push(m2); out.push(o);
+      }
+      let done = false;
+      return {
+        inn, out, finish,
+        commit() { if (done) return; done = true; for (const o of out) o.removeFromParent(); M.wall = mat; wallFinish = finish; },
+      };
+    },
     /**
      * Stage a door-finish change: new meshes (same geometry, new material) are added next to the old
      * ones for a dissolve; `commit()` removes the old ones. Doors pinned by the layout are kept.

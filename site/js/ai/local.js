@@ -158,8 +158,8 @@ const has = (h, rx) => { rx.lastIndex = 0; return rx.test(h.t); };
 // ---------------------------------------------------------------- phrases
 const P = {
   ru: {
-    view: { eye: 'Вид от входа.', living: 'Гостиная.', bed: 'Спальная зона.', dining: 'Столовая.', window: 'Вид от окна.', top: 'План сверху.' },
-    time: { morning: 'Утро: мягкий рассеянный свет.', day: 'День: ровный свет от окна.', golden: 'Закат: тёплое низкое солнце.', evening: 'Вечер: включил лампы.' },
+    view: { eye: 'Вид от входа.', living: 'Гостиная.', bed: 'Спальня.', dining: 'Столовая.', window: 'Вид от окна.', top: 'План сверху.' },
+    time: { morning: 'Утро: мягкий рассеянный свет.', day: 'День: ровный свет от окна.', golden: 'Закат: тёплое низкое солнце.', evening: 'Вечер: лампы включены.' },
     cozy: 'Тёплый вечерний свет и лампы — так студия уютнее.',
     cozyPlus: 'Вечерний свет и подушки потеплее — так уютнее.',
     lighter: (n) => `${n} — светлее.`, darker: (n) => `${n} — темнее.`,
@@ -168,31 +168,36 @@ const P = {
     smaller: (n) => `${n} — компактнее.`, bigger: (n) => `${n} — крупнее.`,
     color: (n, c) => `${n}, ${c.toLowerCase()}.`, material: (n) => `${n} — подходит по материалу.`,
     another: (n) => `${n} — другой вариант.`,
-    many: (k, d) => `Обновил ${k} ${plural('ru', k, ITEMS.ru)}${d ? `, итог ${d}` : ''}.`,
+    many: (k, d) => `Обновлено: ${k} ${plural('ru', k, ITEMS.ru)}${d ? `, итог ${d}` : ''}.`,
     noBetter: { lighter: 'светлее', darker: 'темнее', warmer: 'теплее', cooler: 'прохладнее', cheaper: 'дешевле', pricier: 'дороже', smaller: 'компактнее', bigger: 'крупнее' },
     already: (lbl, w) => `${lbl}: ${w} в этом стиле нет — сейчас лучший вариант.`,
     noMatch: (lbl) => `${lbl}: подходящего варианта в этом стиле нет.`,
     noType: (lbl) => `${lbl}: в этом стиле пока нет вариантов.`,
     cheapestAll: (s) => `Самый экономный вариант этого стиля: минус ${s}.`,
     cheapestAlready: 'Это уже самый экономный вариант стиля.',
-    budgetOk: (k, t) => `Уложился: ${k} ${plural('ru', k, ['замена', 'замены', 'замен'])}, итог ${t}.`,
+    budgetOk: (k, t) => `Готово: ${k} ${plural('ru', k, ['замена', 'замены', 'замен'])}, итог ${t}.`,
     budgetAlready: (t) => `Вы уже укладываетесь: итог ${t}.`,
-    budgetMin: (m) => `Ниже ${m} в этом стиле не получится — собрал самый экономный вариант.`,
-    style: (n, k) => `Стиль ${n}: обновил ${k} ${plural('ru', k, ITEMS.ru)}.`,
-    styleCantKeep: (a) => `Оставить ${a.noun.toLowerCase()} «${a.from}» не получится: в этом стиле такой модели нет. Поставил «${a.to}».`,
+    budgetMin: (m) => `Ниже ${m} в этом стиле не получится — вот самый экономный вариант.`,
+    style: (n, k) => `Стиль ${n}: обновлено ${k} ${plural('ru', k, ITEMS.ru)}.`,
+    styleCantKeep: (a) => `Оставить ${a.noun.toLowerCase()} «${a.from}» не получится: в этом стиле такой модели нет. Вместо него — «${a.to}»${a.diff ? ` (${a.diff})` : ''}.`,
     styleSame: (n) => `Стиль ${n} уже выбран.`,
-    reset: (n) => `Вернул исходную подборку стиля ${n}.`,
+    reset: (n) => `Исходная подборка стиля ${n} восстановлена.`,
     resetSame: 'Всё и так как в исходной подборке.',
+    resetBack: (n, prev) => `Это и есть исходная подборка стиля ${n}. Вернуть стиль ${prev}, как было?`,
+    resetBackChip: (prev) => `Вернуть ${prev}`,
+    elsewhere: (lbl, n, it, pr) => `${lbl}: в этом стиле такого нет, но есть в стиле ${n} — «${it}», ${pr}.`,
+    elsewhereChip: (n, it) => `Перейти в ${n} с «${it}»`,
+    elsewhereDone: (n, it) => `Стиль ${n} с «${it}».`,
     focus: (n, p) => `${n}, ${p}.`,
     price: (n, p, q) => `${n} — ${p}${q > 1 ? ` за ${q} шт.` : ''}.`,
     total: (t) => `Итог по квартире — ${t}.`,
-    undo: 'Отменил последние изменения.',
+    undo: 'Последние изменения отменены.',
     nothingToUndo: 'Пока нечего отменять.',
-    help: 'Могу показать зону или время суток, сменить стиль и подобрать вещи по цене, цвету или материалу. Например: «покажи вечер», «уложись в 25 000», «диван светлее».',
-    unknown: 'Сейчас я работаю в упрощённом режиме. Попробуйте: «покажи вечер», «уложись в 25 000», «диван светлее».',
+    help: 'Могу показать зону или время суток, сменить стиль и подобрать вещи по цене, цвету или материалу. Например: «покажи вечер», «уложись в 25 000 AED», «диван светлее».',
+    unknown: 'Пока я понимаю простые просьбы. Например: «покажи вечер», «уложись в 25 000 AED», «диван светлее».',
   },
   en: {
-    view: { eye: 'The view from the entry.', living: 'The living area.', bed: 'The sleeping area.', dining: 'The dining corner.', window: 'The view from the window.', top: 'The plan from above.' },
+    view: { eye: 'The view from the entry.', living: 'Living.', bed: 'Bedroom.', dining: 'Dining.', window: 'The view from the window.', top: 'The plan from above.' },
     time: { morning: 'Morning: soft, diffused light.', day: 'Day: even light from the window.', golden: 'Sunset: warm, low sun.', evening: 'Evening: lamps on.' },
     cozy: 'Warm evening light and the lamps on — it feels cosier.',
     cozyPlus: 'Evening light and warmer cushions — cosier.',
@@ -210,20 +215,25 @@ const P = {
     cheapestAll: (s) => `The most economical version of this style: ${s} less.`,
     cheapestAlready: 'This is already the most economical set.',
     budgetOk: (k, t) => `Done: ${k} ${plural('en', k, ['swap', 'swaps'])}, total ${t}.`,
-    budgetAlready: (t) => `You're already within budget: total ${t}.`,
+    budgetAlready: (t) => `You’re already within budget: total ${t}.`,
     budgetMin: (m) => `This style can't go below ${m} — here is the most economical set.`,
     style: (n, k) => `${n} style: ${k} ${plural('en', k, ITEMS.en)} updated.`,
-    styleCantKeep: (a) => `${a.label} isn’t part of this style, so ${a.toFull} takes its place.`,
+    styleCantKeep: (a) => `${a.label} isn’t part of this style, so ${a.toFull} takes its place${a.diff ? ` (${a.diff})` : ''}.`,
     styleSame: (n) => `${n} is already the active style.`,
     reset: (n) => `Back to the original ${n} set.`,
     resetSame: 'Everything is already the original set.',
+    resetBack: (n, prev) => `This is the original ${n} set. Go back to ${prev}, as it was?`,
+    resetBackChip: (prev) => `Back to ${prev}`,
+    elsewhere: (lbl, n, it, pr) => `${lbl}: not in this style, but ${n} has “${it}”, ${pr}.`,
+    elsewhereChip: (n, it) => `Switch to ${n} with “${it}”`,
+    elsewhereDone: (n, it) => `${n} style with “${it}”.`,
     focus: (n, p) => `${n}, ${p}.`,
     price: (n, p, q) => `${n} — ${p}${q > 1 ? ` for ${q}` : ''}.`,
     total: (t) => `The apartment total is ${t}.`,
     undo: 'Undid the last changes.',
     nothingToUndo: 'Nothing to undo yet.',
-    help: 'I can show a zone or a time of day, switch the style, and pick items by price, colour or material. Try “show the evening”, “keep it under 25,000”, “a lighter sofa”.',
-    unknown: 'I’m in basic mode right now. Try “show the evening”, “keep it under 25,000”, “a lighter sofa”.',
+    help: 'I can show a zone or a time of day, switch the style, and pick items by price, colour or material. Try “show the evening”, “keep it under 25,000 AED”, “a lighter sofa”.',
+    unknown: 'I understand simple requests for now — try “show the evening”, “keep it under 25,000 AED” or “a lighter sofa”.',
   },
 };
 
@@ -445,6 +455,21 @@ export function parseLocal(text, ctx) {
     return { item: scored[0].o };
   };
 
+  // PT-14: what the visitor asked for may exist in another style — offer it instead of a dead end.
+  const offers = [];
+  const findElsewhere = (key, type) => {
+    if (!colors.length && !mats.length) return null;
+    let best = null;
+    for (const pid of sim.packIds) {
+      if (pid === style) continue;
+      const k = sim.keyIn ? sim.keyIn(pid, key) : key;
+      for (const o of sim.options(pid, k)) {
+        const sc = scoreMatch(o);
+        if (sc > 0 && (!best || sc > best.sc)) best = { pid, key: k, item: o, sc, type };
+      }
+    }
+    return best;
+  };
   const swapMods = mods.filter((m) => m !== 'another' || (!colors.length && !mats.length && mods.length === 1));
   const primaryMod = swapMods.find((m) => m !== 'another') || (swapMods.includes('another') ? 'another' : null);
   const wantsMatch = colors.length || mats.length || negColors.length || negMats.length;
@@ -459,7 +484,15 @@ export function parseLocal(text, ctx) {
           const r = chooseMatch(key);
           if (r.item && !r.already) picked.push({ key, item: r.item, mod: colors.length ? 'color' : 'material' });
           else if (r.already) lines.push(lang === 'en' ? `${labelled(lang, key, t, r.item)} already fits.` : `${labelled(lang, key, t, r.item)} — уже то, что нужно.`);
-          else lines.push(p.noMatch(lbl));
+          else {
+            const alt = findElsewhere(key, t);
+            if (alt) {
+              const sName = quoted(lang, styleName(lang, sim.pack(alt.pid)));
+              const short = itemName(lang, alt.item).split(' — ')[0].split(',')[0].trim();
+              lines.push(p.elsewhere(lbl, sName, short, aed(lang, alt.item.price * (sim.qty(alt.pid, alt.key) || 1))));
+              if (!offers.length) offers.push({ label: p.elsewhereChip(sName, short), reply: p.elsewhereDone(sName, short), actions: [{ type: 'style', styleId: alt.pid, anchor: { key: alt.key, itemId: alt.item.id } }] });
+            } else lines.push(p.noMatch(lbl));
+          }
         } else if (primaryMod) {
           const r = choose(key, primaryMod);
           if (r.item) picked.push({ key, item: r.item, mod: primaryMod });
@@ -544,13 +577,20 @@ export function parseLocal(text, ctx) {
       if (fromItem && toItem && toItem.id !== fromItem.id) {
         const full = (it) => itemName(lang, it).split(' — ')[0].trim();
         const short = (it) => full(it).split(',')[0].trim();
-        replyParts.push(p.styleCantKeep({ label: labelled(lang, l.key, l.type, fromItem), noun: keyLabel(lang, l.key, l.type), from: short(fromItem), to: short(toItem), toFull: full(toItem) }));
+        const diff = fmtDelta(lang, ((+toItem.price || 0) - (+fromItem.price || 0)) * (sim.qty(res.state.style, l.toKey) || 1));
+        replyParts.push(p.styleCantKeep({ label: labelled(lang, l.key, l.type, fromItem), noun: keyLabel(lang, l.key, l.type), from: short(fromItem), to: short(toItem), toFull: full(toItem), diff }));
       }
     }
   }
   if (intents.includes('reset')) {
     const changedKeys = Object.keys(state0.selection).filter((k) => sim.defaults(state0.style)[k] !== state0.selection[k]);
-    replyParts.push(changedKeys.length || intents.includes('style') ? p.reset(quoted(lang, styleName(lang, sim.pack(res.state.style)))) : p.resetSame);
+    const prev = ctx?.prevStyle;
+    if (!changedKeys.length && !intents.includes('style') && prev && prev !== style && sim.pack(prev)) {
+      // «сбрось» right after a style switch most likely means "back to how it was" — offer exactly that.
+      const prevName = quoted(lang, styleName(lang, sim.pack(prev)));
+      replyParts.push(p.resetBack(quoted(lang, styleName(lang, sim.pack(style))), prevName));
+      offers.push({ label: p.resetBackChip(prevName), undo: true });
+    } else replyParts.push(changedKeys.length || intents.includes('style') ? p.reset(quoted(lang, styleName(lang, sim.pack(res.state.style)))) : p.resetSame);
   }
   if (budgetInfo) {
     const t = aed(lang, budgetInfo.total);
@@ -596,6 +636,7 @@ export function parseLocal(text, ctx) {
     dropped: res.dropped,
     intents,
     total: total1,
+    chips: offers.length ? [...offers, ...defaultChips(lang, { total: total1, time: ctx?.time, view: ctx?.view }).filter((c) => foldText(c) !== foldText(text)).slice(0, 2)] : undefined,
     budget: budgetInfo ? { target: budgetInfo.target, total: budgetInfo.total, ok: budgetInfo.ok, min: budgetInfo.min } : undefined,
   });
 }

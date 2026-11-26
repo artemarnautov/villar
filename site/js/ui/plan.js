@@ -1,7 +1,7 @@
 // Interactive 2D plan drawn from layout + store. Used as the graceful stage when 3D is unavailable.
 // Emits the same hover/select payloads as the engine. Owner: interface.
 import { safeHex } from './dom.js';
-import { typeLabel } from './labels.js';
+import { slotLabel } from './labels.js';
 import { t, onLang } from './i18n.js';
 import { nameOf } from './format.js';
 
@@ -72,13 +72,14 @@ export function createPlan({ container, layout, store, onHover, onSelect }) {
       g.append(el('polygon', { class: 'plan-built', points: pts.map((p) => p.join(',')).join(' ') }));
     }
 
-    // Labels for fixed zones
+    // Labels for fixed zones: drawn after the items (with a halo) so furniture never hides them
+    const labels = el('g', { class: 'plan-labels', 'aria-hidden': 'true' });
     const label = (txt, x, z, along = false) => {
       const [px, py] = P(x, z);
       const t = el('text', { class: 'plan-label', x: px, y: py, 'text-anchor': 'middle', 'dominant-baseline': 'middle', 'data-label': '' });
       // Labels on narrow strips run along them (portrait plan rotates the kitchen strip vertical).
       if (along && portrait) t.setAttribute('transform', `rotate(-90 ${px} ${py})`);
-      t.textContent = txt; g.append(t);
+      t.textContent = txt; labels.append(t);
     };
     if ((layout.walls || []).some((w) => /bath/.test(w.id))) label(t('plan.bath'), 1.0, 1.3);
     if ((layout.builtIns || []).some((b) => b.type === 'kitchen')) label(t('plan.kitchen'), size.x - 0.31, 2.45, true);
@@ -105,7 +106,7 @@ export function createPlan({ container, layout, store, onHover, onSelect }) {
       const grp = el('g', {
         class: `plan-item${slot.type === 'rug' ? ' is-rug' : ''}${it.thin ? ' is-thin' : ''}${slot.mount === 'ceiling' && slot.type !== 'curtains' ? ' is-ceiling' : ''}`,
         tabindex: '0', role: 'button', 'data-slot': slot.id, 'data-type': slot.type,
-        'aria-label': `${typeLabel(slot.type)}: ${nameOf(item)}`,
+        'aria-label': `${slotLabel(slot.id, slot.type)}: ${nameOf(item)}`,
         style: `--c:${safeHex(item.colorHex)}`,
       });
       const round = item.dims && (item.dims.round || item.model?.params?.shape === 'round' || slot.type === 'plant' || slot.type === 'pendant_lamp' || slot.type === 'table_lamp' || slot.type === 'floor_lamp');
@@ -132,6 +133,7 @@ export function createPlan({ container, layout, store, onHover, onSelect }) {
       });
       g.append(grp);
     }
+    g.append(labels);
 
     // Walls with openings cut out
     const wallG = el('g');
@@ -192,7 +194,8 @@ export function createPlan({ container, layout, store, onHover, onSelect }) {
     const pxPerCm = (svgEl.clientWidth || container.clientWidth || 800) / vbW;
     const scale = Math.min(pxPerCm, (svgEl.clientHeight || 1) / (H() + 80));
     const fs = 12 / Math.max(scale, 0.2);
-    svgEl.querySelectorAll('[data-label]').forEach((t) => t.setAttribute('font-size', fs.toFixed(1)));
+    const halo = 4 / Math.max(scale, 0.2);
+    svgEl.querySelectorAll('[data-label]').forEach((t) => { t.setAttribute('font-size', fs.toFixed(1)); t.setAttribute('stroke-width', halo.toFixed(1)); });
   }
 
   function highlight(slotId) {

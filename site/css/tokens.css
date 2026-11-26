@@ -15,6 +15,8 @@
   --hairline-strong: rgba(0, 0, 0, 0.14);
   --focus: #0071e3;
 
+  /* Brand mark: constant across styles (D2-20) */
+  --brand: #4a3426;
   /* Accent — overwritten at runtime from the style pack (see js/ui/accent.js) */
   --accent: #4a3426;
   --accent-hover: #5c4232;

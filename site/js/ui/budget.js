@@ -45,10 +45,11 @@ export function createBudget({ el, store, stage, onOrder, onLine, announce }) {
   document.body.append(pill);
   pillBtn.addEventListener('click', () => onOrder?.());
 
-  let stageOn = false, budgetOn = false, sheetOn = false;
+  let stageOn = false, budgetOn = false, hudOn = false;
   const syncPill = () => {
-    // While the item sheet is open it covers the budget bar on phones, so the pill carries the total.
-    const show = (stageOn && !budgetOn) || sheetOn;
+    // D2-06: never two totals on screen. The pill shows only while the stage is in view and the real bar is
+    // not; while the item panel is open the panel's own header carries the total instead.
+    const show = stageOn && !budgetOn && !hudOn;
     pill.classList.toggle('is-visible', show);
     document.documentElement.classList.toggle('cartbar-on', show);
     pill.inert = !show;
@@ -56,7 +57,7 @@ export function createBudget({ el, store, stage, onOrder, onLine, announce }) {
   syncPill();
   if ('IntersectionObserver' in window && stage) {
     new IntersectionObserver(([e]) => { stageOn = e.intersectionRatio >= 0.5; syncPill(); }, { threshold: [0, 0.5, 1] }).observe(stage);
-    new IntersectionObserver(([e]) => { budgetOn = e.isIntersecting; syncPill(); }, { threshold: 0.6 }).observe(el.querySelector('.budget-main'));
+    new IntersectionObserver(([e]) => { budgetOn = e.isIntersecting; syncPill(); }, { threshold: 0, rootMargin: '0px 0px -60px 0px' }).observe(el.querySelector('.budget-main'));
   }
 
   // ---- Behaviour ----
@@ -75,6 +76,8 @@ export function createBudget({ el, store, stage, onOrder, onLine, announce }) {
   });
   order.addEventListener('click', () => onOrder?.());
   reset.addEventListener('click', () => {
+    // PT-15: the link hides itself after use, so hand focus to the next control first.
+    if (document.activeElement === reset) toggle.focus({ preventScroll: true });
     store.reset?.();
     announce?.(t('budget.resetDone'));
   });
@@ -162,6 +165,6 @@ export function createBudget({ el, store, stage, onOrder, onLine, announce }) {
   onLang(() => { renderStatic(); renderMeta(); renderLines(); });
   return {
     update, el,
-    setSheetOpen(on) { sheetOn = !!on; syncPill(); },
+    setSheetOpen(on) { hudOn = !!on; syncPill(); },
   };
 }

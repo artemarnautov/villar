@@ -14,6 +14,7 @@ import { createBudget } from './ui/budget.js';
 import { createOrderModal } from './ui/order-modal.js';
 import { createStage } from './ui/stage.js';
 import { createStylePicker } from './ui/stylepicker.js';
+import { createToast } from './ui/toast.js';
 import { packName } from './ui/format.js';
 
 const warn = (...a) => console.warn('[villar]', ...a);
@@ -77,7 +78,29 @@ async function boot() {
   paintStyle();
 
   const card = createHoverCard({ el: $('#hovercard'), store, bounds: () => stageEl });
-  const order = createOrderModal({ el: $('#order'), store });
+
+  // D2-19: on phones the system Back gesture closes the top layer (modal, then item panel) instead of the page.
+  const layers = { hud: false, modal: false };
+  let ignorePops = 0;
+  const pushLayer = (kind) => {
+    if (!isCompact() || layers[kind]) return;
+    try { history.pushState({ villar: kind }, ''); layers[kind] = true; } catch { /* ignore */ }
+  };
+  const popLayer = (kind) => {
+    if (!layers[kind]) return;
+    layers[kind] = false; ignorePops++;
+    history.back();
+  };
+  window.addEventListener('popstate', () => {
+    if (ignorePops) { ignorePops--; return; }
+    if (layers.modal) { layers.modal = false; order.close(); } else if (layers.hud) { layers.hud = false; hud.close(); }
+  });
+
+  const order = createOrderModal({
+    el: $('#order'), store, palettes,
+    onOpen: () => pushLayer('modal'),
+    onClose: () => popLayer('modal'),
+  });
 
   let hud = null;
   let budget = null;
@@ -96,16 +119,18 @@ async function boot() {
 
   hud = createHud({
     el: $('#hud'), shell: $('.studio-shell'), stage: stageEl, store, palettes, thumbs: stage.thumbs,
+    onStyleSwitch: (id, opts) => switchStyle(id, opts),
     onOpen: (cur, { same }) => {
       card.hide();
       budget?.setSheetOpen(true);
+      pushLayer('hud');
       // Phones: bring the whole stage under the nav so the object stays visible above the panel.
       if (!same && isCompact()) scrollToEl(stageEl, { pad: 8 });
       // Fly to the object once the HUD has its size (it frames the object in the uncovered part).
       if (!same) requestAnimationFrame(() => requestAnimationFrame(() => { if (hud.isOpen) stage.focus(cur.slotId, hud.insets()); }));
     },
     onResize: (insets) => { if (hud.isOpen) stage.setInsets(insets); },
-    onClose: () => { stage.unfocus(); budget?.setSheetOpen(false); },
+    onClose: () => { stage.unfocus(); budget?.setSheetOpen(false); popLayer('hud'); },
   });
 
   budget = createBudget({
@@ -120,7 +145,38 @@ async function boot() {
     },
   });
 
-  createStylePicker({ el: $('#style-picker'), store, palettes });
+  // D2-08 + PT-01: a manual style switch answers at once (pressed chip + «Меняем стиль…»), does the heavy work a
+  // frame later, and offers a quiet «Вернуть» that restores the exact previous state (style and every pick).
+  const toast = createToast({ host: stageEl.querySelector('.stage-ui') });
+  let switching = false;
+  function switchStyle(id, { anchor } = {}) {
+    if (switching || !store.style(id) || id === store.styleId()) return;
+    switching = true;
+    const prev = store.snapshot();
+    const prevName = packName(store.style(prev.style));
+    picker.setPending(id);
+    toast.hide();
+    const hideBusy = stage.mode === '3d' ? stage.busy(t('switching')) : () => {};
+    const t0 = performance.now();
+    requestAnimationFrame(() => setTimeout(() => {
+      try { store.setStyle(id, anchor ? { anchor } : {}); } finally { switching = false; }
+      const done = () => {
+        hideBusy();
+        toast.show(t('toast.style', { style: quoted(packName(store.style(id))) }), {
+          actionLabel: t('toast.undo'),
+          onAction: () => {
+            store.restore(prev);
+            toast.show(t('toast.undone', { style: quoted(prevName) }), { ms: 2400 });
+          },
+        });
+      };
+      const wait = Math.max(0, 450 - (performance.now() - t0));
+      requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, wait)));
+    }, 0));
+  }
+  const picker = createStylePicker({ el: $('#style-picker'), store, palettes, onPick: (id) => switchStyle(id) });
+  // Any other change after a switch retires the undo offer (it would no longer restore just the style).
+  store.on('change', ({ reason }) => { if (reason !== 'style' && reason !== 'restore') toast.hide(); });
 
   // Style switch: accent, palette section, chip; the engine stages its own transition from the same event.
   store.on('style', ({ styleId: id }) => {
@@ -130,13 +186,13 @@ async function boot() {
     announce(`${t('style')}: ${quoted(packName(store.style(id)))}`);
   });
 
-  onLang(() => { paintStyle(); paintHeroNote?.(); if (hud.isOpen) hud.refresh(); });
+  onLang(() => { paintStyle(); paintHeroNote?.(); toast.hide(); });
 
   document.querySelectorAll('[data-order]').forEach((b) => b.addEventListener('click', () => order.open()));
   setupReveal();
 
   // Expose UI hooks for QA (no engine internals).
-  window.villarUI = { store, stage, hud, card, order, setLang };
+  window.villarUI = { store, stage, hud, card, order, setLang, switchStyle, toast };
 
   // AI assistant under the stage (owned by the assistant agent; mounted only when its module exists).
   async function mountAssistant() {

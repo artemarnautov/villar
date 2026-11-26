@@ -49,6 +49,14 @@
   drawn again only at `ready`, once textures are regenerated). `focus()` fits the object inside the free part of the
   stage left by `setInsets` and re-frames when insets change or the model is replaced.
 - Lab/QA: `?prewarm=force` runs the shader prewarm on software GL (to count programs).
+- Round 2, milestone B:
+  - `villar.setLabel(text)` sets the canvas accessible name (call it on language change, PT-05).
+  - Posters per style, rendered by the engine from the exact Entry pose and lens at 1552×780:
+    `/assets/posters/{dark-walnut,light-oak,greige-luxe,mediterranean}.jpg`. Pick by the saved style before first
+    paint and cross-fade to the canvas (~300 ms) at `ready` (PT-16). The lens is fixed at 74° horizontal on any
+    landscape stage, so `object-fit: cover` on the poster matches the live framing.
+  - Thumbnails render only while the camera and dissolves are idle, one per idle slice (T7) — request them freely.
+  - The focus halo fades out ~1.2 s after a flight lands; the canvas focus ring shows only for keyboard focus.
 
 ## To modeler
 

@@ -92,7 +92,8 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
 
   // ---------------------------------------------------------------- environment (room capture)
   let pmrem = new THREE.PMREMGenerator(renderer);
-  let cubeRT = new THREE.WebGLCubeRenderTarget(quality === 'low' ? 64 : 128, { type: THREE.HalfFloatType, generateMipmaps: false });
+  // room reflections: 256² on high so mirror-like objects (kettle, glossy tops) don't show blocks (R2-14)
+  let cubeRT = new THREE.WebGLCubeRenderTarget(quality === 'low' ? 64 : quality === 'medium' ? 128 : 256, { type: THREE.HalfFloatType, generateMipmaps: false });
   let cubeCam = new THREE.CubeCamera(0.05, 8000, cubeRT);
   const CAPTURE = new THREE.Vector3(X / 2, 1.35, Z * 0.6);
   cubeCam.position.copy(CAPTURE);
@@ -159,7 +160,7 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
     const Ls = (P.horizonL * 0.6 + P.zenithL * 0.4) * (dollhouse ? (cfg.lamps ? 0.5 : 1.0) : 0.17);
     const alt = Math.pow(Math.max(0, Math.sin(cfg.sun.alt * DEG)), 0.35); // low sun reaches deep into the room
     const sunC = kelvin(cfg.sun.K), floorTint = [1.0, 0.86, 0.7];
-    const B = dollhouse ? 0 : cfg.sun.I * alt * 0.022;           // sun → floor/walls → room
+    const B = dollhouse ? 0 : cfg.sun.I * alt * 0.025;           // sun → floor/walls → room
     const lamps = cfg.lamps ? (dollhouse ? 0.02 : 0.03) : 0;
     const lampC = [1.0, 0.62, 0.32];
     const up = [0, 1, 2].map((i) => [sky.r, sky.g, sky.b][i] * Ls + [sunC.r, sunC.g, sunC.b][i] * floorTint[i] * B * 0.55 + lampC[i] * lamps);

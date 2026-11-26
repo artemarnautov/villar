@@ -13,7 +13,13 @@ import { disposeObject, DEG } from './util.js';
 const BACKDROP = '#f2efe8';
 const FAR = new THREE.Vector3(-80, 0, -80); // outside the apartment box (no box-projected reflections)
 
-export function createThumbnailer({ renderer, materials, buildItem, releaseItem = null, quality = 'high' }) {
+export function createThumbnailer({ renderer, materials, buildItem, releaseItem = null, quality = 'high', shouldWait = () => false, software = false }) {
+  // thumbnails never compete with a camera flight or a dissolve: one per idle slice, when the scene is quiet (T7)
+  const quiet = () => new Promise((resolve) => {
+    const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 3000 }) : setTimeout(fn, 50));
+    const check = () => (shouldWait() ? setTimeout(() => idle(check), 120) : resolve());
+    idle(check);
+  });
   const cache = new Map();
   let chain = Promise.resolve();
   let res = null;
@@ -150,6 +156,10 @@ export function createThumbnailer({ renderer, materials, buildItem, releaseItem 
           renderer.render(res.scene, res.camera);
           res.output.render(renderer, res.rtLDR, res.rtHDR);
           const buf = new Uint8Array(px * px * 4);
+          // GPU: async readback (no pipeline stall); software GL reads synchronously
+          if (!software && renderer.readRenderTargetPixelsAsync) {
+            return renderer.readRenderTargetPixelsAsync(res.rtLDR, 0, 0, px, px, buf).then(() => encode(buf, px, size));
+          }
           renderer.readRenderTargetPixels(res.rtLDR, 0, 0, px, px, buf);
           return encode(buf, px, size);
         } finally {
@@ -196,7 +206,7 @@ export function createThumbnailer({ renderer, materials, buildItem, releaseItem 
       size = Math.max(32, Math.min(512, Math.round(size) || 256));
       const k = `${item.id}@${size}`;
       if (cache.has(k)) return cache.get(k);
-      const p = chain.then(() => new Promise((r) => setTimeout(r, 0))).then(() => renderOne(item, size));
+      const p = chain.then(quiet).then(() => renderOne(item, size));
       chain = p.catch(() => {});
       cache.set(k, p);
       p.catch(() => cache.delete(k)); // allow a retry after failures

@@ -87,7 +87,7 @@ export function renderStyle({ root, stylepack, palette }) {
     h('div', { class: `ratio-tier${x.share < 0.14 ? ' is-narrow' : ''}${x.share < 0.06 ? ' is-tiny' : ''}`, style: `flex:${(x.share * 1000).toFixed(0)} 1 0` },
       h('b', null, pct(x.share)), h('span', null, x.label))));
   const sumLabel = root.querySelector('[data-ratio-label]');
-  if (sumLabel) sumLabel.textContent = t('style.ratio', { r: tiers.map((x) => Math.round(x.share * 100)).join(' / ') });
+  if (sumLabel) sumLabel.textContent = t('style.ratio');
 
   // Swatches by share: chip, name, role · share. (No hex codes: this is a consumer page.)
   root.querySelector('[data-swatches]').replaceChildren(...[...swatches].sort((a, b) => b.share - a.share).map((s) =>

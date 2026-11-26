@@ -16,8 +16,8 @@ import { rng, clamp, DEG } from './util.js';
 // ----------------------------------------------------------------------------- sky presets
 // Radiance units match lighting.js (sun ≈ 10 at noon). Sun:sky horizontal irradiance ≈ 4–5 : 1.
 export const SKY_PRESETS = {
-  morning: { zenith: '#6f98c8', horizon: '#d6dde3', ground: '#a49a8a', haze: '#d8d6d0', zenithL: 0.26, horizonL: 0.70, groundL: 0.18, glow: '#ffdcb4', glowL: 0.9, hazeL: 0.62 },
-  day:     { zenith: '#5a8cc4', horizon: '#e3e6e3', ground: '#b0a48e', haze: '#d9cdb8', zenithL: 0.30, horizonL: 0.75, groundL: 0.22, glow: '#fff1dc', glowL: 0.7, hazeL: 0.68 },
+  morning: { zenith: '#6f98c8', horizon: '#d6dde3', ground: '#a49a8a', haze: '#d8d6d0', zenithL: 0.26, horizonL: 0.84, groundL: 0.18, glow: '#ffdcb4', glowL: 0.9, hazeL: 0.62 },
+  day:     { zenith: '#5a8cc4', horizon: '#e3e6e3', ground: '#b0a48e', haze: '#d9cdb8', zenithL: 0.30, horizonL: 0.9, groundL: 0.22, glow: '#fff1dc', glowL: 0.7, hazeL: 0.68 },
   golden:  { zenith: '#6283b4', horizon: '#e9d2b8', ground: '#958068', haze: '#e2c9a8', zenithL: 0.22, horizonL: 0.60, groundL: 0.13, glow: '#ffb470', glowL: 1.6, hazeL: 0.52 },
   evening: { zenith: '#132a5e', horizon: '#3b4f7a', ground: '#191b24', haze: '#30395a', zenithL: 0.035, horizonL: 0.06, groundL: 0.008, glow: '#ff9a62', glowL: 0.03, hazeL: 0.035 },
 };
@@ -190,7 +190,7 @@ class GeoBuilder {
       u += len;
     }
     // roof as a fan (uv in a spandrel band: dark, no windows)
-    const rc = roofColor || color.clone().multiplyScalar(0.55);
+    const rc = roofColor || color.clone().multiplyScalar(0.42); // roofs: parapets, plant, gravel — not white slabs
     for (let k = 1; k < n - 1; k++) {
       const p0 = poly[0], p1 = poly[k], p2 = poly[k + 1];
       const b = this.pos.length / 3;
@@ -325,12 +325,12 @@ export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 
   const mk = (P, opts) => { const m = new P(opts); m.userData.skyline = true; return m; };
   // day materials (envMap = sky PMREM, assigned in setTimeOfDay)
   const M = {
-    glassDay: mk(THREE.MeshPhysicalMaterial, { vertexColors: true, map: tx.curtain, roughness: 0.06, metalness: 0.35, envMapIntensity: 1.25, ior: 2.0, specularIntensity: 1, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-glass' }),
+    glassDay: mk(THREE.MeshPhysicalMaterial, { vertexColors: true, map: tx.curtain, roughness: 0.04, metalness: 0, envMapIntensity: 1.2, ior: 2.0, specularIntensity: 1, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-glass' }),
     stoneDay: mk(THREE.MeshStandardMaterial, { vertexColors: true, map: tx.stone, roughness: 0.85, metalness: 0, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-stone' }),
     groundDay: mk(THREE.MeshStandardMaterial, { vertexColors: true, map: tx.ground, roughness: 0.95, metalness: 0, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-ground' }),
     water: mk(THREE.MeshPhysicalMaterial, { vertexColors: true, color: new THREE.Color('#1c3b47'), roughness: 0.14, metalness: 0, ior: 1.33, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-water' }),
-    glassNight: mk(THREE.MeshPhysicalMaterial, { vertexColors: true, map: tx.curtain, color: new THREE.Color(0.25, 0.27, 0.3), roughness: 0.12, metalness: 0, ior: 2.0, emissive: new THREE.Color(1, 1, 1), emissiveMap: tx.night, emissiveIntensity: 0.9, name: 'skyline-glass-night' }),
-    stoneNight: mk(THREE.MeshStandardMaterial, { vertexColors: true, map: tx.stone, color: new THREE.Color(0.3, 0.3, 0.32), roughness: 0.85, emissive: new THREE.Color(1, 1, 1), emissiveMap: tx.night, emissiveIntensity: 0.6, name: 'skyline-stone-night' }),
+    glassNight: mk(THREE.MeshPhysicalMaterial, { vertexColors: true, map: tx.curtain, color: new THREE.Color(0.25, 0.27, 0.3), roughness: 0.12, metalness: 0, ior: 2.0, emissive: new THREE.Color(1, 1, 1), emissiveMap: tx.night, emissiveIntensity: 0.5, name: 'skyline-glass-night' }),
+    stoneNight: mk(THREE.MeshStandardMaterial, { vertexColors: true, map: tx.stone, color: new THREE.Color(0.3, 0.3, 0.32), roughness: 0.85, emissive: new THREE.Color(1, 1, 1), emissiveMap: tx.night, emissiveIntensity: 0.35, name: 'skyline-stone-night' }),
     groundNight: mk(THREE.MeshStandardMaterial, { vertexColors: true, map: tx.ground, color: new THREE.Color(0.25, 0.25, 0.28), roughness: 0.95, emissive: new THREE.Color(1, 1, 1), emissiveMap: tx.groundNight, emissiveIntensity: 0.55, name: 'skyline-ground-night' }),
   };
   const group = new THREE.Group();
@@ -363,7 +363,7 @@ export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 
       meshes.glass.material = night ? M.glassNight : M.glassDay;
       meshes.stone.material = night ? M.stoneNight : M.stoneDay;
       meshes.ground.material = night ? M.groundNight : M.groundDay;
-      for (const m of [M.glassDay, M.stoneDay, M.groundDay, M.water]) m.emissive.set(preset.haze).multiplyScalar(preset.hazeL * 0.55);
+      for (const m of [M.glassDay, M.stoneDay, M.groundDay, M.water]) m.emissive.set(preset.haze).multiplyScalar(preset.hazeL * 0.38);
       M.water.envMapIntensity = night ? 0.6 : 1;
     },
     /** Run fn with the night (or day) materials on — for pre-compiling the other set. */

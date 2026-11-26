@@ -134,11 +134,52 @@ class MeterPass extends Pass {
   dispose() { this.rt.dispose(); this.material.dispose(); this.quad.dispose(); }
 }
 
+/**
+ * Local log-luminance (48×27, bilinear): a coarse map of how bright each region of the frame is, used by
+ * the output pass to dodge deep shadows (corridor, kitchen) a little, like a photographer's local
+ * exposure — never darkens, so bright windows don't halo (R2-20).
+ */
+class LocalLumPass extends Pass {
+  constructor() {
+    super();
+    this.needsSwap = false;
+    this.rt = new THREE.WebGLRenderTarget(48, 27, { type: THREE.HalfFloatType, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+    this.material = new THREE.ShaderMaterial({
+      uniforms: { map: { value: null } },
+      vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4( position.xy, 0.0, 1.0 ); }',
+      fragmentShader: /* glsl */`
+        uniform sampler2D map; varying vec2 vUv;
+        void main() {
+          vec2 o = vec2( 0.3 ) / vec2( 48.0, 27.0 );
+          float L = 0.0;
+          for ( int i = 0; i < 4; i ++ ) {
+            vec2 j = vec2( i % 2 == 0 ? -o.x : o.x, i < 2 ? -o.y : o.y );
+            vec3 c = texture2D( map, vUv + j ).rgb;
+            c = clamp( c == c ? c : vec3( 0.0 ), vec3( 1e-4 ), vec3( 1e4 ) );
+            L += log( dot( c, vec3( 0.2126, 0.7152, 0.0722 ) ) );
+          }
+          gl_FragColor = vec4( L * 0.25, 0.0, 0.0, 1.0 );
+        }`,
+      depthTest: false, depthWrite: false, toneMapped: false,
+    });
+    this.quad = new FullScreenQuad(this.material);
+  }
+  render(renderer, writeBuffer, readBuffer) {
+    if (!this.enabled) return;
+    this.material.uniforms.map.value = readBuffer.texture;
+    const prev = renderer.getRenderTarget();
+    renderer.setRenderTarget(this.rt);
+    this.quad.render(renderer);
+    renderer.setRenderTarget(prev);
+  }
+  dispose() { this.rt.dispose(); this.material.dispose(); this.quad.dispose(); }
+}
+
 // msaa: RenderPass samples. aoScale: AO resolution relative to the drawing buffer (capped by aoCss).
 export const QUALITY = {
   high:   { msaa: 4, ao: true, aoScale: 1.0, aoCss: 1.35, aoSamples: 16, bloom: true, maxDpr: 2, lampShadows: 2, shadowMap: 4096 },
   medium: { msaa: 2, ao: true, aoScale: 0.5, aoCss: 1.0, aoSamples: 12, bloom: false, maxDpr: 1.5, lampShadows: 0, shadowMap: 2048 },
-  low:    { msaa: 2, ao: false, aoScale: 0.5, aoCss: 1.0, aoSamples: 8, bloom: false, maxDpr: 1, lampShadows: 0, shadowMap: 1024 },
+  low:    { msaa: 2, ao: false, aoScale: 0.5, aoCss: 1.0, aoSamples: 8, bloom: false, maxDpr: 1.5, lampShadows: 0, shadowMap: 1024 },
 };
 
 export function createPost({ renderer, scene, camera, quality = 'high', aoBox = null }) {
@@ -191,15 +232,18 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
   // --- exposure metering (auto-exposure / eye adaptation)
   const meter = new MeterPass(renderer.extensions.has('EXT_color_buffer_float'));
   composer.addPass(meter);
+  const local = new LocalLumPass();
+  composer.addPass(local);
 
   // --- selection outline: thin, soft, warm white
   const outline = new OutlinePass(new THREE.Vector2(size.x, size.y), scene, camera, []);
-  outline.edgeStrength = 2.2;
-  outline.edgeGlow = 0.0;
-  outline.edgeThickness = 1.0;
+  // soft, anti-aliased 1.5 px halo with a little glow (R2-23 / D2-22), faded out after the flight
+  outline.edgeStrength = 1.5;
+  outline.edgeGlow = 0.4;
+  outline.edgeThickness = 1.5;
   outline.pulsePeriod = 0;
-  outline.visibleEdgeColor.set('#fff6e8');
-  outline.hiddenEdgeColor.set('#6e655a');
+  outline.visibleEdgeColor.set('#d9d4cc');  // ≈ white at 85 %
+  outline.hiddenEdgeColor.set('#4a453f');
   outline.downSampleRatio = 2;
   outline.enabled = false;
   composer.addPass(outline);
@@ -212,13 +256,24 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
   // --- output: white balance (linear, pre tone mapping) + tone mapping + sRGB
   const output = new OutputPass();
   output.uniforms.villarGain = { value: new THREE.Vector3(1, 1, 1) };
+  output.uniforms.villarLocal = { value: local.rt.texture };
+  output.uniforms.villarLiftRef = { value: 0 };    // ln of the pre-exposure luminance that displays at ~9 %
+  output.uniforms.villarLiftMax = { value: 0 };    // EV (0 = off)
   {
     const m = output.material;
     const a = 'gl_FragColor = texture2D( tDiffuse, vUv );';
     if (m.fragmentShader.includes(a)) {
       m.fragmentShader = m.fragmentShader
-        .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\n\t\tuniform vec3 villarGain;')
-        .replace(a, `${a}\n\t\t\tgl_FragColor.rgb *= villarGain;`);
+        .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\n\t\tuniform vec3 villarGain;\n\t\tuniform sampler2D villarLocal;\n\t\tuniform float villarLiftRef;\n\t\tuniform float villarLiftMax;')
+        .replace(a, `${a}
+			gl_FragColor.rgb *= villarGain;
+			if ( villarLiftMax > 0.0 ) {
+				float l = texture2D( villarLocal, vUv ).r;
+				float lp = log( max( dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 ) );
+				// edge-aware: a pixel much brighter than its neighbourhood (a wall beside a black TV) is not lifted → no halos
+				float k = clamp( 1.0 - ( lp - l ) * 2.0, 0.0, 1.0 );
+				gl_FragColor.rgb *= exp2( k * clamp( 0.75 * ( villarLiftRef - l ) / 0.6931, 0.0, villarLiftMax ) );
+			}`);
       m.needsUpdate = true;
     }
   }
@@ -252,9 +307,13 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
     setBloom(on, strength = 0.22) { bloomWanted = on; bloom.strength = strength; bloom.enabled = Q.bloom && on; },
     setAO(v) { aoIntensity = v; },
     setNoAO(list) { noAO = list; },
+    /** Shadow dodge: `ref` = ln(pre-exposure luminance shown at ~9 %), `max` = EV cap (0 = off). */
+    setLift(ref, max) { output.uniforms.villarLiftRef.value = ref; output.uniforms.villarLiftMax.value = max; local.enabled = max > 0; },
     /** Camera white balance as linear RGB gains (luminance-normalised). */
     setWhiteBalance(gain) { output.uniforms.villarGain.value.copy(gain); },
-    setSelection(objects) { outline.selectedObjects = objects; outline.enabled = objects.length > 0; },
+    setSelection(objects) { outline.selectedObjects = objects; outline.enabled = objects.length > 0; outline.edgeStrength = 1.5; outline.edgeGlow = 0.4; },
+    /** 0…1 visibility of the selection halo (fades out after a focus flight). */
+    setSelectionStrength(k) { outline.edgeStrength = 1.5 * k; outline.edgeGlow = 0.4 * k; outline.enabled = outline.selectedObjects.length > 0 && k > 0.01; },
     setSize(w, h) { composer.setSize(w, h); gtao.setSize(); syncSSAO(); },
     render(dt) {
       // the MSAA target must be the beauty pass's read buffer (swap parity can change with passes)
@@ -277,7 +336,7 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
     /** After a context restore: GL objects are gone; mark targets for re-creation. */
     onContextRestored() { WHITE.needsUpdate = true; },
     dispose() {
-      gtao.dispose(); outline.dispose(); bloom.dispose(); output.dispose(); meter.dispose();
+      gtao.dispose(); outline.dispose(); bloom.dispose(); output.dispose(); meter.dispose(); local.dispose();
       composer.renderTarget1.dispose(); composer.renderTarget2.dispose();
     },
   };

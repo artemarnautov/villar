@@ -64,7 +64,7 @@ export const typo = (s) => String(s ?? '').replace(/ —/g, '\u00A0—');
 /** «Тёмный орех» with non-breaking spaces inside the quotes. */
 export const quoted = (s) => {
   const v = String(s || '').trim().replace(/\s+/g, NBSP);
-  return isEn() ? `“${v}”` : `«${v}»`;
+  return isEn() ? v : `«${v}»`; // D2-15: English names style names bare ("Dark Walnut style")
 };
 
 export const mq = (q) => window.matchMedia(q);

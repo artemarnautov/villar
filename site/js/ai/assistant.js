@@ -121,8 +121,15 @@ export function mountAssistant(opts = {}) {
   const reply = el('p', { class: 'vai-reply', id: `${id}-reply` }, icon('spark', 'vai-reply-glyph'), replyText, modeTag);
   const histBtnLbl = el('span');
   const histBtn = el('button', { type: 'button', class: 'vai-hist-btn', 'aria-expanded': 'false', 'aria-controls': `${id}-hist`, hidden: true }, histBtnLbl, icon('chevron'));
-  const applied = el('ul', { class: 'vai-applied', role: 'list' });
-  const caption = el('div', { class: 'vai-caption', hidden: true }, el('div', { class: 'vai-reply-row' }, reply, histBtn), applied);
+  const applied = el('ul', { class: 'vai-applied', role: 'list', id: `${id}-applied` });
+  // D2-07: one quiet line — the reply (ellipsised), a summary chip that expands the changes inline, Undo, History.
+  const sumText = el('span', { class: 'vai-sum-text' });
+  const sumMore = el('span', { class: 'vai-sum-more' });
+  const sumBtn = el('button', { type: 'button', class: 'vai-sum', 'aria-expanded': 'false', 'aria-controls': `${id}-applied`, hidden: true }, sumText, sumMore);
+  const undoSlot = el('span', { class: 'vai-undo-slot' });
+  // PT-14: an offer from another style stays one tap away on the reply line (the dropdown hides after a reply).
+  const offerSlot = el('span', { class: 'vai-offer-slot' });
+  const caption = el('div', { class: 'vai-caption', hidden: true }, el('div', { class: 'vai-reply-row' }, reply, offerSlot, sumBtn, undoSlot, histBtn), applied);
 
   const input = el('input', {
     id: `${id}-input`, class: 'vai-input', type: 'text', autocomplete: 'off', autocapitalize: 'sentences', spellcheck: 'true',
@@ -137,7 +144,8 @@ export function mountAssistant(opts = {}) {
   const form = el('form', { class: 'vai-bar', novalidate: true }, glyph, inputLbl, el('span', { class: 'vai-field' }, input, ghost), sendBtn);
   const hint = el('p', { class: 'vai-sr', id: `${id}-hint` });
   const chipsEl = el('div', { class: 'vai-chips', role: 'group' });
-  const root = el('section', { class: 'vai', 'data-state': 'idle' }, el('div', { class: 'vai-col' }, history, caption, form, chipsEl, hint, live));
+  const barWrap = el('div', { class: 'vai-barwrap' }, form, chipsEl);
+  const root = el('section', { class: 'vai', 'data-state': 'idle' }, el('div', { class: 'vai-col' }, history, caption, barWrap, hint, live));
   container.replaceChildren(root);
 
   let paintedLang = null;
@@ -158,19 +166,22 @@ export function mountAssistant(opts = {}) {
   // ---------------------------------------------------------------- rotating placeholder
   let rot = 0, rotTimer = 0, ghostFront = ghostA;
   const ghostTexts = () => { const s = S(); return [(root.clientWidth || 999) < 520 ? s.placeholderShort : s.placeholder, ...s.examples]; };
+  let rotations = 0;
   function rotateReset() {
     clearInterval(rotTimer);
-    rot = 0;
+    rot = 0; rotations = 0;
     ghostA.textContent = ghostTexts()[0];
     ghostB.textContent = '';
     ghostA.classList.add('is-in'); ghostB.classList.remove('is-in');
     ghostFront = ghostA;
-    rotTimer = setInterval(rotateStep, ROTATE_MS);
+    // D2-21: three examples, then back to the plain placeholder and stop; never under reduced motion.
+    if (!reduced()) rotTimer = setInterval(rotateStep, ROTATE_MS);
   }
   function rotateStep() {
     if (document.hidden || input.value || root.dataset.state === 'thinking') return;
     const list = ghostTexts();
-    rot = (rot + 1) % list.length;
+    rotations++;
+    if (rotations > 3) { clearInterval(rotTimer); rot = 0; } else rot = (rot + 1) % list.length;
     const back = ghostFront === ghostA ? ghostB : ghostA;
     back.textContent = list[rot];
     if (reduced()) { ghostFront.textContent = list[rot]; return; }
@@ -187,6 +198,11 @@ export function mountAssistant(opts = {}) {
   let aiDownUntil = 0;
   let inflight = null;
   let recall = [];         // previous user inputs (ArrowUp)
+  let answered = false;    // a request was sent since the bar got focus → suggestions stay put away
+  function syncChips() {
+    const show = root.contains(document.activeElement) && !answered && !input.value && !busy && chipsEl.childElementCount > 0;
+    root.classList.toggle('show-chips', show);
+  }
 
   function setBusy(on) {
     busy = on;
@@ -198,7 +214,9 @@ export function mountAssistant(opts = {}) {
       replyText.replaceChildren(el('span', { class: 'vai-thinking' }, S().thinking, el('span', { class: 'vai-dots', 'aria-hidden': 'true' }, el('i'), el('i'), el('i'))));
       modeTag.hidden = true;
       applied.replaceChildren();
+      sumBtn.hidden = true; undoSlot.replaceChildren(); offerSlot.replaceChildren(); setOpen(false);
     }
+    syncChips();
   }
 
   function syncHistBtn() {
@@ -254,7 +272,7 @@ export function mountAssistant(opts = {}) {
       if (a.type === 'style' && typeof store.setStyle === 'function') {
         const t0 = store.total();
         if (safe(() => store.setStyle(a.styleId, { anchor: a.anchor || undefined, fresh: true }))) {
-          lines.push({ kind: 'style', text: `${lng === 'en' ? 'Style' : 'Стиль'} → ${quoted(lng, styleName(lng, sim.pack(a.styleId)))}`, delta: store.total() - t0 });
+          lines.push({ kind: 'style', text: `${lng === 'en' ? 'Style' : 'Стиль'}: ${quoted(lng, styleName(lng, sim.pack(a.styleId)))}`, delta: store.total() - t0 });
         }
       } else if (a.type === 'reset') {
         const t0 = store.total(); const was = JSON.stringify(store.state.selection);
@@ -267,7 +285,7 @@ export function mountAssistant(opts = {}) {
         if (safe(() => store.select(a.key, a.itemId, { reason: 'assistant' }))) {
           const next = store.item(a.itemId);
           const type = sim.typeOfKey(styleNow(), store.keyOf ? store.keyOf(a.key) : a.key);
-          lines.push({ kind: 'select', key: a.key, text: `${keyLabel(lng, a.key, type)} → ${itemName(lng, next).split(' — ')[0]}`, delta: ((+next?.price || 0) - (+prev?.price || 0)) * q });
+          lines.push({ kind: 'select', key: a.key, text: `${keyLabel(lng, a.key, type)}: ${itemName(lng, next).split(' — ')[0]}`, delta: ((+next?.price || 0) - (+prev?.price || 0)) * q });
         }
       } else if (a.type === 'time') {
         if (before.time !== a.name) { safe(() => callTime(a.name)); lines.push({ kind: 'time', text: TIME_LABELS[lng][a.name] || a.name }); }
@@ -307,6 +325,13 @@ export function mountAssistant(opts = {}) {
   }
 
   // ---------------------------------------------------------------- rendering a result
+  function setOpen(on) {
+    caption.classList.toggle('is-open', !!on);
+    sumBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
+    sumMore.textContent = on ? S().hide : (sumBtn.dataset.mode === 'more' ? S().more : S().show);
+  }
+  sumBtn.addEventListener('click', () => setOpen(!caption.classList.contains('is-open')));
+
   function renderApplied(batch, budget) {
     const lng = getLang();
     const items = batch.lines.map((l) => {
@@ -319,29 +344,61 @@ export function mountAssistant(opts = {}) {
       items.push(el('li', { class: `vai-chg vai-chg-budget${budget.ok ? ' is-ok' : ''}` },
         el('span', { class: 'vai-chg-text' }, budget.ok ? S().budgetOk(t, num(lng, budget.target)) : S().budgetMin(t))));
     }
+    applied.replaceChildren(...items);
+    // Summary chip: «8 замен · −11 406 AED · Показать» (only when there is more than the reply already says).
+    const selects = batch.lines.filter((l) => l.kind === 'select').length;
+    const sum = batch.lines.reduce((a, l) => a + (l.delta || 0), 0);
+    if (batch.lines.length >= 2) {
+      sumText.textContent = selects >= 2 ? S().swaps(selects, fmtDelta(lng, sum)) : S().changes(batch.lines.length, fmtDelta(lng, sum));
+      sumBtn.dataset.mode = 'list';
+      sumBtn.hidden = false;
+    } else sumBtn.hidden = true;
     const undoable = batch.lines.some((l) => ['select', 'style', 'reset', 'time', 'view'].includes(l.kind));
     if (undoable && batch.lines.length) {
       const btn = el('button', { type: 'button', class: 'vai-undo' }, icon('undo'), S().undo);
       btn.addEventListener('click', () => {
         if (undo()) {
           applied.replaceChildren(el('li', { class: 'vai-chg vai-chg-undone' }, el('span', { class: 'vai-chg-text' }, S().undone)));
+          replyText.textContent = S().undone;
+          sumBtn.hidden = true; undoSlot.replaceChildren(); setOpen(false);
           announce(S().undone);
           if (turns.length) { const last = turns[turns.length - 1]; if (last.role === 'assistant') last.content += getLang() === 'en' ? ' [the visitor undid these changes]' : ' [посетитель отменил эти изменения]'; }
           input.focus({ preventScroll: true });
         }
       });
-      items.push(el('li', { class: 'vai-undo-li' }, btn));
-    }
-    applied.replaceChildren(...items);
-    applied.hidden = !items.length;
+      undoSlot.replaceChildren(btn);
+    } else undoSlot.replaceChildren();
   }
 
+  /** Chips: plain strings are sent as text; objects carry ready actions (e.g. an offer from another style). */
   function renderChips(chips) {
     chipsEl.replaceChildren(...(chips || []).slice(0, 4).map((c) => {
-      const b = el('button', { type: 'button', class: 'vai-chip' }, c);
-      b.addEventListener('click', () => { input.value = c; syncGhost(); submit(); });
+      const label = typeof c === 'string' ? c : c?.label;
+      if (!label) return null;
+      const b = el('button', { type: 'button', class: `vai-chip${typeof c === 'object' ? ' is-offer' : ''}` }, label);
+      b.addEventListener('click', () => {
+        if (typeof c === 'string') { input.value = c; syncGhost(); submit(); } else runChip(c);
+      });
       return b;
-    }));
+    }).filter(Boolean));
+    syncChips();
+  }
+  function runChip(c) {
+    if (busy) return;
+    log.push({ who: 'user', text: c.label });
+    answered = true;
+    if (c.undo) {
+      const done = undo();
+      const msg = done ? S().undone : (getLang() === 'en' ? 'Nothing to undo yet.' : 'Пока нечего отменять.');
+      show({ text: msg, chips: defaultChipsFor() });
+      remember(c.label, msg, null);
+      return;
+    }
+    const batch = apply(Array.isArray(c.actions) ? c.actions : []);
+    if (batch.lines.length) lastBatch = { ...batch, undone: false };
+    show({ text: c.reply || '', batch, chips: defaultChipsFor() });
+    remember(c.label, c.reply || '', batch);
+    input.focus({ preventScroll: true });
   }
 
   function announce(msg) { live.textContent = ''; setTimeout(() => { live.textContent = msg; }, 40); }
@@ -352,8 +409,19 @@ export function mountAssistant(opts = {}) {
     modeTag.hidden = !mode;
     modeTag.textContent = mode || '';
     caption.classList.remove('is-new'); void caption.offsetWidth; caption.classList.add('is-new');
-    if (batch) renderApplied(batch, budget); else { applied.replaceChildren(); applied.hidden = true; }
+    setOpen(false);
+    if (batch) renderApplied(batch, budget); else { applied.replaceChildren(); sumBtn.hidden = true; undoSlot.replaceChildren(); }
+    // A long reply with nothing to list still gets a «Ещё» to read it in full.
+    requestAnimationFrame(() => {
+      if (sumBtn.hidden && (reply.scrollWidth > reply.clientWidth + 2 || reply.scrollHeight > reply.clientHeight + 2)) { sumText.textContent = ''; sumBtn.dataset.mode = 'more'; sumBtn.hidden = false; setOpen(false); }
+    });
     if (chips) renderChips(chips);
+    const offer = (chips || []).find((c) => c && typeof c === 'object' && (c.undo || (Array.isArray(c.actions) && c.actions.length)));
+    if (offer) {
+      const b = el('button', { type: 'button', class: 'vai-undo vai-offer', 'aria-label': offer.label, title: offer.label }, offer.undo ? S().back : S().go);
+      b.addEventListener('click', () => runChip(offer));
+      offerSlot.replaceChildren(b);
+    } else offerSlot.replaceChildren();
     log.push({ who: 'ai', text: text || '' });
     if (!history.hidden) renderHistory();
     syncHistBtn();
@@ -420,12 +488,14 @@ export function mountAssistant(opts = {}) {
     const text = String(textArg ?? input.value).trim().slice(0, 500);
     if (!text || busy) return;
     input.value = ''; syncGhost();
+    answered = true; syncChips();
     recall = [text, ...recall.filter((r) => r !== text)].slice(0, 20);
     log.push({ who: 'user', text });
     engage(true);
     sim = createSim(dataSet()); // packs may have changed (styles loaded later)
     const st = stateNow();
-    const local = parseLocal(text, { data: dataSet(), sim, style: st.style, selection: st.selection, view: st.view, time: st.time, lang: getLang() });
+    const prevStyle = lastBatch && !lastBatch.undone && lastBatch.before?.style !== lastBatch.after?.style && styleNow() === lastBatch.after?.style ? lastBatch.before.style : null;
+    const local = parseLocal(text, { data: dataSet(), sim, style: st.style, selection: st.selection, view: st.view, time: st.time, lang: getLang(), prevStyle });
 
     // Instant path: undo, and pure camera/light commands the local parser fully understood.
     if (local.undo || local.confidence === 'high') return runLocal(text, local);
@@ -451,17 +521,17 @@ export function mountAssistant(opts = {}) {
   }
 
   // ---------------------------------------------------------------- events
-  // Chips stay out of the way until the bar is used: revealed on focus, kept after the first exchange.
-  const engage = (on) => root.classList.toggle('is-engaged', on || log.length > 0);
-  root.addEventListener('focusin', () => engage(true));
-  root.addEventListener('focusout', (e) => { if (!root.contains(e.relatedTarget)) engage(false); });
-  root.addEventListener('pointerenter', () => { if (window.matchMedia?.('(hover: hover)').matches) engage(true); });
-  root.addEventListener('pointerleave', () => { if (!root.contains(document.activeElement)) engage(false); });
+  // D2-07: suggestions are a dropdown under the bar (no layout shift), shown while the bar has focus and is empty,
+  // and put away once a request is sent (so the answer lands in the total under it).
+  const engage = (on) => root.classList.toggle('is-engaged', !!on);
+  root.addEventListener('focusin', () => { engage(true); syncChips(); });
+  root.addEventListener('focusout', (e) => { if (!root.contains(e.relatedTarget)) { engage(false); answered = false; syncChips(); } });
   form.addEventListener('submit', (e) => { e.preventDefault(); submit(); });
-  input.addEventListener('input', syncGhost);
+  input.addEventListener('input', () => { syncGhost(); syncChips(); });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (!history.hidden) { toggleHistory(false); e.preventDefault(); }
+      if (root.classList.contains('show-chips')) { answered = true; syncChips(); e.preventDefault(); }
+      else if (!history.hidden) { toggleHistory(false); e.preventDefault(); }
       else if (input.value) { input.value = ''; syncGhost(); e.preventDefault(); }
       else input.blur();
     } else if (e.key === 'ArrowUp' && !input.value && recall.length) {
@@ -474,7 +544,7 @@ export function mountAssistant(opts = {}) {
   let boundEngine = null;
   const bindTimer = setInterval(() => {
     const e = engine();
-    if (paintedLang !== getLang()) { paintStatic(); if (!log.length) renderChips(defaultChipsFor()); }
+    if (paintedLang !== getLang()) { paintStatic(); renderChips(defaultChipsFor()); }
     if (e && e !== boundEngine && typeof e.on === 'function') { boundEngine = e; try { e.on('time', onEngineTime); e.on('view', (p) => { const v = p?.view ?? p; if (typeof v === 'string') lastView = v; }); } catch { /* ignore */ } }
   }, 1000);
 
@@ -482,7 +552,7 @@ export function mountAssistant(opts = {}) {
     const lng = getLang();
     const t = store.total?.() || 0;
     const b = Math.max(5000, Math.floor((t * 0.8) / 1000) * 1000);
-    return lng === 'en' ? ['Make it cosier', `Keep it under ${num(lng, b)}`, 'Show the evening'] : ['Сделай уютнее', `Уложись в ${num(lng, b)}`, 'Покажи вечер'];
+    return lng === 'en' ? ['Make it cosier', `Keep it under ${num(lng, b)} AED`, 'Show the evening'] : ['Сделай уютнее', `Уложись в ${num(lng, b)} AED`, 'Покажи вечер'];
   }
   paintStatic();
   renderChips(defaultChipsFor());
@@ -490,7 +560,7 @@ export function mountAssistant(opts = {}) {
   return {
     el: root,
     ask: (text) => submit(text),
-    setLang(next) { langOverride = next || null; paintStatic(); if (!log.length) renderChips(defaultChipsFor()); },
+    setLang(next) { langOverride = next || null; paintStatic(); renderChips(defaultChipsFor()); },
     focus: () => input.focus(),
     get busy() { return busy; },
     destroy() { clearInterval(rotTimer); clearInterval(bindTimer); inflight?.abort(); container.replaceChildren(); },

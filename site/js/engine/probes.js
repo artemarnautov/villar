@@ -336,7 +336,7 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
   let perFrame = useAsync ? 3 : 1;
   // missing bounces beyond the last one, extrapolated in LUMINANCE only (scaling the last bounce's chroma
   // would multiply the oak-floor colour bleed with every bounce: sepia walls, R2-02)
-  const TAIL = 0.35;
+  let TAIL = 0.35, GAIN = 1;
 
   function renderProbe(j) {
     const p = gridPos[j];
@@ -432,6 +432,7 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
           } else outSH.set(sh);
           prevSH.set(sh);
           if (chroma < 1) desaturate(outSH, chroma);
+          if (GAIN !== 1) for (let j = 0; j < N; j++) for (let i = 0; i < 27; i++) outSH[j * 28 + i] *= GAIN;
           let out = outSH;
           if (j0.subset) {
             // dirty subset: keep every other probe's converged value (incl. its extrapolated tail)
@@ -486,6 +487,9 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
     get count() { return N; },
     /** Fraction of the bounce light's colour that is kept (1 = physical). Applies from the next bake. */
     setChroma(k) { chroma = Math.max(0, Math.min(1, k)); },
+    /** Missing-bounce extrapolation (luminance) and an overall indirect gain (evening pools, R2-09). */
+    setTail(k) { TAIL = Math.max(0, k); },
+    setGain(g) { GAIN = Math.max(0, g); },
     /** A bake is waiting for its GPU readback (progress does not move meanwhile — not a stall). */
     get reading() { return !!(job && job.reading); },
     /** Copy of the last converged result (for a per-(style, time) cache). */

@@ -18,6 +18,14 @@ const TYPES = {
 const li = () => (getLang() === 'en' ? 1 : 0);
 export const typeLabel = (type) => TYPES[type]?.[li()] || t('item');
 
+/** Slots that share a type get their own name (two decor placements, three pieces of art). */
+const SLOTS = {
+  decor_coffee: ['Декор на журнальном столике', 'Coffee table decor'], decor_tv: ['Декор на ТВ-тумбе', 'TV unit decor'],
+  art_sofa: ['Картина над диваном', 'Art above the sofa'], art_bed: ['Картина над кроватью', 'Art above the bed'],
+  art_dining: ['Картина в столовой', 'Dining art'],
+};
+export const slotLabel = (slotId, type) => SLOTS[slotId]?.[li()] || typeLabel(type);
+
 /** Palette roles. */
 const ROLES = {
   walls: ['Стены', 'Walls'], wall: ['Стены', 'Walls'], base: ['База', 'Base'], background: ['Фон', 'Background'],
@@ -45,16 +53,17 @@ export const views = () => VIEW_IDS.map((v) => ({ value: v, label: t(`view.${v}`
 export const times = () => TIME_IDS.map((v) => ({ value: v, label: t(`time.${v}`) }));
 
 /** Budget zones, in reading order. A line's zone comes from its slot id, then its type. */
-export const zones = () => ['living', 'bed', 'dining', 'window'].map((id) => ({ id, label: t(`zone.${id}`) }));
+export const zones = () => ['living', 'bed', 'dining', 'window', 'entry'].map((id) => ({ id, label: t(`zone.${id}`) }));
 const ZONE_OF_TYPE = {
   sofa: 'living', cushions: 'living', coffee_table: 'living', rug: 'living', tv_unit: 'living', side_table: 'living',
   armchair: 'living', floor_lamp: 'living', throw: 'living',
   bed: 'bed', mattress: 'bed', bedding: 'bed', nightstand: 'bed', table_lamp: 'bed', nightstand_decor: 'bed',
   dining_table: 'dining', dining_chair: 'dining', pendant_lamp: 'dining', tableware: 'dining', centerpiece: 'dining', kitchen_decor: 'dining',
-  curtains: 'window', plant: 'window', runner: 'window', mirror: 'window', towels: 'window',
+  curtains: 'window', plant: 'window', runner: 'entry', mirror: 'entry', towels: 'entry',
 };
 export function zoneOf(slotId, type) {
   const id = String(slotId || '');
+  if (ZONE_OF_TYPE[type] === 'entry') return 'entry';
   if (/sofa|coffee|tv|living|armchair/.test(id)) return 'living';
   if (/bed|night/.test(id)) return 'bed';
   if (/dining|pendant|chair|kitchen|table_?ware|center/.test(id)) return 'dining';

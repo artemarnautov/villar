@@ -1,51 +1,42 @@
-# Requests from interface (site UI)
+# Requests from interface (site UI + assistant client)
 
-Phase 2 status (multi-style, focus HUD, RU/EN, assistant slot). Everything below is **optional for the UI**:
-each engine/data feature is feature-detected or has a fallback, and the page works without it.
+Round 3 status. Everything below is optional for the UI: engine/data features are feature-detected or have a
+fallback.
 
 ## To engine
 
-1. **Thanks — integrated:** `focus(slotId, { inset })`, `unfocus()`, `setInsets()`, `thumbnail(itemId, { size: 256 })`,
-   events `view`, `focus`, `context`, `fatal`. The UI creates the engine with **`autoFocus: false`** and calls
-   `focus()` itself once the HUD is laid out, so the first flight already frames the object inside the visible
-   part (desktop inset ≈ `{ right: cardWidth + 32, bottom: trayHeight + 32 }`; phones `{ bottom: panelHeight }`).
-   Esc / «Назад» / empty-space click → `unfocus()`.
-2. **Fatal:** `fatal` → dispose + 2D plan + «Попробовать 3D снова». Backstop: canvas `webglcontextlost` not restored
-   within 6.5 s (after your 5 s `fatal`).
-3. **Loading watchdog:** falls back only if `onProgress` stalls ≥ 45 s on a responsive main thread, or after 240 s.
-   QA override `?engineTimeout=<ms>`. (WIP 18:40 builds reached `ready` in 86–139 s on SwiftShader, and the main
-   thread was then blocked > 120 s, so harness screenshots time out right after `ready`.)
-4. **Keyboard scope (E15):** the UI only swallows arrows/WASD when nothing is focused (`body`); please scope your
-   window listener to `document.activeElement === canvas`.
-5. Tiers: phones `low`, tablets / iOS / touch-first / ≤ 4 cores `medium`; «Фото» only when `ready.quality === 'high'`.
+1. **Focus framing (D2-01):** the HUD is now one right-hand column on desktop. `focus(slotId, { inset })` and
+   `setInsets()` receive `{ right: <px covered from the stage's right edge, ≈ column width + 28>, bottom: 0 }` (≈ 360–390 px,
+   i.e. ≤ 28 % of the stage). Phones: `{ right: 0, bottom: <px of the stage covered by the bottom sheet> }`. Please frame
+   the whole object inside the free rect (FOV-aware distance, `setViewOffset`), as the review describes.
+2. **Canvas label (PT-05):** `index.js` hard-codes `aria-label="3D-вид квартиры"`. The UI now overwrites it on `ready` and on
+   every language switch (`t('stage.canvas')`); please drop the hard-coded string or accept a `label` option.
+3. **Thumbnails (T7):** the UI queues `thumbnail()` calls — one at a time, in idle callbacks, and none for 1.1 s after a
+   focus starts (the flight). Async readback / blob URLs on your side would remove the remaining long tasks.
+4. **Style switch (D2-08):** the UI paints the pressed chip and «Меняем стиль…» first, then calls `setStyle` a frame later.
+   Yielding between slot rebuilds (`await scheduler.yield?.()`) keeps every task under 50 ms.
+5. **Portrait Entry view (D2-19 engine part)** and **one poster per style** (PT-16): the stage shows `/assets/poster.jpg`
+   (Dark Walnut, Entry, day) until `ready`. If you render posters per style at the stage's Entry pose/FOV, name them
+   `/assets/poster-<styleId>.jpg` and tell me — the UI will then pick the saved style's poster before first paint.
+6. Keyboard scope (E15) — unchanged request.
 
 ## To data (catalog / stylepacks / palettes)
 
-1. **EN fields for packs and palettes** (RU/EN toggle): `stylepack.nameEn`, `taglineEn`, `descriptionEn`,
-   `consumerRulesEn: [{ title, body }]`; `palette.summaryEn`; `swatch.nameEn`. Missing → Russian is shown.
-2. `consumerRules: [{ title, body }]` per pack (P0-4). Dark Walnut falls back to the reviewer's four rules (RU + EN
-   in `ui/sections.js`); other packs without it show no rules block.
-3. Optional `item.shortName` / `shortNameEn`; optional `item.fact` / `factEn` (one honest, useful sentence for the
-   HUD, e.g. «Остаётся 92 см прохода»). Without them the UI derives the short name and computes a price fact.
-4. Stylepack description, last sentence «Каждый предмет реален и доступен к покупке.» reads machine-translated.
-5. Sizes in names: «200×290», «Ø100» → spaced with units, or dropped (dims are shown anyway).
+1. `uiAccent` per palette (D2-20). Until then `ui/accent.js` uses Light Oak `#4f5a46` and Mediterranean `#9a4a2c`.
+2. `consumerRules` / `consumerRulesEn` per pack (D2-14). Without them the «Правила стиля» block is hidden for that pack.
+3. `nameEn` on the Dark Walnut swatches + `summaryEn` (D2-03); `shortName` / `shortNameEn` (D2-13); optional `fact` / `factEn`.
+4. `layout.nameEn` (known #4). Until then the UI shows "Studio 38 m²" from `areaM2`.
 
 ## To coordinator
 
-1. **CSP:** `index.html` has no inline script except the import map (unchanged byte-for-byte,
-   `sha256-NutSaoNeHmtgPTLEDasezHLMqjFAq1OSEgA+/X0vykc=`). The boot-guard hash (`nKy0Lw1G…`) can go.
-2. **OG image:** `/assets/og.jpg` (1200×630). Needs the absolute production URL in `og:image` + `og:url`.
-3. `formatAED` uses a normal space; the UI uses its own NBSP + locale-aware `aed()` (`ui/dom.js`).
-
-## To assistant
-
-- Mounted per `docs/requests/assistant.md`: `ASSISTANT_MODULE = './ai/assistant.js'`, `/css/assistant.css` in `<head>`,
-  `controls: { view, time }` → `stage.setView/setTime` (dock + engine stay in sync), `onFocus` → opens the HUD.
-  The slot sits between the stage and the budget; `html.has-assistant` shrinks the stage by 68 px so stage + bar +
-  total still fit 1440×900 / 1280×800.
+1. **CSP:** still no inline script except the import map (hash unchanged: `sha256-NutSaoNeHmtgPTLEDasezHLMqjFAq1OSEgA+/X0vykc=`).
+   New: an **external** `/js/boot.js` (classic, sync, last in `<body>`) sets `<html lang>` and the English static text before
+   the first paint (PT-05). It is covered by `script-src 'self'`; no hash needed.
+2. `tools/test-ai.mjs`: 206/206 after the catalog update (the decor_set parity failure is gone).
+   (store/data, not the assistant client).
+3. Lead form: wired to `POST /api/lead` per your spec (honeypot `company`, `openedMs`, snapshot style + selection).
 
 ## Resolved
 
-- Vendor: `three-mesh-bvh/src` generated modules (engine). `probes.setEnabled` (engine, fixed in the 18:40 rewrite).
-- QA-01 (ghost click after tap), QA-04 (focus after swap / Esc), QA-11 (1.5 cm), QA-14 (skip-link focus target),
-  QA-16, QA-17 — fixed in the UI.
+- QA-01, QA-04, QA-11, QA-14, QA-16, QA-17, D2-01…D2-21 UI parts (see the round-3 report), PT-05 UI parts, PT-14, PT-15,
+  PT-17, PT-18 (lead form), T7 UI side, PT-01 UI side (style-switch undo toast).
