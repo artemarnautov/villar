@@ -72,6 +72,31 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
   const sel = () => selections[active];
   const keyOf = (x) => keyIn(pack(), x);
 
+  /** Apply a full selection for a pack (style switch or restore); emits 'style' then one 'change' per key. */
+  function applyStyle(styleId, selection, { anchor = null, reason = 'style' } = {}) {
+    const prevStyle = active;
+    const prevSel = { ...sel() };
+    const prevKeyOfSlot = Object.fromEntries(layout.slots.map((s) => [s.id, keyOf(s.id)]));
+    active = styleId;
+    selections[styleId] = selection;
+    save();
+    const changes = [];
+    const seen = new Set();
+    for (const s of layout.slots) {
+      const key = keyOf(s.id);
+      if (seen.has(key)) continue; seen.add(key);
+      const slots = slotsForKeyIn(pack(), key);
+      const prevItems = new Set(slots.map((x) => prevSel[prevKeyOfSlot[x.id]]));
+      const itemId = selection[key];
+      if (prevItems.size !== 1 || !prevItems.has(itemId)) {
+        changes.push({ key, slotType: s.type, slots: slots.map((x) => x.id), itemId, prev: [...prevItems][0] || null });
+      }
+    }
+    emit('style', { styleId, prev: prevStyle, anchor, changes, reason });
+    for (const c of changes) emit('change', { ...c, reason });
+    return true;
+  }
+
   const store = {
     get state() { return { catalog, layout, packs, style: active, stylepack: pack(), selection: sel() }; },
 
@@ -98,11 +123,13 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
     },
 
     /** What switching to `styleId` (optionally keeping an anchor item) would select — without applying. */
-    previewStyle(styleId, anchor) {
+    previewStyle(styleId, anchor, { fresh = false } = {}) {
       const target = packs[styleId];
       if (!target) return null;
-      // A style switch lands on the pack's curated set (designer-correct), plus the anchor and its pairings.
-      const next = { ...defaultsOf[styleId] };
+      // A style switch lands on that pack's set as the customer last left it (its curated defaults if never
+      // touched — designer-correct), plus the anchor and its pairings. Going away and back never loses picks.
+      // `fresh` = the curated set only (the AI's predictions in ai/core.js assume it, so its totals stay exact).
+      const next = fresh ? { ...defaultsOf[styleId] } : { ...defaultsOf[styleId], ...selections[styleId] };
       let anchorKey = null;
       if (anchor?.itemId) {
         anchorKey = keyIn(target, anchor.slotId || anchor.key || store.item(anchor.itemId)?.type);
@@ -118,30 +145,26 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
     },
 
     /** Switch the whole room to another style pack (keeping an optional anchor item). */
-    setStyle(styleId, { anchor } = {}) {
-      const pv = store.previewStyle(styleId, anchor);
+    setStyle(styleId, { anchor, fresh = false } = {}) {
+      const pv = store.previewStyle(styleId, anchor, { fresh });
       if (!pv) { console.warn(`[store] unknown style ${styleId}`); return false; }
-      const prevStyle = active;
-      const prevSel = { ...sel() };
-      const prevKeyOfSlot = Object.fromEntries(layout.slots.map((s) => [s.id, keyOf(s.id)]));
-      active = styleId;
-      selections[styleId] = pv.selection;
-      save();
-      const changes = [];
-      const seen = new Set();
-      for (const s of layout.slots) {
-        const key = keyOf(s.id);
-        if (seen.has(key)) continue; seen.add(key);
-        const slots = slotsForKeyIn(pack(), key);
-        const prevItems = new Set(slots.map((x) => prevSel[prevKeyOfSlot[x.id]]));
-        const itemId = pv.selection[key];
-        if (prevItems.size !== 1 || !prevItems.has(itemId)) {
-          changes.push({ key, slotType: s.type, slots: slots.map((x) => x.id), itemId, prev: [...prevItems][0] || null });
-        }
+      return applyStyle(styleId, pv.selection, { anchor: anchor || null });
+    },
+
+    /**
+     * Put back an exact earlier state from snapshot() — style and every pick — e.g. "Undo" after a style switch.
+     * Emits the same 'style'/'change' events as setStyle/select (reason 'restore') so the 3D follows.
+     */
+    restore(snap) {
+      if (!snap || !packs[snap.style]) return false;
+      const ps = packs[snap.style].slots || {};
+      const next = { ...defaultsOf[snap.style], ...selections[snap.style] };
+      for (const [k, id] of Object.entries(snap.selection || {})) if (ps[k]?.options?.includes(id) && byId.has(id)) next[k] = id;
+      if (snap.style === active) {
+        for (const [k, id] of Object.entries(next)) if (sel()[k] !== id) store.select(k, id, { reason: 'restore' });
+        return true;
       }
-      emit('style', { styleId, prev: prevStyle, anchor: anchor || null, changes });
-      for (const c of changes) emit('change', { ...c, reason: 'style' });
-      return true;
+      return applyStyle(snap.style, next, { anchor: null, reason: 'restore' });
     },
 
     // ---------------- selection within the active style ----------------

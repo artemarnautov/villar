@@ -253,7 +253,7 @@ export function mountAssistant(opts = {}) {
     for (const a of actions) {
       if (a.type === 'style' && typeof store.setStyle === 'function') {
         const t0 = store.total();
-        if (safe(() => store.setStyle(a.styleId, { anchor: a.anchor || undefined }))) {
+        if (safe(() => store.setStyle(a.styleId, { anchor: a.anchor || undefined, fresh: true }))) {
           lines.push({ kind: 'style', text: `${lng === 'en' ? 'Style' : 'Стиль'} → ${quoted(lng, styleName(lng, sim.pack(a.styleId)))}`, delta: store.total() - t0 });
         }
       } else if (a.type === 'reset') {
@@ -277,16 +277,27 @@ export function mountAssistant(opts = {}) {
         safe(() => callFocus(a.slotId));
       }
     }
-    return { before, lines };
+    // What the AI left behind: Undo reverts only picks that are still exactly as the AI set them.
+    const after = { ...stateNow() };
+    return { before, after, lines };
   }
 
   function undo() {
     const b = lastBatch;
     if (!b || b.undone) return false;
     try {
-      if (b.before.style && styleNow() !== b.before.style && typeof store.setStyle === 'function') store.setStyle(b.before.style);
-      for (const [key, itemId] of Object.entries(b.before.selection || {})) {
-        if (store.state.selection[key] !== itemId) store.select(key, itemId, { reason: 'undo' });
+      const styleChanged = b.after?.style && b.before.style && b.after.style !== b.before.style;
+      if (styleChanged && styleNow() === b.after.style && typeof store.restore === 'function') {
+        // The AI switched style: go back to the previous style exactly as it was (picks made in the new style
+        // since then stay remembered there — nothing is lost).
+        store.restore({ style: b.before.style, selection: b.before.selection });
+      } else if (!styleChanged || styleNow() === b.before.style) {
+        // Same style: revert only the picks the AI made that the customer hasn't changed since.
+        for (const [key, itemId] of Object.entries(b.before.selection || {})) {
+          const aiSet = b.after?.selection?.[key];
+          const now = store.state.selection[key];
+          if (now !== itemId && (aiSet === undefined || now === aiSet)) store.select(key, itemId, { reason: 'undo' });
+        }
       }
       if (b.lines.some((l) => l.kind === 'time') && b.before.time) callTime(b.before.time);
       if (b.lines.some((l) => l.kind === 'view') && b.before.view) callView(b.before.view);
