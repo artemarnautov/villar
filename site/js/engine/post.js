@@ -1,6 +1,10 @@
 // Villar engine — post-processing. Owner: engine.
-// RenderPass (MSAA HalfFloat) → GTAO (half-res, contact shadows) → Outline (selection) →
-// Bloom (lamps only, high tier) → OutputPass (tone mapping + sRGB).
+//
+//   GTAO (G-buffer + AO + Poisson denoise, BEFORE the beauty pass) → RenderPass (MSAA HalfFloat;
+//   materials sample the AO in a patched `aomap_fragment`, so it only occludes *indirect* light,
+//   never sun or lamps) → Meter (auto-exposure) → Outline (selection) → Bloom (lamps) →
+//   Output (camera white balance in linear HDR, tone mapping, sRGB).
+// Only the RenderPass target is multisampled; the ping-pong partner has samples = 0.
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -9,6 +13,71 @@ import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Pass, FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
+
+// ----------------------------------------------------------------------------- shader patches
+// Screen-space AO applied to indirect light only (UE/Unity style). Materials opt in through the
+// VILLAR_SSAO define (+ shared uniforms via onBeforeCompile, see attachSSAO), so captures, probe
+// bakes and thumbnails — which render outside post.render(), where the intensity is 0 — are unaffected.
+const SSAO = {
+  villarSSAO: { value: null },
+  villarSSAOInv: { value: new THREE.Vector2(1, 1) },
+  villarSSAOIntensity: { value: 0 },
+};
+let chunksPatched = false;
+function patchChunks() {
+  if (chunksPatched) return; chunksPatched = true;
+  const C = THREE.ShaderChunk;
+  C.aomap_pars_fragment = `${C.aomap_pars_fragment}
+#ifdef VILLAR_SSAO
+	uniform sampler2D villarSSAO;
+	uniform vec2 villarSSAOInv;
+	uniform float villarSSAOIntensity;
+#endif`;
+  C.aomap_fragment = `#ifdef VILLAR_SSAO
+	{
+		float villarAO = mix( 1.0, texture2D( villarSSAO, gl_FragCoord.xy * villarSSAOInv ).r, villarSSAOIntensity );
+		reflectedLight.indirectDiffuse *= villarAO;
+		#if defined( USE_ENVMAP ) && defined( STANDARD )
+			reflectedLight.indirectSpecular *= computeSpecularOcclusion( saturate( dot( geometryNormal, geometryViewDir ) ), villarAO, material.roughness );
+		#endif
+	}
+#endif
+${C.aomap_fragment}`;
+  // "AgX Punchy"-style look (contrast power / saturation in AgX log space) as CustomToneMapping
+  const tm = C.tonemapping_pars_fragment;
+  const custom = 'vec3 CustomToneMapping( vec3 color ) { return color; }';
+  if (tm.includes(custom) && tm.includes('color = agxDefaultContrastApprox( color );')) {
+    const agx = tm.slice(tm.indexOf('vec3 AgXToneMapping( vec3 color ) {'), tm.indexOf('vec3 NeutralToneMapping'));
+    const look = agx
+      .replace('vec3 AgXToneMapping( vec3 color ) {', 'vec3 CustomToneMapping( vec3 color ) {')
+      .replace('color = agxDefaultContrastApprox( color );', `color = agxDefaultContrastApprox( color );
+	{
+		float luma = dot( color, vec3( 0.2126, 0.7152, 0.0722 ) );
+		color = pow( max( color, vec3( 0.0 ) ), vec3( VILLAR_AGX_POWER ) );
+		color = luma + VILLAR_AGX_SAT * ( color - luma );
+	}`);
+    C.tonemapping_pars_fragment = tm.replace(custom, `#ifndef VILLAR_AGX_POWER
+	#define VILLAR_AGX_POWER 1.3
+	#define VILLAR_AGX_SAT 1.25
+#endif
+${look}`);
+  }
+}
+
+const WHITE = (() => { const t = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1); t.needsUpdate = true; return t; })();
+
+/** Opt a scene material into indirect-only SSAO (idempotent). Opaque lit materials only. */
+export function attachSSAO(material) {
+  if (!material || material.userData.villarSSAO || material.transparent || !(material.isMeshStandardMaterial || material.isMeshLambertMaterial || material.isMeshPhongMaterial)) return;
+  material.userData.villarSSAO = true;
+  material.defines = { ...(material.defines || {}), VILLAR_SSAO: '' };
+  const prev = material.onBeforeCompile;
+  material.onBeforeCompile = function (shader, renderer) {
+    if (prev && prev !== THREE.Material.prototype.onBeforeCompile) prev.call(this, shader, renderer);
+    Object.assign(shader.uniforms, SSAO);
+  };
+  material.needsUpdate = true;
+}
 
 /** Writes centre-weighted log-luminance of the HDR frame into a 32×20 float target (on request). */
 class MeterPass extends Pass {
@@ -26,15 +95,23 @@ class MeterPass extends Pass {
         uniform sampler2D map; varying vec2 vUv;
         void main() {
           vec2 o = vec2( 0.25 ) / vec2( 32.0, 20.0 );
-          float L = 0.0;
+          float L = 0.0, cw = 0.0, rg = 0.0, bg = 0.0;
           for ( int i = 0; i < 4; i ++ ) {
             vec2 j = vec2( i % 2 == 0 ? -o.x : o.x, i < 2 ? -o.y : o.y );
             vec3 c = texture2D( map, vUv + j ).rgb;
-            L += log( max( dot( c, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 ) );
+            c = clamp( c == c ? c : vec3( 0.0 ), vec3( 1e-4 ), vec3( 1e4 ) );   // NaN-safe
+            float l = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
+            L += log( l );
+            // AWB: near-neutral, not-too-bright surfaces vote (white walls, ceiling); saturated
+            // materials (oak floor, terracotta) and the sky / sun patches barely do (white-patch-ish)
+            float a = log( c.r / c.g ), b = log( c.b / c.g );
+            float k = exp( - 2.0 * ( abs( a ) + abs( b ) ) ) * ( l < 0.6 ? 1.0 : 0.08 );
+            cw += k; rg += a * k; bg += b * k;
           }
           vec2 d = ( vUv - vec2( 0.5, 0.48 ) ) * vec2( 1.3, 1.6 );
           float w = exp( - dot( d, d ) * 3.0 );
-          gl_FragColor = vec4( L * 0.25 * w, w, 0.0, 1.0 );
+          // R: log-luminance · w   G: chroma weight · w   B, A: weighted log chroma · w  (Σw is analytic)
+          gl_FragColor = vec4( L * 0.25 * w, cw * 0.25 * w, rg * 0.25 * w, bg * 0.25 * w );
         }`,
       depthTest: false, depthWrite: false, toneMapped: false,
     });
@@ -53,45 +130,59 @@ class MeterPass extends Pass {
   dispose() { this.rt.dispose(); this.material.dispose(); this.quad.dispose(); }
 }
 
+// msaa: RenderPass samples. aoScale: AO resolution relative to the drawing buffer (capped by aoCss).
 export const QUALITY = {
-  high:   { msaa: 4, ao: true, aoScale: 0.5, bloom: true, maxDpr: 2 },
-  medium: { msaa: 4, ao: true, aoScale: 0.5, bloom: false, maxDpr: 1.5 },
-  low:    { msaa: 2, ao: false, aoScale: 0.5, bloom: false, maxDpr: 1 },
+  high:   { msaa: 4, ao: true, aoScale: 1.0, aoCss: 1.35, aoSamples: 16, bloom: true, maxDpr: 2, lampShadows: 2, shadowMap: 4096 },
+  medium: { msaa: 2, ao: true, aoScale: 0.5, aoCss: 1.0, aoSamples: 12, bloom: false, maxDpr: 1.5, lampShadows: 0, shadowMap: 2048 },
+  low:    { msaa: 2, ao: false, aoScale: 0.5, aoCss: 1.0, aoSamples: 8, bloom: false, maxDpr: 1, lampShadows: 0, shadowMap: 1024 },
 };
 
 export function createPost({ renderer, scene, camera, quality = 'high', aoBox = null }) {
+  patchChunks();
   let Q = QUALITY[quality] || QUALITY.high;
   const size = renderer.getDrawingBufferSize(new THREE.Vector2());
   const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: Q.msaa });
   rt.texture.name = 'villar.hdr';
   const composer = new EffectComposer(renderer, rt);
   composer.setPixelRatio(1); // we size in drawing-buffer pixels ourselves
+  // only the beauty pass needs MSAA; the ping-pong partner is single-sampled, without depth
+  composer.renderTarget2.samples = 0;
+  composer.renderTarget2.depthBuffer = false;
 
-  const renderPass = new RenderPass(scene, camera);
-  composer.addPass(renderPass);
-
-  // --- GTAO (half resolution, world-space radius), glass/skyline excluded
-  const gtao = new GTAOPass(scene, camera, Math.max(1, size.x >> 1), Math.max(1, size.y >> 1));
-  gtao.output = GTAOPass.OUTPUT.Default;
-  gtao.blendIntensity = 0.85;
-  gtao.updateGtaoMaterial({ radius: 0.32, distanceExponent: 1.6, thickness: 1.2, scale: 1.0, samples: 16, distanceFallOff: 1.0, screenSpaceRadius: false });
-  gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, radiusExponent: 1, rings: 2, samples: 16 });
+  // --- GTAO first: AO only (output Off), consumed by materials during the beauty pass
+  const aoSize = () => {
+    const s = renderer.getDrawingBufferSize(new THREE.Vector2());
+    const dpr = renderer.getPixelRatio();
+    const k = Math.min(Q.aoScale, Q.aoCss / Math.max(1, dpr));
+    return [Math.max(1, Math.round(s.x * k)), Math.max(1, Math.round(s.y * k))];
+  };
+  const [aw, ah] = aoSize();
+  const gtao = new GTAOPass(scene, camera, aw, ah);
+  gtao.output = GTAOPass.OUTPUT.Off;
+  gtao.needsSwap = false;
+  gtao.updateGtaoMaterial({ radius: 0.25, distanceExponent: 1.5, thickness: 0.5, scale: 1.0, samples: Q.aoSamples, distanceFallOff: 1.0, screenSpaceRadius: false });
+  gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 0.06, normalPhi: 12, radius: 3, radiusExponent: 1, rings: 2, samples: 16 });
   if (aoBox) gtao.setSceneClipBox(aoBox);
   const gtaoSetSize = gtao.setSize.bind(gtao);
-  gtao.setSize = (w, h) => gtaoSetSize(Math.max(1, Math.round(w * Q.aoScale)), Math.max(1, Math.round(h * Q.aoScale)));
+  gtao.setSize = () => { const [w, h] = aoSize(); gtaoSetSize(w, h); };
+  let noAO = [];
   const gtaoRender = gtao.render.bind(gtao);
-  const hiddenForAO = [];
   gtao.render = (r, wb, rb, dt, mask) => {
-    // hide glass + exterior during the AO G-buffer pass
-    scene.traverse((o) => { if (o.userData.noAO && o.visible) { o.visible = false; hiddenForAO.push(o); } });
+    // glass + exterior don't take part in the AO G-buffer (precomputed list, no traversal)
+    const hidden = [];
+    for (const o of noAO) if (o.visible) { o.visible = false; hidden.push(o); }
     const bg = scene.background; scene.background = null;
-    gtaoRender(r, wb, rb, dt, mask);
-    scene.background = bg;
-    for (const o of hiddenForAO) o.visible = true;
-    hiddenForAO.length = 0;
+    try { gtaoRender(r, wb, rb, dt, mask); } finally {
+      scene.background = bg;
+      for (const o of hidden) o.visible = true;
+    }
   };
   gtao.enabled = Q.ao;
   composer.addPass(gtao);
+  let aoIntensity = 0.7;
+
+  const renderPass = new RenderPass(scene, camera);
+  composer.addPass(renderPass);
 
   // --- exposure metering (auto-exposure / eye adaptation)
   const meter = new MeterPass(renderer.extensions.has('EXT_color_buffer_float'));
@@ -114,26 +205,62 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
   bloom.enabled = false;
   composer.addPass(bloom);
 
+  // --- output: white balance (linear, pre tone mapping) + tone mapping + sRGB
   const output = new OutputPass();
+  output.uniforms.villarGain = { value: new THREE.Vector3(1, 1, 1) };
+  {
+    const m = output.material;
+    const a = 'gl_FragColor = texture2D( tDiffuse, vUv );';
+    if (m.fragmentShader.includes(a)) {
+      m.fragmentShader = m.fragmentShader
+        .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\n\t\tuniform vec3 villarGain;')
+        .replace(a, `${a}\n\t\t\tgl_FragColor.rgb *= villarGain;`);
+      m.needsUpdate = true;
+    }
+  }
   composer.addPass(output);
 
   let bloomWanted = false;
+  const sizeV = new THREE.Vector2();
+
+  function syncSSAO() {
+    const on = gtao.enabled;
+    SSAO.villarSSAO.value = on ? gtao.pdRenderTarget.texture : WHITE;
+    renderer.getDrawingBufferSize(sizeV);
+    SSAO.villarSSAOInv.value.set(1 / Math.max(1, sizeV.x), 1 / Math.max(1, sizeV.y));
+  }
+  syncSSAO();
 
   return {
     composer, renderPass, gtao, outline, bloom, output, rt, meter,
     get quality() { return quality; },
+    get settings() { return Q; },
     setQuality(q) {
       quality = q; Q = QUALITY[q] || QUALITY.high;
       gtao.enabled = Q.ao;
+      gtao.updateGtaoMaterial({ samples: Q.aoSamples });
       bloom.enabled = Q.bloom && bloomWanted;
-      if (rt.samples !== Q.msaa) { rt.samples = Q.msaa; composer.renderTarget2.samples = Q.msaa; rt.dispose(); composer.renderTarget2.dispose(); }
+      if (rt.samples !== Q.msaa) { rt.samples = Q.msaa; rt.dispose(); }
       const s = renderer.getDrawingBufferSize(new THREE.Vector2());
       this.setSize(s.x, s.y);
     },
-    setBloom(on) { bloomWanted = on; bloom.enabled = Q.bloom && on; },
+    /** strength: 0.22 for the walk view, 0.1 in the dollhouse (lamps stay lamps, not white discs). */
+    setBloom(on, strength = 0.22) { bloomWanted = on; bloom.strength = strength; bloom.enabled = Q.bloom && on; },
+    setAO(v) { aoIntensity = v; },
+    setNoAO(list) { noAO = list; },
+    /** Camera white balance as linear RGB gains (luminance-normalised). */
+    setWhiteBalance(gain) { output.uniforms.villarGain.value.copy(gain); },
     setSelection(objects) { outline.selectedObjects = objects; outline.enabled = objects.length > 0; },
-    setSize(w, h) { composer.setSize(w, h); },
-    render(dt) { composer.render(dt); },
+    setSize(w, h) { composer.setSize(w, h); gtao.setSize(); syncSSAO(); },
+    render(dt) {
+      // the MSAA target must be the beauty pass's read buffer (swap parity can change with passes)
+      if (composer.readBuffer !== rt) composer.swapBuffers();
+      syncSSAO();
+      SSAO.villarSSAOIntensity.value = gtao.enabled ? aoIntensity : 0;
+      try { composer.render(dt); } finally { SSAO.villarSSAOIntensity.value = 0; }
+    },
+    /** After a context restore: GL objects are gone; mark targets for re-creation. */
+    onContextRestored() { WHITE.needsUpdate = true; },
     dispose() {
       gtao.dispose(); outline.dispose(); bloom.dispose(); output.dispose(); meter.dispose();
       composer.renderTarget1.dispose(); composer.renderTarget2.dispose();

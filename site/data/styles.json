@@ -4,6 +4,18 @@
     {
       "id": "dark-walnut",
       "file": "stylepack-dark-walnut.json"
+    },
+    {
+      "id": "light-oak",
+      "file": "stylepack-light-oak.json"
+    },
+    {
+      "id": "greige-luxe",
+      "file": "stylepack-greige-luxe.json"
+    },
+    {
+      "id": "mediterranean",
+      "file": "stylepack-mediterranean.json"
     }
   ]
 }

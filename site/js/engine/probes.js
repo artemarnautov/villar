@@ -1,14 +1,22 @@
 // Villar engine — baked irradiance volume (spatially varying GI for the raster path). Owner: engine.
 //
-// three r187's WebGLRenderer natively shades `isLightProbeGrid` objects (SH9 irradiance per cell,
-// trilinear in a 3D atlas) but the helper class isn't vendored, so we build the grid ourselves:
-//   1. cube faces (16²) are rendered at every probe position into one atlas render target
-//      (probes inside furniture / built-ins are nudged out, the grid point stays put),
-//   2. a fragment pass projects every probe's 6×16² texels onto SH9 (GPU, no per-probe readback),
-//   3. 7 RGBA texels per probe are read back asynchronously and written into the HalfFloat
-//      Data3DTexture layout the renderer expects (7 coefficient blocks of nz+2 padded slices).
-// Baking is progressive (time-budgeted per frame) so it never blocks interaction.
+// three r187's WebGLRenderer natively shades `isLightProbeGrid` objects (SH9 per cell, 3D atlas) but
+// the helper class isn't vendored, so we build the grid ourselves:
+//   1. cube faces (12²) are rendered at every *valid* probe into a HalfFloat atlas (RGBA16F is
+//      renderable + blendable with EXT_color_buffer_float alone — no EXT_float_blend, i.e. iOS-safe),
+//   2. the atlas is copied to a Float32 target (no blending involved) and read back
+//      (async PBO on GPUs, per-probe strips on software rasterisers),
+//   3. SH9 is projected on the CPU, invalid probes are dilated from valid neighbours, and the
+//      result goes into the HalfFloat Data3DTexture layout the renderer expects (7 RGBA texels per
+//      probe; the spare 28th float stores the probe's validity).
+//   4. A global chunk patch replaces three's plain trilinear lookup with 8 manual corner fetches
+//      weighted by trilinear × validity × a DDGI-style back-face term, so light no longer bleeds
+//      through partitions, built-ins or from probes buried in furniture.
+// The grid object is *always* in the scene (never toggled) so program keys never change: before the
+// first bake it carries a constant ambient SH, during the first bounce a zero SH. Baking is
+// progressive, supports dirty subsets and never throws into the caller.
 import * as THREE from 'three';
+import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
 
 const FACES = [
   { F: [1, 0, 0], U: [0, 1, 0] }, { F: [-1, 0, 0], U: [0, 1, 0] },
@@ -22,7 +30,7 @@ const FACES = [
 class ProbeGrid extends THREE.Object3D {
   constructor() {
     super();
-    this.isLight = true;           // so the renderer collects it with the lights
+    this.isLight = true;           // collected with the lights by the renderer
     this.isLightProbeGrid = true;
     this.type = 'LightProbeGrid';
     this.texture = null;
@@ -33,11 +41,12 @@ class ProbeGrid extends THREE.Object3D {
   }
 }
 
-/** Global chunk patch: inside a probe grid the PMREM environment only provides reflections. */
+// ----------------------------------------------------------------------------- shader patches
 let patched = false;
 export function patchProbeChunks() {
   if (patched) return; patched = true;
   const C = THREE.ShaderChunk;
+  // 1. inside a probe grid the PMREM environment only provides reflections (no double diffuse)
   const from = 'iblIrradiance += getIBLIrradiance( geometryNormal );';
   if (C.lights_fragment_maps.includes(from)) {
     C.lights_fragment_maps = C.lights_fragment_maps.replace(from, `#if NUM_LIGHT_PROBE_GRIDS > 0
@@ -46,145 +55,274 @@ export function patchProbeChunks() {
 			${from}
 		#endif`);
   }
+  // 2. weighted 8-corner lookup (validity × back-face × trilinear) instead of hardware trilinear
+  const src = C.lightprobes_pars_fragment;
+  const start = src.indexOf('vec3 getLightProbeGridIrradiance(');
+  const end = src.lastIndexOf('#endif');
+  if (start < 0 || end < start) return;
+  C.lightprobes_pars_fragment = src.slice(0, start) + /* glsl */`
+vec3 villarSHIrradiance( vec3 c0, vec3 c1, vec3 c2, vec3 c3, vec3 c4, vec3 c5, vec3 c6, vec3 c7, vec3 c8, vec3 n ) {
+	float x = n.x, y = n.y, z = n.z;
+	vec3 r = c0 * 0.886227;
+	r += c1 * 2.0 * 0.511664 * y;
+	r += c2 * 2.0 * 0.511664 * z;
+	r += c3 * 2.0 * 0.511664 * x;
+	r += c4 * 2.0 * 0.429043 * x * y;
+	r += c5 * 2.0 * 0.429043 * y * z;
+	r += c6 * ( 0.743125 * z * z - 0.247708 );
+	r += c7 * 2.0 * 0.429043 * x * z;
+	r += c8 * 0.429043 * ( x * x - y * y );
+	return max( r, vec3( 0.0 ) );
+}
+vec3 getLightProbeGridIrradiance( highp sampler3D probesSH, vec3 probesMin, vec3 probesMax, vec3 probesResolution, vec3 worldPos, vec3 worldNormal ) {
+	ivec3 res = ivec3( probesResolution + 0.5 );
+	vec3 spacing = ( probesMax - probesMin ) / probesResolution;
+	vec3 p = worldPos + worldNormal * spacing * 0.3;
+	vec3 g = clamp( ( p - probesMin ) / spacing - 0.5, vec3( 0.0 ), vec3( res - 1 ) );
+	ivec3 base = min( ivec3( floor( g ) ), max( res - 2, ivec3( 0 ) ) );
+	vec3 f = clamp( g - vec3( base ), 0.0, 1.0 );
+	int pad = res.z + 2;
+	vec3 s0 = vec3( 0 ), s1 = vec3( 0 ), s2 = vec3( 0 ), s3 = vec3( 0 ), s4 = vec3( 0 ), s5 = vec3( 0 ), s6 = vec3( 0 ), s7 = vec3( 0 ), s8 = vec3( 0 );
+	float wsum = 0.0;
+	for ( int i = 0; i < 8; i ++ ) {
+		ivec3 o = ivec3( i & 1, ( i >> 1 ) & 1, ( i >> 2 ) & 1 );
+		ivec3 q = min( base + o, res - 1 );
+		vec3 tri = mix( 1.0 - f, f, vec3( o ) );
+		float w = tri.x * tri.y * tri.z;
+		vec3 dir = probesMin + ( vec3( q ) + 0.5 ) * spacing - worldPos;
+		float dl = length( dir );
+		float bf = dl > 1e-4 ? ( dot( dir / dl, worldNormal ) + 1.0 ) * 0.5 : 1.0;
+		w *= bf * bf + 0.05;
+		int zb = q.z + 1;
+		vec4 t0 = texelFetch( probesSH, ivec3( q.x, q.y, zb ), 0 );
+		vec4 t1 = texelFetch( probesSH, ivec3( q.x, q.y, zb + pad ), 0 );
+		vec4 t2 = texelFetch( probesSH, ivec3( q.x, q.y, zb + 2 * pad ), 0 );
+		vec4 t3 = texelFetch( probesSH, ivec3( q.x, q.y, zb + 3 * pad ), 0 );
+		vec4 t4 = texelFetch( probesSH, ivec3( q.x, q.y, zb + 4 * pad ), 0 );
+		vec4 t5 = texelFetch( probesSH, ivec3( q.x, q.y, zb + 5 * pad ), 0 );
+		vec4 t6 = texelFetch( probesSH, ivec3( q.x, q.y, zb + 6 * pad ), 0 );
+		w *= max( t6.w, 0.0 ) + 1e-4;
+		s0 += w * t0.xyz; s1 += w * vec3( t0.w, t1.xy ); s2 += w * vec3( t1.zw, t2.x ); s3 += w * t2.yzw;
+		s4 += w * t3.xyz; s5 += w * vec3( t3.w, t4.xy ); s6 += w * vec3( t4.zw, t5.x ); s7 += w * t5.yzw; s8 += w * t6.xyz;
+		wsum += w;
+	}
+	float iw = 1.0 / max( wsum, 1e-6 );
+	return villarSHIrradiance( s0 * iw, s1 * iw, s2 * iw, s3 * iw, s4 * iw, s5 * iw, s6 * iw, s7 * iw, s8 * iw, worldNormal );
+}
+` + src.slice(end);
 }
 
+// ----------------------------------------------------------------------------- volume
 export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceSize = 12, obstacles = () => [] }) {
   patchProbeChunks();
   const [nx, ny, nz] = res;
   const N = nx * ny * nz;
   const S = faceSize;
+  const cols = 6 * S;
   const grid = new ProbeGrid();
   grid.name = 'probe-grid';
   grid.boundingBox.copy(box);
   grid.resolution.set(nx, ny, nz);
   scene.add(grid);
+  // GI capture needs renderable float colour (WebGL2 + EXT_color_buffer_float); no float *blending*
+  const supported = renderer.extensions.has('EXT_color_buffer_float');
 
-  // atlas: probe j occupies row j, faces side by side
-  const cols = 6 * S;
-  // float targets need EXT_float_blend too (transparent glass is blended into the atlas)
-  const floatRT = renderer.extensions.has('EXT_color_buffer_float') && renderer.extensions.has('EXT_float_blend');
-  const atlas = new THREE.WebGLRenderTarget(cols, N * S, {
-    type: floatRT ? THREE.FloatType : THREE.HalfFloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false, depthBuffer: true,
-  });
-  atlas.texture.name = 'probe-atlas';
-  const cam = new THREE.PerspectiveCamera(90, 1, 0.03, 9000);
-
-  // per-texel SH9 basis × solid-angle weight, shared by all probes (CPU projection)
-  const T = 6 * S * S;
-  const basis = new Float32Array(T * 9);
-  let wsum = 0;
-  for (let f = 0; f < 6; f++) for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
-    const u = ((px + 0.5) / S) * 2 - 1, v = ((py + 0.5) / S) * 2 - 1;
-    const { F, R, U } = FACES[f];
-    let x = F.x + u * R.x + v * U.x, y = F.y + u * R.y + v * U.y, z = F.z + u * R.z + v * U.z;
-    const l2 = x * x + y * y + z * z, w = 1 / (l2 * Math.sqrt(l2)), il = 1 / Math.sqrt(l2);
-    x *= il; y *= il; z *= il;
-    const b = ((f * S + py) * S + px) * 9;
-    basis[b] = 0.282095 * w; basis[b + 1] = 0.488603 * y * w; basis[b + 2] = 0.488603 * z * w; basis[b + 3] = 0.488603 * x * w;
-    basis[b + 4] = 1.092548 * x * y * w; basis[b + 5] = 1.092548 * y * z * w; basis[b + 6] = 0.315392 * (3 * z * z - 1) * w;
-    basis[b + 7] = 1.092548 * x * z * w; basis[b + 8] = 0.546274 * (x * x - y * y) * w;
-    wsum += w;
-  }
-  const norm = (4 * Math.PI) / wsum;
-  const atlasBuf = new Float32Array(cols * N * S * 4);
-  const prevSH = new Float32Array(7 * N * 4);
-  const outSH = new Float32Array(7 * N * 4);
-  const TAIL = 0.45 / (1 - 0.45); // geometric tail of the missing bounces (mean bounce ratio ≈ 0.45)
-  const stripBuf = new Float32Array(cols * S * 4);
-  const shBuf = new Float32Array(7 * N * 4);
-  const c = new Float32Array(27);
-  function projectCPU() {
-    for (let j = 0; j < N; j++) {
-      c.fill(0);
-      for (let f = 0; f < 6; f++) for (let py = 0; py < S; py++) {
-        const row = ((j * S + py) * cols + f * S) * 4;
-        const bRow = ((f * S + py) * S) * 9;
-        for (let px = 0; px < S; px++) {
-          const o = row + px * 4;
-          const r = Math.min(atlasBuf[o], 64), g = Math.min(atlasBuf[o + 1], 64), bl = Math.min(atlasBuf[o + 2], 64);
-          if (!(r + g + bl > 0)) continue; // also skips NaN
-          const b = bRow + px * 9;
-          for (let k = 0; k < 9; k++) { const w = basis[b + k]; c[k * 3] += r * w; c[k * 3 + 1] += g * w; c[k * 3 + 2] += bl * w; }
+  // ------------------------------------------------------------------ SH textures
+  const depth = 7 * (nz + 2);
+  const makeTex = (name) => {
+    const t = new THREE.Data3DTexture(new Uint16Array(nx * ny * depth * 4), nx, ny, depth);
+    t.format = THREE.RGBAFormat; t.type = THREE.HalfFloatType;
+    t.minFilter = THREE.NearestFilter; t.magFilter = THREE.NearestFilter; // texelFetch only
+    t.wrapS = t.wrapT = t.wrapR = THREE.ClampToEdgeWrapping;
+    t.generateMipmaps = false; t.unpackAlignment = 1; t.name = name;
+    return t;
+  };
+  // work: input of the next capture bounce (unblended). display: what materials see (blended).
+  const work = makeTex('probe-sh-work'), zero = makeTex('probe-sh-zero'), display = makeTex('probe-sh');
+  const H = THREE.DataUtils.toHalfFloat;
+  function writeTex(tex, sh /* Float32Array(N*28) */) {
+    const d = tex.image.data;
+    for (let k = 0; k < 7; k++) {
+      for (let iz = -1; iz <= nz; iz++) {
+        const sz = Math.min(nz - 1, Math.max(0, iz));
+        const slice = k * (nz + 2) + 1 + iz;
+        for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) {
+          const j = (sz * ny + iy) * nx + ix;
+          const src = j * 28 + k * 4, dst = ((slice * ny + iy) * nx + ix) * 4;
+          for (let q = 0; q < 4; q++) { const v = sh[src + q]; d[dst + q] = H(Number.isFinite(v) ? v : 0); }
         }
       }
-      for (let i = 0; i < 27; i++) c[i] *= norm;
-      // pack 27 floats into 7 RGBA texels (c0.xyz c1.x | c1.yz c2.xy | c2.z c3.xyz | c4.xyz c5.x | c5.yz c6.xy | c6.z c7.xyz | c8.xyz 0)
-      const o = j * 28;
-      for (let i = 0; i < 27; i++) shBuf[o + i] = c[i];
-      shBuf[o + 27] = 0;
     }
-    return shBuf;
+    tex.needsUpdate = true;
+  }
+  /** Smooth ambient SH: radiance `up` from above, `down` from below (linear RGB triplets). */
+  function constantSH(up, down, out = new Float32Array(N * 28)) {
+    for (let j = 0; j < N; j++) {
+      const o = j * 28;
+      out.fill(0, o, o + 28);
+      for (let q = 0; q < 3; q++) out[o + q] = ((up[q] + down[q]) / 2) * 3.5449077;      // c0 = L·Y0·4π
+      // c1 (Y axis) lives at floats 3,4,5 (c1.x in texel 0 .w, c1.yz in texel 1 .xy)
+      for (let q = 0; q < 3; q++) out[o + 3 + q] = (up[q] - down[q]) * 0.488603 * Math.PI;
+      out[o + 27] = 1;                                                                // validity
+    }
+    return out;
+  }
+  { const z = new Float32Array(N * 28); for (let j = 0; j < N; j++) z[j * 28 + 27] = 1; writeTex(zero, z); }
+  const constSH = constantSH([0.05, 0.05, 0.05], [0.03, 0.03, 0.03]);
+  const lastOut = new Float32Array(N * 28);          // last complete bake result (with tail)
+  const shown = constSH.slice(), from = new Float32Array(N * 28), to = new Float32Array(N * 28);
+  writeTex(display, shown);
+  grid.texture = display;
+  let hasBaked = false;
+  let mode = 'constant';
+  let blend = null;
+  /** Show `src` on the display texture, blended over `ms` (0 = immediately). */
+  function present(src, ms) {
+    if (!(ms > 0)) { shown.set(src); writeTex(display, shown); blend = null; return; }
+    from.set(shown); to.set(src); blend = { t0: performance.now(), ms };
+  }
+  /** Per frame: advance a running blend. Returns true while blending. */
+  function update(now = performance.now()) {
+    if (!blend) return false;
+    const t = Math.min(1, Math.max(0, (now - blend.t0) / blend.ms));
+    const e = t * t * (3 - 2 * t);
+    for (let i = 0; i < shown.length; i++) shown[i] = (i % 28 === 27) ? to[i] : from[i] + (to[i] - from[i]) * e;
+    writeTex(display, shown);
+    if (t >= 1) blend = null;
+    return true;
+  }
+  /** 'baked' (last bake; falls back to constant) or 'constant'. */
+  function setMode(m, { ms = 0 } = {}) {
+    mode = m === 'baked' && hasBaked ? 'baked' : 'constant';
+    present(mode === 'baked' ? lastOut : constSH, ms);
   }
 
-  // probe positions (cell centres) + capture positions (nudged out of obstacles)
+  // ------------------------------------------------------------------ grid geometry + validity
   const size = box.getSize(new THREE.Vector3());
   const spacing = new THREE.Vector3(size.x / nx, size.y / ny, size.z / nz);
   const gridPos = [];
   for (let iz = 0; iz < nz; iz++) for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) {
     gridPos.push(new THREE.Vector3(box.min.x + (ix + 0.5) * spacing.x, box.min.y + (iy + 0.5) * spacing.y, box.min.z + (iz + 0.5) * spacing.z));
   }
-  let capturePos = gridPos.map((p) => p.clone());
-
-  function nudge() {
+  let valid = new Uint8Array(N).fill(1);
+  function classify() {
     const obs = obstacles();
-    const m = 0.1;
-    capturePos = gridPos.map((p0) => {
-      let p = p0.clone();
-      for (let it = 0; it < 4; it++) {
-        const hit = obs.find((b) => p.x > b.min.x - m && p.x < b.max.x + m && p.y > b.min.y - m && p.y < b.max.y + m && p.z > b.min.z - m && p.z < b.max.z + m);
-        if (!hit) break;
-        const cands = [
-          new THREE.Vector3(p.x, hit.max.y + m + 0.02, p.z),
-          new THREE.Vector3(hit.min.x - m - 0.02, p.y, p.z), new THREE.Vector3(hit.max.x + m + 0.02, p.y, p.z),
-          new THREE.Vector3(p.x, p.y, hit.min.z - m - 0.02), new THREE.Vector3(p.x, p.y, hit.max.z + m + 0.02),
-        ].filter((c) => c.x > box.min.x + 0.12 && c.x < box.max.x - 0.12 && c.y > box.min.y + 0.12 && c.y < box.max.y - 0.12 && c.z > box.min.z + 0.12 && c.z < box.max.z - 0.12);
-        if (!cands.length) break;
-        cands.sort((a, b) => a.distanceToSquared(p0) - b.distanceToSquared(p0));
-        p = cands[0];
-      }
-      return p;
-    });
-  }
-
-  // 3D texture (HalfFloat RGBA): x = nx, y = ny, z = 7 blocks of (nz + 2) padded slices
-  const depth = 7 * (nz + 2);
-  const texData = new Uint16Array(nx * ny * depth * 4);
-  const tex = new THREE.Data3DTexture(texData, nx, ny, depth);
-  tex.format = THREE.RGBAFormat; tex.type = THREE.HalfFloatType;
-  tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
-  tex.wrapS = tex.wrapT = tex.wrapR = THREE.ClampToEdgeWrapping;
-  tex.generateMipmaps = false; tex.unpackAlignment = 1;
-  tex.name = 'probe-sh';
-
-  function upload(buf) {
-    const toH = THREE.DataUtils.toHalfFloat;
-    for (let k = 0; k < 7; k++) {
-      for (let iz = -1; iz <= nz; iz++) {
-        const sz = Math.min(nz - 1, Math.max(0, iz));
-        const slice = k * (nz + 2) + 1 + iz;
-        for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) {
-          const j = (sz * ny + iy) * nx + ix;           // probe index (same order as gridPos)
-          const src = j * 28 + k * 4;
-          const dst = ((slice * ny + iy) * nx + ix) * 4;
-          for (let c = 0; c < 4; c++) texData[dst + c] = toH(buf[src + c]);
-        }
-      }
+    const m = 0.06;
+    valid = new Uint8Array(N);
+    for (let j = 0; j < N; j++) {
+      const p = gridPos[j];
+      valid[j] = obs.some((b) => p.x > b.min.x - m && p.x < b.max.x + m && p.y > b.min.y - m && p.y < b.max.y + m && p.z > b.min.z - m && p.z < b.max.z + m) ? 0 : 1;
     }
-    tex.needsUpdate = true;
-    grid.texture = tex;
   }
 
-  // async (PBO + fence) readback avoids a pipeline stall on real GPUs; software rasterisers
-  // (SwiftShader) reset the context on fence waits, so they read synchronously
+  // ------------------------------------------------------------------ capture resources (lazy)
+  let atlas = null, floatRT = null, copyQuad = null, cam = null, basis = null, norm = 1;
+  let atlasBuf = null, stripBuf = null;
+  const shBuf = new Float32Array(N * 28), prevSH = new Float32Array(N * 28), outSH = new Float32Array(N * 28);
   const gl = renderer.getContext();
   const dbg = gl.getExtension('WEBGL_debug_renderer_info');
-  const gpuName = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
-  const useAsync = !/swiftshader|llvmpipe|software/i.test(gpuName) && !window.__villarSyncReadback;
+  const software = /swiftshader|llvmpipe|software/i.test(dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '');
+  // async (PBO + fence) readback on GPUs; software rasterisers reset the context on large reads
+  const useAsync = !software && !!renderer.readRenderTargetPixelsAsync;
 
-  // ---------------------------------------------------------------- progressive bake
+  function ensureResources() {
+    if (atlas) return;
+    atlas = new THREE.WebGLRenderTarget(cols, N * S, { type: THREE.HalfFloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false, depthBuffer: true });
+    atlas.texture.name = 'probe-atlas';
+    floatRT = new THREE.WebGLRenderTarget(cols, useAsync ? N * S : S, { type: THREE.FloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false, depthBuffer: false });
+    copyQuad = new FullScreenQuad(new THREE.ShaderMaterial({
+      uniforms: { map: { value: atlas.texture }, y0: { value: 0 } },
+      vertexShader: 'void main() { gl_Position = vec4( position.xy, 0.0, 1.0 ); }',
+      fragmentShader: 'uniform sampler2D map; uniform float y0; void main() { gl_FragColor = texelFetch( map, ivec2( gl_FragCoord.x, gl_FragCoord.y + y0 ), 0 ); }',
+      depthTest: false, depthWrite: false, blending: THREE.NoBlending, toneMapped: false,
+    }));
+    cam = new THREE.PerspectiveCamera(90, 1, 0.03, 9000);
+    atlasBuf = new Float32Array(cols * N * S * 4);
+    stripBuf = new Float32Array(cols * S * 4);
+    basis = new Float32Array(6 * S * S * 9);
+    let wsum = 0;
+    for (let f = 0; f < 6; f++) for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
+      const u = ((px + 0.5) / S) * 2 - 1, v = ((py + 0.5) / S) * 2 - 1;
+      const { F, R, U } = FACES[f];
+      let x = F.x + u * R.x + v * U.x, y = F.y + u * R.y + v * U.y, z = F.z + u * R.z + v * U.z;
+      const l2 = x * x + y * y + z * z, w = 1 / (l2 * Math.sqrt(l2)), il = 1 / Math.sqrt(l2);
+      x *= il; y *= il; z *= il;
+      const b = ((f * S + py) * S + px) * 9;
+      basis[b] = 0.282095 * w; basis[b + 1] = 0.488603 * y * w; basis[b + 2] = 0.488603 * z * w; basis[b + 3] = 0.488603 * x * w;
+      basis[b + 4] = 1.092548 * x * y * w; basis[b + 5] = 1.092548 * y * z * w; basis[b + 6] = 0.315392 * (3 * z * z - 1) * w;
+      basis[b + 7] = 1.092548 * x * z * w; basis[b + 8] = 0.546274 * (x * x - y * y) * w;
+      wsum += w;
+    }
+    norm = (4 * Math.PI) / wsum;
+  }
+
+  function copyToFloat(y0, rows) {
+    copyQuad.material.uniforms.y0.value = y0;
+    floatRT.viewport.set(0, 0, cols, rows); floatRT.scissor.set(0, 0, cols, rows); floatRT.scissorTest = true;
+    renderer.setRenderTarget(floatRT);
+    copyQuad.render(renderer);
+    floatRT.scissorTest = false;
+  }
+
+  const cc = new Float32Array(27), acc = new Float32Array(27);
+  const NB = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  function projectCPU() {
+    for (let j = 0; j < N; j++) {
+      const o = j * 28;
+      if (!valid[j]) { shBuf.fill(0, o, o + 28); continue; }
+      cc.fill(0);
+      for (let f = 0; f < 6; f++) for (let py = 0; py < S; py++) {
+        const row = ((j * S + py) * cols + f * S) * 4, bRow = (f * S + py) * S * 9;
+        for (let px = 0; px < S; px++) {
+          const q = row + px * 4;
+          const r = Math.min(atlasBuf[q], 64), g = Math.min(atlasBuf[q + 1], 64), bl = Math.min(atlasBuf[q + 2], 64);
+          if (!(r + g + bl > 0)) continue; // skips zero and NaN
+          const b = bRow + px * 9;
+          for (let k = 0; k < 9; k++) { const w = basis[b + k]; cc[k * 3] += r * w; cc[k * 3 + 1] += g * w; cc[k * 3 + 2] += bl * w; }
+        }
+      }
+      for (let i = 0; i < 27; i++) shBuf[o + i] = cc[i] * norm;
+      shBuf[o + 27] = 1;
+    }
+    // dilate: invalid probes take the mean of valid 6-neighbours (keeps every fallback path sane)
+    const idx = (ix, iy, iz) => (iz * ny + iy) * nx + ix;
+    const filled = valid.slice();
+    for (let pass = 0; pass < 6; pass++) {
+      const next = filled.slice();
+      for (let iz = 0; iz < nz; iz++) for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) {
+        const j = idx(ix, iy, iz);
+        if (filled[j]) continue;
+        let n = 0; acc.fill(0);
+        for (const [dx, dy, dz] of NB) {
+          const X = ix + dx, Y = iy + dy, Z = iz + dz;
+          if (X < 0 || Y < 0 || Z < 0 || X >= nx || Y >= ny || Z >= nz) continue;
+          const k = idx(X, Y, Z);
+          if (!filled[k]) continue;
+          for (let i = 0; i < 27; i++) acc[i] += shBuf[k * 28 + i];
+          n++;
+        }
+        if (n) { for (let i = 0; i < 27; i++) shBuf[j * 28 + i] = acc[i] / n; next[j] = 1; }
+      }
+      filled.set(next);
+    }
+    for (let j = 0; j < N; j++) shBuf[j * 28 + 27] = valid[j] ? 1 : 0;
+    return shBuf;
+  }
+
+  /** Sanity: mean DC luminance of valid probes. A zero/NaN bake must never be shown. */
+  function healthy(sh) {
+    let s = 0, n = 0;
+    for (let j = 0; j < N; j++) if (valid[j]) { const o = j * 28; s += 0.2126 * sh[o] + 0.7152 * sh[o + 1] + 0.0722 * sh[o + 2]; n++; }
+    return n > 0 && Number.isFinite(s) && s / n > 1e-4;
+  }
+
+  // ------------------------------------------------------------------ progressive bake
   let job = null;
+  let perFrame = useAsync ? 3 : 1;
+  const TAIL = 0.5 / (1 - 0.5); // geometric tail of the missing bounces (white room: mean bounce ratio ≈ 0.5)
+
   function renderProbe(j) {
-    const p = capturePos[j];
+    const p = gridPos[j];
     cam.position.copy(p);
     for (let f = 0; f < 6; f++) {
       const F = FACES[f];
@@ -197,97 +335,143 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
       renderer.setRenderTarget(atlas);
       renderer.render(scene, cam);
     }
-  }
-
-  /** Starts (or restarts) a bake. `bounces` ≥ 1. Returns a Promise resolved when uploaded. */
-  function bake({ bounces = 2, fresh = true, prepare = () => () => {}, onBounce = () => {} } = {}) {
-    if (job) { job.cancelled = true; job.resolve(); }
-    nudge();
-    let resolve;
-    const done = new Promise((r) => { resolve = r; });
-    job = { next: 0, bounce: 0, bounces, fresh, prepare, onBounce, resolve, cancelled: false, reading: false };
-    return done;
+    atlas.scissorTest = false;
   }
 
   /**
-   * Advance the current bake: at most `maxProbes` probes (GPU work is asynchronous, so a JS time
-   * budget alone can queue seconds of GPU work) and at most `budgetMs` of CPU time.
+   * Starts (or restarts) a bake. `fresh`: the first bounce sees no indirect light (zero SH) and the
+   * last bounce is extrapolated over the missing ones; otherwise the current grid feeds one
+   * incremental bounce. `only`: probe indices to recapture (dirty subset, incremental bakes only).
+   * Resolves true when a healthy result was uploaded, false otherwise. Never rejects.
    */
-  let perFrame = useAsync ? 3 : 1;
+  function bake({ bounces = 2, fresh = true, only = null, prepare = () => () => {}, onBounce = () => {} } = {}) {
+    if (job) { job.cancelled = true; job.resolve(false); job = null; }
+    if (!supported) return Promise.resolve(false);
+    try { ensureResources(); classify(); } catch (e) { console.warn('[villar] GI unavailable', e); return Promise.resolve(false); }
+    const useSubset = only && hasBaked && !fresh;
+    const list = (useSubset ? [...only] : [...Array(N).keys()]).filter((j) => valid[j]);
+    let resolve;
+    const done = new Promise((r) => { resolve = r; });
+    job = { list, k: 0, bounce: 0, bounces, fresh, prepare, onBounce, resolve, cancelled: false, reading: false, hasWork: false, subset: useSubset ? new Set(only) : null };
+    if (!list.length) { job = null; resolve(hasBaked); }
+    return done;
+  }
+
+  function fail(j0, e) {
+    console.warn('[villar] GI bake failed — keeping the previous lighting', e && e.message ? e.message : e);
+    j0.cancelled = true;
+    if (job === j0) job = null;
+    if (hasBaked) writeTex(work, lastOut);
+    j0.resolve(false);
+  }
+
+  /** Advance the bake; at most `perFrame` probes (GPU work is async) and `budgetMs` of CPU. */
   function step(budgetMs = 8) {
-    if (!job || job.reading) return !!job;
-    const t0 = performance.now();
     const j0 = job;
-    const restore = j0.prepare(j0.bounce);
+    if (!j0 || j0.reading) return !!j0;
+    if (gl.isContextLost()) { fail(j0, new Error('context lost')); return false; }
+    const t0 = performance.now();
     const prevTarget = renderer.getRenderTarget();
     const prevAuto = renderer.shadowMap.autoUpdate;
-    renderer.shadowMap.autoUpdate = false;
-    // bounce 0 sees no indirect light (grid hidden); later bounces see the previous result
-    const gridVisible = grid.visible;
-    if (j0.bounce === 0 && j0.fresh) grid.visible = false;
+    let restore = null;
     try {
+      restore = j0.prepare(j0.bounce);
+      renderer.shadowMap.autoUpdate = false;
+      // bounce 0 of a fresh bake: no indirect light (zero SH — same shader variant, no recompile)
+      grid.texture = (j0.bounce === 0 && j0.fresh) ? zero : (j0.hasWork || hasBaked ? work : display);
       let n = 0;
-      while (j0.next < N && n < perFrame && performance.now() - t0 < budgetMs) {
-        const j = j0.next++;
+      while (j0.k < j0.list.length && n < perFrame && performance.now() - t0 < budgetMs) {
+        const j = j0.list[j0.k++];
         renderProbe(j);
         if (!useAsync) {
-          // software rasterisers choke on one big float readback: read this probe's strip now
-          if (floatRT) { renderer.readRenderTargetPixels(atlas, 0, j * S, cols, S, stripBuf); atlasBuf.set(stripBuf, j * S * cols * 4); }
-          else { renderer.readRenderTargetPixels(atlas, 0, j * S, cols, S, halfStrip); fromHalf(halfStrip, atlasBuf, j * S * cols * 4); }
+          copyToFloat(j * S, S);
+          renderer.readRenderTargetPixels(floatRT, 0, 0, cols, S, stripBuf);
+          atlasBuf.set(stripBuf, j * S * cols * 4);
         }
         n++;
       }
-      // adapt the per-frame count to the CPU cost of a probe (6 scene renders)
       const dt = performance.now() - t0;
       if (useAsync && n === perFrame) perFrame = dt < budgetMs * 0.5 ? Math.min(8, perFrame + 1) : dt > budgetMs * 1.2 ? Math.max(1, perFrame - 1) : perFrame;
+      if (j0.k >= j0.list.length) {
+        j0.reading = true;
+        let read = Promise.resolve();
+        if (useAsync) {
+          copyToFloat(0, N * S);
+          read = renderer.readRenderTargetPixelsAsync(floatRT, 0, 0, cols, N * S, atlasBuf);
+        }
+        read.then(() => {
+          if (j0.cancelled) return;
+          const sh = projectCPU();
+          let out = sh;
+          const last = j0.bounce === j0.bounces - 1;
+          if (j0.fresh && j0.bounce >= 1 && last) {
+            for (let i = 0; i < sh.length; i++) outSH[i] = (i % 28 === 27) ? sh[i] : sh[i] + (sh[i] - prevSH[i]) * TAIL;
+            out = outSH;
+          } else if (j0.subset) {
+            // dirty subset: keep every other probe's converged value (incl. its extrapolated tail)
+            outSH.set(lastOut);
+            for (let j = 0; j < N; j++) if (j0.subset.has(j) || !valid[j]) outSH.set(sh.subarray(j * 28, j * 28 + 28), j * 28);
+            out = outSH;
+          }
+          prevSH.set(sh);
+          if (!healthy(out)) throw new Error('empty SH result');
+          writeTex(work, out);
+          j0.hasWork = true;
+          j0.onBounce(j0.bounce);
+          j0.bounce++;
+          j0.reading = false;
+          if (j0.bounce >= j0.bounces) {
+            lastOut.set(out);
+            hasBaked = true;
+            if (job === j0) job = null;
+            j0.resolve(true);
+          } else j0.k = 0;
+        }).catch((e) => fail(j0, e));
+      }
+    } catch (e) {
+      fail(j0, e);
     } finally {
-      grid.visible = gridVisible;
-      atlas.scissorTest = false;
+      grid.texture = display;
+      if (atlas) atlas.scissorTest = false;
       renderer.setRenderTarget(prevTarget);
       renderer.shadowMap.autoUpdate = prevAuto;
-      restore();
+      try { if (restore) restore(); } catch { /* ignore */ }
     }
-    if (j0.next >= N) {
-      // async readback of the float atlas, SH9 projection on the CPU
-      j0.reading = true;
-      const dst = floatRT ? atlasBuf : halfAtlas;
-      const read = useAsync
-        ? (renderer.readRenderTargetPixelsAsync
-          ? renderer.readRenderTargetPixelsAsync(atlas, 0, 0, cols, N * S, dst)
-          : new Promise((res) => { renderer.readRenderTargetPixels(atlas, 0, 0, cols, N * S, dst); res(); }))
-          .then(() => { if (!floatRT) fromHalf(halfAtlas, atlasBuf); })
-        : Promise.resolve();
-      read.then(() => {
-        if (j0.cancelled) return;
-        const sh = projectCPU();
-        if (j0.fresh && j0.bounce >= 1 && j0.bounce === j0.bounces - 1) {
-          // converge a fresh multi-bounce bake: add the extrapolated tail of further bounces so that
-          // later incremental (1-bounce, grid visible) re-bakes stay at the same fixed point
-          for (let i = 0; i < sh.length; i++) outSH[i] = sh[i] + (sh[i] - prevSH[i]) * TAIL;
-          upload(outSH);
-        } else upload(sh);
-        prevSH.set(sh);
-        j0.onBounce(j0.bounce);
-        j0.bounce++;
-        j0.reading = false;
-        if (j0.bounce >= j0.bounces) { job = null; j0.resolve(); }
-        else j0.next = 0;
-      }).catch((e) => { console.warn('[villar] probe readback failed', e); if (job === j0) job = null; j0.resolve(); });
-    }
-    return true;
+    return !!job;
+  }
+
+  /** Probe indices whose cell centre lies within `margin` of a world box (dirty set). */
+  function near(box3, margin = 1.4) {
+    const b = box3.clone().expandByScalar(margin);
+    const out = [];
+    for (let j = 0; j < N; j++) if (b.containsPoint(gridPos[j])) out.push(j);
+    return out;
   }
 
   return {
-    grid, bake, step,
+    grid, bake, step, near, setMode, update,
+    /** Set the constant (pre-bake / dollhouse) ambient; shown at once if in constant mode. */
+    setConstant(up, down, { ms = 0 } = {}) { constantSH(up, down, constSH); if (mode === 'constant') present(constSH, ms); },
+    get mode() { return mode; },
+    get blending() { return !!blend; },
+    get supported() { return supported; },
+    get hasBaked() { return hasBaked; },
     get baking() { return !!job; },
-    get progress() { return job ? Math.min(1, (job.bounce + job.next / N) / job.bounces) : 1; },
+    get progress() { return job ? Math.min(1, (job.bounce + job.k / Math.max(1, job.list.length)) / job.bounces) : 1; },
     get count() { return N; },
-    setEnabled(v) { grid.visible = v; },
-    debugPositions: () => ({ grid: gridPos, capture: capturePos }),
+    /** After a context restore the GPU copies are gone: re-upload CPU data, recreate capture targets. */
+    onContextRestored() {
+      if (job) { job.cancelled = true; job.resolve(false); job = null; }
+      for (const t of [work, zero, display]) t.needsUpdate = true;
+      atlas = null; floatRT = null; copyQuad = null; // GL objects of the dead context: drop, don't dispose
+      hasBaked = false; blend = null; setMode('constant');
+    },
+    cancel() { if (job) { job.cancelled = true; job.resolve(false); job = null; } },
     dispose() {
-      if (job) job.cancelled = true;
+      if (job) { job.cancelled = true; job.resolve(false); job = null; }
       scene.remove(grid);
-      atlas.dispose(); tex.dispose();
+      atlas?.dispose(); floatRT?.dispose(); copyQuad?.material?.dispose(); copyQuad?.dispose();
+      work.dispose(); zero.dispose(); display.dispose();
     },
   };
 }

@@ -68,3 +68,36 @@ export function createEmitter() {
 
 export const prefersReducedMotion = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/**
+ * Planckian (black-body) white in linear sRGB, normalised to max = 1 — CIE xy from the Kim et al.
+ * cubic fit (1667–25000 K), XYZ → linear sRGB. More accurate than `kelvin()` (a display-sRGB fit).
+ */
+export function planckRGB(T) {
+  T = clamp(T, 1667, 25000);
+  const t = 1e3 / T, t2 = t * t, t3 = t2 * t;
+  const x = T <= 4000
+    ? -0.2661239 * t3 - 0.2343589 * t2 + 0.8776956 * t + 0.179910
+    : -3.0258469 * t3 + 2.1070379 * t2 + 0.2226347 * t + 0.240390;
+  const x2 = x * x, x3 = x2 * x;
+  const y = T <= 2222 ? -1.1063814 * x3 - 1.34811020 * x2 + 2.18555832 * x - 0.20219683
+    : T <= 4000 ? -0.9549476 * x3 - 1.37418593 * x2 + 2.09137015 * x - 0.16748867
+      : 3.0817580 * x3 - 5.87338670 * x2 + 3.75112997 * x - 0.37001483;
+  const X = x / y, Z = (1 - x - y) / y;
+  const r = 3.2406 * X - 1.5372 - 0.4986 * Z;
+  const g = -0.9689 * X + 1.8758 + 0.0415 * Z;
+  const b = 0.0557 * X - 0.2040 + 1.0570 * Z;
+  const m = Math.max(r, g, b);
+  return new THREE.Color(Math.max(0, r / m), Math.max(0, g / m), Math.max(0, b / m));
+}
+
+/**
+ * Camera white balance gains (von Kries in linear sRGB) for a white point of `K` kelvin, applied with
+ * `strength` (0…1, in log space) and normalised to unit luminance so exposure is unaffected.
+ */
+export function whiteBalanceGain(K, strength = 1, out = new THREE.Vector3()) {
+  const w = planckRGB(K), d = planckRGB(6504);
+  const g = [d.r / Math.max(1e-4, w.r), d.g / Math.max(1e-4, w.g), d.b / Math.max(1e-4, w.b)].map((v) => Math.pow(v, strength));
+  const l = 0.2126 * g[0] + 0.7152 * g[1] + 0.0722 * g[2];
+  return out.set(g[0] / l, g[1] / l, g[2] / l);
+}

@@ -1,0 +1,299 @@
+{
+ "id": "mediterranean",
+ "name": "Средиземноморье",
+ "tagline": "Побелка, ротанг, терракота.",
+ "description": "Стены и потолок как одна побелка, натуральный ротанг и венская сетка, тёплое светлое дерево, льняной песок и солнечная терракота с оливой. Полоска, арки и ручная керамика — как в отеле на Майорке, без морских штампов. Пак собран для посуточной аренды у моря.",
+ "palette": "palette-mediterranean.json",
+ "architecture": {
+  "walls": "#F3EFE6",
+  "ceiling": "#F2EFE8",
+  "floor": "oak-light",
+  "floorTone": "#C6A984",
+  "kitchenFronts": "#D6CFBF",
+  "worktop": "travertine",
+  "doorFinish": "paint",
+  "windowFrame": "metal-black"
+ },
+ "slots": {
+  "sofa": {
+   "default": "sofa-oshawa-3",
+   "options": [
+    "sofa-oshawa-3",
+    "sofa-anders-3"
+   ]
+  },
+  "cushions": {
+   "default": "cushions-linen-olive-rust",
+   "options": [
+    "cushions-linen-olive-rust",
+    "cushions-linen-clay",
+    "cushions-linen-olive",
+    "cushions-oat-ivory-4"
+   ]
+  },
+  "coffee_table": {
+   "default": "coffee-corta",
+   "options": [
+    "coffee-corta"
+   ]
+  },
+  "decor_set": {
+   "default": "decor-terracotta",
+   "options": [
+    "decor-terracotta",
+    "decor-cream-ceramic",
+    "decor-travertine-cream"
+   ]
+  },
+  "rug": {
+   "default": "rug-pulara-160x230",
+   "options": [
+    "rug-pulara-160x230",
+    "rug-heaton-200x290"
+   ]
+  },
+  "tv_unit": {
+   "default": "tv-windsor",
+   "options": [
+    "tv-windsor",
+    "tv-echo"
+   ]
+  },
+  "side_table": {
+   "default": "side-pavia",
+   "options": [
+    "side-pavia"
+   ]
+  },
+  "armchair": {
+   "default": "armchair-sukhna",
+   "options": [
+    "armchair-sukhna",
+    "armchair-natura"
+   ]
+  },
+  "floor_lamp": {
+   "default": "floorlamp-audrey",
+   "options": [
+    "floorlamp-audrey"
+   ]
+  },
+  "bed": {
+   "default": "bed-forren-160",
+   "options": [
+    "bed-forren-160",
+    "bed-cloud-160",
+    "bed-maison-160"
+   ]
+  },
+  "mattress": {
+   "default": "mattress-rejuvenate-160",
+   "options": [
+    "mattress-rejuvenate-160",
+    "mattress-bliss-gel-160"
+   ]
+  },
+  "bedding": {
+   "default": "bedding-white-oat-clay",
+   "options": [
+    "bedding-white-oat-clay",
+    "bedding-oat-rust",
+    "bedding-white-oat-olive",
+    "bedding-white-oat",
+    "bedding-white-sateen-oat"
+   ]
+  },
+  "nightstand": {
+   "default": "nightstand-forren",
+   "options": [
+    "nightstand-forren"
+   ]
+  },
+  "table_lamp": {
+   "default": "tablelamp-tolima",
+   "options": [
+    "tablelamp-tolima",
+    "tablelamp-crosby"
+   ]
+  },
+  "dining_table": {
+   "default": "dining-keira-100",
+   "options": [
+    "dining-keira-100"
+   ]
+  },
+  "dining_chair": {
+   "default": "chair-emily",
+   "options": [
+    "chair-emily",
+    "chair-canovia"
+   ]
+  },
+  "pendant_lamp": {
+   "default": "pendant-tobin",
+   "options": [
+    "pendant-tobin",
+    "pendant-naturel",
+    "pendant-accorsa",
+    "pendant-cosme"
+   ]
+  },
+  "art_sofa": {
+   "default": "art-madar-aziza-100",
+   "options": [
+    "art-madar-aziza-100",
+    "art-madar-hiba-100"
+   ]
+  },
+  "art_bed": {
+   "default": "art-ember-90x60",
+   "options": [
+    "art-ember-90x60",
+    "art-caitlin-triptych"
+   ]
+  },
+  "art_dining": {
+   "default": "art-aquarelle-53x80",
+   "options": [
+    "art-aquarelle-53x80",
+    "art-vaseo-53x80"
+   ]
+  },
+  "plant": {
+   "default": "plant-olive-themis",
+   "options": [
+    "plant-olive-themis",
+    "plant-olive-urbano",
+    "plant-olive-180"
+   ]
+  },
+  "curtains": {
+   "default": "curtains-sullivan-sheer",
+   "options": [
+    "curtains-sullivan-sheer",
+    "curtains-sullivan-layered",
+    "curtains-khor-sheer"
+   ]
+  },
+  "tableware": {
+   "default": "tableware-lillian-smoke",
+   "options": [
+    "tableware-lillian-smoke",
+    "tableware-mia-smoke-wood"
+   ]
+  },
+  "centerpiece": {
+   "default": "centerpiece-maya-eucalyptus",
+   "options": [
+    "centerpiece-maya-eucalyptus",
+    "centerpiece-sable-eucalyptus",
+    "centerpiece-candles-travertine"
+   ]
+  },
+  "kitchen_decor": {
+   "default": "kitchen-white-basic",
+   "options": [
+    "kitchen-white-basic",
+    "kitchen-black-basic",
+    "kitchen-white-travertine"
+   ]
+  },
+  "throw": {
+   "default": "throw-olivia-terracotta",
+   "options": [
+    "throw-olivia-terracotta",
+    "throw-vayu-sage",
+    "throw-norham-olive",
+    "throw-thorn-oat",
+    "throw-boras-oat"
+   ]
+  },
+  "nightstand_decor": {
+   "default": "nsdecor-travertine-candle",
+   "options": [
+    "nsdecor-travertine-candle",
+    "nsdecor-bud-vase-tealight"
+   ]
+  },
+  "runner": {
+   "default": "runner-marco-sandy",
+   "options": [
+    "runner-marco-sandy",
+    "runner-zen-bianca",
+    "runner-zen-alba",
+    "runner-kaela"
+   ]
+  },
+  "mirror": {
+   "default": "mirror-mackenzie-arch",
+   "options": [
+    "mirror-mackenzie-arch",
+    "mirror-artemis-round-black"
+   ]
+  }
+ },
+ "rules": [
+  "60/30/10: побелённая оболочка ≈60%; лён, ротанг и светлое дерево ≈30%; терракота, олива, синий, глина и железо ≤10%.",
+  "Стены и потолок — одна побелка (ΔE ≤ 2); шторы и постель — белёный лён в тон стенам (ΔE ≤ 5).",
+  "Плетение — подпись пака: ротанг, сетка или рогоз минимум в трёх типах предметов. Крупной плетёной мебели — не больше двух предметов, иначе получится «пляжный бар». Всё плетёное — одного натурального тона (ΔE ≤ 12).",
+  "Дерево мебели — одно семейство: натуральное тёплое светлое (#B99A72, ΔE ≤ 10) или белёное известью. Ореха, чёрного, копчёного и рыжего дерева (h < 68° при C* > 25) нет, лака с блеском тоже.",
+  "Плетёное и деревянное на полу отделяется от дубового пола ковром или светлой подушкой, иначе сливается (ротанг ↔ пол ΔE ≈ 4).",
+  "Акценты: главный — терракота (минимум два типа предметов, 3–6% площади), второй — олива ★ или эгейский синий. Третий цвет — только в посуде или искусстве, охра — только в искусстве.",
+  "Полоска разрешена и желательна: до двух полосатых текстилей (подушки, плед, дорожка), полосы терракотовые, оливковые или синие по молочному. Крупных цветов и тропических принтов нет.",
+  "Арки и скругления — минимум в двух предметах: арочное зеркало, арочная или круглая работа, круглый стол, скруглённый диван, круглый плетёный подвес.",
+  "Металл — матовое кованое железо тонкими линиями; состаренная латунь — максимум два мелких предмета. Хрома, никеля, шампани, розового золота и меди нет.",
+  "Ручная фактура: керамика с живой глазурью, лён с узелками, джут, штукатурка. Бархата, букле, атласа и экокожи нет.",
+  "Без морских штампов: якорей, канатов, ракушек, штурвалов, надписей, сплошной «тельняшки» и искусственного плавника нет.",
+  "Statement — не больше трёх на студию и одного на зону: ротанговое кресло, арочное зеркало, плетёный подвес, картина.",
+  "Свет 2700 K, CRI ≥ 90: у плетёных абажуров внутренний рассеиватель, у керамических ламп — льняной абажур."
+ ],
+ "pairings": {
+  "sofa-oshawa-3": {
+   "cushions": "cushions-linen-olive-rust",
+   "throw": "throw-olivia-terracotta",
+   "rug": "rug-pulara-160x230",
+   "coffee_table": "coffee-corta",
+   "armchair": "armchair-sukhna"
+  },
+  "bed-forren-160": {
+   "nightstand": "nightstand-forren",
+   "bedding": "bedding-white-oat-clay",
+   "table_lamp": "tablelamp-tolima",
+   "art_bed": "art-ember-90x60"
+  },
+  "bed-cloud-160": {
+   "nightstand": "nightstand-forren",
+   "bedding": "bedding-white-oat-clay",
+   "table_lamp": "tablelamp-tolima"
+  },
+  "dining-keira-100": {
+   "pendant_lamp": "pendant-tobin",
+   "dining_chair": "chair-emily",
+   "centerpiece": "centerpiece-maya-eucalyptus",
+   "art_dining": "art-aquarelle-53x80"
+  },
+  "pendant-tobin": {
+   "dining_table": "dining-keira-100"
+  },
+  "pendant-naturel": {
+   "dining_table": "dining-keira-100"
+  },
+  "cushions-linen-olive-rust": {
+   "throw": "throw-olivia-terracotta",
+   "sofa": "sofa-oshawa-3"
+  },
+  "decor-terracotta": {
+   "coffee_table": "coffee-corta"
+  },
+  "art-madar-aziza-100": {
+   "sofa": "sofa-oshawa-3"
+  },
+  "chair-emily": {
+   "dining_table": "dining-keira-100",
+   "pendant_lamp": "pendant-tobin"
+  }
+ },
+ "nameEn": "Mediterranean",
+ "taglineEn": "Limewash, rattan, terracotta.",
+ "descriptionEn": "Walls and ceiling read as one coat of limewash, with natural rattan and cane, warm light wood, sand linen, and sun-baked terracotta with olive. Stripes, arches and handmade ceramics, like a hotel on Mallorca, with no nautical clichés. Made for short-term rentals by the sea."
+}

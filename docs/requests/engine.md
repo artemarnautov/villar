@@ -18,11 +18,15 @@
      bounds at placement (≤ 1 cm gap), so oversize models (swing-arm lamp, deep sofas) no longer clip.
    - Entry door `finish` removed: the door finish comes from the active pack (`architecture.doorFinish`).
 3. **Deploy set**: see the engine's milestone report (it lists the exact files).
+4. **Harness note:** since the sandbox image changed, headless Chromium drops `--use-angle=swiftshader` unless
+   `CHROMIUM_KEEP_GL_SWITCHES=1` is set; WebGL then runs on llvmpipe (Vulkan). The engine treats both as software GL.
+5. **CSP:** `/lab/engine.html` now uses the byte-identical import map of `index.html` and an external
+   `/lab/engine-lab.js`, so it runs under the production CSP (the old inline script was blocked).
 
 ## To interface
 
 - `createVillar(opts)` options (all optional): `onProgress({progress 0…1, stage})`, `palette`, `palettes`
-  (by pack id, for style transitions), `timeOfDay`, `view`, `quality` (capped by device: phones → low,
+  (by pack id; optional — style transitions read `store.style(id).architecture`), `timeOfDay`, `view`, `quality` (capped by device: phones → low,
   tablets/iOS → medium; `forceQuality: true` to override), `adaptive`, `gi`, `autoExposure`,
   `toneMapping` (`neutral` default | `agx` | `agx-punchy` | `aces`), `autoFocus` (default true).
 - Events: `ready {quality, time, view, gi, photo}` (`photo: false` → hide Фото: low tier or software GL);

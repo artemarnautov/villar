@@ -1,9 +1,38 @@
 // Villar furniture — floor / table / pendant lamps. Owner: modeler.
 // userData.lights: positions are inside the shades; colour warm 2700 K.
 import * as THREE from 'three';
-import { Builder, softBox, lathe, smoothProfile, slab, ellipseShape, tube, roundLeg, V3, clamp, cm } from './geom.js';
+import { Builder, softBox, lathe, smoothProfile, slab, ellipseShape, tube, roundLeg, segs, V3, clamp, cm } from './geom.js';
 
 const WARM = '#ffd2a1';
+
+/** Shade UVs: u = arc length (m), v = 0..1 bottom→top (drives the lit-shade emissive falloff map). */
+function shadeUV(g, R) {
+  const pos = g.attributes.position, uv = g.attributes.uv;
+  let y0 = Infinity, y1 = -Infinity;
+  for (let i = 0; i < pos.count; i++) { const y = pos.getY(i); if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  const span = Math.max(1e-4, y1 - y0), L = 2 * Math.PI * R;
+  for (let i = 0; i < pos.count; i++) uv.setXY(i, uv.getX(i) * L, (pos.getY(i) - y0) / span);
+  uv.needsUpdate = true;
+  return g;
+}
+
+/**
+ * Light descriptors for a shaded lamp (SPEC units: metres, angle = spot half-angle in RADIANS, penumbra 0–1).
+ * Open drum/cone: down spot (70 %, shadowed) + up spot (30 %) + dim glow point (10 %) → hourglass cut-off on walls.
+ * Dome (open below): down spot + glow. Diffuser globe: one point light.
+ */
+function shadeLights({ x = 0, z = 0, ly, yb, h, Rb, Rt = Rb, I = 1, kind = 'open', distance = 4.5 }) {
+  const col = WARM;
+  if (kind === 'globe') return [{ type: 'point', position: [x, ly, z], color: col, intensity: I, distance, decay: 2, shadow: true }];
+  const down = clamp(Math.atan2(Rb, Math.max(0.02, ly - yb)), 0.6, 1.25);
+  const out = [{ type: 'spot', position: [x, ly, z], target: [x, ly - 1, z], angle: down, penumbra: 0.35, color: col, intensity: I * 0.7, distance, decay: 2, shadow: true }];
+  if (kind === 'open') {
+    const up = clamp(Math.atan2(Rt, Math.max(0.02, yb + h - ly)), 0.5, 1.2);
+    out.push({ type: 'spot', position: [x, ly, z], target: [x, ly + 1, z], angle: up, penumbra: 0.4, color: col, intensity: I * 0.3, distance: distance * 0.8, decay: 2, shadow: false });
+  }
+  out.push({ type: 'point', position: [x, ly, z], color: col, intensity: I * 0.1, distance: 1.2, decay: 2, shadow: false });
+  return out;
+}
 
 function shadeMatFor(c, p, color) {
   const kind = String(p.shadeMaterial || p.shadeFabric || '').toLowerCase();
@@ -27,7 +56,7 @@ function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null, o
     const r0 = ring(yb, R), r1 = ring(yb + h, rt);
     for (let i = 0; i < n * 2; i++) {
       const a = r0[i], b2 = r0[i + 1], c2 = r1[i], d = r1[i + 1];
-      for (const q of [a, b2, d, a, d, c2]) { pos.push(q[0], q[1], q[2]); uv.push(q[3], q[1]); }
+      for (const q of [a, b2, d, a, d, c2]) { pos.push(q[0], q[1], q[2]); uv.push(q[3], (q[1] - yb) / h); }
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -39,13 +68,13 @@ function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null, o
   }
   if (s.includes('mushroom')) {
     const prof = Array.from({ length: 22 }, (_, i) => { const t = (i / 21) * Math.PI / 2; return [Math.max(0.004, R * Math.cos(t)), h * Math.sin(t)]; });
-    b.add(lathe(prof, seg), mat, { pos: [0, yb, 0], uv: 'box' });
-    b.add(lathe(prof.map(([r, y]) => [r * 0.97, y - 0.003]).reverse(), seg), mat, { pos: [0, yb, 0], uv: 'box' });
+    b.add(shadeUV(lathe(prof, seg), R), mat, { pos: [0, yb, 0], uv: 'keep' });
+    b.add(shadeUV(lathe(prof.map(([r, y]) => [r * 0.97, y - 0.003]).reverse(), seg), R), mat, { pos: [0, yb, 0], uv: 'keep' });
     return yb + h * 0.25;
   }
   if (s.includes('cone') || s.includes('empire') || s.includes('tapered')) {
     const rt = R * (s.includes('empire') ? 0.55 : 0.68);
-    b.add(new THREE.CylinderGeometry(rt, R, h, seg, 1, true), mat, { pos: [0, yb + h / 2, 0], uv: 'box', axis: 'x' });
+    b.add(shadeUV(new THREE.CylinderGeometry(rt, R, h, segs(seg, 24), 1, true), R), mat, { pos: [0, yb + h / 2, 0], uv: 'keep' });
     for (const [rr, y] of [[R, yb], [rt, yb + h]]) b.add(new THREE.TorusGeometry(rr, 0.0028, 6, seg).rotateX(Math.PI / 2), rimMat, { pos: [0, y, 0] });
     return yb + h * 0.45;
   }
@@ -55,10 +84,10 @@ function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null, o
       : Array.from({ length: 25 }, (_, i) => { const t = (i / 24) * Math.PI / 2; return [Math.max(0.012, R * Math.cos(t)), h * Math.sin(t)]; });
     const g = lathe(prof, seg);
     if (wave) { const pa = g.attributes.position; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), z = pa.getZ(i), y = pa.getY(i); const a = Math.atan2(z, x); const k = 1 + wave * Math.sin(a * 6) * (1 - y / h); pa.setX(i, x * k); pa.setZ(i, z * k); } g.computeVertexNormals(); }
-    b.add(g, mat, { pos: [0, yb, 0], uv: 'box' });
+    b.add(shadeUV(g, R), mat, { pos: [0, yb, 0], uv: 'keep' });
     const gi = lathe(prof.map(([r, y]) => [r * 0.985, y - 0.002]).reverse(), seg);
     if (wave) { const pa = gi.attributes.position; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), z = pa.getZ(i), y = pa.getY(i); const a = Math.atan2(z, x); const k = 1 + wave * Math.sin(a * 6) * (1 - y / h); pa.setX(i, x * k); pa.setZ(i, z * k); } gi.computeVertexNormals(); }
-    b.add(gi, inner || c.mat('metal-white'), { pos: [0, yb, 0], uv: 'box' });
+    b.add(shadeUV(gi, R), inner || c.mat('metal-white'), { pos: [0, yb, 0], uv: 'keep' });
     b.add(new THREE.TorusGeometry(R, 0.002, 6, seg).rotateX(Math.PI / 2), mat, { pos: [0, yb, 0] });
     return yb + h * 0.4;
   }
@@ -76,11 +105,11 @@ function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null, o
     // open top & bottom
     const hole = Math.max(0.035, open * R);
     const trimmed = pts.filter(([r, y]) => !(r < hole && Math.abs(y) > Ry * 0.3));
-    b.add(lathe(trimmed, 40), mat, { pos: [0, yb + Ry, 0], uv: 'box' });
+    b.add(shadeUV(lathe(trimmed, 40), R), mat, { pos: [0, yb + Ry, 0], uv: 'keep' });
     return yb + Ry;
   }
   // drum (default)
-  b.add(new THREE.CylinderGeometry(R, R, h, seg, 1, true), mat, { pos: [0, yb + h / 2, 0], uv: 'box', axis: 'x' });
+  b.add(shadeUV(new THREE.CylinderGeometry(R, R, h, segs(seg, 24), 1, true), R), mat, { pos: [0, yb + h / 2, 0], uv: 'keep' });
   for (const y of [yb, yb + h]) b.add(new THREE.TorusGeometry(R, 0.003, 6, seg).rotateX(Math.PI / 2), rimMat, { pos: [0, y, 0] });
   return yb + h * 0.45;
 }
@@ -145,9 +174,10 @@ export function floorLamp(c) {
   const ly = addShade(b, c, { style, R, h: sh, yb, mat: shade, rimMat: rim });
   spider(b, rim, { R: style.includes('cone') ? R * 0.68 : style.includes('pleat') ? R * 0.8 : R, y: yb + sh, hubY: yb + sh * 0.55 });
   bulb(b, c, ly + 0.02, 0.028);
+  const kind = /globe|sphere/.test(style) ? 'globe' : /dome|bell/.test(style) ? 'dome' : 'open';
   return {
     group: b.build('floor_lamp'),
-    lights: [{ type: 'point', position: [0, ly + 0.02, 0], color: WARM, intensity: p.lumens ? p.lumens / 800 : 1, distance: 4.5, decay: 2, shadow: true }],
+    lights: shadeLights({ ly: ly + 0.02, yb, h: sh, Rb: R, Rt: style.includes('cone') ? R * 0.68 : style.includes('pleat') ? R * 0.82 : R, I: p.lumens ? p.lumens / 800 : 1, kind }),
   };
 }
 
@@ -157,8 +187,9 @@ const isMetalKey = (k) => /metal|brass|chrome|nickel|black|gold/.test(String(k |
 function swingArmLamp(c, { b, baseMat, shade, style, R }) {
   const { H, params: p } = c;
   const sh = clamp(cm(p.shadeHeight, R * 1.2), 0.12, 0.4);
-  const armL = clamp(R * 1.6, 0.25, 0.5);
-  const br = 0.13;
+  // width = base radius + arm + shade radius = W (exact catalogue width)
+  const br = clamp(c.W * 0.28, 0.09, 0.14);
+  const armL = Math.max(0.06, c.W - br - R);
   const stemTop = H - 0.02;
   b.add(slab(ellipseShape(br * 2, br * 2), 0.022, { bevel: 0.007, bevelSeg: 4 }), baseMat, { pos: [-armL / 2, 0, 0] });
   b.add(new THREE.CylinderGeometry(0.009, 0.009, stemTop - 0.02, 14), baseMat, { pos: [-armL / 2, 0.02 + (stemTop - 0.02) / 2, 0], axis: 'y' });
@@ -174,7 +205,7 @@ function swingArmLamp(c, { b, baseMat, shade, style, R }) {
   sg.children.forEach((m) => { m.position.x += armL / 2; });
   const group = b.build('floor_lamp');
   while (sg.children.length) group.add(sg.children[0]);
-  return { group, lights: [{ type: 'point', position: [armL / 2, ly, 0], color: WARM, intensity: 1, distance: 4.5, decay: 2, shadow: true }] };
+  return { group, lights: shadeLights({ x: armL / 2, ly, yb, h: sh, Rb: R, Rt: style.includes('cone') ? R * 0.68 : R, I: 1, kind: /dome|bell/.test(style) ? 'dome' : 'open' }) };
 }
 
 const BASE_SHAPES = {
@@ -207,7 +238,7 @@ export function tableLamp(c) {
     b.add(lathe(prof, 40), baseMat, { uv: 'cyl' });
     const ly = addShade(b, c, { style: 'mushroom', R, h: dh * 0.75, yb: H - dh * 0.75, mat: shade, rimMat: baseMat });
     bulb(b, c, ly, 0.02);
-    return { group: b.build('table_lamp'), lights: [{ type: 'point', position: [0, ly, 0], color: WARM, intensity: 0.6, distance: 3, decay: 2, shadow: false }] };
+    return { group: b.build('table_lamp'), lights: shadeLights({ ly, yb: H - dh * 0.75, h: dh * 0.75, Rb: R, I: 0.6, kind: 'dome', distance: 3 }) };
   }
   const fn = BASE_SHAPES[Object.keys(BASE_SHAPES).find((k) => shapeName.includes(k)) || 'gourd'];
   const br = Math.min(R * 0.55, 0.11);
@@ -229,7 +260,7 @@ export function tableLamp(c) {
   bulb(b, c, ly + 0.01, 0.022);
   return {
     group: b.build('table_lamp'),
-    lights: [{ type: 'point', position: [0, ly + 0.01, 0], color: WARM, intensity: 0.6, distance: 3, decay: 2, shadow: false }],
+    lights: shadeLights({ ly: ly + 0.01, yb, h: sh, Rb: R, Rt: style.includes('cone') ? R * 0.68 : style.includes('pleat') ? R * 0.82 : R, I: 0.6, kind: /dome|bell|opal/.test(style) ? 'dome' : 'open', distance: 3 }),
   };
 }
 
@@ -276,9 +307,17 @@ export function pendantLamp(c) {
     ly = top - h * 0.45;
   }
   bulb(b, c, ly, 0.03);
+  const globe = shape.includes('globe') || shape.includes('sphere') || shape.includes('lantern') || (shape.includes('paper') && !shape.includes('dome'));
+  let lights;
+  if (globe) lights = shadeLights({ ly, yb: top - h, h, Rb: R, kind: 'globe', distance: 5 });
+  else if (shape.includes('drum') || shape.includes('cone') || shape.includes('pleat')) {
+    // dining pendant: a shadowed down spot pooling on the table (55°, soft edge) + up-light + shade glow
+    lights = shadeLights({ ly, yb: top - h, h, Rb: R, Rt: shape.includes('cone') ? R * 0.68 : R, kind: 'open', distance: 5 });
+    lights[0].angle = 0.96; lights[0].penumbra = 0.5;
+  } else lights = shadeLights({ ly, yb: top - h, h, Rb: R, kind: 'dome', distance: 5 });
   return {
     group: b.build('pendant_lamp'),
     anchors: { mount: V3(0, 0, 0), bottom: V3(0, top - h, 0) },
-    lights: [{ type: shape.includes('dome') || shape.includes('bell') ? 'spot' : 'point', position: [0, ly, 0], target: [0, ly - 1, 0], angle: 1.0, penumbra: 0.6, color: WARM, intensity: 1, distance: 5, decay: 2, shadow: true }],
+    lights,
   };
 }

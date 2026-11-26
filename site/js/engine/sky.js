@@ -1,29 +1,31 @@
-// Villar engine — procedural HDR sky (equirect) + stylised Dubai skyline seen from a high floor.
+// Villar engine — procedural HDR sky (equirect) + procedural Dubai skyline seen from ~40th floor.
 // Owner: engine.
 //
-// The sky is an equirectangular HalfFloat DataTexture: used as scene.background in raster mode and
-// as background + environment light source by the path tracer. The skyline is one merged mesh of
-// towers / low-rise blocks / ground, with aerial perspective baked as (attenuated albedo + emissive
-// airlight via a uv1 ramp). At night a second material swaps the airlight for lit windows.
+// Sky: equirect HalfFloat DataTexture (raster background; path tracer background/environment).
+// Skyline: a handful of merged meshes —
+//   • glass curtain-wall towers (MeshPhysical, ior 2.0 coated glass, per-tower tint, mullion/spandrel
+//     map) reflecting a PMREM of the *sky* (set explicitly; never the interior capture),
+//   • stone/render mid-rises with punched windows, a Y-plan supertall tower,
+//   • ground with a road grid and parks, a Gulf water band (glossy, reflects the sky).
+// Aerial perspective: albedo attenuated by distance + emissive airlight toward warm sand haze (uv1
+// ramp). Night: per-window lit/colour/brightness variation in a 1024² mipmapped, anisotropic emissive
+// texture (distance averages via mips — no shimmer) and warm street-light dots on the ground.
 import * as THREE from 'three';
-import { rng, clamp, smoothstep, DEG } from './util.js';
+import { rng, clamp, DEG } from './util.js';
 
 // ----------------------------------------------------------------------------- sky presets
-// Radiance units match lighting.js (sun ≈ 8–10 at noon).
+// Radiance units match lighting.js (sun ≈ 10 at noon). Sun:sky horizontal irradiance ≈ 4–5 : 1.
 export const SKY_PRESETS = {
-  morning: { zenith: '#6f98c8', horizon: '#dfe3e3', ground: '#a99a84', haze: '#d9dcdc', zenithL: 0.32, horizonL: 0.95, groundL: 0.22, glow: '#ffd6a8', glowL: 1.1, hazeL: 0.9 },
-  day:     { zenith: '#5a8cc4', horizon: '#e6e8e4', ground: '#b3a58d', haze: '#d8dcdc', zenithL: 0.38, horizonL: 1.1,  groundL: 0.28, glow: '#fff1dc', glowL: 0.9, hazeL: 1.0 },
-  golden:  { zenith: '#6a86b0', horizon: '#efcfa8', ground: '#9a8166', haze: '#e6c8a4', zenithL: 0.24, horizonL: 0.85, groundL: 0.15, glow: '#ffb46a', glowL: 2.0, hazeL: 0.75 },
-  evening: { zenith: '#18295a', horizon: '#56608a', ground: '#1c1d26', haze: '#3e4566', zenithL: 0.032, horizonL: 0.05, groundL: 0.01, glow: '#ff9156', glowL: 0.11, hazeL: 0.04 },
+  morning: { zenith: '#6f98c8', horizon: '#d6dde3', ground: '#a49a8a', haze: '#d8d6d0', zenithL: 0.26, horizonL: 0.70, groundL: 0.18, glow: '#ffdcb4', glowL: 0.9, hazeL: 0.62 },
+  day:     { zenith: '#5a8cc4', horizon: '#e3e6e3', ground: '#b0a48e', haze: '#d9cdb8', zenithL: 0.30, horizonL: 0.75, groundL: 0.22, glow: '#fff1dc', glowL: 0.7, hazeL: 0.68 },
+  golden:  { zenith: '#6283b4', horizon: '#e9d2b8', ground: '#958068', haze: '#e2c9a8', zenithL: 0.22, horizonL: 0.60, groundL: 0.13, glow: '#ffb470', glowL: 1.6, hazeL: 0.52 },
+  evening: { zenith: '#132a5e', horizon: '#3b4f7a', ground: '#191b24', haze: '#30395a', zenithL: 0.035, horizonL: 0.06, groundL: 0.008, glow: '#ff9a62', glowL: 0.03, hazeL: 0.035 },
 };
 
-const _c = new THREE.Color();
-const lin = (hex) => new THREE.Color(hex); // THREE.Color(hex) converts sRGB hex → linear working space
+const lin = (hex) => new THREE.Color(hex); // sRGB hex → linear working space
 
-/**
- * Builds an equirect sky. sunDir = normalized vector pointing to the sun (may be below horizon).
- */
-export function makeSkyTexture(preset, sunDir, { width = 1024, height = 512 } = {}) {
+/** Equirect sky. sunDir = normalized vector pointing to the sun (may be below the horizon). */
+export function makeSkyTexture(preset, sunDir, { width = 512, height = 256 } = {}) {
   const P = preset;
   const zen = lin(P.zenith).multiplyScalar(P.zenithL);
   const hor = lin(P.horizon).multiplyScalar(P.horizonL);
@@ -32,37 +34,32 @@ export function makeSkyTexture(preset, sunDir, { width = 1024, height = 512 } = 
   const data = new Uint16Array(width * height * 4);
   const toH = THREE.DataUtils.toHalfFloat;
   const s = sunDir.clone().normalize();
-  // horizon direction of the sun (for the low glow band even when the sun is below the horizon)
   const sh = new THREE.Vector3(s.x, 0, s.z); if (sh.lengthSq() < 1e-6) sh.set(0, 0, 1); sh.normalize();
-  const d = new THREE.Vector3();
-  const col = new THREE.Color();
+  const sunOn = s.y > -0.12 ? 1 : 0;
+  const cosPhi = new Float32Array(width), sinPhi = new Float32Array(width);
+  for (let i = 0; i < width; i++) { const phi = ((i + 0.5) / width - 0.5) * 2 * Math.PI; cosPhi[i] = Math.cos(phi); sinPhi[i] = Math.sin(phi); }
+  let r, g, b;
   for (let j = 0; j < height; j++) {
     const lat = ((j + 0.5) / height - 0.5) * Math.PI;
     const y = Math.sin(lat), cl = Math.cos(lat);
+    // per-row base colour (depends on elevation only)
+    if (y >= 0) {
+      const t = Math.pow(y, 0.45), band = Math.exp(-y * 18) * 0.35;
+      r = hor.r + (zen.r - hor.r) * t + hor.r * band; g = hor.g + (zen.g - hor.g) * t + hor.g * band; b = hor.b + (zen.b - hor.b) * t + hor.b * band;
+    } else {
+      const t = clamp(Math.pow(-y, 0.35) * 1.2, 0, 1);
+      r = hor.r * 0.85 + (gnd.r - hor.r * 0.85) * t; g = hor.g * 0.85 + (gnd.g - hor.g * 0.85) * t; b = hor.b * 0.85 + (gnd.b - hor.b * 0.85) * t;
+    }
+    const hbRow = Math.exp(-Math.abs(y) * 9) * 0.6;
     for (let i = 0; i < width; i++) {
-      const phi = ((i + 0.5) / width - 0.5) * 2 * Math.PI;
-      d.set(Math.cos(phi) * cl, y, Math.sin(phi) * cl);
-      if (y >= 0) {
-        // sky: horizon → zenith, a thin bright haze band right at the horizon
-        const t = Math.pow(y, 0.45);
-        col.copy(hor).lerp(zen, t);
-        const band = Math.exp(-y * 18) * 0.35;
-        col.r += hor.r * band; col.g += hor.g * band; col.b += hor.b * band;
-      } else {
-        // below the horizon: dusty ground haze fading into the ground colour
-        const t = Math.pow(-y, 0.35);
-        col.copy(hor).multiplyScalar(0.85).lerp(gnd, clamp(t * 1.2, 0, 1));
-      }
-      // sun glow (forward scattering) + horizon glow towards the sun azimuth
-      const cosA = d.dot(s);
-      const ang = Math.acos(clamp(cosA, -1, 1));
-      const g1 = Math.exp(-ang / 0.09) * 1.0 + Math.exp(-ang / 0.35) * 0.35;
-      const cosH = d.x * sh.x + d.z * sh.z;
-      const hb = Math.max(0, cosH) ** 3 * Math.exp(-Math.abs(y) * 9) * 0.6;
-      const k = g1 * (s.y > -0.12 ? 1 : 0) + hb;
-      col.r += glow.r * k; col.g += glow.g * k; col.b += glow.b * k;
+      const dx = cosPhi[i] * cl, dz = sinPhi[i] * cl;
+      const cosA = clamp(dx * s.x + y * s.y + dz * s.z, -1, 1);
+      const ang = Math.acos(cosA);
+      const g1 = (Math.exp(-ang / 0.09) + Math.exp(-ang / 0.35) * 0.35) * sunOn;
+      const cosH = dx * sh.x + dz * sh.z;
+      const k = g1 + (cosH > 0 ? cosH * cosH * cosH : 0) * hbRow;
       const o = (j * width + i) * 4;
-      data[o] = toH(col.r); data[o + 1] = toH(col.g); data[o + 2] = toH(col.b); data[o + 3] = toH(1);
+      data[o] = toH(r + glow.r * k); data[o + 1] = toH(g + glow.g * k); data[o + 2] = toH(b + glow.b * k); data[o + 3] = 15360; // 1.0
     }
   }
   const tex = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.HalfFloatType);
@@ -76,50 +73,97 @@ export function makeSkyTexture(preset, sunDir, { width = 1024, height = 512 } = 
   return tex;
 }
 
-// ----------------------------------------------------------------------------- skyline
-const GROUND_Y = -138;          // we are ~40 floors up
-const TILE_W = 32, TILE_H = 52; // facade texture tile in metres (16 bays × 16 floors)
+// ----------------------------------------------------------------------------- textures
+const GROUND_Y = -138;              // ~40th floor
+const TILE_W = 24, TILE_H = 56;     // facade tile: 16 bays × 16 floors (1.5 m × 3.5 m)
+const GROUND_TILE = 1200;           // road grid tile (10 blocks of 120 m)
 
-function facadeTextures() {
-  // map: subtle floor bands + mullions (sRGB); night: lit windows (sRGB emissive)
-  const N = 256, cells = 16, cs = N / cells;
-  const day = new Uint8Array(N * N * 4), night = new Uint8Array(N * N * 4);
-  const r = rng(77);
-  const lit = [];
-  for (let k = 0; k < cells * cells; k++) {
-    const on = r() < 0.42;
-    const warm = r();
-    const b = 0.45 + r() * 0.55;
-    lit.push(on ? (warm < 0.7 ? [255 * b, 196 * b, 128 * b] : [235 * b, 232 * b, 220 * b]) : [6, 7, 9]);
-  }
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < N; x++) {
-      const cx = Math.floor(x / cs), cy = Math.floor(y / cs);
-      const fx = (x % cs) / cs, fy = (y % cs) / cs;
-      const slab = fy < 0.18;                 // floor slab band
-      const mull = fx < 0.07;                 // vertical mullion
-      const o = (y * N + x) * 4;
-      const v = slab ? 150 : mull ? 190 : 225;
-      day[o] = v; day[o + 1] = v; day[o + 2] = v; day[o + 3] = 255;
-      const L = slab || mull ? [3, 3, 4] : lit[cy * cells + cx];
-      night[o] = L[0]; night[o + 1] = L[1]; night[o + 2] = L[2]; night[o + 3] = 255;
-    }
-  }
-  const mk = (data) => {
-    const t = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
-    t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true;
-    t.anisotropy = 4; t.needsUpdate = true; return t;
-  };
-  // airlight ramp: u = haze amount 0..1 → white*u (emissive colour tints it)
-  const R = 64, ramp = new Uint8Array(R * 4);
-  for (let i = 0; i < R; i++) { const v = Math.round((i / (R - 1)) * 255); ramp[i * 4] = v; ramp[i * 4 + 1] = v; ramp[i * 4 + 2] = v; ramp[i * 4 + 3] = 255; }
-  const rampTex = new THREE.DataTexture(ramp, R, 1, THREE.RGBAFormat);
-  rampTex.colorSpace = THREE.NoColorSpace; rampTex.magFilter = THREE.LinearFilter; rampTex.minFilter = THREE.LinearFilter;
-  rampTex.channel = 1; rampTex.needsUpdate = true;
-  return { day: mk(day), night: mk(night), ramp: rampTex };
+function tex8(data, N, { srgb = true, repeat = true, aniso = 16, mips = true } = {}) {
+  const t = new THREE.DataTexture(data, N, data.length / 4 / N, THREE.RGBAFormat);
+  t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  t.wrapS = t.wrapT = repeat ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
+  t.magFilter = THREE.LinearFilter;
+  t.minFilter = mips ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
+  t.generateMipmaps = mips; t.anisotropy = aniso; t.needsUpdate = true;
+  return t;
 }
 
+function skylineTextures() {
+  const r = rng(77);
+  const cells = 16;
+  // --- curtain wall (day): spandrel bands + mullions, slight per-panel tone variation (sRGB)
+  const Nd = 256, cd = Nd / cells;
+  const curtain = new Uint8Array(Nd * Nd * 4);
+  const panelTone = Array.from({ length: cells * cells }, () => 0.9 + r() * 0.2);
+  for (let y = 0; y < Nd; y++) for (let x = 0; x < Nd; x++) {
+    const cx = (x / cd) | 0, cy = (y / cd) | 0, fx = (x % cd) / cd, fy = (y % cd) / cd;
+    const o = (y * Nd + x) * 4;
+    let v;
+    if (fy < 0.16) v = 120; else if (fx < 0.06) v = 70; else v = 235 * panelTone[cy * cells + cx];
+    curtain[o] = v; curtain[o + 1] = v; curtain[o + 2] = v; curtain[o + 3] = 255;
+  }
+  // --- punched-window render facade (day)
+  const stone = new Uint8Array(Nd * Nd * 4);
+  for (let y = 0; y < Nd; y++) for (let x = 0; x < Nd; x++) {
+    const fx = (x % cd) / cd, fy = (y % cd) / cd;
+    const win = fx > 0.18 && fx < 0.82 && fy > 0.28 && fy < 0.86;
+    const o = (y * Nd + x) * 4, v = win ? 105 : 236;
+    stone[o] = v; stone[o + 1] = v; stone[o + 2] = v; stone[o + 3] = 255;
+  }
+  // --- night windows: per-window lit/colour/brightness, curtains/blinds variation (1024², mipmapped)
+  const Nn = 1024, cn = Nn / cells;
+  const night = new Uint8Array(Nn * Nn * 4);
+  const win = [];
+  for (let k = 0; k < cells * cells; k++) {
+    const on = r() < 0.38;
+    const t = r(), b = 0.35 + Math.pow(r(), 0.6) * 0.65;
+    const col = t < 0.62 ? [255, 190, 120] : t < 0.88 ? [250, 232, 205] : [205, 225, 255];
+    const blind = r() < 0.3 ? 0.35 + r() * 0.5 : 1;  // drawn blinds: lit only partly
+    win.push(on ? { c: col.map((v) => v * b), blind } : null);
+  }
+  for (let y = 0; y < Nn; y++) for (let x = 0; x < Nn; x++) {
+    const cx = (x / cn) | 0, cy = (y / cn) | 0, fx = (x % cn) / cn, fy = (y % cn) / cn;
+    const o = (y * Nn + x) * 4;
+    const w = win[cy * cells + cx];
+    let R = 2, G = 2, B = 3;
+    if (w && fy > 0.18 && fx > 0.07 && fy < 0.18 + 0.82 * w.blind) {
+      const v = 0.85 + 0.15 * Math.sin(fx * 9.0) * Math.sin(fy * 7.0);
+      R = w.c[0] * v; G = w.c[1] * v; B = w.c[2] * v;
+    }
+    night[o] = R; night[o + 1] = G; night[o + 2] = B; night[o + 3] = 255;
+  }
+  // --- ground: sand blocks, asphalt roads, sparse parks (day) / street-light dots (night)
+  const Ng = 1024, block = Ng / 10;
+  const ground = new Uint8Array(Ng * Ng * 4), groundN = new Uint8Array(Ng * Ng * 4);
+  const parks = new Set(); for (let k = 0; k < 9; k++) parks.add(((r() * 10) | 0) * 10 + ((r() * 10) | 0));
+  for (let y = 0; y < Ng; y++) for (let x = 0; x < Ng; x++) {
+    const bx = (x / block) | 0, by = (y / block) | 0, fx = (x % block) / block, fy = (y % block) / block;
+    const road = fx < 0.13 || fy < 0.13;
+    const major = (bx % 5 === 0 && fx < 0.2) || (by % 5 === 0 && fy < 0.2);
+    const o = (y * Ng + x) * 4;
+    let c;
+    if (road || major) c = [92, 88, 82];
+    else if (parks.has(by * 10 + bx)) c = [96, 112, 72];
+    else { const n = 0.92 + ((x * 7 + y * 13) % 17) / 170; c = [206 * n, 194 * n, 170 * n]; }
+    ground[o] = c[0]; ground[o + 1] = c[1]; ground[o + 2] = c[2]; ground[o + 3] = 255;
+    // street lights: dots along road centre lines every ~25 m
+    const lx = (fx > 0.05 && fx < 0.075) || (fy > 0.05 && fy < 0.075);
+    const along = road ? ((fx < 0.13 ? y : x) % 22 < 3) : false;
+    const L = lx && along ? 255 : major && ((x + y) % 9 < 2) ? 120 : 0;
+    groundN[o] = L; groundN[o + 1] = L * 0.72; groundN[o + 2] = L * 0.42; groundN[o + 3] = 255;
+  }
+  // --- airlight ramp: u = haze amount 0..1 (emissive colour tints it); sampled through uv1
+  const R = 64, ramp = new Uint8Array(R * 4);
+  for (let i = 0; i < R; i++) { const v = Math.round((i / (R - 1)) * 255); ramp[i * 4] = v; ramp[i * 4 + 1] = v; ramp[i * 4 + 2] = v; ramp[i * 4 + 3] = 255; }
+  const rampTex = tex8(ramp, R, { srgb: false, repeat: false, aniso: 1, mips: false });
+  rampTex.channel = 1;
+  return {
+    curtain: tex8(curtain, Nd), stone: tex8(stone, Nd), night: tex8(night, Nn),
+    ground: tex8(ground, Ng), groundNight: tex8(groundN, Ng), ramp: rampTex,
+  };
+}
+
+// ----------------------------------------------------------------------------- geometry
 class GeoBuilder {
   constructor() { this.pos = []; this.nor = []; this.uv = []; this.uv1 = []; this.col = []; this.idx = []; }
   quad(p0, p1, p2, p3, n, uvs, haze, color) {
@@ -129,26 +173,30 @@ class GeoBuilder {
     for (const t of uvs) this.uv.push(t[0], t[1]);
     this.idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
   }
-  /** Axis-aligned-in-local-frame box (rotated by `rot` around Y), sides + top. */
-  tower(cx, cz, w, d, y0, y1, rot, haze, color, uOff, vOff) {
+  /** Prism with a polygonal footprint (CCW in x/z, local), sides + roof. */
+  prism(cx, cz, poly, y0, y1, rot, haze, color, uOff, vOff, roofColor) {
     const c = Math.cos(rot), s = Math.sin(rot);
     const P = (lx, y, lz) => [cx + lx * c + lz * s, y, cz - lx * s + lz * c];
-    const hw = w / 2, hd = d / 2;
-    const corners = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]];
     let u = uOff;
-    for (let k = 0; k < 4; k++) {
-      const a = corners[k], b = corners[(k + 1) % 4];
+    const n = poly.length;
+    for (let k = 0; k < n; k++) {
+      const a = poly[k], b = poly[(k + 1) % n];
       const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
       const nx = (b[1] - a[1]) / len, nz = -(b[0] - a[0]) / len;
-      const n = [nx * c + nz * s, 0, -nx * s + nz * c];
+      const nn = [nx * c + nz * s, 0, -nx * s + nz * c];
       const u0 = u / TILE_W, u1 = (u + len) / TILE_W;
       const v0 = (y0 - GROUND_Y) / TILE_H + vOff, v1 = (y1 - GROUND_Y) / TILE_H + vOff;
-      // winding a0 → a1 → b1 → b0 gives an outward-facing front side
-      this.quad(P(a[0], y0, a[1]), P(a[0], y1, a[1]), P(b[0], y1, b[1]), P(b[0], y0, b[1]), n, [[u0, v0], [u0, v1], [u1, v1], [u1, v0]], haze, color);
+      this.quad(P(a[0], y0, a[1]), P(a[0], y1, a[1]), P(b[0], y1, b[1]), P(b[0], y0, b[1]), nn, [[u0, v0], [u0, v1], [u1, v1], [u1, v0]], haze, color);
       u += len;
     }
-    // roof (dark, no windows: uv in a slab band)
-    this.quad(P(-hw, y1, hd), P(hw, y1, hd), P(hw, y1, -hd), P(-hw, y1, -hd), [0, 1, 0], [[0, 0.01], [0.001, 0.01], [0.001, 0.012], [0, 0.012]], haze, color.clone().multiplyScalar(0.6));
+    // roof as a fan (uv in a spandrel band: dark, no windows)
+    const rc = roofColor || color.clone().multiplyScalar(0.55);
+    for (let k = 1; k < n - 1; k++) {
+      const p0 = poly[0], p1 = poly[k], p2 = poly[k + 1];
+      const b = this.pos.length / 3;
+      for (const p of [p0, p2, p1]) { const w = P(p[0], y1, p[1]); this.pos.push(w[0], w[1], w[2]); this.nor.push(0, 1, 0); this.uv.push(0.001, 0.02); this.uv1.push(haze, 0.5); this.col.push(rc.r, rc.g, rc.b); }
+      this.idx.push(b, b + 1, b + 2);
+    }
   }
   build() {
     const g = new THREE.BufferGeometry();
@@ -163,117 +211,176 @@ class GeoBuilder {
   }
 }
 
-const TOWER_COLORS = ['#6f8592', '#3f5260', '#8fa2ab', '#c9b597', '#ddd5c6', '#55707a', '#b09b7c', '#7f939b', '#2f3d47', '#a7b4b8'];
+const rect = (w, d) => [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]];
+const circle = (r, n = 14) => Array.from({ length: n }, (_, i) => { const a = (i / n) * Math.PI * 2; return [Math.cos(a) * r, Math.sin(a) * r]; });
+const chamfer = (w, d, k) => [[-w / 2 + k, -d / 2], [w / 2 - k, -d / 2], [w / 2, -d / 2 + k], [w / 2, d / 2 - k], [w / 2 - k, d / 2], [-w / 2 + k, d / 2], [-w / 2, d / 2 - k], [-w / 2, -d / 2 + k]];
+// glass tints (sRGB): blue-grey / green-grey glass, ~20 % bronze or silver
+const GLASS = ['#22313a', '#2c3d47', '#3a4c56', '#4c5f6a', '#5f727c', '#2f4a4c', '#3b4a52', '#6a6052', '#7d8790', '#55606a'];
+const STONE = ['#d9cfbf', '#cfc3ae', '#e3ddd2', '#bfb19a', '#d4c7b2'];
 
 export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 11 } = {}) {
   const r = rng(seed);
-  const B = new GeoBuilder();
-  const hazeOf = (dist) => 1 - Math.exp(-dist / 1700);
-  const add = (ang, dist, w, d, h, rot, colHex) => {
-    const cx = center.x + Math.sin(ang) * dist, cz = center.z + Math.cos(ang) * dist;
+  const glassB = new GeoBuilder(), stoneB = new GeoBuilder(), groundB = new GeoBuilder(), waterB = new GeoBuilder();
+  const hazeOf = (dist) => 1 - Math.exp(-dist / 3400);
+  const at = (ang, dist) => [center.x + Math.sin(ang) * dist, center.z + Math.cos(ang) * dist];
+
+  function tower(ang, dist, h, opts = {}) {
+    const [cx, cz] = at(ang, dist);
     const hz = hazeOf(dist);
-    const c = new THREE.Color(colHex).multiplyScalar(1 - hz * 0.85);
-    B.tower(cx, cz, w, d, GROUND_Y, GROUND_Y + h, rot, hz, c, r() * TILE_W, Math.floor(r() * 12) / 12);
-    return { cx, cz };
-  };
-  // mid-rise and high-rise towers in a wide arc in front of the window (+Z hemisphere)
-  for (let i = 0; i < 150; i++) {
-    const ang = (r() * 2 - 1) * 115 * DEG;
-    const near = r() < 0.15;
-    const dist = near ? 330 + r() * 250 : 600 + Math.pow(r(), 0.85) * 1900;
-    // keep a view corridor straight ahead for nearby towers
-    if (dist < 700 && Math.abs(ang) < 28 * DEG) continue;
-    const tall = r() < 0.3;
-    const h = tall ? 200 + r() * 160 : 60 + r() * 140;
-    const w = 18 + r() * 20, d = 18 + r() * 20;
-    add(ang, dist, w, d, h, r() * Math.PI, TOWER_COLORS[(r() * TOWER_COLORS.length) | 0]);
-    // occasional stepped crown
-    if (tall && r() < 0.5) {
-      const cx = center.x + Math.sin(ang) * dist, cz = center.z + Math.cos(ang) * dist;
-      const hz = hazeOf(dist);
-      const c = new THREE.Color('#9aa6ad').multiplyScalar(1 - hz * 0.85);
-      B.tower(cx, cz, w * 0.6, d * 0.6, GROUND_Y + h, GROUND_Y + h + 18 + r() * 25, 0, hz, c, 0, 0);
+    const glass = opts.glass ?? r() < 0.75;
+    const B = glass ? glassB : stoneB;
+    const base = new THREE.Color((glass ? GLASS : STONE)[(r() * (glass ? GLASS.length : STONE.length)) | 0]);
+    const col = base.multiplyScalar(1 - hz * 0.8);
+    const kind = opts.kind || (r() < 0.55 ? 'box' : r() < 0.6 ? 'round' : 'chamfer');
+    const w = opts.w || 22 + r() * 22, d = opts.d || 22 + r() * 22;
+    const poly = kind === 'round' ? circle(w / 2, 16) : kind === 'chamfer' ? chamfer(w, d, Math.min(w, d) * 0.22) : rect(w, d);
+    const y0 = GROUND_Y, y1 = GROUND_Y + h;
+    const rot = r() * Math.PI;
+    const vOff = Math.floor(r() * 16) / 16, uOff = r() * TILE_W;
+    B.prism(cx, cz, poly, y0, y1, rot, hz, col, uOff, vOff);
+    // crown / setback
+    if (h > 160 && r() < 0.55) {
+      const k = 0.55 + r() * 0.25, h2 = 12 + r() * 30;
+      const poly2 = poly.map(([x, z]) => [x * k, z * k]);
+      B.prism(cx, cz, poly2, y1, y1 + h2, rot, hz, col.clone().multiplyScalar(0.9), uOff, vOff);
     }
   }
-  // low-rise city fabric: blocks on a street grid (two districts with different orientation)
+
+  // clusters: Marina (left), JLT behind it, Business Bay / Downtown (far left), new towers right
+  const clusters = [
+    { a0: -78, a1: -40, d0: 700, d1: 1700, n: 46, h0: 140, h1: 330 },
+    { a0: -45, a1: -15, d0: 1500, d1: 2600, n: 34, h0: 120, h1: 260 },
+    { a0: -15, a1: 25, d0: 1100, d1: 2400, n: 26, h0: 90, h1: 230 },
+    { a0: 20, a1: 70, d0: 650, d1: 1400, n: 22, h0: 110, h1: 280 },
+    { a0: -110, a1: 110, d0: 1800, d1: 3400, n: 60, h0: 60, h1: 220 },
+    { a0: -100, a1: 100, d0: 420, d1: 700, n: 10, h0: 70, h1: 180 },
+  ];
+  for (const c of clusters) {
+    for (let i = 0; i < c.n; i++) {
+      const ang = (c.a0 + r() * (c.a1 - c.a0)) * DEG;
+      const dist = c.d0 + Math.pow(r(), 0.8) * (c.d1 - c.d0);
+      if (dist < 750 && Math.abs(ang) < 26 * DEG) continue; // keep the view corridor open
+      tower(ang, dist, c.h0 + Math.pow(r(), 1.3) * (c.h1 - c.h0));
+    }
+  }
+  // mid-rise stone fabric on a street grid near the ground
   for (const [rot, ox, oz] of [[0.18, 0, 0], [-0.42, 37, 11]]) {
     const c = Math.cos(rot), s2 = Math.sin(rot);
-    for (let gx = -40; gx <= 40; gx++) for (let gz = 2; gz <= 40; gz++) {
-      if (r() < 0.5) continue;
-      const lx = gx * 64 + ox, lz = gz * 64 + oz;
+    for (let gx = -30; gx <= 30; gx++) for (let gz = 2; gz <= 30; gz++) {
+      if (r() < 0.45) continue;
+      const lx = gx * 70 + ox, lz = gz * 70 + oz;
       const wx = lx * c + lz * s2, wz = -lx * s2 + lz * c;
       const dist = Math.hypot(wx, wz);
-      if (dist < 160 || dist > 2400) continue;
+      if (dist < 200 || dist > 2000) continue;
       const ang = Math.atan2(wx, wz);
-      if (Math.abs(ang) > 125 * DEG) continue;
-      add(ang, dist, 26 + r() * 22, 26 + r() * 22, 6 + Math.pow(r(), 2) * 34, rot, ['#c9b9a0', '#d9d0c1', '#ab9f8b', '#bfb5a4', '#cfc6b6'][(r() * 5) | 0]);
+      if (Math.abs(ang) > 120 * DEG) continue;
+      const [cx, cz] = at(ang, dist);
+      const hz = hazeOf(dist);
+      const col = new THREE.Color(STONE[(r() * STONE.length) | 0]).multiplyScalar(1 - hz * 0.8);
+      stoneB.prism(cx, cz, rect(30 + r() * 22, 30 + r() * 22), GROUND_Y, GROUND_Y + 18 + Math.pow(r(), 1.5) * 42, rot, hz, col, r() * TILE_W, Math.floor(r() * 16) / 16);
     }
   }
-  // landmark supertall (stylised, stepped + spire) far to the left
+  // signature supertall (Y-plan, spiralling setbacks, spire) — 828 m
   {
     const ang = -32 * DEG, dist = 2600;
-    const cx = center.x + Math.sin(ang) * dist, cz = center.z + Math.cos(ang) * dist;
+    const [cx, cz] = at(ang, dist);
     const hz = hazeOf(dist);
-    const c = new THREE.Color('#aab4ba').multiplyScalar(1 - hz * 0.85);
-    let y = GROUND_Y, w = 70;
-    for (let k = 0; k < 9; k++) {
-      const h = k < 3 ? 110 : 70;
-      B.tower(cx, cz, w, w * 0.9, y, y + h, k * 0.45, hz, c, 0, 0);
-      y += h; w *= 0.8;
-    }
-    B.tower(cx, cz, 5, 5, y, y + 170, 0, hz, c, 0, 0);
-  }
-  // ground: concentric rings so aerial perspective varies with distance; street grid via the
-  // facade texture at city-block scale
-  {
-    const radii = [0, 150, 300, 550, 900, 1400, 2200, 3400, 5200];
-    const segs = 48;
-    for (let k = 0; k < radii.length - 1; k++) {
-      const r0 = radii[k], r1 = radii[k + 1];
-      const h0 = hazeOf(r0 + 1), h1 = hazeOf(r1);
-      for (let i = 0; i < segs; i++) {
-        const a0 = (i / segs) * Math.PI * 2, a1 = ((i + 1) / segs) * Math.PI * 2;
-        const P = (rr, a) => [center.x + Math.sin(a) * rr, GROUND_Y, center.z + Math.cos(a) * rr];
-        const U = (p) => [p[0] / 900, p[2] / 700];
-        const p0 = P(r0, a0), p1 = P(r0, a1), p2 = P(r1, a1), p3 = P(r1, a0);
-        const hz = (h0 + h1) / 2;
-        const c = new THREE.Color('#9f927c').multiplyScalar(1 - hz * 0.8);
-        B.quad(p0, p3, p2, p1, [0, 1, 0], [U(p0), U(p3), U(p2), U(p1)], hz, c);
+    const col = new THREE.Color('#9aa7b0').multiplyScalar(1 - hz * 0.8);
+    const tiers = 14, tierH = 42;
+    glassB.prism(cx, cz, circle(16, 12), GROUND_Y, GROUND_Y + 600, 0, hz, col, 0, 0);            // core
+    for (let k = 0; k < 3; k++) {
+      const wa = k * (2 * Math.PI / 3);
+      for (let t = 0; t < tiers; t++) {
+        const len = 62 * (1 - (t + k / 3) / tiers);
+        if (len < 6) break;
+        const wdt = 26 * (1 - t / (tiers * 1.4));
+        const poly = [[0, -wdt / 2], [len + 14, -wdt / 2 * 0.8], [len + 14, wdt / 2 * 0.8], [0, wdt / 2]];
+        glassB.prism(cx, cz, poly, GROUND_Y + t * tierH, GROUND_Y + (t + 1) * tierH + k * 8, wa, hz, col, 0, 0);
       }
     }
+    glassB.prism(cx, cz, circle(9, 10), GROUND_Y + 600, GROUND_Y + 700, 0, hz, col, 0, 0);
+    glassB.prism(cx, cz, circle(4, 8), GROUND_Y + 700, GROUND_Y + 828, 0, hz, col.clone().multiplyScalar(1.1), 0, 0);
   }
-  const geometry = B.build();
-  const tx = facadeTextures();
-  const dayMat = new THREE.MeshStandardMaterial({
-    vertexColors: true, map: tx.day, roughness: 0.55, metalness: 0.0,
-    emissive: new THREE.Color('#cfd8e0'), emissiveMap: tx.ramp, emissiveIntensity: 1,
-  });
-  dayMat.name = 'skyline-day';
-  const nightMat = new THREE.MeshStandardMaterial({
-    vertexColors: true, map: tx.day, color: new THREE.Color(0.35, 0.36, 0.4), roughness: 0.6, metalness: 0,
-    emissive: new THREE.Color(1, 1, 1), emissiveMap: tx.night, emissiveIntensity: 0.6,
-  });
-  nightMat.name = 'skyline-night';
-  const mesh = new THREE.Mesh(geometry, dayMat);
-  mesh.name = 'skyline';
-  mesh.frustumCulled = false;
-  mesh.castShadow = false; mesh.receiveShadow = false;
-  mesh.userData.noAO = true; mesh.userData.exterior = true;
-  mesh.matrixAutoUpdate = false; mesh.updateMatrix();
+  // ground rings (aerial perspective varies with distance); road grid at block scale
+  const ringR = [0, 160, 320, 600, 1000, 1600, 2500, 3800, 6000];
+  const SEG = 64;
+  const waterFrom = 28 * DEG, waterTo = 115 * DEG, waterDist = 1300;
+  for (let k = 0; k < ringR.length - 1; k++) {
+    const r0 = ringR[k], r1 = ringR[k + 1];
+    for (let i = 0; i < SEG; i++) {
+      const a0 = (i / SEG) * Math.PI * 2 - Math.PI, a1 = ((i + 1) / SEG) * Math.PI * 2 - Math.PI;
+      const P = (rr, a) => [center.x + Math.sin(a) * rr, GROUND_Y, center.z + Math.cos(a) * rr];
+      const U = (p) => [p[0] / GROUND_TILE, p[2] / GROUND_TILE];
+      const p0 = P(r0, a0), p1 = P(r0, a1), p2 = P(r1, a1), p3 = P(r1, a0);
+      const hz = hazeOf((r0 + r1) / 2);
+      const isWater = r0 >= waterDist && a0 >= waterFrom && a1 <= waterTo;
+      const B = isWater ? waterB : groundB;
+      const c = isWater ? new THREE.Color(1, 1, 1).multiplyScalar(1 - hz * 0.6) : new THREE.Color(1, 1, 1).multiplyScalar(1 - hz * 0.8);
+      B.quad(p0, p3, p2, p1, [0, 1, 0], [U(p0), U(p3), U(p2), U(p1)], hz, c);
+    }
+  }
+
+  const tx = skylineTextures();
+  const haze = new THREE.Color('#d9cdb8');
+  const mk = (P, opts) => { const m = new P(opts); m.userData.skyline = true; return m; };
+  // day materials (envMap = sky PMREM, assigned in setTimeOfDay)
+  const M = {
+    glassDay: mk(THREE.MeshPhysicalMaterial, { vertexColors: true, map: tx.curtain, roughness: 0.06, metalness: 0.35, envMapIntensity: 1.25, ior: 2.0, specularIntensity: 1, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-glass' }),
+    stoneDay: mk(THREE.MeshStandardMaterial, { vertexColors: true, map: tx.stone, roughness: 0.85, metalness: 0, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-stone' }),
+    groundDay: mk(THREE.MeshStandardMaterial, { vertexColors: true, map: tx.ground, roughness: 0.95, metalness: 0, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-ground' }),
+    water: mk(THREE.MeshPhysicalMaterial, { vertexColors: true, color: new THREE.Color('#1c3b47'), roughness: 0.14, metalness: 0, ior: 1.33, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-water' }),
+    glassNight: mk(THREE.MeshPhysicalMaterial, { vertexColors: true, map: tx.curtain, color: new THREE.Color(0.25, 0.27, 0.3), roughness: 0.12, metalness: 0, ior: 2.0, emissive: new THREE.Color(1, 1, 1), emissiveMap: tx.night, emissiveIntensity: 0.9, name: 'skyline-glass-night' }),
+    stoneNight: mk(THREE.MeshStandardMaterial, { vertexColors: true, map: tx.stone, color: new THREE.Color(0.3, 0.3, 0.32), roughness: 0.85, emissive: new THREE.Color(1, 1, 1), emissiveMap: tx.night, emissiveIntensity: 0.6, name: 'skyline-stone-night' }),
+    groundNight: mk(THREE.MeshStandardMaterial, { vertexColors: true, map: tx.ground, color: new THREE.Color(0.25, 0.25, 0.28), roughness: 0.95, emissive: new THREE.Color(1, 1, 1), emissiveMap: tx.groundNight, emissiveIntensity: 0.55, name: 'skyline-ground-night' }),
+  };
+  const group = new THREE.Group();
+  group.name = 'skyline';
+  const meshes = {};
+  for (const [key, B, mat] of [['glass', glassB, M.glassDay], ['stone', stoneB, M.stoneDay], ['ground', groundB, M.groundDay], ['water', waterB, M.water]]) {
+    const m = new THREE.Mesh(B.build(), mat);
+    m.name = 'skyline-' + key;
+    m.frustumCulled = false;
+    m.castShadow = false; m.receiveShadow = false;
+    m.userData.noAO = true; m.userData.exterior = true; m.userData.noPick = true;
+    m.matrixAutoUpdate = false; m.updateMatrix();
+    group.add(m);
+    meshes[key] = m;
+  }
+
+  let night = false;
+  let env = null;
+  function applyEnv() {
+    for (const m of Object.values(M)) { m.envMap = env; m.needsUpdate = true; }
+  }
 
   return {
-    mesh,
-    setTimeOfDay(tod, preset) {
-      if (tod === 'evening') {
-        mesh.material = nightMat;
-        nightMat.emissiveIntensity = 0.55;
-      } else {
-        mesh.material = dayMat;
-        dayMat.emissive.set(preset.haze).multiplyScalar(preset.hazeL * 0.75);
-      }
+    mesh: group,
+    group,
+    /** preset = SKY_PRESETS[tod]; skyEnv = PMREM texture of the sky (reflections). */
+    setTimeOfDay(tod, preset, skyEnv) {
+      night = tod === 'evening';
+      if (env !== skyEnv) { env = skyEnv || null; applyEnv(); }
+      meshes.glass.material = night ? M.glassNight : M.glassDay;
+      meshes.stone.material = night ? M.stoneNight : M.stoneDay;
+      meshes.ground.material = night ? M.groundNight : M.groundDay;
+      for (const m of [M.glassDay, M.stoneDay, M.groundDay, M.water]) m.emissive.set(preset.haze).multiplyScalar(preset.hazeL * 0.55);
+      M.water.envMapIntensity = night ? 0.6 : 1;
     },
-    dispose() { geometry.dispose(); dayMat.dispose(); nightMat.dispose(); tx.day.dispose(); tx.night.dispose(); tx.ramp.dispose(); },
+    /** Path tracer snapshot: no PMREM envMaps (it lights with its own sky) and no uv1 haze ramp. */
+    preparePhoto() {
+      const saved = Object.values(M).map((m) => [m, m.envMap, m.emissiveMap, m.emissiveIntensity]);
+      for (const m of Object.values(M)) {
+        m.envMap = null;
+        if (m.emissiveMap === tx.ramp) { m.emissiveMap = null; m.emissiveIntensity = 0.35; }
+      }
+      return () => { for (const [m, e, em, ei] of saved) { m.envMap = e; m.emissiveMap = em; m.emissiveIntensity = ei; } };
+    },
+    dispose() {
+      for (const m of Object.values(meshes)) m.geometry.dispose();
+      for (const m of Object.values(M)) m.dispose();
+      for (const t of Object.values(tx)) t.dispose();
+    },
   };
 }
 
-export { GROUND_Y, smoothstep };
+export { GROUND_Y };

@@ -38,11 +38,19 @@ if (!packs['test-light']) {
     slots[k] = { default: opts[0], options: opts };
   }
   packs['test-light'] = {
-    id: 'test-light', name: 'Светлый дуб', nameEn: 'Light Oak', tagline: 'Тест', slots,
+    id: 'test-light', name: 'Тестовый лён', nameEn: 'Test Linen', tagline: 'Тест', slots,
     pairings: { [base.slots.sofa.options[0]]: { rug: base.slots.rug.options[1] } },
   };
 }
 const data = { catalog, layout, packs };
+// Fixtures derived from the data, so catalog edits don't break the suite.
+const itemById = new Map((catalog.items || catalog).map((i) => [i.id, i]));
+const priceOf = (id) => Number(itemById.get(id)?.price) || 0;
+const SOFA_A = base.slots.sofa.options[0], SOFA_B = base.slots.sofa.options.at(-1);
+const NIGHT_B = (base.slots.nightstand || base.slots.nightstands)?.options.at(-1);
+// A real second pack if one exists (for natural-language style switches), else the synthetic one.
+const REAL_LO = packs['light-oak'] ? 'light-oak' : null;
+const LO = REAL_LO || 'test-light';
 const sim = createSim(data);
 const S0 = { style: base.id, selection: sim.defaults(base.id) };
 
@@ -62,8 +70,8 @@ section('core: parity with store.js');
   ok(ss.selection.rug === base.slots.rug.options[1], 'pairing applied');
   ok(pv.total === sim.total('test-light', ss.selection), 'preview total parity');
   // apply via store and compare totals
-  const r = sim.applyActions(S0, [{ type: 'select', key: 'sofa', itemId: 'sofa-anders-3' }, { type: 'select', slotId: 'nightstand_r', itemId: 'nightstand-nazario' }]);
-  store.select('sofa', 'sofa-anders-3'); store.select('nightstand_r', 'nightstand-nazario');
+  const r = sim.applyActions(S0, [{ type: 'select', key: 'sofa', itemId: SOFA_B }, { type: 'select', slotId: 'nightstand_r', itemId: NIGHT_B }]);
+  store.select('sofa', SOFA_B); store.select('nightstand_r', NIGHT_B);
   ok(store.total() === sim.total(r.state.style, r.state.selection), 'total after selects matches store', [store.total(), sim.total(r.state.style, r.state.selection)]);
 }
 
@@ -93,10 +101,10 @@ section('core: applyActions validation');
     const ru = sim.applyActions(S0, [{ type: 'select', key: unplaced, itemId: base.slots[unplaced].options.at(-1) }]);
     ok(ru.actions.length === 0, `select on unplaced key "${unplaced}" dropped`, ru.actions);
   }
-  const st = sim.applyActions(S0, [{ type: 'select', key: 'sofa', itemId: 'sofa-anders-3' }, { type: 'style', styleId: 'Light Oak', anchorItemId: 'sofa-hadley-3' }]);
+  const st = sim.applyActions(S0, [{ type: 'select', key: 'sofa', itemId: SOFA_B }, { type: 'style', styleId: 'Test Linen', anchorItemId: SOFA_A }]);
   ok(st.actions[0].type === 'style' && st.actions[0].styleId === 'test-light', 'style resolved by English name and ordered first', st.actions);
   ok(st.actions[0].anchor?.key === 'sofa', 'anchor resolved');
-  ok(st.state.selection.sofa === 'sofa-anders-3', 'select after style applies in the target pack');
+  ok(st.state.selection.sofa === SOFA_B, 'select after style applies in the target pack');
 }
 
 section('core: fitBudget');
@@ -137,8 +145,8 @@ const cases = [
   ['bedroom at sunset', (r) => r.actions.some((a) => a.name === 'bed') && r.actions.some((a) => a.name === 'golden'), { lang: 'en' }],
   ['top view', (r) => r.actions[0]?.name === 'top', { lang: 'en' }],
   ['покажи диван', (r) => r.actions[0]?.type === 'focus' && r.actions[0].slotId === 'sofa'],
-  ['диван подешевле', (r) => sel(r, 'sofa') === 'sofa-anders-3' && r.confidence === 'low'],
-  ['cheaper sofa', (r) => sel(r, 'sofa') === 'sofa-anders-3', { lang: 'en' }],
+  ['диван подешевле', (r) => priceOf(sel(r, 'sofa')) > 0 && priceOf(sel(r, 'sofa')) < priceOf(S0.selection.sofa) && r.confidence === 'low'],
+  ['cheaper sofa', (r) => priceOf(sel(r, 'sofa')) > 0 && priceOf(sel(r, 'sofa')) < priceOf(S0.selection.sofa), { lang: 'en' }],
   ['сделай дешевле', (r) => r.actions.filter((a) => a.type === 'select').length >= 5 && r.total === sim.minTotal(base.id)],
   ['замени диван на что-то светлее', (r) => { const id = sel(r, 'sofa'); return id && id !== S0.selection.sofa; }],
   ['диван светлее', (r) => !!sel(r, 'sofa')],
@@ -152,8 +160,8 @@ const cases = [
   ['картина над кроватью другая', (r) => !!sel(r, 'art_bed') && !sel(r, 'bed')],
   ['ротанговый светильник', (r) => ['pendant-tobin', 'pendant-accorsa', 'pendant-naturel'].includes(sel(r, 'pendant_lamp'))],
   ['мраморный стол', (r) => sel(r, 'dining_table') === undefined || sel(r, 'dining_table') === 'dining-kentana-100'],
-  ['стол подешевле', (r) => sel(r, 'dining_table') === 'dining-mahmayi-80'],
-  ['журнальный столик из травертина', (r) => ['coffee-moxie', 'coffee-arras'].includes(sel(r, 'coffee_table'))],
+  ['стол подешевле', (r) => priceOf(sel(r, 'dining_table')) > 0 && priceOf(sel(r, 'dining_table')) < priceOf(S0.selection.dining_table)],
+  ['журнальный столик из травертина', (r) => { const id = sel(r, 'coffee_table') || (/уже/.test(r.reply) ? S0.selection.coffee_table : null); return /травертин/i.test(JSON.stringify(itemById.get(id) || {})); }],
   ['уложись в 25 000', (r) => r.budget && r.budget.total <= 25000 && r.budget.ok],
   ['уложись в 30 000, диван оставь', (r) => r.budget?.ok && !sel(r, 'sofa')],
   ['budget 26k', (r) => r.budget?.ok && r.budget.total <= 26000, { lang: 'en' }],
@@ -163,8 +171,14 @@ const cases = [
   ['что ты умеешь?', (r) => r.understood && r.actions.length === 0],
   ['сделай уютнее', (r) => r.actions.some((a) => a.type === 'time' && a.name === 'evening')],
   ['make it cozier', (r) => r.actions.some((a) => a.name === 'evening'), { lang: 'en' }],
-  ['стиль светлый дуб', (r) => r.actions[0]?.type === 'style' && r.actions[0].styleId === 'test-light'],
-  ['переключи на Light Oak, но диван оставь', (r) => r.actions[0]?.type === 'style' && r.actions[0].anchor?.itemId === S0.selection.sofa, { lang: 'en' }],
+  ['стиль светлый дуб', (r) => r.actions[0]?.type === 'style' && r.actions[0].styleId === LO],
+  ['переключи на Light Oak, но диван оставь', (r) => {
+    if (r.actions[0]?.type !== 'style' || r.actions[0].styleId !== LO) return false;
+    const keepable = packs[LO].slots.sofa?.options.includes(S0.selection.sofa);
+    // keepable → anchored; not offered by the new style → no anchor, and the reply says the sofa can't stay
+    return keepable ? r.actions[0].anchor?.itemId === S0.selection.sofa : !r.actions[0].anchor && /sofa|диван/i.test(r.reply);
+  }, { lang: 'en' }],
+  ['стиль Test Linen', (r) => r.actions[0]?.type === 'style' && r.actions[0].styleId === 'test-light'],
   ['сколько стоит диван', (r) => /AED/.test(r.reply) && r.actions.length === 0],
   ['какой итог?', (r) => /AED/.test(r.reply)],
   ['напиши стихотворение про кота', (r) => !r.understood && r.actions.length === 0],
@@ -219,13 +233,14 @@ const toolReply = (args) => ({ ok: true, status: 200, async json() { return { ch
 const stub = (fn) => { calls = []; globalThis.fetch = async (url, init) => { calls.push({ url, init, body: JSON.parse(init.body) }); return fn(calls.length, JSON.parse(init.body)); }; };
 const state = { ...S0, total: sim.total(S0.style, S0.selection), view: 'eye', time: 'day' };
 const AUTH = { 'x-vercel-oidc-token': 'test-oidc' };
+const ALT_SOFA = base.slots.sofa.options.find((id) => id !== S0.selection.sofa);
 const silence = () => { const o = { info: console.info, warn: console.warn, error: console.error, log: console.log }; console.info = console.warn = console.error = () => {}; return () => Object.assign(console, o); };
 
 {
   const restore = silence();
   // happy path with mixed valid/invalid actions
   stub(() => toolReply({ reply: 'Поставил Hadley — светлее. Купите в Home Centre!', actions: [
-    { type: 'select', key: 'sofa', itemId: 'sofa-hadley-3' }, { type: 'select', key: 'sofa', itemId: 'bed-cloud-160' },
+    { type: 'select', key: 'sofa', itemId: ALT_SOFA }, { type: 'select', key: 'sofa', itemId: 'bed-cloud-160' },
     { type: 'time', name: 'evening' }, { type: 'view', name: 'living' }, { type: 'select', key: 'rug', itemId: 'rug-fake' },
   ], chips: ['Покажи вечер', 'Уложись в 25 000', 'Очень-очень-очень длинная подсказка про всё на свете'] }));
   let res = mockRes();
@@ -238,7 +253,7 @@ const silence = () => { const o = { info: console.info, warn: console.warn, erro
   ok(calls[0].body.tools?.[0]?.function?.name === 'respond' && calls[0].body.max_tokens <= 800, 'tool + small max_tokens', calls[0].body.max_tokens);
   ok(calls[0].body.model === (process.env.VILLAR_MODEL || 'anthropic/claude-haiku-5.5'), 'default model', calls[0].body.model);
   const sys = calls[0].body.messages[0].content;
-  ok(typeof sys === 'string' && sys.includes('sofa-hadley-3') && !/home\s*cent/i.test(sys), 'system prompt has catalog, no supplier', sys.length);
+  ok(typeof sys === 'string' && sys.includes(ALT_SOFA) && !/home\s*cent/i.test(sys), 'system prompt has catalog, no supplier', sys.length);
   ok(!/\bsku\b|https?:/i.test(sys), 'no SKUs/links in prompt');
   ok(calls[0].body.messages.at(-1).content.includes('диван светлее'), 'user text forwarded');
 
@@ -340,7 +355,7 @@ const silence = () => { const o = { info: console.info, warn: console.warn, erro
   ok(limited > 0 && limited < 20, 'per-IP rate limit kicks in', limited);
 
   // English
-  stub(() => toolReply({ reply: 'Here is a lighter sofa.', actions: [{ type: 'select', key: 'sofa', itemId: 'sofa-hadley-3' }], chips: ['Show the evening'] }));
+  stub(() => toolReply({ reply: 'Here is a lighter sofa.', actions: [{ type: 'select', key: 'sofa', itemId: ALT_SOFA }], chips: ['Show the evening'] }));
   res = mockRes();
   await handler(req({ messages: [{ role: 'user', content: 'a lighter sofa' }], state, lang: 'en' }, { headers: AUTH }), res);
   ok(/Villar/.test(calls[0].body.messages[0].content) && /English/.test(calls[0].body.messages[0].content), 'EN system prompt', calls[0].body.messages[0].content.slice(0, 120));

@@ -19,11 +19,8 @@
    "default": "sofa-lansbury-3",
    "options": [
     "sofa-lansbury-3",
-    "sofa-hadley-3",
-    "sofa-lockwood-2",
-    "sofa-engler-3",
-    "sofa-doree-3",
-    "sofa-anders-3"
+    "sofa-brighton-3",
+    "sofa-daventry-3"
    ]
   },
   "cushions": {
@@ -31,16 +28,18 @@
    "options": [
     "cushions-linen-olive-rust",
     "cushions-linen-clay",
-    "cushions-oat-velvet-olive"
+    "cushions-oat-velvet-olive",
+    "cushions-linen-olive",
+    "cushions-linen-oat",
+    "cushions-oat-ivory-4"
    ]
   },
   "coffee_table": {
-   "default": "coffee-baku-low",
+   "default": "coffee-moxie",
    "options": [
-    "coffee-baku-low",
     "coffee-moxie",
-    "coffee-arras",
-    "coffee-baku-high"
+    "coffee-selric",
+    "coffee-arras"
    ]
   },
   "decor_set": {
@@ -48,7 +47,9 @@
    "options": [
     "decor-sand-travertine-walnut",
     "decor-terracotta",
-    "decor-white-ceramic"
+    "decor-white-ceramic",
+    "decor-cream-ceramic",
+    "decor-travertine-cream"
    ]
   },
   "rug": {
@@ -70,8 +71,9 @@
    ]
   },
   "side_table": {
-   "default": "side-moxie",
+   "default": "side-herald",
    "options": [
+    "side-herald",
     "side-moxie",
     "side-tom",
     "side-arras"
@@ -98,7 +100,6 @@
    "default": "bed-cloud-160",
    "options": [
     "bed-cloud-160",
-    "bed-nazario-160",
     "bed-maison-160"
    ]
   },
@@ -114,7 +115,9 @@
    "options": [
     "bedding-white-oat-clay",
     "bedding-white-oat-olive",
-    "bedding-oat-rust"
+    "bedding-oat-rust",
+    "bedding-white-oat",
+    "bedding-white-sateen-oat"
    ]
   },
   "nightstand": {
@@ -138,17 +141,15 @@
    "default": "dining-kentana-100",
    "options": [
     "dining-kentana-100",
-    "dining-mahmayi-80"
+    "dining-square-80"
    ]
   },
   "dining_chair": {
    "default": "chair-linden",
    "options": [
     "chair-linden",
-    "chair-viona",
-    "chair-alfred",
-    "chair-wishbone",
-    "chair-pebble"
+    "chair-stanton",
+    "chair-wishbone"
    ]
   },
   "pendant_lamp": {
@@ -166,16 +167,13 @@
    "options": [
     "art-madar-aziza-100",
     "art-najla-120x80",
-    "art-madar-hiba-100",
-    "art-caitlin-triptych",
-    "art-zuri-80"
+    "art-madar-hiba-100"
    ]
   },
   "art_bed": {
    "default": "art-ember-90x60",
    "options": [
     "art-ember-90x60",
-    "art-caitlin-triptych",
     "art-olina-120x60"
    ]
   },
@@ -194,7 +192,7 @@
    "options": [
     "plant-olive-themis",
     "plant-olive-urbano",
-    "plant-olive-homekode"
+    "plant-olive-180"
    ]
   },
   "curtains": {
@@ -210,7 +208,9 @@
    "options": [
     "tableware-mia-amber",
     "tableware-stoneage-olive",
-    "tableware-lillian-smoke"
+    "tableware-lillian-smoke",
+    "tableware-mia-smoke-wood",
+    "tableware-lillian-amber-brass"
    ]
   },
   "centerpiece": {
@@ -222,11 +222,11 @@
    ]
   },
   "kitchen_decor": {
-   "default": "kitchen-walnut-black",
+   "default": "kitchen-laimai-dark",
    "options": [
-    "kitchen-walnut-black",
     "kitchen-laimai-dark",
-    "kitchen-white-basic"
+    "kitchen-walnut-black",
+    "kitchen-white-travertine"
    ]
   },
   "throw": {
@@ -235,7 +235,8 @@
     "throw-olivia-terracotta",
     "throw-norham-olive",
     "throw-vayu-sage",
-    "throw-thorn-oat"
+    "throw-thorn-oat",
+    "throw-boras-oat"
    ]
   },
   "nightstand_decor": {
@@ -243,7 +244,8 @@
    "options": [
     "nsdecor-dara-box",
     "nsdecor-travertine-candle",
-    "nsdecor-walnut-vase"
+    "nsdecor-walnut-vase",
+    "nsdecor-bud-vase-tealight"
    ]
   },
   "runner": {
@@ -284,6 +286,35 @@
   "Пледы и мелкий текстиль — олива, терракота или овсяный; не больше одного акцента на зону.",
   "Зеркало — рама из ореха или тонкая латунь; форма круг, арка или органическая."
  ],
+ "pairings": {
+  "coffee-moxie": {
+   "side_table": "side-herald"
+  },
+  "coffee-arras": {
+   "side_table": "side-herald"
+  },
+  "coffee-selric": {
+   "side_table": "side-moxie"
+  },
+  "side-moxie": {
+   "coffee_table": "coffee-selric"
+  },
+  "side-tom": {
+   "coffee_table": "coffee-selric"
+  },
+  "side-arras": {
+   "coffee_table": "coffee-selric"
+  },
+  "sofa-daventry-3": {
+   "armchair": "armchair-luna-leather"
+  },
+  "armchair-pebble": {
+   "sofa": "sofa-lansbury-3"
+  },
+  "sofa-brighton-3": {
+   "rug": "rug-heaton-200x290"
+  }
+ },
  "nameEn": "Dark Walnut",
  "taglineEn": "Dark walnut. Warm linen. Nothing extra.",
  "descriptionEn": "A calm studio built around dark walnut: cream and oat fabrics, travertine, satin brass and one cognac armchair, with olive and terracotta in small doses. Every piece is real and available to buy."

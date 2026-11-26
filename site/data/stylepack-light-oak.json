@@ -1,0 +1,282 @@
+{
+ "id": "light-oak",
+ "name": "Светлый дуб",
+ "tagline": "Светлый дуб. Лён цвета камня. Тишина.",
+ "description": "Японди для солнечной студии: мебель из светлого дуба на ступень светлее пола, лён цвета камня, рисовая бумага и матовая керамика. Контраст дают угольно-чёрное дерево и тонкий чёрный металл, акцент — приглушённый шалфей. Без латуни и терракоты, с пустым местом вокруг вещей.",
+ "palette": "palette-light-oak.json",
+ "architecture": {
+  "walls": "#E4E2D7",
+  "ceiling": "#F2EFE8",
+  "floor": "oak-light",
+  "floorTone": "#C6A984",
+  "kitchenFronts": "#D6CFBF",
+  "worktop": "travertine",
+  "doorFinish": "oak-light",
+  "windowFrame": "metal-black"
+ },
+ "slots": {
+  "sofa": {
+   "default": "sofa-rockwell-3",
+   "options": [
+    "sofa-rockwell-3",
+    "sofa-anders-3"
+   ]
+  },
+  "cushions": {
+   "default": "cushions-linen-olive",
+   "options": [
+    "cushions-linen-olive",
+    "cushions-linen-oat",
+    "cushions-oat-ivory-4"
+   ]
+  },
+  "coffee_table": {
+   "default": "coffee-echo",
+   "options": [
+    "coffee-echo"
+   ]
+  },
+  "decor_set": {
+   "default": "decor-cream-ceramic",
+   "options": [
+    "decor-cream-ceramic",
+    "decor-travertine-cream"
+   ]
+  },
+  "rug": {
+   "default": "rug-heaton-200x290",
+   "options": [
+    "rug-heaton-200x290",
+    "rug-dione-200x290",
+    "rug-pulara-160x230"
+   ]
+  },
+  "tv_unit": {
+   "default": "tv-echo",
+   "options": [
+    "tv-echo"
+   ]
+  },
+  "side_table": {
+   "default": "side-pavia",
+   "options": [
+    "side-pavia"
+   ]
+  },
+  "armchair": {
+   "default": "armchair-natura",
+   "options": [
+    "armchair-natura"
+   ]
+  },
+  "floor_lamp": {
+   "default": "floorlamp-diamant",
+   "options": [
+    "floorlamp-diamant"
+   ]
+  },
+  "bed": {
+   "default": "bed-cloud-160",
+   "options": [
+    "bed-cloud-160",
+    "bed-maison-160"
+   ]
+  },
+  "mattress": {
+   "default": "mattress-rejuvenate-160",
+   "options": [
+    "mattress-rejuvenate-160",
+    "mattress-bliss-gel-160"
+   ]
+  },
+  "bedding": {
+   "default": "bedding-white-oat-olive",
+   "options": [
+    "bedding-white-oat-olive",
+    "bedding-white-oat",
+    "bedding-white-sateen-oat"
+   ]
+  },
+  "nightstand": {
+   "default": "nightstand-forren",
+   "options": [
+    "nightstand-forren"
+   ]
+  },
+  "table_lamp": {
+   "default": "tablelamp-crosby",
+   "options": [
+    "tablelamp-crosby"
+   ]
+  },
+  "dining_table": {
+   "default": "dining-keira-100",
+   "options": [
+    "dining-keira-100"
+   ]
+  },
+  "dining_chair": {
+   "default": "chair-emily",
+   "options": [
+    "chair-emily",
+    "chair-sven"
+   ]
+  },
+  "pendant_lamp": {
+   "default": "pendant-berit",
+   "options": [
+    "pendant-berit",
+    "pendant-cosme",
+    "pendant-dexter"
+   ]
+  },
+  "art_sofa": {
+   "default": "art-zuri-80",
+   "options": [
+    "art-zuri-80"
+   ]
+  },
+  "art_bed": {
+   "default": "art-ember-90x60",
+   "options": [
+    "art-ember-90x60"
+   ]
+  },
+  "art_dining": {
+   "default": "art-nyla-50x70",
+   "options": [
+    "art-nyla-50x70"
+   ]
+  },
+  "plant": {
+   "default": "plant-olive-themis",
+   "options": [
+    "plant-olive-themis",
+    "plant-olive-urbano",
+    "plant-olive-180"
+   ]
+  },
+  "curtains": {
+   "default": "curtains-sullivan-sheer",
+   "options": [
+    "curtains-sullivan-sheer",
+    "curtains-sullivan-layered"
+   ]
+  },
+  "tableware": {
+   "default": "tableware-lillian-smoke",
+   "options": [
+    "tableware-lillian-smoke",
+    "tableware-mia-smoke-wood"
+   ]
+  },
+  "centerpiece": {
+   "default": "centerpiece-maya-eucalyptus",
+   "options": [
+    "centerpiece-maya-eucalyptus",
+    "centerpiece-sable-eucalyptus"
+   ]
+  },
+  "kitchen_decor": {
+   "default": "kitchen-white-basic",
+   "options": [
+    "kitchen-white-basic",
+    "kitchen-black-basic",
+    "kitchen-white-travertine"
+   ]
+  },
+  "throw": {
+   "default": "throw-vayu-sage",
+   "options": [
+    "throw-vayu-sage",
+    "throw-thorn-oat",
+    "throw-norham-olive",
+    "throw-boras-oat"
+   ]
+  },
+  "nightstand_decor": {
+   "default": "nsdecor-travertine-candle",
+   "options": [
+    "nsdecor-travertine-candle",
+    "nsdecor-bud-vase-tealight"
+   ]
+  },
+  "runner": {
+   "default": "runner-zen-bianca",
+   "options": [
+    "runner-zen-bianca",
+    "runner-zen-alba",
+    "runner-marco-sandy",
+    "runner-kaela"
+   ]
+  },
+  "mirror": {
+   "default": "mirror-artemis-round-black",
+   "options": [
+    "mirror-artemis-round-black",
+    "mirror-mackenzie-arch"
+   ]
+  }
+ },
+ "rules": [
+  "60/30/10: оболочка (стены, потолок, пол, фасады) ≈60%; лён, рисовая бумага и светлый дуб мебели ≈30%; грибной тауп, шалфей, уголь, стоунвер и чёрный металл ≤10%.",
+  "Дерево мебели — светлый дуб/ясень #D2BA94 (ΔE ≤ 8): на ступень светлее пола, не медовый и не рыжий (h ≥ 74°, C* ≤ 26), не серо-белёный. Орех и средне-тёмные породы не используются.",
+  "Второй тон дерева — угольный (морёный или чёрный дуб/ясень, L* ≤ 22): не больше двух типов предметов, ни один не крупнее 0,5 м² по фасаду.",
+  "Крупный дуб на полу (ТВ-тумба, кровать, обеденный стол) — на ножках с зазором ≥ 8 см, на ковре или отличается от пола на ΔE ≥ 5: дуб на дубе не должен сливаться.",
+  "Низкая хроматичность: всё крупное — C* ≤ 12 и светлое (L* ≥ 70); холодные серые и голубовато-белые не используются.",
+  "Без красно-оранжевой части круга: терракоты, ржавчины, коралла, пудры и охры нет — этим пак отличается от «Тёмного ореха» и «Средиземноморья».",
+  "Акцентное семейство одно — приглушённые зелёные (шалфей, мох, олива) плюс угольно-чёрный как контраст. Дымчатый индиго допустим только в искусстве или в одном предмете керамики.",
+  "Металл один — матовый чёрный тонкими линиями. Латуни, золота, бронзы, хрома и меди нет.",
+  "Фактура вместо цвета: в гостиной не меньше трёх фактур (лён или рогожка, шерсть или джут, бумага, стоунвер, дерево). Букле — максимум один предмет; бархата, меха и атласа нет.",
+  "Узоры — только тон в тон (полоска, клетка, сашико) с ΔL* ≤ 15, не больше одного узорчатого текстиля.",
+  "Низкие силуэты: спинка дивана ≤ 80 см, кровать-платформа (боковина ≤ 30, изголовье ≤ 105), ТВ-тумба ≤ 55, журнальный стол 30–40 см.",
+  "Пустота — часть стиля: 2–3 предмета на поверхности, занято ≤ 1/4 площади; statement — не больше двух на студию и одного на зону.",
+  "Только матовое: глянца, лака и стекла крупнее 0,2 м² нет; керамика — сатиновая или с реактивной глазурью.",
+  "Свет 2700 K, CRI ≥ 90: минимум один абажур из рисовой бумаги, остальные — лён."
+ ],
+ "pairings": {
+  "sofa-rockwell-3": {
+   "cushions": "cushions-linen-olive",
+   "throw": "throw-vayu-sage",
+   "rug": "rug-heaton-200x290",
+   "coffee_table": "coffee-echo",
+   "side_table": "side-pavia"
+  },
+  "bed-cloud-160": {
+   "bedding": "bedding-white-oat-olive",
+   "nightstand": "nightstand-forren",
+   "table_lamp": "tablelamp-crosby",
+   "nightstand_decor": "nsdecor-travertine-candle",
+   "art_bed": "art-ember-90x60"
+  },
+  "dining-keira-100": {
+   "dining_chair": "chair-emily",
+   "pendant_lamp": "pendant-berit",
+   "tableware": "tableware-lillian-smoke",
+   "centerpiece": "centerpiece-maya-eucalyptus",
+   "art_dining": "art-nyla-50x70"
+  },
+  "rug-heaton-200x290": {
+   "sofa": "sofa-rockwell-3",
+   "coffee_table": "coffee-echo"
+  },
+  "pendant-cosme": {
+   "dining_table": "dining-keira-100",
+   "dining_chair": "chair-emily"
+  },
+  "throw-thorn-oat": {
+   "sofa": "sofa-rockwell-3",
+   "cushions": "cushions-linen-oat"
+  },
+  "runner-zen-bianca": {
+   "mirror": "mirror-artemis-round-black"
+  },
+  "chair-emily": {
+   "dining_table": "dining-keira-100",
+   "pendant_lamp": "pendant-berit"
+  }
+ },
+ "nameEn": "Light Oak",
+ "taglineEn": "Light oak. Stone linen. Quiet.",
+ "descriptionEn": "Japandi for a sunny studio: light oak furniture one step lighter than the floor, stone-coloured linen, rice paper and matte stoneware. Charcoal-black wood and thin black metal give the contrast, a muted sage the accent. No brass, no terracotta, and room to breathe around every piece."
+}

@@ -200,6 +200,7 @@ export function diningTable(c) { return table(c, 'dining'); }
  */
 function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat', name, top = null }) {
   const p = c.params;
+  handles = String(handles || 'none'); front = String(front || 'flat'); woodKey = typeof woodKey === 'string' ? woodKey : 'walnut-dark';
   const b = new Builder(c.seed);
   const wood = c.mat(woodKey);
   const frontWood = /herring|chevron/.test(front) ? c.mat(woodKey, { layout: 'chevron' }) : wood;
@@ -208,7 +209,9 @@ function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat'
   const legH = lt === 'none' || lt.includes('hidden') ? 0 : lt.includes('plinth') ? clamp(cm(p.legHeight, 0.06), 0.03, 0.12) : clamp(cm(p.legHeight, H * 0.26), 0.04, 0.25);
   const legMat = p.legMaterial ? c.mat(p.legMaterial, p.legColor ? (isMetal(p.legMaterial) ? { color: p.legColor } : { match: p.legColor }) : undefined) : null;
   const bodyH = H - legH;
-  const panelT = 0.018, reveal = 0.003, frontT = 0.018;
+  // 4 mm gaps (2 mm reveal per side), 1.5 mm eased front edges, dark recess 15 mm behind the fronts
+  const panelT = 0.018, reveal = 0.002, frontT = 0.018;
+  const recess = c.mat('paint', { color: '#2a2622', roughness: 0.95, mottle: 0 });
   const bodyD = D - frontT;
   const bz = -D / 2 + bodyD / 2;
   // carcass: top, bottom, sides, back as one soft box slightly inset
@@ -237,7 +240,7 @@ function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat'
         b.add(new THREE.BoxGeometry(cw, ch, 0.006), wood, { pos: [cx, cy, -D / 2 + 0.016] });
       } else {
         // dark shadow plane behind the reveals of closed fronts
-        b.add(new THREE.BoxGeometry(cw, ch, 0.004), dark, { pos: [cx, cy, D / 2 - frontT - 0.004] });
+        b.add(new THREE.BoxGeometry(cw, ch, 0.004), recess, { pos: [cx, cy, D / 2 - frontT - 0.015] });
         if (front === 'fluted') {
           b.add(new THREE.BoxGeometry(w, h, frontT * 0.6), wood, { pos: [cx, cy, zf - frontT * 0.2] });
           addFlutes(b, wood, { cx, cy, z: zf + frontT * 0.1, w, h, pitch: 0.026, depth: 0.007 });
@@ -254,7 +257,7 @@ function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat'
           b.add(new THREE.PlaneGeometry(w - 2 * fr + 0.004, h - 2 * fr + 0.004), c.mat('cane'), { pos: [cx, cy, zf + 0.002] });
           b.add(new THREE.BoxGeometry(w - 2 * fr, h - 2 * fr, 0.004), dark, { pos: [cx, cy, zf - frontT / 2 + 0.002] });
         } else {
-          b.add(softBox(w, h, frontT, { r: 0.0025, seg: 2 }), frontWood, { pos: [cx, cy, zf] });
+          b.add(softBox(w, h, frontT, { r: 0.0015, seg: 2 }), frontWood, { pos: [cx, cy, zf] });
         }
         // handle
         const ht = handles || 'none';

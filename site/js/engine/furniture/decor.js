@@ -1,6 +1,6 @@
 // Villar furniture — wall art, plants, decor sets. Owner: modeler.
 import * as THREE from 'three';
-import { Builder, softBox, lathe, smoothProfile, slab, ellipseShape, roundedRectShape, tube, V3, clamp, lerp, cm } from './geom.js';
+import { Builder, softBox, lathe, smoothProfile, slab, ellipseShape, roundedRectShape, tube, segs, getLOD, V3, clamp, lerp, cm } from './geom.js';
 import { rng, hashStr } from '../textures.js';
 
 // ---------------------------------------------------------------- wall art
@@ -68,9 +68,10 @@ export function wallArt(c) {
 // ---------------------------------------------------------------- plants
 
 /** Tapered sweep along a CatmullRom path. radius(t) in metres. Adds per-vertex colour if given. */
-function sweep(points, radius, { radial = 7, tubular = null } = {}) {
+function sweep(points, radius, { radial: radial0 = 7, tubular = null } = {}) {
   const curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.5);
-  const n = tubular || Math.max(4, points.length * 3);
+  const n = segs(tubular || Math.max(4, points.length * 3), 3);
+  const radial = segs(radial0, 3);
   const frames = curve.computeFrenetFrames(n, false);
   const pos = [], nor = [], uv = [], idx = [];
   const P = new THREE.Vector3(), N = new THREE.Vector3();
@@ -106,7 +107,8 @@ class LeafBatch {
       v.fromBufferAttribute(p, i).applyMatrix4(matrix); vn.fromBufferAttribute(n, i).applyMatrix3(nm).normalize();
       this.pos.push(v.x, v.y, v.z); this.nor.push(vn.x, vn.y, vn.z); this.uv.push(u.getX(i), u.getY(i));
       const k = tmpl.userData.shade ? tmpl.userData.shade[i] : 1;
-      this.col.push(color.r * k, color.g * k, color.b * k);
+      if (Array.isArray(k)) this.col.push(color.r * k[0], color.g * k[1], color.b * k[2]);
+      else this.col.push(color.r * k, color.g * k, color.b * k);
     }
     const ix = tmpl.index.array;
     for (let i = 0; i < ix.length; i++) this.idx.push(ix[i] + this.v);
@@ -127,7 +129,8 @@ class LeafBatch {
  * Leaf template: grid in leaf space (u across 0..1, v along 0..1), length L along +Y, width from outline(v).
  * fold = V-fold along midrib, arch = curvature along length, holes = monstera fenestration.
  */
-function leafTemplate({ L = 0.06, Wd = 0.012, outline = (v) => Math.sin(Math.PI * Math.min(1, v * 1.05)) ** 0.8, nu = 2, nv = 4, fold = 0.25, arch = 0.15, wave = 0, holes = null }) {
+function leafTemplate({ L = 0.06, Wd = 0.012, outline = (v) => Math.sin(Math.PI * Math.min(1, v * 1.05)) ** 0.8, nu: nu0 = 2, nv: nv0 = 4, fold = 0.25, arch = 0.15, wave = 0, holes = null }) {
+  const nu = nu0 > 3 ? segs(nu0, 2) : nu0, nv = nv0 > 4 ? segs(nv0, 4) : nv0;
   const pos = [], uv = [], idx = [], shade = [];
   for (let j = 0; j <= nv; j++) {
     const v = j / nv;
@@ -162,7 +165,7 @@ function leafTemplate({ L = 0.06, Wd = 0.012, outline = (v) => Math.sin(Math.PI 
 function monsteraLeaf({ L = 0.4, Wd = 0.38, lobes = 7, seed = 1, fold = 0.1, arch = 0.18 }) {
   const r = rng(seed);
   const pos = [], uv = [], idx = [], shade = [];
-  const outline = (v) => Math.pow(Math.sin(Math.PI * Math.min(1, 0.1 + v * 0.9)), 0.4) * (1 - 0.15 * v);
+  const outline = (v) => v < 0.05 ? 0.66 * (1 + v * 1.5) : Math.pow(Math.sin(Math.PI * Math.min(1, 0.1 + v * 0.9)), 0.4) * (1 - 0.15 * v);
   const tilt = 0.22; // lateral veins rise toward the margin
   const vert = (sgn, sa, v) => {
     const w = outline(v) * Wd / 2;
@@ -174,15 +177,17 @@ function monsteraLeaf({ L = 0.4, Wd = 0.38, lobes = 7, seed = 1, fold = 0.1, arc
   const NS = 6, NV = 3;
   for (const sgn of [-1, 1]) {
     for (let k = 0; k < lobes; k++) {
-      const gapK = 0.1 + r() * 0.1, reach = 0.35 + r() * 0.35; // slit width at margin, slit depth start
+      const gapK = 0.12 + r() * 0.1, reach = 0.22 + r() * 0.3; // slit width at margin, slit depth start
       const base = pos.length / 3;
       for (let i = 0; i <= NS; i++) {
         const sa = i / NS; // 0 = midrib, 1 = margin
-        const g = sa < reach ? 0 : ((sa - reach) / (1 - reach)) * gapK;
+        const g = sa < reach ? 0 : gapK * (0.55 + 0.45 * (sa - reach) / (1 - reach)); // narrow slot, slightly wider at the margin
         for (let j = 0; j <= NV; j++) {
           const ph = k + g / 2 + (1 - g) * (j / NV);
           let v = ph / lobes + sa * tilt * (1 - ph / lobes);
-          v = Math.min(1, Math.max(0, v));
+          // cordate base: the first lobe's lower edge sweeps back below the petiole toward the margin
+          if (k === 0) v -= (1 - j / NV) * (sa ** 1.5) * (tilt + 0.12);
+          v = Math.min(1, Math.max(-0.14, v));
           vert(sgn, sa, v);
         }
       }
@@ -202,6 +207,20 @@ function monsteraLeaf({ L = 0.4, Wd = 0.38, lobes = 7, seed = 1, fold = 0.1, arc
 }
 
 const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _s3 = new THREE.Vector3();
+/** Matrix placing a leaf at p pointing along dir with its upper face (+Z) turned toward `up` (blade horizontal-ish), then twisted. */
+function leafMatrixFacing(p, dir, up, twist, scale) {
+  const Y = dir.clone().normalize();
+  const Z = up.clone().addScaledVector(Y, -up.dot(Y));
+  if (Z.lengthSq() < 1e-6) Z.set(1, 0, 0).addScaledVector(Y, -Y.x);
+  Z.normalize();
+  const X = new THREE.Vector3().crossVectors(Y, Z).normalize();
+  const m = new THREE.Matrix4().makeBasis(X, Y, Z);
+  if (twist) m.multiply(new THREE.Matrix4().makeRotationY(twist));
+  m.scale(_s3.set(scale, scale, scale));
+  m.setPosition(p);
+  return m;
+}
+
 /** Matrix placing a leaf at point p, pointing along dir, with roll around dir and scale. */
 function leafMatrix(p, dir, roll, scale) {
   _q.setFromUnitVectors(V3(0, 1, 0), dir.clone().normalize());
@@ -226,11 +245,13 @@ function addPot(b, c, { r, h, style, color }) {
   else if (shape.includes('taper')) prof = [[0.001, 0], [r * 0.72, 0], [r * 0.75, 0.008], [r * 0.98, h * 0.94], [r, h], [r * 0.93, h], [r * 0.9, h * 0.85]];
   else if (shape.includes('egg') || shape.includes('round')) prof = [[0.001, 0], [r * 0.5, 0], [r * 0.85, h * 0.25], [r, h * 0.6], [r * 0.85, h * 0.95], [r * 0.8, h], [r * 0.74, h * 0.97], [r * 0.7, h * 0.85]];
   else prof = [[0.001, 0], [r * 0.9, 0], [r * 0.94, 0.006], [r * 0.97, h * 0.5], [r, h * 0.985], [r * 0.985, h], [r * 0.93, h], [r * 0.91, h * 0.9]];
-  b.add(lathe(smoothProfile(prof, 48), 48), mat, { uv: 'box' });
+  b.add(lathe(smoothProfile(prof, 48), 48), mat, { uv: 'cyl', axis: 'around' });
+  b.potMats = [mat];
   const soilY = h * 0.9;
   const sr = (shape.includes('egg') ? r * 0.72 : r * 0.9);
   const soil = lathe([[sr * 1.01, soilY - 0.03], [sr, soilY - 0.004], [sr * 0.6, soilY + 0.008], [0.001, soilY + 0.012]], 32);
   b.add(soil, c.mat('soil'), { uv: 'box', cast: false });
+  b.potMats.push(c.mat('soil'));
   return soilY + 0.008;
 }
 
@@ -252,7 +273,7 @@ export function plant(c) {
   const leaves = new LeafBatch();
   const stems = [];
   const leafMat = c.mat('plant-leaf', { vertexColors: true, roughness: species.includes('fiddle') || species.includes('rubber') ? 0.32 : 0.5 });
-  const stemMat = c.mat('plant-stem', { color: '#6b6248' });
+  const stemMat = c.mat('plant-stem', { color: /monstera|philo|calathea|alocasia|bird|strelitzia|banana|musa/.test(species) ? '#5b6e3a' : '#6b6248' });
   const barkMat = c.mat('bark', { color: '#cfc4b4' });
   let kind = 'olive';
   if (/fiddle|lyrata|rubber|elastica|audrey|benghal|ficus/.test(species)) kind = 'fiddle';
@@ -261,6 +282,8 @@ export function plant(c) {
   else if (/snake|sansev|zz|aloe|yucca|dracaena|cactus/.test(species)) kind = 'snake';
   else if (/palm|areca|kentia|fern/.test(species)) kind = 'palm';
 
+  // LOD: fewer but larger leaves keep the canopy mass on medium / low
+  const dens = [0.34, 0.58, 1][getLOD()], leafK = 1 / Math.pow(dens, 0.35);
   if (kind === 'olive') {
     // multi-stem olive: short trunk splitting into 3 leaders, airy rounded canopy of ~1500 silver-green leaves
     const crownY = lerp(soilY, H, 0.42), top = H;
@@ -279,7 +302,7 @@ export function plant(c) {
       const side = k % 2 ? 1 : -1;
       const perp = V3(-tan.z, 0, tan.x).normalize().multiplyScalar(side);
       const ld = tan.clone().multiplyScalar(0.55).add(perp).add(V3(0, -0.25 + r() * 0.5, 0)).normalize();
-      leaves.add(tmpl, leafMatrix(lp, ld, r() * Math.PI, 0.75 + r() * 0.5), cols[(r() * cols.length) | 0]);
+      leaves.add(tmpl, leafMatrix(lp, ld, r() * Math.PI, (0.75 + r() * 0.5) * leafK), cols[(r() * cols.length) | 0]);
     };
     const branch = (start, dir, len, rad, depth) => {
       const pts = [start.clone()];
@@ -308,14 +331,14 @@ export function plant(c) {
         }
       }
       if (depth >= 1) {
-        const count = depth === 2 ? 36 : 18;
+        const count = Math.round((depth === 2 ? 36 : 18) * dens);
         for (let k = 0; k < count; k++) {
           const t = 0.2 + 0.8 * (k / count);
           leafAt(sw.curve.getPointAt(t), sw.curve.getTangentAt(t), k);
         }
         // tip tuft
         const tip = sw.curve.getPointAt(1), tt = sw.curve.getTangentAt(1);
-        for (let k = 0; k < 5; k++) leafAt(tip.clone().add(V3((r() - 0.5) * 0.02, (r() - 0.5) * 0.02, (r() - 0.5) * 0.02)), tt.clone().add(V3(r() - 0.5, r() - 0.3, r() - 0.5)).normalize(), k);
+        for (let k = 0; k < Math.round(5 * dens); k++) leafAt(tip.clone().add(V3((r() - 0.5) * 0.02, (r() - 0.5) * 0.02, (r() - 0.5) * 0.02)), tt.clone().add(V3(r() - 0.5, r() - 0.3, r() - 0.5)).normalize(), k);
       }
     };
     const nMain = 3 + (r() < 0.5 ? 1 : 0);
@@ -383,17 +406,17 @@ export function plant(c) {
       return false;
     };
     const monsteraOutline = (v) => { const a = Math.sin(Math.PI * Math.min(1, 0.06 + v * 0.94)); return Math.pow(a, 0.45) * (1 - 0.2 * v); };
-    const tmpls = isPalm ? [leafTemplate({ L: 0.2, Wd: 0.025, nu: 2, nv: 4, fold: 0.3, arch: 0.25 })] : [0, 1, 2].map((q) => monsteraLeaf({ L: leafL, Wd: leafL * 1.0, lobes: 6, seed: c.seed + q * 31 }));
+    const tmpls = isPalm ? [leafTemplate({ L: 0.2, Wd: 0.025, nu: 2, nv: 4, fold: 0.3, arch: 0.25 })] : [0, 1, 2].map((q) => monsteraLeaf({ L: leafL, Wd: leafL * 1.15, lobes: 6, seed: c.seed + q * 31 }));
     const tmpl = tmpls[0];
     void holes; void monsteraOutline;
     const cols = plantColors(isPalm ? '#4f6d36' : '#2f5428', 20, r, 0.1);
     for (let k = 0; k < nLeaves; k++) {
       const a = (k / nLeaves) * Math.PI * 2 * 1.618 + r() * 0.4;
-      const tilt = 0.25 + r() * 0.7;
-      const sh = (H - soilY) * (0.55 + r() * 0.4) - (isPalm ? 0 : leafL * 0.6);
+      const tilt = isPalm ? 0.25 + r() * 0.7 : 0.35 + r() * 0.75;
+      const sh = (H - soilY) * (isPalm ? 0.55 + r() * 0.4 : 0.4 + r() * 0.55) - (isPalm ? 0 : leafL * 0.45);
       const outv = V3(Math.cos(a), 0, Math.sin(a));
       const base = V3(Math.cos(a) * 0.02, soilY - 0.01, Math.sin(a) * 0.02);
-      const tipStem = base.clone().addScaledVector(outv, Math.sin(tilt) * sh * 0.5).add(V3(0, Math.cos(tilt * 0.6) * sh, 0));
+      const tipStem = base.clone().addScaledVector(outv, Math.sin(tilt) * sh * (isPalm ? 0.5 : 0.75)).add(V3(0, Math.cos(tilt * 0.6) * sh, 0));
       const mid = base.clone().lerp(tipStem, 0.5).add(V3(0, sh * 0.08, 0)).addScaledVector(outv, -0.02);
       const sw = sweep([base, mid, tipStem], (t) => lerp(isPalm ? 0.006 : 0.009, 0.005, t), { radial: 6, tubular: 10 });
       b.add(sw.geom, stemMat, { uv: 'keep' });
@@ -414,29 +437,50 @@ export function plant(c) {
           }
         }
       } else {
-        const ld = outv.clone().multiplyScalar(Math.sin(tilt) + 0.3).add(V3(0, Math.cos(tilt) * 0.8, 0)).normalize();
-        leaves.add(tmpls[k % tmpls.length], leafMatrix(tipStem, ld, Math.PI / 2 + (r() - 0.5) * 0.5, 0.75 + r() * 0.35), cols[(r() * cols.length) | 0]);
+        const ld = outv.clone().multiplyScalar(Math.sin(tilt) + 0.4).add(V3(0, Math.cos(tilt) * 0.5, 0)).normalize();
+        // blade faces up and slightly outward, tip droops away from the plant
+        const face = V3(0, 1, 0).addScaledVector(outv, 0.35);
+        leaves.add(tmpls[k % tmpls.length], leafMatrixFacing(tipStem, ld, face, (r() - 0.5) * 0.35, 0.75 + r() * 0.35), cols[(r() * cols.length) | 0]);
       }
     }
   } else {
     // snake plant: upright sword blades with banding
     const n = 12;
-    const cols = plantColors('#2f4a2a', 10, r, 0.08);
+    // pattern lives in the 'snake' leaf map; vertex colour only varies each blade by a few %
+    const cols = plantColors('#f2f2ee', 10, r, 0.06);
+    const snakeMat = c.mat('plant-leaf', { vertexColors: true, pattern: 'snake', roughness: 0.42 });
+    const blades = new LeafBatch();
     for (let k = 0; k < n; k++) {
       const a = r() * Math.PI * 2, rad = r() * potR * 0.55;
       const L = (H - soilY) * (0.6 + r() * 0.4);
       const Wd = 0.05 + r() * 0.025;
-      const tmpl = leafTemplate({ L, Wd, outline: (v) => Math.min(1, Math.sin(Math.PI * Math.min(1, v * 0.98)) ** 0.25) * (1 - v * 0.35), nu: 4, nv: 12, fold: 0.35, arch: 0.02 });
-      const shade = tmpl.userData.shade;
-      const pa = tmpl.attributes.position;
-      for (let i = 0; i < pa.count; i++) { const y = pa.getY(i) / L; const x = Math.abs(pa.getX(i)) / (Wd / 2 + 1e-6); shade[i] = (0.75 + 0.35 * (Math.sin(y * 38 + Math.sin(y * 9) * 2) > 0.3 ? 1 : 0)) * (x > 0.85 ? 1.5 : 1); }
+      const tmpl = leafTemplate({ L, Wd, outline: (v) => Math.min(1, Math.sin(Math.PI * Math.min(1, v * 0.98)) ** 0.25) * (1 - v * 0.35), nu: 8, nv: 34, fold: 0.35, arch: 0.02 });
+      tmpl.userData.shade = null;
       const dir = V3(Math.cos(a) * 0.15 * (0.5 + r()), 1, Math.sin(a) * 0.15 * (0.5 + r())).normalize();
-      leaves.add(tmpl, leafMatrix(V3(Math.cos(a) * rad, soilY - 0.01, Math.sin(a) * rad), dir, a + r(), 1), cols[(r() * cols.length) | 0]);
+      blades.add(tmpl, leafMatrix(V3(Math.cos(a) * rad, soilY - 0.01, Math.sin(a) * rad), dir, a + r(), 1), cols[(r() * cols.length) | 0]);
     }
+    b.add(blades.geometry(), snakeMat, { uv: 'keep' });
   }
   const lg = leaves.geometry();
   b.add(lg, leafMat, { uv: 'keep' });
-  return { group: b.build('plant') };
+  const group = b.build('plant');
+  // fit the foliage to the catalogue footprint exactly (scale branches + leaves about the trunk axis);
+  // the pot keeps its real size
+  const fol = group.children.filter((m) => !(b.potMats || []).includes(m.material));
+  const bb = new THREE.Box3();
+  for (const m of fol) { m.geometry.computeBoundingBox(); bb.union(m.geometry.boundingBox); }
+  if (!bb.isEmpty()) {
+    const sx = clamp(W / Math.max(1e-3, 2 * Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x))), 0.5, 1.8);
+    const sz = clamp(c.D / Math.max(1e-3, 2 * Math.max(Math.abs(bb.min.z), Math.abs(bb.max.z))), 0.5, 1.8);
+    for (const m of fol) {
+      const pa = m.geometry.attributes.position;
+      for (let i = 0; i < pa.count; i++) { const y = pa.getY(i); const k = clamp((y - soilY) / 0.25, 0, 1); pa.setX(i, pa.getX(i) * (1 + (sx - 1) * k)); pa.setZ(i, pa.getZ(i) * (1 + (sz - 1) * k)); }
+      const na = m.geometry.attributes.normal;
+      for (let i = 0; i < na.count; i++) { const k = clamp((pa.getY(i) - soilY) / 0.25, 0, 1); const nx = na.getX(i) / (1 + (sx - 1) * k), nz = na.getZ(i) / (1 + (sz - 1) * k), ny = na.getY(i); const l = Math.hypot(nx, ny, nz) || 1; na.setXYZ(i, nx / l, ny / l, nz / l); }
+      pa.needsUpdate = true; na.needsUpdate = true; m.geometry.computeBoundingBox(); m.geometry.computeBoundingSphere();
+    }
+  }
+  return { group };
 }
 
 // ---------------------------------------------------------------- decor set
@@ -540,14 +584,15 @@ export function decorSet(c) {
       const h = HH || Math.min(H * 0.92, 0.34), rr = Math.min(0.07, h * 0.18);
       b.add(lathe(smoothProfile(vaseProfile('vase-tall', h, rr), 40), 40), ceramic, { pos: [cx, y0, cz], uv: 'box' });
       // dried branches
-      if (p.stems !== false) {
+      if (p.stems !== false && H - (y0 + h) > 0.08) {
         const stem = c.mat('plant-stem', { color: '#8a7a5c' });
         const leaf = c.mat('plant-leaf', { color: '#b9a98a', roughness: 0.7 });
         const lt = leafTemplate({ L: 0.03, Wd: 0.012, nu: 2, nv: 3, fold: 0.2 });
         const lb = new LeafBatch();
         for (let k = 0; k < 3; k++) {
           const a = k * 2.1 + r();
-          const pts = [V3(cx, y0 + h * 0.75, cz), V3(cx + Math.cos(a) * 0.03, y0 + h + 0.1, cz + Math.sin(a) * 0.03), V3(cx + Math.cos(a) * 0.09, y0 + h + 0.2 + r() * 0.08, cz + Math.sin(a) * 0.09)];
+          const extra = Math.min(0.2 + r() * 0.08, H - (y0 + h) - 0.012);
+          const pts = [V3(cx, y0 + h * 0.75, cz), V3(cx + Math.cos(a) * 0.03, y0 + h + extra * 0.5, cz + Math.sin(a) * 0.03), V3(cx + Math.cos(a) * 0.09, y0 + h + extra, cz + Math.sin(a) * 0.09)];
           const sw = sweep(pts, () => 0.0018, { radial: 4, tubular: 10 });
           b.add(sw.geom, stem, { uv: 'keep' });
           for (let j = 0; j < 9; j++) { const t = 0.4 + 0.6 * j / 9; const lp = sw.curve.getPointAt(t); const tn = sw.curve.getTangentAt(t); const dir = V3(Math.cos(a + j * 2.4), 0.4, Math.sin(a + j * 2.4)).add(tn).normalize(); lb.add(lt, leafMatrix(lp, dir, j, 1), new THREE.Color(1, 1, 1)); }
@@ -594,3 +639,78 @@ export function decorSet(c) {
 
 export { leafTemplate, sweep, LeafBatch, leafMatrix };
 void hashStr;
+
+// ---------------------------------------------------------------- mirror
+
+function mirrorShape(kind, w, h, inset = 0) {
+  const W = w - 2 * inset, H = h - 2 * inset;
+  const k = String(kind || 'round').toLowerCase();
+  if (/round|circle|oval/.test(k)) return ellipseShape(W, H, 96);
+  if (/pill|capsule|stadium/.test(k)) return roundedRectShape(W, H, Math.min(W, H) / 2 - 1e-4);
+  if (/arch/.test(k)) {
+    const s = new THREE.Shape(), R = W / 2, yb = -H / 2, yc = H / 2 - R;
+    s.moveTo(-R, yb); s.lineTo(R, yb); s.lineTo(R, yc); s.absarc(0, yc, R, 0, Math.PI, false); s.lineTo(-R, yb);
+    return s;
+  }
+  if (/organic|wave|blob/.test(k)) {
+    const s = new THREE.Shape(), n = 96;
+    for (let i = 0; i <= n; i++) {
+      const a = (i / n) * Math.PI * 2, rr = 1 + 0.045 * Math.sin(3 * a + 0.6) + 0.03 * Math.sin(5 * a + 1.9);
+      const ca = Math.cos(a), sa = Math.sin(a);
+      const x = Math.sign(ca) * Math.pow(Math.abs(ca), 0.75) * W / 2 * rr, y = Math.sign(sa) * Math.pow(Math.abs(sa), 0.75) * H / 2 * rr;
+      if (i === 0) s.moveTo(x, y); else s.lineTo(x, y);
+    }
+    return s;
+  }
+  return roundedRectShape(W, H, Math.min(0.02, W / 4));
+}
+
+/**
+ * mirror — shape round|oval|arch|pill|rect|organic, mount wall|leaning, frame oak-light|ash-light|walnut-dark|
+ * metal-brass-brushed|metal-black|rattan|travertine|none (bevelled frameless), frameWidth (m, 0.025), frameColor.
+ * wall: origin = centre of the back face, protrudes +Z (like wall_art; fitted to w × h).
+ * leaning: origin = bottom-centre of its bbox, leaning back 7°; bbox depth (≈ h·sin 7°) can exceed dims.d —
+ * put its back at the wall using the bbox. The glass is a perfect metal mirror: it reflects the scene's
+ * env map (and true reflections in the path tracer); no Reflector needed.
+ */
+export function mirror(c) {
+  const { W, H, params: p } = c;
+  const b = new Builder(c.seed);
+  const kind = p.shape || p.mirrorShape || 'round';
+  const fk = String(p.frame ?? 'metal-brass-brushed').toLowerCase();
+  const frameless = fk === 'none' || fk === 'frameless' || fk === 'bevel';
+  const fw = frameless ? 0 : clamp(cm(p.frameWidth, /rattan/.test(fk) ? 0.06 : 0.025), 0.006, 0.12);
+  const fd = frameless ? 0 : clamp(cm(p.frameDepth, 0.03), 0.012, 0.06);
+  const glass = c.mat('mirror', { color: p.glassTint || '#eef0ee' });
+  const back = c.mat('metal-black', { color: '#2a2724', roughness: 0.8 });
+  if (!frameless) {
+    const fmat = /rattan|cane/.test(fk) ? c.mat('rattan', { color: p.frameColor }) : c.mat(fk, p.frameColor ? { color: p.frameColor } : undefined);
+    const outer = mirrorShape(kind, W, H, 0);
+    outer.holes.push(new THREE.Path(mirrorShape(kind, W, H, fw).getPoints(96)));
+    const bev = Math.min(0.004, fw / 4, fd / 4);
+    const g = new THREE.ExtrudeGeometry(outer, { depth: fd - 2 * bev, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 2, curveSegments: 64 });
+    g.translate(0, 0, bev);
+    b.add(g, fmat, { uv: 'box', axis: 'y' });
+    // glass sits 5 mm behind the frame face
+    const gl = new THREE.ShapeGeometry(mirrorShape(kind, W, H, fw - 0.004), 64);
+    gl.translate(0, 0, fd - 0.007);
+    b.add(gl, glass, { uv: 'none', cast: false });
+  } else {
+    // frameless: 5 mm glass with a 15 mm polished bevel
+    const g = new THREE.ExtrudeGeometry(mirrorShape(kind, W, H, 0.015), { depth: 0.002, bevelEnabled: true, bevelThickness: 0.0025, bevelSize: 0.015, bevelSegments: 1, curveSegments: 64 });
+    g.translate(0, 0, 0.01);
+    b.add(g, glass, { uv: 'none' });
+  }
+  const bk = new THREE.ShapeGeometry(mirrorShape(kind, W, H, Math.max(0.01, fw * 0.5)), 48);
+  bk.rotateY(Math.PI); bk.translate(0, 0, 0.004);
+  b.add(bk, back, { uv: 'none', cast: false });
+  const group = b.build('mirror');
+  const mount = String(p.mount || 'wall').toLowerCase();
+  if (/lean|floor/.test(mount)) {
+    const lean = clamp((p.lean ?? 7) * Math.PI / 180, 0.04, 0.2);
+    // stand on the bottom edge: rotate about the bottom-front line, back top toward −Z
+    for (const m of group.children) { m.geometry.translate(0, H / 2, 0); m.geometry.rotateX(-lean); m.geometry.computeBoundingBox(); m.geometry.computeBoundingSphere(); }
+    return { group, mount: 'leaning', fit: { axes: '', origin: 'bottom' } };
+  }
+  return { group, mount: 'wall', fit: { axes: 'xy', origin: 'none' } };
+}

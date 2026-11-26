@@ -47,7 +47,15 @@ import { softBox } from '/js/engine/furniture/geom.js';
 //   ?fuzz=1           robustness test (random/odd params for every archetype; see console)
 //   ?lit=1            lamps on (dim environment)      ?anchors=1  show anchor points
 //   ?catalog=<path>   alternative catalog json
-const Q = new URLSearchParams(location.search);
+// Every URL value is untrusted: keep only plain tokens (ids, keys, numbers, hex, commas) and never
+// render it as HTML (labels use textContent).
+const RAW_Q = new URLSearchParams(location.search);
+const SAFE = /^[A-Za-z0-9 _.,:#\-\/]{0,400}$/;
+const Q = {
+  has: (k) => RAW_Q.has(k),
+  get: (k) => { const v = RAW_Q.get(k); return v == null ? null : SAFE.test(v) ? v : ''; },
+};
+const num = (k, d) => { const n = Number(Q.get(k)); return Number.isFinite(n) && Q.get(k) ? n : d; };
 const hud = document.getElementById('hud');
 const t0 = performance.now();
 
@@ -56,7 +64,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDraw
 renderer.setPixelRatio(Math.min(2, devicePixelRatio));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.AgXToneMapping;
-renderer.toneMappingExposure = Number(Q.get('exp') || 1.05);
+renderer.toneMappingExposure = num('exp', 1.05);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 
@@ -97,7 +105,8 @@ const labels = document.getElementById('labels');
 const tags = [];
 function label(text, sub, pos) {
   const d = document.createElement('div'); d.className = 'lbl';
-  d.innerHTML = `<b>${text}</b>${sub ? '<br><i>' + sub + '</i>' : ''}`;
+  const b = document.createElement('b'); b.textContent = String(text); d.appendChild(b);
+  if (sub) { d.appendChild(document.createElement('br')); const i = document.createElement('i'); i.textContent = String(sub); d.appendChild(i); }
   labels.appendChild(d); tags.push({ d, pos });
 }
 
@@ -112,11 +121,11 @@ function frame(obj, view = 'close', cam = camera) {
   const box = new THREE.Box3().setFromObject(obj);
   const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
   const r = Math.max(size.x, size.y * 1.1, size.z) * 0.5 + 0.05;
-  const zoom = Number(Q.get('zoom') || 1);
+  const zoom = num('zoom', 1);
   const dist = r / Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) * (view === 'far' ? 1.8 : 0.98) / zoom;
   const dirs = { close: [0.55, 0.38, 1], front: [0, 0.12, 1], side: [1, 0.15, 0], top: [0, 1, 0.02], back: [-0.5, 0.4, -1], low: [0.5, 0.08, 1], far: [0.55, 0.42, 1], three: [0.8, 0.5, 0.8], high: [0.4, 1.0, 0.8] };
   const d = new THREE.Vector3(...(dirs[view] || dirs.close)).normalize();
-  if (Q.get('fx')) c.x += Number(Q.get('fx')); if (Q.get('fy')) c.y += Number(Q.get('fy'));
+  c.x += num('fx', 0); c.y += num('fy', 0);
   cam.position.copy(c).addScaledVector(d, dist);
   cam.lookAt(c);
   if (cam === camera) { controls.target.copy(c); controls.update(); }
@@ -126,6 +135,20 @@ function frame(obj, view = 'close', cam = camera) {
 }
 
 // extra parameter variants for QA (?variants=1 adds them to the catalog)
+// light descriptor (SPEC): metres in the item's local frame, angle = spot HALF-angle in RADIANS, intensity 1 ≈ 40 W bulb
+function makeLight(L, k = 1.2) {
+  const I = (L.intensity || 1) * k;
+  let l;
+  if (L.type === 'spot') {
+    l = new THREE.SpotLight(L.color, I * 2.5, L.distance || 4, Math.min(1.45, L.angle || 0.8), L.penumbra ?? 0.4, L.decay ?? 2);
+    l.target.position.set(...(L.target || [L.position[0], L.position[1] - 1, L.position[2]]));
+  } else l = new THREE.PointLight(L.color, I, L.distance || 4, L.decay ?? 2);
+  l.position.set(...L.position);
+  l.castShadow = !!L.shadow && L.type === 'spot';
+  return l;
+}
+function addLights(g, k) { for (const L of g.userData.lights || []) { const l = makeLight(L, k); g.add(l); if (l.target) g.add(l.target); } }
+
 const VARIANTS = [
   { id: 'v-arm-leather', type: 'armchair', dims: { w: 76, d: 82, h: 78 }, model: { archetype: 'armchair', params: { style: 'mid-century', fabric: 'leather', fabricColor: '#8a4b24', frame: 'walnut-dark' } } },
   { id: 'v-arm-club', type: 'armchair', dims: { w: 85, d: 85, h: 75 }, model: { archetype: 'armchair', params: { style: 'club', fabric: 'velvet', fabricColor: '#6f704a', legs: 'wood-taper', frame: 'walnut-dark' } } },
@@ -160,10 +183,33 @@ const VARIANTS = [
   { id: 'v-decor-mix', type: 'decor_set', dims: { w: 45, d: 25, h: 35 }, model: { archetype: 'decor_set', params: { items: ['tray:walnut-dark', 'candlestick:metal-brass', 'bottle:glass-amber', 'bowl:travertine'], colors: ['#CBB89A'] } } },
   { id: 'v-dining-trav', type: 'dining_table', dims: { w: 100, d: 100, h: 76 }, model: { archetype: 'dining_table', params: { shape: 'round', top: 'travertine', legs: 'pedestal', legMaterial: 'walnut-dark', fluted: true } } },
   { id: 'v-curt-2', type: 'curtains', dims: { w: 400, d: 10, h: 280 }, model: { archetype: 'curtains', params: { panels: 2, fabric: 'linen', color: '#ECE7DE', sheer: true } } },
+  // Phase 2 detail archetypes
+  { id: 'v-tw-stone', type: 'tableware', dims: { w: 100, d: 100, h: 20 }, model: { archetype: 'tableware', params: { material: 'stoneware', colors: ['#E9E2D6', '#D8CCB8', '#B5674A'], rim: 'organic', glass: 'wine', cutlery: 'brass', placemat: 'round-jute', napkinColor: '#C9B79C' } } },
+  { id: 'v-tw-porc', type: 'tableware', dims: { w: 100, d: 100, h: 20 }, model: { archetype: 'tableware', params: { material: 'porcelain', colors: ['#F4F2ED', '#F4F2ED'], rim: 'rimmed', glass: 'tumbler', cutlery: 'steel', bowl: false, napkinColor: '#7a7b55' } } },
+  { id: 'v-cp-olive', type: 'centerpiece', dims: { w: 30, d: 30, h: 55 }, model: { archetype: 'centerpiece', params: { style: 'vase', vase: 'round', vaseMaterial: 'stoneware', vaseColor: '#D9CFBF', stems: 'olive', stemCount: 6 } } },
+  { id: 'v-cp-tulip', type: 'centerpiece', dims: { w: 25, d: 25, h: 45 }, model: { archetype: 'centerpiece', params: { style: 'vase', vase: 'bottle', vaseMaterial: 'terracotta', stems: 'pampas', stemCount: 5 } } },
+  { id: 'v-cp-candles', type: 'centerpiece', dims: { w: 35, d: 20, h: 22 }, model: { archetype: 'centerpiece', params: { style: 'candles', holder: 'tray', holderMaterial: 'travertine', count: 3 } } },
+  { id: 'v-kitchen', type: 'kitchen_decor', dims: { w: 130, d: 60, h: 45 }, model: { archetype: 'kitchen_decor', params: { kettleMaterial: 'matte-white', crockMaterial: 'terracotta', fruit: ['lemon', 'orange', 'green-apple'] } } },
+  { id: 'v-throw-knit', type: 'throw', dims: { w: 130, d: 170, h: 2 }, model: { archetype: 'throw', params: { fabric: 'knit', color: '#8C6E55', drape: 'arm', fringe: true } } },
+  { id: 'v-throw-linen', type: 'throw', dims: { w: 130, d: 170, h: 1 }, model: { archetype: 'throw', params: { fabric: 'washed-linen', color: '#B5674A', drape: 'back' } } },
+  { id: 'v-throw-fold', type: 'throw', dims: { w: 130, d: 170, h: 1 }, model: { archetype: 'throw', params: { fabric: 'knit', color: '#E2D6C2', drape: 'folded' } } },
+  { id: 'v-ns-decor', type: 'nightstand_decor', dims: { w: 30, d: 20, h: 22 }, model: { archetype: 'nightstand_decor', params: { colors: ['#D9CDB8', '#7a7b55', '#E9E2D6'] } } },
+  { id: 'v-runner', type: 'runner', dims: { w: 70, d: 200, h: 1 }, model: { archetype: 'runner', params: { material: 'jute', color: '#C9B48E', patternColor: '#3b3b3b', pattern: 'stripes' } } },
+  { id: 'v-mirror-arch', type: 'mirror', dims: { w: 60, d: 3, h: 100 }, model: { archetype: 'mirror', params: { shape: 'arch', frame: 'metal-brass-brushed', frameWidth: 0.018 } } },
+  { id: 'v-mirror-round', type: 'mirror', dims: { w: 80, d: 4, h: 80 }, model: { archetype: 'mirror', params: { shape: 'round', frame: 'oak-light', frameWidth: 0.04 } } },
+  { id: 'v-mirror-lean', type: 'mirror', dims: { w: 60, d: 4, h: 170 }, model: { archetype: 'mirror', params: { shape: 'arch', frame: 'metal-black', mount: 'leaning' } } },
+  { id: 'v-sofa-curve', type: 'sofa', dims: { w: 260, d: 115, h: 74 }, model: { archetype: 'sofa', params: { shape: 'curved', fabric: 'boucle', fabricColor: '#E6DED2' } } },
+  { id: 'v-sofa-mod', type: 'sofa', dims: { w: 280, d: 100, h: 70 }, model: { archetype: 'sofa', params: { modular: true, seats: 3, fabric: 'washed-linen', fabricColor: '#CFC3AE', arm: 'block' } } },
+  { id: 'v-bed-platform', type: 'bed', dims: { w: 190, d: 225, h: 85 }, model: { archetype: 'bed', params: { style: 'platform', frame: 'oak-light', headboard: 'slatted' } } },
+  { id: 'v-bed-platform-cane', type: 'bed', dims: { w: 180, d: 220, h: 95 }, model: { archetype: 'bed', params: { style: 'platform', frame: 'ash-light', headboard: 'cane' } } },
+  { id: 'v-mirror-org', type: 'mirror', dims: { w: 55, d: 2, h: 80 }, model: { archetype: 'mirror', params: { shape: 'organic', frame: 'none' } } },
 ];
 
 async function loadCatalog() {
-  const res = await fetch(Q.get('catalog') || '/data/catalog.json', { cache: 'no-cache' });
+  let src = '/data/catalog.json';
+  const qc = Q.get('catalog');
+  if (qc) { try { const u = new URL(qc, location.href); if (u.origin === location.origin && u.pathname.endsWith('.json')) src = u.pathname; } catch { /* ignore */ } }
+  const res = await fetch(src, { cache: 'no-cache' });
   const cat = await res.json();
   if (Q.has('variants')) cat.items = (Q.get('variants') === 'only' ? [] : cat.items).concat(VARIANTS);
   return cat;
@@ -173,9 +219,9 @@ const stats = [];
 async function main() {
   if (Q.has('tex')) {
     const k = Q.get('tex');
-    const span = Number(Q.get('span') || 0.5);
+    const span = num('span', 0.5);
     const g = planarUVs(new THREE.PlaneGeometry(span, span), 'xy');
-    const m = new THREE.Mesh(g, materials.get(k, Q.get('color') ? { color: '#' + Q.get('color') } : {}));
+    const m = new THREE.Mesh(g, materials.get(k, /^[0-9a-fA-F]{6}$/.test(Q.get('color') || '') ? { color: '#' + Q.get('color') } : {}));
     m.position.y = span / 2 + 0.01; scene.add(m);
     camera.fov = 30; camera.updateProjectionMatrix();
     camera.position.set(0, span / 2, span * 1.95); controls.target.set(0, span / 2, 0); controls.update();
@@ -189,7 +235,7 @@ async function main() {
     items.forEach((it, i) => {
       if (it.swatch) {
         const [k, colr] = it.swatch.split('#');
-        const size = Number(Q.get('size') || 0.4);
+        const size = num('size', 0.4);
         const m = materials.get(k, colr ? { color: '#' + colr } : {});
         const g = new THREE.Group();
         const box = new THREE.Mesh(materials.boxProjectUVs(softBox(size, size * 0.5, size, { r: size * 0.08, seg: 5, cell: size / 8, bulge: { top: size * 0.03 } })), m);
@@ -199,11 +245,29 @@ async function main() {
         sheet.push({ g, cam, view: views[i] || Q.get('cam') || 'close', label: k });
         return;
       }
-      const host = it.type === 'bedding' ? { w: 1.6, d: 2.0, h: 0.25 } : it.type === 'cushions' ? { w: 1.9 } : null;
-      const g = buildItem(it, { materials, host });
-      g.position.set(i * 30, it.type === 'pendant_lamp' ? 2.0 : it.type === 'wall_art' ? 1.0 : 0, 0);
+      let host = it.type === 'bedding' ? { w: 1.6, d: 2.0, h: 0.25 } : it.type === 'cushions' ? { w: 1.9 } : null;
+      // detail archetypes: build their parent and attach at its anchor (as the engine does)
+      const HOSTS = { throw: ['sofa', (p) => (p.drape === 'back' ? 'throw_back' : 'throw_arm_r')], tableware: ['dining_table', () => 'top'], centerpiece: ['dining_table', () => 'top'], nightstand_decor: ['nightstand', () => 'top'] };
+      let parent = null, anchor = null;
+      const hk = HOSTS[it.type];
+      if (hk && !(it.model?.params?.drape === 'folded')) {
+        const pi = cat.items.find((x) => x.type === hk[0]);
+        if (pi) { parent = buildItem(pi, { materials }); const an = hk[1](it.model?.params || {}); anchor = parent.userData.anchors[an]; host = parent.userData.anchorInfo[an] || null; }
+      }
+      if (it.type === 'kitchen_decor') {
+        parent = new THREE.Group();
+        const top = new THREE.Mesh(materials.boxProjectUVs(new THREE.BoxGeometry(2.0, 0.04, 0.62)), materials.get('travertine'));
+        top.position.y = 0.9; const body = new THREE.Mesh(materials.boxProjectUVs(new THREE.BoxGeometry(2.0, 0.88, 0.6)), materials.get('kitchen-front', { color: '#E6E0D6' })); body.position.y = 0.44;
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.6, 0.05), materials.get('paint', { color: '#EDE7DE' })); wall.position.set(0, 0.8, -0.335);
+        for (const m of [top, body, wall]) { m.castShadow = m.receiveShadow = true; parent.add(m); }
+        anchor = new THREE.Vector3(0, 0.92, 0.0); host = { w: 2.0, d: 0.62 };
+      }
+      const g0 = buildItem(it, { materials, host });
+      let g = g0;
+      if (parent) { if (anchor) g0.position.copy(anchor); parent.add(g0); g = parent; g.userData.triangles = g0.userData.triangles; g.userData.lights = []; if (lit) addLights(g0, 1.2); }
+      g.position.set(i * 30, it.type === 'pendant_lamp' ? 2.0 : it.type === 'wall_art' || (it.type === 'mirror' && it.model?.params?.mount !== 'leaning') ? 1.0 : 0, 0);
       scene.add(g);
-      if (lit) for (const L of g.userData.lights || []) { const l = new THREE.PointLight(L.color, (L.intensity || 1) * 1.2, L.distance || 4, 2); l.position.set(...L.position); g.add(l); }
+      if (lit) addLights(g, 1.2);
       const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 100);
       sheet.push({ g, cam, view: views[i] || Q.get('cam') || 'close', label: `${it.id} · ${g.userData.triangles.toLocaleString('ru-RU')} tris` });
       stats.push([it.id, g.userData.triangles]);
@@ -221,7 +285,7 @@ async function main() {
       if (!item) return null;
       const g = buildItem(item, { materials, ...opts });
       g.position.set(...pos); g.rotation.y = rotY * Math.PI / 180; parent.add(g);
-      if (lit) for (const L of g.userData.lights || []) { const l = new THREE.PointLight(L.color, (L.intensity || 1) * 1.5, L.distance || 4, 2); l.position.set(...L.position); l.castShadow = false; g.add(l); }
+      if (lit) addLights(g, 1.5);
       stats.push([item.id, g.userData.triangles]);
       return g;
     };
@@ -251,7 +315,7 @@ async function main() {
     const view = Q.get('view') || 'living';
     const views = { living: [[0.6, 1.45, 4.2], [0, 0.7, -0.6]], bed: [[0.6, 1.5, 3.6], [-3.6, 0.6, 3.0]], top: [[0, 8, 2.5], [0, 0, 1]], sofa: [[0.3, 1.1, 1.6], [0, 0.55, -1.1]] };
     const [cp, ct2] = views[view] || views.living;
-    camera.fov = Number(Q.get('fov') || 50); camera.position.set(...cp); controls.target.set(...ct2); controls.update(); camera.updateProjectionMatrix();
+    camera.fov = num('fov', 50); camera.position.set(...cp); controls.target.set(...ct2); controls.update(); camera.updateProjectionMatrix();
     setKey(9, new THREE.Vector3(0, 0, 1));
     key.position.set(4, 5, 6);
   } else if (Q.has('fuzz')) {
@@ -310,7 +374,7 @@ async function main() {
     const objs = [];
     // grid layout: archetype order, rows of ≤ maxRow metres
     const order = ['sofa', 'armchair', 'cushions', 'coffee_table', 'side_table', 'rug', 'tv_unit', 'decor_set', 'floor_lamp', 'bed', 'mattress', 'bedding', 'nightstand', 'table_lamp', 'dining_table', 'dining_chair', 'pendant_lamp', 'wall_art', 'plant', 'curtains'];
-    let x = 0, z = 0, rowD = 0; const maxRow = Number(Q.get('row') || 10.5);
+    let x = 0, z = 0, rowD = 0; const maxRow = num('row', 10.5);
     const sorted = Q.get('item') ? items : items.slice().sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
     for (const it of sorted) {
       const t1 = performance.now();
@@ -327,10 +391,7 @@ async function main() {
       scene.add(g); objs.push(g);
       label(it.id, `${it.type} · ${g.userData.triangles.toLocaleString('ru-RU')} tris`, new THREE.Vector3(g.position.x, 0, g.position.z + Math.max(size.z, 0.3) / 2 + 0.12));
       stats.push([it.id, g.userData.triangles, Math.round(dt)]);
-      if (lit) for (const L of g.userData.lights || []) {
-        const l = new THREE.PointLight(L.color, (L.intensity || 1) * 1.2, L.distance || 4, 2);
-        l.position.set(...L.position); g.add(l);
-      }
+      if (lit) addLights(g, 1.2);
       if (Q.has('anchors')) for (const [k, v] of Object.entries(g.userData.anchors || {})) {
         const s = new THREE.Mesh(new THREE.SphereGeometry(0.015), new THREE.MeshStandardMaterial({ color: 'red' })); s.position.copy(v); g.add(s);
       }
@@ -369,14 +430,14 @@ function render() {
     const n = sheet.length, cols = n <= 2 ? n : n <= 4 ? 2 : 3, rows = Math.ceil(n / cols);
     const w = Math.floor(innerWidth / cols), h = Math.floor(innerHeight / rows);
     renderer.setScissorTest(true);
-    labels.innerHTML = '';
+    labels.replaceChildren();
     sheet.forEach((sh, i) => {
       const x = (i % cols) * w, y = innerHeight - (Math.floor(i / cols) + 1) * h;
       sh.cam.aspect = w / h; sh.cam.updateProjectionMatrix();
       frame(sh.g, sh.view, sh.cam);
       renderer.setViewport(x, y, w, h); renderer.setScissor(x, y, w, h);
       renderer.render(scene, sh.cam);
-      const d = document.createElement('div'); d.className = 'lbl'; d.style.left = (x + w / 2) + 'px'; d.style.top = (innerHeight - y - 26) + 'px'; d.innerHTML = '<b>' + sh.label + '</b>'; labels.appendChild(d);
+      const d = document.createElement('div'); d.className = 'lbl'; d.style.left = (x + w / 2) + 'px'; d.style.top = (innerHeight - y - 26) + 'px'; const lb = document.createElement('b'); lb.textContent = String(sh.label); d.appendChild(lb); labels.appendChild(d);
     });
     renderer.setScissorTest(false);
     return;

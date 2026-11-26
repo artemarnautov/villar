@@ -2,7 +2,8 @@
 // Throttled BVH-accelerated raycasts against furniture (architecture acts as an occluder only).
 // Hits are mapped to slots through userData.slotId. Floor hits drive the walk marker.
 import * as THREE from 'three';
-import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from 'three-mesh-bvh';
+// direct module import: the package index pulls ~57 modules, this ~25
+import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from '../../vendor/three-mesh-bvh/src/utils/ExtensionUtilities.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
@@ -34,10 +35,12 @@ export function createInteraction({ dom, camera, pickRoots, getSlotInfo, onHover
     raycaster.far = 60;
     const hits = raycaster.intersectObjects(pickRoots(), true);
     for (const h of hits) {
-      if (!h.object.visible) continue;
+      // raycasting ignores parent visibility: skip anything inside a hidden group (dollhouse cutaway)
+      let shown = true;
+      for (let p = h.object; p; p = p.parent) if (!p.visible || p.userData.noPick) { shown = false; break; }
+      if (!shown) continue;
       const m = h.object.material;
-      if (m && m.transparent && m.opacity < 0.5) continue; // see through glass
-      if (h.object.userData.noPick) continue;
+      if (m && (m.name === 'window-glass' || (m.transparent && m.opacity < 0.5) || m.blending === THREE.AdditiveBlending)) continue; // see through glass
       let o = h.object;
       while (o && !o.userData.slotId && o.parent) o = o.parent;
       if (o && o.userData.slotId) return { slotId: o.userData.slotId, point: h.point, object: h.object };
@@ -101,6 +104,8 @@ export function createInteraction({ dom, camera, pickRoots, getSlotInfo, onHover
   return {
     update, click, pick,
     get hovered() { return hovered; },
+    /** A pointer move is waiting for its (throttled) pick. */
+    get pending() { return enabled && dirty && !!pointer; },
     setEnabled(v) { enabled = v; if (!v) onLeave(); },
     refresh() { dirty = !!pointer; },
     dispose() { dom.removeEventListener('pointermove', onMove); dom.removeEventListener('pointerleave', onLeave); },

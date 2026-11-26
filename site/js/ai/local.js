@@ -179,6 +179,7 @@ const P = {
     budgetAlready: (t) => `Вы уже укладываетесь: итог ${t}.`,
     budgetMin: (m) => `Ниже ${m} в этом стиле не получится — собрал самый экономный вариант.`,
     style: (n, k) => `Стиль ${n}: обновил ${k} ${plural('ru', k, ITEMS.ru)}.`,
+    styleCantKeep: (a) => `Оставить ${a.noun.toLowerCase()} «${a.from}» не получится: в этом стиле такой модели нет. Поставил «${a.to}».`,
     styleSame: (n) => `Стиль ${n} уже выбран.`,
     reset: (n) => `Вернул исходную подборку стиля ${n}.`,
     resetSame: 'Всё и так как в исходной подборке.',
@@ -212,6 +213,7 @@ const P = {
     budgetAlready: (t) => `You're already within budget: total ${t}.`,
     budgetMin: (m) => `This style can't go below ${m} — here is the most economical set.`,
     style: (n, k) => `${n} style: ${k} ${plural('en', k, ITEMS.en)} updated.`,
+    styleCantKeep: (a) => `${a.label} isn’t part of this style, so ${a.toFull} takes its place.`,
     styleSame: (n) => `${n} is already the active style.`,
     reset: (n) => `Back to the original ${n} set.`,
     resetSame: 'Everything is already the original set.',
@@ -357,6 +359,7 @@ export function parseLocal(text, ctx) {
   };
 
   // ---- style switch
+  const styleLost = [];
   if (styleTo) {
     if (styleTo === style && !targetTypes.length) lines.push(p.styleSame(quoted(lang, styleName(lang, sim.pack(styleTo)))));
     else if (styleTo !== style) {
@@ -368,6 +371,8 @@ export function parseLocal(text, ctx) {
         const slotId = k && sim.slotsForKey(sim.pack(style), k)[0]?.id;
         const itemId = k && selection[k];
         if (slotId && itemId && tp.slots?.[sim.keyIn(tp, slotId)]?.options?.includes(itemId)) { anchor = { slotId, itemId }; break; }
+        // Asked to keep it, but the new pack doesn't offer it: say so instead of silently replacing it.
+        if (slotId && itemId) styleLost.push({ slotId, key: k, type: t, from: itemId, toKey: sim.keyIn(tp, slotId) });
       }
       raw.push({ type: 'style', styleId: styleTo, anchorItemId: anchor?.itemId, anchor });
       const ss = sim.styleSelection(styleTo, anchor);
@@ -534,6 +539,14 @@ export function parseLocal(text, ctx) {
   if (intents.includes('style')) {
     const st = res.actions.find((a) => a.type === 'style');
     if (st) replyParts.push(p.style(quoted(lang, styleName(lang, sim.pack(st.styleId))), changedCount(sim, state0, res.state)));
+    if (st && !st.anchor) for (const l of styleLost.slice(0, 1)) {
+      const fromItem = sim.items.get(l.from), toItem = sim.items.get(res.state.selection[l.toKey]);
+      if (fromItem && toItem && toItem.id !== fromItem.id) {
+        const full = (it) => itemName(lang, it).split(' — ')[0].trim();
+        const short = (it) => full(it).split(',')[0].trim();
+        replyParts.push(p.styleCantKeep({ label: labelled(lang, l.key, l.type, fromItem), noun: keyLabel(lang, l.key, l.type), from: short(fromItem), to: short(toItem), toFull: full(toItem) }));
+      }
+    }
   }
   if (intents.includes('reset')) {
     const changedKeys = Object.keys(state0.selection).filter((k) => sim.defaults(state0.style)[k] !== state0.selection[k]);

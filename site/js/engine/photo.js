@@ -2,9 +2,16 @@
 // three-gpu-pathtracer's WebGLPathTracer (WebGL2 path). Owner: engine.
 //
 // The path tracer snapshots lights / materials / environment at setScene() time, so we put the
-// scene into a "physical" state (no fake fill lights, sky as environment, real glass transmission)
-// just for that call and restore the raster state immediately after; the raster pipeline keeps
-// drawing until the first full sample lands, then the path-traced image fades in.
+// scene into a "physical" state (real glass, sky portal, no raster-only tricks) just for that call
+// and restore the raster state immediately after; the raster pipeline keeps drawing until the first
+// full sample lands, then the path-traced image fades in.
+//   • start/stop are race-free: every start takes a generation token; stop() (or dispose) bumps it,
+//     so a start that is still loading / preparing never activates afterwards.
+//   • The scene snapshot (BVH + texture atlas) is cached by `version`: re-entering Фото without a
+//     swap or time change only updates the camera.
+//   • Texture atlas 512² (256² below 'high') instead of 1024²: ~4× less GPU memory.
+//   • Despeckle clamps radiance and rejects NaN/Inf, and applies the camera white balance.
+//   • A lost WebGL context drops the tracer; the next start rebuilds it.
 import * as THREE from 'three';
 import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
 
@@ -16,11 +23,14 @@ function quietly(fn) {
   try { return fn(); } finally { console.warn = warn; }
 }
 
-export function createPhoto({ renderer, scene, camera, emit, rasterRender, prepare }) {
+const MAX_RADIANCE = 24; // per-pixel luminance clamp (pre-exposure HDR) — kills fireflies, never NaN
+
+export function createPhoto({ renderer, scene, camera, emit, rasterRender, prepare, quality = 'high' }) {
   let mod = null;
   let pt = null;
   let active = false;
   let starting = null;
+  let gen = 0;
   let target = 256;
   let lastSamples = -1;
   let done = false;
@@ -28,6 +38,8 @@ export function createPhoto({ renderer, scene, camera, emit, rasterRender, prepa
   let quad = null;
   let despeckle = null, despeckleQuad = null, cleanRT = null;
   let exposureScale = 1;
+  let snapshotVersion = null;
+  const wb = new THREE.Vector3(1, 1, 1);
 
   async function load() {
     if (mod) return mod;
@@ -38,6 +50,8 @@ export function createPhoto({ renderer, scene, camera, emit, rasterRender, prepa
   function makeTracer() {
     // the WebGL tracer logs a deprecation notice in favour of the WebGPU one; we target WebGL2 on purpose
     quietly(() => { pt = new mod.WebGLPathTracer(renderer); });
+    const ts = quality === 'high' ? 512 : 256;
+    pt.textureSize.set(ts, ts);
     pt.tiles.set(2, 2);
     pt.bounces = 6;
     pt.transmissiveBounces = 8;
@@ -51,25 +65,34 @@ export function createPhoto({ renderer, scene, camera, emit, rasterRender, prepa
     pt.rasterizeSceneCallback = () => rasterRender();
     denoise = new mod.DenoiseMaterial({ map: null, sigma: 2.5, threshold: 0.08, kSigma: 1.0, transparent: true, premultipliedAlpha: renderer.getContextAttributes().premultipliedAlpha });
     quad = new FullScreenQuad(denoise);
-    // firefly suppression: a pixel far brighter than all 8 neighbours is replaced by their mean
+    // firefly suppression: a pixel far brighter than all 8 neighbours is replaced by their mean;
+    // radiance clamp + NaN rejection; camera white balance (same gains as the raster OutputPass)
     despeckle = new THREE.ShaderMaterial({
-      uniforms: { map: { value: null }, k: { value: 2.5 } },
+      uniforms: { map: { value: null }, k: { value: 2.5 }, gain: { value: wb }, maxL: { value: MAX_RADIANCE } },
       vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4( position.xy, 0.0, 1.0 ); }',
       fragmentShader: /* glsl */`
-        uniform sampler2D map; uniform float k; varying vec2 vUv;
+        uniform sampler2D map; uniform float k; uniform vec3 gain; uniform float maxL; varying vec2 vUv;
         float lum( vec3 c ) { return dot( c, vec3( 0.2126, 0.7152, 0.0722 ) ); }
+        vec3 sane( vec3 c ) {
+          if ( any( isnan( c ) ) || any( isinf( c ) ) ) return vec3( 0.0 );
+          c = max( c, vec3( 0.0 ) );
+          float l = lum( c );
+          return l > maxL ? c * ( maxL / l ) : c;
+        }
         void main() {
           vec2 px = 1.0 / vec2( textureSize( map, 0 ) );
           vec4 c = texture2D( map, vUv );
+          float a = ( isnan( c.a ) || isinf( c.a ) ) ? 1.0 : c.a;
+          c.rgb = sane( c.rgb );
           vec3 sum = vec3( 0.0 ); float mx = 0.0;
           for ( int y = -1; y <= 1; y ++ ) for ( int x = -1; x <= 1; x ++ ) {
             if ( x == 0 && y == 0 ) continue;
-            vec3 n = texture2D( map, vUv + vec2( x, y ) * px ).rgb;
+            vec3 n = sane( texture2D( map, vUv + vec2( x, y ) * px ).rgb );
             sum += n; mx = max( mx, lum( n ) );
           }
           float l = lum( c.rgb );
           if ( l > k * mx + 0.02 ) c.rgb = sum / 8.0;
-          gl_FragColor = c;
+          gl_FragColor = vec4( c.rgb * gain, a );
         }`,
       depthTest: false, depthWrite: false, toneMapped: false,
     });
@@ -98,22 +121,46 @@ export function createPhoto({ renderer, scene, camera, emit, rasterRender, prepa
     };
   }
 
-  async function start({ samples = 256, scale = 1 } = {}) {
+  function dropTracer({ glAlive = true } = {}) {
+    if (pt && glAlive) { try { pt.dispose(); } catch { /* ignore */ } }
+    if (glAlive) { quad?.dispose(); despeckleQuad?.dispose(); despeckle?.dispose(); cleanRT?.dispose(); denoise?.dispose(); }
+    pt = null; quad = null; despeckle = null; despeckleQuad = null; cleanRT = null; denoise = null;
+    snapshotVersion = null;
+  }
+
+  /**
+   * Start path tracing. `version` identifies the scene state (swaps, time of day, view mode); an
+   * unchanged version reuses the previous snapshot. Resolves when started (or cancelled).
+   */
+  async function start({ samples = 256, scale = 1, version = null, whiteBalance = null } = {}) {
     if (active || starting) return starting;
-    starting = (async () => {
+    const my = ++gen;
+    const job = (async () => {
       emit('photo', { state: 'preparing' });
       await load();
+      if (my !== gen) return;
+      // let the 'preparing' state paint before the synchronous scene build
+      await new Promise((r) => setTimeout(r, 30));
+      if (my !== gen) return;
+      if (renderer.getContext().isContextLost()) throw new Error('WebGL context lost');
       if (!pt) makeTracer();
       target = samples;
+      if (whiteBalance) wb.copy(whiteBalance);
       const dpr = renderer.getPixelRatio();
       pt.renderScale = Math.min(1, scale * 1.5 / Math.max(1, dpr));
-      // physical scene state for the snapshot, then restore
-      const restore = prepare();
-      try {
-        camera.updateMatrixWorld();
-        quietly(() => pt.setScene(scene, camera));
-        exposureScale = restore.exposureScale || 1;
-      } finally { restore(); }
+      camera.updateMatrixWorld();
+      if (version === null || version !== snapshotVersion) {
+        // physical scene state for the snapshot, then restore
+        const restore = prepare();
+        try {
+          quietly(() => pt.setScene(scene, camera));
+          exposureScale = restore.exposureScale || 1;
+        } finally { restore(); }
+        snapshotVersion = version;
+      } else {
+        quietly(() => pt.setCamera(camera));
+      }
+      if (my !== gen) { pt.pausePathTracing = true; return; }
       pt.pausePathTracing = false;
       pt.reset();
       lastSamples = -1; done = false;
@@ -121,18 +168,23 @@ export function createPhoto({ renderer, scene, camera, emit, rasterRender, prepa
       emit('photo', { state: 'started', target });
       emit('progress', { samples: 0, target });
     })();
-    try { await starting; } catch (e) {
+    starting = job;
+    try { await job; } catch (e) {
       console.error('[villar] photo mode failed', e);
       active = false;
-      emit('photo', { state: 'error', message: String(e && e.message || e) });
-    } finally { starting = null; }
+      dropTracer({ glAlive: !renderer.getContext().isContextLost() });
+      if (my === gen) emit('photo', { state: 'error', message: String(e && e.message || e) });
+    } finally { if (starting === job) starting = null; }
   }
 
-  function stop() {
-    if (!active && !starting) return;
+  function stop({ silent = false } = {}) {
+    const was = active || !!starting;
+    gen++;
+    starting = null;
     active = false;
-    if (pt) { pt.pausePathTracing = true; pt.reset(); }
-    emit('photo', { state: 'stopped' });
+    if (pt) { pt.pausePathTracing = true; try { pt.reset(); } catch { /* lost context */ } }
+    if (was && !silent) emit('photo', { state: 'stopped' });
+    return was;
   }
 
   /** Called by the engine each frame while active. Returns true if it drew the frame. */
@@ -155,15 +207,11 @@ export function createPhoto({ renderer, scene, camera, emit, rasterRender, prepa
     get busy() { return !!starting; },
     get samples() { return pt ? pt.samples : 0; },
     get done() { return done; },
-    dispose() {
-      active = false;
-      if (pt) pt.dispose();
-      if (quad) quad.dispose();
-      despeckleQuad?.dispose(); despeckle?.dispose(); cleanRT?.dispose();
-      if (denoise) denoise.dispose();
-      pt = null;
-    },
+    /** The scene changed in a way the snapshot doesn't know about. */
+    invalidateScene() { snapshotVersion = null; },
+    setQuality(q) { if (q !== quality) { quality = q; dropTracer(); } },
+    /** WebGL context lost: stop and forget every GL object of the dead context. */
+    onContextLost() { stop(); dropTracer({ glAlive: false }); },
+    dispose() { stop({ silent: true }); dropTracer(); },
   };
 }
-
-export { THREE };

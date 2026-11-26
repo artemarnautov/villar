@@ -1,7 +1,8 @@
 // Villar furniture — rugs and curtains. Owner: modeler.
 import * as THREE from 'three';
-import { Builder, roundedRectShape, ellipseShape, tube, V3, clamp, cm } from './geom.js';
-import { rng } from '../textures.js';
+import { Builder, roundedRectShape, ellipseShape, tube, softBox, V3, clamp, lerp, cm, segs } from './geom.js';
+import { rng, Noise } from '../textures.js';
+import { fabricMat } from './parts.js';
 
 export function rug(c) {
   const { W, D, H, params: p } = c;
@@ -28,7 +29,26 @@ export function rug(c) {
     if (usePattern) { uv[i * 2] = x / W + 0.5; uv[i * 2 + 1] = 0.5 - z / D; } else { uv[i * 2] = x; uv[i * 2 + 1] = z; }
   }
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  // slight curl at the corners (±3–4 mm), as a laid rug never sits perfectly flat
+  const rr = rng(c.seed + 4);
+  const corners = round ? [] : [[-W / 2, -D / 2], [W / 2, -D / 2], [W / 2, D / 2], [-W / 2, D / 2]].map((q) => [...q, 0.002 + rr() * 0.003]);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    let lift = 0;
+    for (const [cx, cz, a] of corners) { const d = Math.hypot(x - cx, z - cz); if (d < 0.25) lift = Math.max(lift, a * (1 - d / 0.25) ** 2); }
+    if (lift) pos.setY(i, pos.getY(i) + lift);
+  }
+  g.computeVertexNormals();
   b.add(g, mat, { uv: 'keep', cast: false });
+  // edge binding: a 3 mm rolled whip-stitch around the perimeter
+  if (!isJute || p.binding) {
+    const pts = (round ? ellipseShape(W - 0.006, D - 0.006) : roundedRectShape(W - 0.006, D - 0.006, 0.01)).getPoints(round ? 96 : 12).map((q) => {
+      let lift = 0;
+      for (const [cx, cz, a] of corners) { const d = Math.hypot(q.x - cx, -q.y - cz); if (d < 0.25) lift = Math.max(lift, a * (1 - d / 0.25) ** 2); }
+      return V3(q.x, t - 0.0025 + lift, -q.y);
+    });
+    b.add(tube(pts, 0.003, { tubular: round ? 160 : 120, radial: 6, closed: true, tension: 0.05 }), c.mat(isJute ? 'jute' : matKey, { color: p.bindingColor || p.patternColor || p.color || c.item?.colorHex }), { uv: 'box', cast: false });
+  }
   // fringe on the short ends
   if (p.fringe && !round) {
     const fm = c.mat('fabric-cotton', { color: p.fringeColor || p.color || '#e9e1d3' });
@@ -67,7 +87,7 @@ export function curtains(c) {
     const sheer = L.sheer ?? (/sheer|voile|вуал/.test(String(L.fabric || '')) || (li === 0 && p.sheer && nL === 1));
     const color = (L.color && /^#/.test(L.color) ? L.color : null) || p.color || c.item?.colorHex || '#E9E2D4';
     const fk = /velvet/.test(String(L.fabric || '')) ? 'fabric-velvet' : 'fabric-linen';
-    const fab = sheer ? c.mat('fabric-linen', { color, sheer: true, side: THREE.DoubleSide, opacity: 0.55 }) : c.mat(fk, { color, side: THREE.DoubleSide });
+    const fab = sheer ? c.mat('fabric-sheer', { color, side: THREE.DoubleSide }) : c.mat(fk, { color, side: THREE.DoubleSide });
     const panels = clamp(Math.round(L.panels || p.panels || 2), 1, 6);
     // sheer layer spreads over ~2/3 of the rail (parted in the middle); opaque layers are stacked at the ends
     const cover = sheer ? (nL > 1 ? 0.62 : 0.56) : 0.24;
@@ -80,7 +100,7 @@ export function curtains(c) {
       const left = panels === 1 ? true : k < perSide;
       const idx = left ? k : k - perSide;
       const cx = panels === 1 ? -span / 2 + gw0 / 2 : left ? -span / 2 + gw0 * (idx + 0.5) : span / 2 - gw0 * (idx + 0.5);
-      addPanel(b, fab, { cx, z, gw: gw0 * 0.995, hang, wave, amp, phase: r() * Math.PI, k: k + li * 7, cast: !sheer });
+      addPanel(b, fab, { cx, z, gw: gw0 * 0.995, hang, wave, amp, phase: r() * Math.PI, k: k + li * 7, cast: !sheer, sheer });
     }
   });
   // ceiling track (one per layer)
@@ -89,11 +109,23 @@ export function curtains(c) {
   return { group: b.build('curtains') };
 }
 
-function addPanel(b, fab, { cx, z, gw, hang, wave, amp, phase, k, cast }) {
-  const nx = Math.round(clamp(gw / 0.012, 30, 110)), ny = 22;
+function addPanel(b, fab, { cx, z, gw, hang, wave, amp, phase, k, cast, sheer = false }) {
+  const nx = Math.round(clamp(gw / 0.012, 30, 110));
+  panelStrip(b, fab, { cx, z, gw, hang, wave, amp, phase, k, cast, nx, y0: 0.004, y1: hang, ny: 22 });
+  // voile: doubled hem (6 cm) and heading tape (9 cm) read as denser bands, as in real sheers
+  if (sheer) {
+    panelStrip(b, fab, { cx, z, gw, hang, wave, amp, phase, k, cast, nx, y0: 0.004, y1: 0.064, ny: 2, off: 0.0015 });
+    panelStrip(b, fab, { cx, z, gw, hang, wave, amp, phase, k, cast, nx, y0: hang - 0.09, y1: hang, ny: 2, off: 0.0015 });
+  }
+  const hp = [];
+  for (let i = 0; i <= 40; i++) { const x = -gw / 2 + (i / 40) * gw; const ph = (x / wave) * Math.PI * 2 + phase; hp.push(V3(cx + x, hang - 0.004, z + Math.sin(ph) * amp * 0.85)); }
+  b.add(tube(hp, 0.004, { tubular: 100, radial: 5 }), fab, { cast });
+}
+
+function panelStrip(b, fab, { cx, z, gw, hang, wave, amp, phase, k, cast, nx, y0, y1, ny, off = 0 }) {
   const pos = [], uv = [], idx = [];
   for (let j = 0; j <= ny; j++) {
-    const v = j / ny; const y = 0.004 + v * (hang - 0.004);
+    const y = y0 + (j / ny) * (y1 - y0), v = (y - 0.004) / (hang - 0.004);
     const ampY = amp * (0.85 + 0.25 * (1 - v));
     let arc = 0, prevX = 0, prevZ = 0;
     for (let i = 0; i <= nx; i++) {
@@ -111,8 +143,169 @@ function addPanel(b, fab, { cx, z, gw, hang, wave, amp, phase, k, cast }) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx); g.computeVertexNormals();
+  if (off) {
+    const pa = g.attributes.position, na = g.attributes.normal;
+    for (let i = 0; i < pa.count; i++) pa.setXYZ(i, pa.getX(i) + na.getX(i) * off, pa.getY(i), pa.getZ(i) + na.getZ(i) * off);
+  }
   b.add(g, fab, { uv: 'keep', cast });
-  const hp = [];
-  for (let i = 0; i <= 40; i++) { const x = -gw / 2 + (i / 40) * gw; const ph = (x / wave) * Math.PI * 2 + phase; hp.push(V3(cx + x, hang - 0.004, z + Math.sin(ph) * amp * 0.85)); }
-  b.add(tube(hp, 0.004, { tubular: 100, radial: 5 }), fab, { cast });
+}
+
+// ---------------------------------------------------------------- throw (draped blanket)
+
+/**
+ * Closed cloth slab from a surface function P(s, w) → Vector3 (s along the drape, w across, both 0..1):
+ * top sheet, a copy offset by −t along the normal, and the four edges stitched with rounded rims.
+ */
+function clothSlab(P, ns, nw, t) {
+  const top = [], nrm = [];
+  for (let j = 0; j <= nw; j++) for (let i = 0; i <= ns; i++) top.push(P(i / ns, j / nw));
+  // normals by finite differences on the grid
+  const at = (i, j) => top[clamp(j, 0, nw) * (ns + 1) + clamp(i, 0, ns)];
+  for (let j = 0; j <= nw; j++) for (let i = 0; i <= ns; i++) {
+    const du = at(i + 1, j).clone().sub(at(i - 1, j)), dv = at(i, j + 1).clone().sub(at(i, j - 1));
+    nrm.push(new THREE.Vector3().crossVectors(dv, du).normalize());
+  }
+  // orient so that "up" side faces +Y on average
+  let sy = 0; for (const n of nrm) sy += n.y;
+  const flip = sy < 0; if (flip) for (const n of nrm) n.negate();
+  const pos = [], uv = [], idx = [];
+  const m = (ns + 1) * (nw + 1);
+  const len = []; // arc length along s for metre UVs
+  for (let j = 0; j <= nw; j++) { let a = 0; for (let i = 0; i <= ns; i++) { if (i) a += at(i, j).distanceTo(at(i - 1, j)); len.push(a); } }
+  const wl = at(0, nw).distanceTo(at(0, 0));
+  for (let k = 0; k < 2; k++) for (let j = 0; j <= nw; j++) for (let i = 0; i <= ns; i++) {
+    const q = j * (ns + 1) + i; const p = top[q].clone().addScaledVector(nrm[q], k ? -t : 0);
+    pos.push(p.x, p.y, p.z); uv.push(len[q], (j / nw) * wl);
+  }
+  for (let j = 0; j < nw; j++) for (let i = 0; i < ns; i++) {
+    const a = j * (ns + 1) + i, b = a + 1, c = a + ns + 1, d = c + 1;
+    if (!flip) { idx.push(a, c, b, b, c, d); idx.push(m + a, m + b, m + c, m + b, m + d, m + c); }
+    else { idx.push(a, b, c, b, d, c); idx.push(m + a, m + c, m + b, m + b, m + c, m + d); }
+  }
+  // rims: half-round between the sheets
+  const rim = (ids) => {
+    const base = pos.length / 3, R = 3;
+    for (const q of ids) {
+      const p0 = top[q], n = nrm[q];
+      // outward direction in the sheet plane: from grid centre
+      for (let r = 0; r <= R; r++) {
+        const a = (r / R) * Math.PI;
+        const out = p0.clone().addScaledVector(n, -t / 2 + Math.cos(a) * t / 2);
+        pos.push(out.x, out.y, out.z); uv.push(len[q] || 0, r * t);
+      }
+    }
+    for (let e = 0; e < ids.length - 1; e++) for (let r = 0; r < R; r++) {
+      const a = base + e * (R + 1) + r, b = a + 1, c = a + R + 1, d = c + 1;
+      idx.push(a, b, c, b, d, c);
+    }
+  };
+  const ring = [];
+  for (let i = 0; i <= ns; i++) ring.push(i);
+  for (let j = 1; j <= nw; j++) ring.push(j * (ns + 1) + ns);
+  for (let i = ns - 1; i >= 0; i--) ring.push(nw * (ns + 1) + i);
+  for (let j = nw - 1; j >= 0; j--) ring.push(j * (ns + 1));
+  rim(ring);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * throw — knit or linen blanket. Params: fabric knit|linen|washed-linen|wool|boucle|cotton, color, drape
+ * arm|back|folded, fringe bool, foldedWidth (m). dims = unfolded size (w × d cm); h ignored.
+ * Origin = the sofa anchor it is attached to (throw_arm_r | throw_arm_l | throw_back); pass the anchor's
+ * anchorInfo as ctx.host ({ mode, side, armW, armD, seatDrop, outsideDrop } or { mode:'back', backT,
+ * frontDrop, outsideDrop }). Without a host it drapes over a generic 16 cm arm. 'folded' = neat stack (origin
+ * bottom-centre) for a bed bench / ottoman / seat.
+ */
+export function throwBlanket(c) {
+  const { W, D, params: p } = c;
+  const b = new Builder(c.seed);
+  const r = rng(c.seed + 21);
+  const N = new Noise(c.seed + 3);
+  const fk = String(p.fabric || 'knit').toLowerCase();
+  const mat = /knit|chunky|waffle/.test(fk) ? c.mat('fabric-knit', { color: p.color || c.item?.colorHex || '#D3C6B1' })
+    : /wash/.test(fk) ? c.mat('fabric-linen-washed', { color: p.color || c.item?.colorHex || '#D6CBB8' })
+      : fabricMat(c, fk, p.color || c.item?.colorHex || '#D9CDB8');
+  const t = /knit|chunky|wool|bouc/.test(fk) ? 0.012 : 0.006;
+  const host = c.host || {};
+  const drape = String(p.drape || host.mode || 'arm').toLowerCase();
+  if (drape === 'folded') {
+    // folded in thirds then in half: 4–6 layers with soft rolled folds
+    const fw = clamp(cm(p.foldedWidth, W / 3), 0.3, 0.6), fd = clamp(D / 4, 0.25, 0.5);
+    const layers = 4;
+    for (let i = 0; i < layers; i++) {
+      const g = softBox(fw - i * 0.004, t * 1.1, fd - i * 0.003, { r: t * 0.55, seg: 2, cell: 0.04, wrinkle: 0.0015, seed: c.seed + i, bulge: { top: 0.002, front: 0.002 } });
+      b.add(g, mat, { pos: [(r() - 0.5) * 0.006, t * 1.1 * (i + 0.5), (r() - 0.5) * 0.006], rot: [0, (r() - 0.5) * 0.03, 0] });
+    }
+    return { group: b.build('throw') };
+  }
+  const isBack = drape === 'back';
+  const side = host.side || 1;
+  const armW = host.armW || host.backT || 0.16;
+  const inLen = isBack ? (host.frontDrop || 0.18) : (host.seatDrop || 0.2);
+  const outLen = Math.min(host.outsideDrop || 0.35, isBack ? 0.4 : 0.42);
+  const lie = isBack ? 0 : clamp(0.24, 0.1, 0.3); // part lying on the seat cushion
+  // folded width along the arm/back and its length in the drape direction
+  const wF = clamp(cm(p.foldedWidth, isBack ? Math.min(W * 0.45, 0.7) : Math.min(W / 3, (host.armD || 0.9) - 0.15)), 0.3, 0.8);
+  // drape profile in (x = inside→outside, y) relative to the top centre of the arm/back
+  const prof = new THREE.CatmullRomCurve3([
+    V3(-armW / 2 - lie - 0.02, -inLen + t, 0),
+    V3(-armW / 2 - 0.05, -inLen + t + 0.006, 0),
+    V3(-armW / 2 - 0.012, -inLen * 0.45, 0),
+    V3(-armW / 2 + 0.012, -0.006, 0),
+    V3(0, 0.002, 0),
+    V3(armW / 2 - 0.012, -0.006, 0),
+    V3(armW / 2 + 0.01, -0.07, 0),
+    V3(armW / 2 + 0.016, -outLen * 0.6, 0),
+    V3(armW / 2 + 0.03, -outLen, 0),
+  ], false, 'catmullrom', 0.4);
+  const ns = segs(70, 24), nw = segs(26, 10);
+  const ph = r() * 6.28;
+  const P = (s, w) => {
+    const q = prof.getPointAt(s), tan = prof.getTangentAt(s);
+    const n = V3(-tan.y, tan.x, 0); // in-plane normal (outward/up)
+    const z = (w - 0.5) * wF;
+    // fold amplitude: tight over the top, loose where hanging or lying
+    const freeOut = clamp((q.x - armW / 2) / 0.02, 0, 1) * clamp(-q.y / outLen, 0, 1);
+    const freeIn = clamp((-armW / 2 - q.x) / 0.03, 0, 1);
+    const hangOut = freeOut, amp = 0.002 + hangOut * 0.016 + freeIn * 0.01;
+    const folds = Math.sin(z / wF * Math.PI * (2.5 + hangOut) * 2 + ph) * 0.6 + N.n(z * 9, s * 6) * 0.6;
+    const p3 = q.clone().addScaledVector(n, folds * amp);
+    // hanging hem flares out a little and the corners drop
+    p3.x += hangOut * hangOut * 0.02 * Math.abs(w - 0.5) * 2;
+    p3.y -= hangOut * Math.pow(Math.abs(w - 0.5) * 2, 3) * 0.03;
+    // seat part: lumpy rumple; clear the crowned arm top (+1.2 cm) and the seat cushion crown (+2.2 cm)
+    p3.y += freeIn * Math.max(0, N.n(z * 6 + 3, s * 5)) * 0.012;
+    p3.y += 0.012 + clamp((-armW / 2 - q.x) / 0.04, 0, 1) * clamp((-q.y - inLen * 0.6) / (inLen * 0.4), 0, 1) * (isBack ? 0 : 0.022);
+    if (q.x > armW / 2) p3.x += 0.006; else if (q.x < -armW / 2) p3.x -= 0.006;
+    p3.z = z + Math.sin(s * 9 + ph) * 0.006;
+    return p3;
+  };
+  const g = clothSlab(P, ns, nw, t);
+  // into the anchor frame: arm → x across (mirrored for the left arm); back → x across becomes −z
+  if (isBack) g.rotateY(Math.PI / 2); else if (side < 0) { g.scale(-1, 1, 1); const ix = g.index.array; for (let k = 0; k < ix.length; k += 3) { const tmp = ix[k + 1]; ix[k + 1] = ix[k + 2]; ix[k + 2] = tmp; } g.computeVertexNormals(); }
+  b.add(g, mat, { uv: 'keep' });
+  if (p.fringe) {
+    // tassel fringe along the hanging hem
+    const hem = [];
+    for (let j = 0; j <= 24; j++) hem.push(P(1, j / 24));
+    const fm = mat;
+    for (const q of hem) {
+      const tg = new THREE.CylinderGeometry(0.0025, 0.0015, 0.05, 4).translate(0, -0.025, 0);
+      const m4 = new THREE.Matrix4().makeTranslation(q.x, q.y, q.z);
+      if (isBack) m4.premultiply(new THREE.Matrix4().makeRotationY(Math.PI / 2)); else if (side < 0) m4.premultiply(new THREE.Matrix4().makeScale(-1, 1, 1));
+      b.add(tg, fm, { matrix: m4 });
+    }
+  }
+  return { group: b.build('throw') };
+}
+
+/** runner — the rug generator with runner defaults (70×200 cm, striped border, low pile). */
+export function runner(c) {
+  const p = { pattern: 'double-border', texture: 'fine-weave', ...c.params };
+  return rug({ ...c, params: p });
 }

@@ -122,22 +122,47 @@ export function setMaxAnisotropy(n) { MAX_ANISO = Math.max(1, n | 0); }
 
 let QUALITY = 1; // 1 = full, 0.5 = half-res textures
 export function setTextureQuality(q) { QUALITY = q; }
-const res = (n) => Math.max(64, Math.round(n * QUALITY));
+const res = (n) => Math.max(64, Math.round((n * QUALITY) / 8) * 8);
 
-export function dataTexture(data, w, h, { srgb = false, repeat = null } = {}) {
-  const t = new THREE.DataTexture(data, w, h, THREE.RGBAFormat, THREE.UnsignedByteType);
+export function dataTexture(data, w, h, { srgb = false, repeat = null, format = THREE.RGBAFormat } = {}) {
+  const t = new THREE.DataTexture(data, w, h, format, THREE.UnsignedByteType);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.magFilter = THREE.LinearFilter;
   t.minFilter = THREE.LinearMipmapLinearFilter;
   t.generateMipmaps = true;
   t.anisotropy = MAX_ANISO;
   t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  if (format === THREE.RGFormat) t.unpackAlignment = 2;
   if (repeat) t.repeat.set(repeat[0], repeat[1]);
   t.needsUpdate = true;
   return t;
 }
 
-function canvasTexture(canvas, { srgb = true } = {}) {
+// ---------------------------------------------------------------- CPU memory release + regeneration
+//
+// After the final GPU upload the CPU copy (DataTexture data / canvas pixels) is dropped. If the WebGL
+// context is lost and restored, restoreTextures() regenerates every procedural texture in the
+// background (materials.js calls it on 'webglcontextrestored').
+
+const REGEN = new Set();
+let KEEP_CPU = false;
+/** Keep CPU copies (tests / tools that read texture data). */
+export function setKeepTextureData(v) { KEEP_CPU = !!v; }
+
+function releaseAfterUpload(t, kind = 'data') {
+  if (KEEP_CPU) return;
+  t.onUpdate = () => {
+    t.onUpdate = null;
+    if (kind === 'data') t.image.data = null;
+    else if (t.image && 'width' in t.image) { t.image.width = 1; t.image.height = 1; }
+  };
+}
+
+/** Regenerate all live procedural textures (after a context restore). */
+export function restoreTextures() { for (const r of REGEN) r(); }
+export function forgetTextures() { REGEN.clear(); }
+
+function canvasTexture(canvas, { srgb = true, redraw = null } = {}) {
   const t = new THREE.CanvasTexture(canvas);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = MAX_ANISO;
@@ -145,6 +170,12 @@ function canvasTexture(canvas, { srgb = true } = {}) {
   t.generateMipmaps = true;
   t.minFilter = THREE.LinearMipmapLinearFilter;
   t.needsUpdate = true;
+  if (redraw) {
+    releaseAfterUpload(t, 'canvas');
+    const r = () => { t.image = redraw(); t.needsUpdate = true; releaseAfterUpload(t, 'canvas'); };
+    REGEN.add(r);
+    t.addEventListener('dispose', () => REGEN.delete(r));
+  }
   return t;
 }
 
@@ -199,53 +230,92 @@ function enqueue(job) {
  */
 function build(w, h, tile, fn, { normalStrength = 1, albedo = true, rough = true, height = true, placeholder = [0.8, 0.8, 0.8], prep = null } = {}) {
   const N = w * h;
-  const A = albedo ? new Uint8Array(N * 4) : null;
-  const R = rough ? new Uint8Array(N * 4) : null;
-  const NM = height ? new Uint8Array(N * 4) : null;
-  // placeholders
-  if (A) { const pr = placeholder.map((x) => Math.round(clamp01(x) * 255)); for (let i = 0; i < N * 4; i += 4) { A[i] = pr[0]; A[i + 1] = pr[1]; A[i + 2] = pr[2]; A[i + 3] = 255; } }
-  if (R) R.fill(160);
-  if (NM) for (let i = 0; i < N * 4; i += 4) { NM[i] = 128; NM[i + 1] = 128; NM[i + 2] = 255; NM[i + 3] = 255; }
   const repeat = [1 / tile[0], 1 / tile[1]];
-  const out = { tile, mean: placeholder[0] * 0.3 + placeholder[1] * 0.59 + placeholder[2] * 0.11, done: false };
-  if (A) out.map = dataTexture(A, w, h, { srgb: true, repeat });
-  if (R) out.roughnessMap = dataTexture(R, w, h, { repeat });
-  if (NM) out.normalMap = dataTexture(NM, w, h, { repeat });
+  const strength = normalStrength * QUALITY; // keep the physical slope when the resolution is scaled
+  // placeholder mean in LINEAR space (same space as the final mean) so pre-ready colours are already close
+  const pl = placeholder.map((x) => srgbToLinear(clamp01(x)));
+  const out = { tile, mean: pl[0] * 0.3 + pl[1] * 0.59 + pl[2] * 0.11, meanRGB: pl, done: false };
+  const fresh = () => {
+    const A = albedo ? new Uint8Array(N * 4) : null;
+    const R = rough ? new Uint8Array(N * 2) : null; // RG8: roughness lives in .g (three samples roughnessMap.g)
+    const NM = height ? new Uint8Array(N * 4) : null;
+    if (A) { const pr = placeholder.map((x) => Math.round(clamp01(x) * 255)); for (let i = 0; i < N * 4; i += 4) { A[i] = pr[0]; A[i + 1] = pr[1]; A[i + 2] = pr[2]; A[i + 3] = 255; } }
+    if (R) R.fill(160);
+    if (NM) for (let i = 0; i < N * 4; i += 4) { NM[i] = 128; NM[i + 1] = 128; NM[i + 2] = 255; NM[i + 3] = 255; }
+    return { A, R, NM };
+  };
+  const first = fresh();
+  if (albedo) out.map = dataTexture(first.A, w, h, { srgb: true, repeat });
+  if (rough) out.roughnessMap = dataTexture(first.R, w, h, { repeat, format: THREE.RGFormat });
+  if (height) out.normalMap = dataTexture(first.NM, w, h, { repeat });
   const cbs = [];
   out.onReady = (cb) => { if (out.done) cb(out); else cbs.push(cb); };
   let resolve; out.ready = new Promise((r) => { resolve = r; });
-  const H = height ? new Float32Array(N) : null;
-  const px = { r: 1, g: 1, b: 1, a: 1, rough: 0.5, h: 0 };
-  let y = 0, prepped = false;
-  enqueue({
-    step(deadline) {
-      if (!prepped) { if (prep) prep(); prepped = true; if (performance.now() > deadline) return false; }
-      while (y < h) {
-        const v = (y + 0.5) / h;
-        for (let x = 0; x < w; x++) {
-          const u = (x + 0.5) / w;
-          px.r = px.g = px.b = 1; px.a = 1; px.rough = 0.5; px.h = 0;
-          fn(u, v, px, x, y);
-          const i = y * w + x;
-          if (A) { const j = i * 4; A[j] = clamp01(px.r) * 255 + 0.5; A[j + 1] = clamp01(px.g) * 255 + 0.5; A[j + 2] = clamp01(px.b) * 255 + 0.5; A[j + 3] = clamp01(px.a) * 255 + 0.5; }
-          if (R) { const j = i * 4; const r = clamp01(px.rough) * 255 + 0.5; R[j] = r; R[j + 1] = r; R[j + 2] = r; }
-          if (H) H[i] = px.h;
+  const preps = !prep ? [] : Array.isArray(prep) ? prep : [prep];
+
+  const run = (bufs) => {
+    const { A, R, NM } = bufs;
+    const H = height ? new Float32Array(N) : null;
+    const px = { r: 1, g: 1, b: 1, a: 1, rough: 0.5, h: 0 };
+    let y = 0, ny = 0, pi = 0;
+    enqueue({
+      step(deadline) {
+        while (pi < preps.length) { preps[pi++](); if (performance.now() > deadline) return false; }
+        while (y < h) {
+          const v = (y + 0.5) / h;
+          for (let x = 0; x < w; x++) {
+            const u = (x + 0.5) / w;
+            px.r = px.g = px.b = 1; px.a = 1; px.rough = 0.5; px.h = 0;
+            fn(u, v, px, x, y);
+            const i = y * w + x;
+            if (A) { const j = i * 4; A[j] = clamp01(px.r) * 255 + 0.5; A[j + 1] = clamp01(px.g) * 255 + 0.5; A[j + 2] = clamp01(px.b) * 255 + 0.5; A[j + 3] = clamp01(px.a) * 255 + 0.5; }
+            if (R) { const r = clamp01(px.rough) * 255 + 0.5; R[i * 2] = r; R[i * 2 + 1] = r; }
+            if (H) H[i] = px.h;
+          }
+          y++;
+          if ((y & 7) === 0 && performance.now() > deadline) return false;
         }
-        y++;
-        if ((y & 7) === 0 && performance.now() > deadline) return false;
-      }
-      return true;
-    },
-    finish() {
-      if (H) { NM.set(heightToNormal(H, w, h, normalStrength)); out.normalMap.needsUpdate = true; }
-      if (A) { out.mean = meanLinear(A); out.meanRGB = meanRGB(A); out.map.needsUpdate = true; }
-      if (R) out.roughnessMap.needsUpdate = true;
-      out.done = true;
-      for (const cb of cbs) cb(out);
-      resolve(out);
-    },
-  });
+        // normal map, row-sliced
+        while (H && ny < h) {
+          heightRowToNormal(H, w, h, strength, ny, NM);
+          ny++;
+          if ((ny & 15) === 0 && performance.now() > deadline) return false;
+        }
+        return true;
+      },
+      finish() {
+        if (A) { out.mean = meanLinear(A); out.meanRGB = meanRGB(A); }
+        for (const [t, d] of [[out.map, A], [out.roughnessMap, R], [out.normalMap, NM]]) {
+          if (!t) continue;
+          t.image.data = d; t.needsUpdate = true; releaseAfterUpload(t, 'data');
+        }
+        if (!out.done) {
+          out.done = true;
+          for (const cb of cbs) cb(out);
+          resolve(out);
+        }
+      },
+    });
+  };
+  run(first);
+  REGEN.add(() => run(fresh()));
   return out;
+}
+
+/** One row of the height → normal conversion (periodic). */
+function heightRowToNormal(H, w, h, strength, y, out) {
+  const y0 = ((y - 1 + h) % h) * w, y1 = ((y + 1) % h) * w, yc = y * w;
+  for (let x = 0; x < w; x++) {
+    const x0 = (x - 1 + w) % w, x1 = (x + 1) % w;
+    const dx = (H[yc + x1] - H[yc + x0]) * 0.5 * strength;
+    const dy = (H[y1 + x] - H[y0 + x]) * 0.5 * strength;
+    const inv = 1 / Math.sqrt(dx * dx + dy * dy + 1);
+    const j = (yc + x) * 4;
+    out[j] = (-dx * inv * 0.5 + 0.5) * 255 + 0.5;
+    out[j + 1] = (-dy * inv * 0.5 + 0.5) * 255 + 0.5;
+    out[j + 2] = (inv * 0.5 + 0.5) * 255 + 0.5;
+    out[j + 3] = 255;
+  }
 }
 
 /** Periodic coarse field: evaluates fn(u, v) on a gw × gh grid, returns bilinear periodic sampler s(u, v). */
@@ -311,6 +381,9 @@ export const WOOD_PALETTES = {
   'oak-natural':   { light: '#c9a274', mid: '#b08658', dark: '#866039', streak: '#d2ad80', rough: 0.55, rings: 58, figure: 0.6, pores: 1.0 },
   'ash-black':     { light: '#3a3532', mid: '#2a2624', dark: '#151312', streak: '#45403c', rough: 0.5, rings: 52, figure: 0.7, pores: 1.0 },
   'teak':          { light: '#a77a4c', mid: '#8a5f36', dark: '#5e3e22', streak: '#b48756', rough: 0.55, rings: 40, figure: 0.8, pores: 0.7 },
+  // Japandi / Scandi furniture woods: pale ash with strong open grain; white-oiled (bleached) oak
+  'ash-light':     { light: '#e4cfab', mid: '#d2b78f', dark: '#a98b64', streak: '#ecdcbf', rough: 0.58, rings: 46, figure: 0.9, pores: 1.2 },
+  'oak-white':     { light: '#e8d8bc', mid: '#d8c3a1', dark: '#b39b78', streak: '#f0e4cf', rough: 0.6, rings: 58, figure: 0.6, pores: 0.9 },
 };
 
 /**
@@ -376,13 +449,14 @@ export function floorTextures(species = 'oak-light', seed = 3) {
   const L = hexToRgb(P.light), M = hexToRgb(P.mid), D = hexToRgb(P.dark), S = hexToRgb(P.streak);
   const sample = woodSampler(seed, P);
   const r = rng(seed * 13 + 5);
-  const TU = 2.4, TV = 1.2, ROWS = 6, PW = TV / ROWS;
+  // engineered wide plank: 20 cm × 1.9–2.5 m, two per row on a 4.4 m tile, staggered; tone ±6 %
+  const TU = 4.4, TV = 1.2, ROWS = 6, PW = TV / ROWS;
   const rows = [];
   for (let k = 0; k < ROWS; k++) {
     const start = r() * TU;
-    const L1 = 0.9 + r() * 0.6;
+    const L1 = 1.9 + r() * 0.6;
     const cuts = [start, (start + L1) % TU];
-    const planks = cuts.map(() => ({ ou: r() * 1.6, ov: r() * 0.4, tone: 0.9 + r() * 0.18, warm: (r() - 0.5) * 0.05, rough: (r() - 0.5) * 0.06 }));
+    const planks = cuts.map(() => ({ ou: r() * 1.6, ov: r() * 0.4, dir: r() < 0.5 ? -1 : 1, tone: 0.94 + r() * 0.12, warm: (r() - 0.5) * 0.03, rough: (r() - 0.5) * 0.05 }));
     rows.push({ cuts, planks });
   }
   const tmp = [0, 0, 0], tmp2 = [0, 0, 0];
@@ -397,7 +471,7 @@ export function floorTextures(species = 'oak-light', seed = 3) {
     let pi, sl, plen;
     if (s0 < len0) { pi = 0; sl = s0; plen = len0; } else { pi = 1; sl = s0 - len0; plen = TU - len0; }
     const pk = row.planks[pi];
-    const s = sample(pk.ou + sl, pk.ov + vl * 0.95);
+    const s = sample(pk.ou + sl * pk.dir, pk.ov + vl * 0.95);
     mixRgb(L, M, clamp01(0.5 + 0.5 * s.streak + 0.3 * s.broad), tmp);
     mixRgb(tmp, D, clamp01(s.late * 0.45), tmp2);
     if (s.streak > 0.4) mixRgb(tmp2, S, (s.streak - 0.4) * 0.6, tmp2);
@@ -476,50 +550,62 @@ export function porcelainTileTextures(seed = 5, color = '#d9d4cc') {
   }, { normalStrength: 2.0, placeholder: base, prep: () => { CL = field(256, 256, (u, v) => N1.fbm(u, v, 3, 3, 5)); } });
 }
 
-export function marbleTextures(seed = 21, { base = '#eeebe6', vein = '#8f8a84', warm = '#d9cfc2' } = {}) {
-  const N1 = new Noise(seed), N2 = new Noise(seed + 3), N3 = new Noise(seed + 5);
+/**
+ * Polished white marble (tile 1.6 m): soft cloudy ground, 1–2 major ridged veins per metre along a
+ * warped diagonal, thin branching secondaries. Flat (no relief) — polished stone has no vein height.
+ */
+export function marbleTextures(seed = 21, { base = '#eeebe6', vein = '#9a948c', warm = '#e2d9cc' } = {}) {
+  const N1 = new Noise(seed), N2 = new Noise(seed + 3), N3 = new Noise(seed + 5), N4 = new Noise(seed + 9);
   const B = hexToRgb(base), V = hexToRgb(vein), Wm = hexToRgb(warm);
   const tmp = [0, 0, 0];
-  let F1, F2, CL;
-  const prep = () => {
-    const WX = field(128, 128, (u, v) => N1.fbm(u, v, 2, 2, 5)), WY = field(128, 128, (u, v) => N2.fbm(u, v, 2, 2, 5));
-    F1 = field(512, 512, (u, v) => N3.fbm(fract(u + 0.35 * WX(u, v)), fract(v + 0.35 * WY(u, v)), 2, 2, 5));
-    F2 = field(512, 512, (u, v) => N1.fbm(fract(u + 0.5 * WY(u, v)), fract(v + 0.5 * WX(u, v)), 4, 4, 4));
-    CL = field(128, 128, (u, v) => N2.fbm(u, v, 3, 3, 4) * 0.5 + 0.5);
-  };
-  return build(res(1024), res(1024), [1.0, 1.0], (u, v, px) => {
-    const vein1 = 1 - smooth(0.0, 0.035, Math.abs(F1(u, v)));
-    const vein2 = (1 - smooth(0.0, 0.02, Math.abs(F2(u, v)))) * 0.45;
+  let W1, W2, FADE, CL;
+  const prep = [
+    () => { W1 = field(128, 128, (u, v) => N1.fbm(u, v, 2, 2, 5) * 1.6); },
+    () => { W2 = field(128, 128, (u, v) => N2.fbm(u, v, 3, 3, 4) * 1.2); },
+    () => { FADE = field(64, 64, (u, v) => N3.fbm(u, v, 2, 2, 3) * 0.5 + 0.5); },
+    () => { CL = field(64, 64, (u, v) => N4.fbm(u, v, 2, 2, 4) * 0.5 + 0.5); },
+  ];
+  return build(res(1024), res(1024), [1.6, 1.6], (u, v, px) => {
+    // major veins: meandering along a warped (u+v) diagonal, 2 per tile; long stretches fade out
+    const f1 = Math.sin(2 * Math.PI * 2 * (u + v) + W1(u, v) * 3.2);
+    const major = Math.pow(Math.max(0, 1 - Math.abs(f1)), 10) * smooth(0.3, 0.65, FADE(u, v));
+    // secondaries: finer, branching across, faint
+    const f2 = Math.sin(2 * Math.PI * 5 * (u - 1.5 * v) + W2(u, v) * 4.5);
+    const minor = Math.pow(Math.max(0, 1 - Math.abs(f2)), 22) * 0.3 * smooth(0.45, 0.8, FADE(fract(u + 0.37), fract(v + 0.21)));
     const cloud = CL(u, v);
-    mixRgb(B, Wm, cloud * 0.35, tmp);
-    const vv = clamp01(vein1 * 0.75 + vein2);
+    mixRgb(B, Wm, cloud * 0.4, tmp);
+    const vv = Math.min(0.55, major * 0.55 + minor);
     mixRgb(tmp, V, vv, tmp);
     px.r = tmp[0]; px.g = tmp[1]; px.b = tmp[2];
-    px.rough = 0.16 + vv * 0.06 + cloud * 0.04;
-    px.h = -vv * 0.1;
-  }, { normalStrength: 1.0, placeholder: B, prep });
+  }, { rough: false, height: false, placeholder: B, prep });
 }
 
-export function travertineTextures(seed = 31, { base = '#d8c6a8', band = '#c7b08b', light = '#e6d8bf' } = {}) {
+/** Honed travertine (tile 0.8 m): straight fine bands (±1° wobble), ivory-beige, visible 1–6 mm pits. */
+export function travertineTextures(seed = 31, { base = '#e3d6c0', band = '#cdbb9c', light = '#ece2d0' } = {}) {
   const N1 = new Noise(seed), N2 = new Noise(seed + 2), N3 = new Noise(seed + 4);
   const B = hexToRgb(base), Bd = hexToRgb(band), Lt = hexToRgb(light);
+  const C = new Cells(seed + 6, 70, 140, 1); // pits ~5.7 × 11 mm cells along the bands
   const tmp = [0, 0, 0];
-  let BA, B2, PO;
-  const prep = () => {
-    const WP = field(64, 64, (u, v) => N1.fbm(u, v, 2, 2, 3));
-    BA = field(128, 512, (u, v) => N2.fbm(u, fract(v + 0.08 * WP(u, v)), 2, 18, 4));
-    B2 = field(64, 512, (u, v) => N3.n(u * 3, (v + 0.05 * WP(u, v)) * 60, 3, 60));
-    PO = field(256, 1024, (u, v) => N3.n(u * 40, v * 200, 40, 200) + 0.4 * N1.n(u * 90, v * 400, 90, 400));
-  };
-  return build(res(1024), res(1024), [0.8, 0.8], (u, v, px) => {
-    const bands = BA(u, v);
-    mixRgb(B, Bd, clamp01(bands * 0.8 + 0.4), tmp);
-    mixRgb(tmp, Lt, clamp01(B2(u, v) * 0.6), tmp);
-    const pore = smooth(0.66, 0.84, PO(u, v));
-    const pd = 1 - pore * 0.28;
-    px.r = tmp[0] * pd; px.g = tmp[1] * pd * 0.99; px.b = tmp[2] * pd * 0.97;
-    px.rough = 0.52 + pore * 0.35 + bands * 0.05;
-    px.h = -pore * 3 + bands * 0.15;
+  let WB, BA, B2, PS;
+  const prep = [
+    () => { WB = field(64, 32, (u, v) => N1.fbm(u, v, 2, 1, 3) * 0.004); },
+    () => { BA = field(16, 1024, (u, v) => N2.fbm(u * 0.01, v, 1, 64, 4)); },
+    () => { B2 = field(16, 1024, (u, v) => N3.n(u * 2, v * 260, 2, 260)); },
+    () => { PS = field(64, 64, (u, v) => N1.fbm(u, v, 4, 4, 2) * 0.5 + 0.5); },
+  ];
+  return build(res(1024), res(1024), [0.8, 0.8], (u, v, px, x, y) => {
+    const vv = fract(v + WB(u, v));
+    const bands = BA(u, vv), fine = B2(u, vv);
+    mixRgb(B, Bd, clamp01(bands * 0.9 + 0.35), tmp);
+    mixRgb(tmp, Lt, clamp01(fine * 0.35), tmp);
+    // pits: darker voids, size varying 1–6 mm, more frequent in some bands
+    const c = C.at(u, vv);
+    const rad = 0.08 + c[2] * 0.28;
+    const pit = (c[2] < 0.35 + 0.3 * PS(u, v)) ? 1 - smooth(rad * 0.6, rad, c[0]) : 0;
+    const pd = 1 - pit * 0.42;
+    px.r = tmp[0] * pd; px.g = tmp[1] * pd * 0.985; px.b = tmp[2] * pd * 0.96;
+    px.rough = 0.45 + pit * 0.35 + hash2(x, y, seed) * 0.02;
+    px.h = -pit * 1.5 + fine * 0.05;
   }, { normalStrength: 1.2, placeholder: B, prep });
 }
 
@@ -558,6 +644,65 @@ export function ceramicTextures(seed = 51) {
   }, { normalStrength: 1.4, placeholder: [0.95, 0.95, 0.95], prep: () => { G = field(128, 128, (u, v) => N1.fbm(u, v, 4, 4, 4)); } });
 }
 
+/** Speckled stoneware (reactive matte glaze over iron-speckled clay): near-white albedo, ×colour in the material. */
+export function stonewareTextures(seed = 57) {
+  const N1 = new Noise(seed), N2 = new Noise(seed + 3);
+  const C = new Cells(seed + 5, 160, 160, 1), C2 = new Cells(seed + 9, 50, 50, 1);
+  let G, P;
+  return build(res(512), res(512), [0.25, 0.25], (u, v, px, x, y) => {
+    const g = G(u, v), pool = P(u, v);
+    let k = 0.95 + g * 0.03 - pool * 0.05;
+    const c = C.at(u, v), c2 = C2.at(u, v);
+    if (c[0] < 0.09 && c[2] < 0.45) k *= 0.45 + c[0] * 4; // iron speckles 0.3–0.8 mm
+    if (c2[0] < 0.07 && c2[2] < 0.25) k *= 0.6 + c2[0] * 5; // a few larger ones
+    px.r = k * 0.995; px.g = k * 0.985; px.b = k * 0.965;
+    px.rough = 0.5 + g * 0.08 + pool * -0.1 + hash2(x, y, seed) * 0.03;
+    px.h = g * 0.6 + pool * 0.4;
+  }, { normalStrength: 0.9, placeholder: [0.93, 0.92, 0.9], prep: () => { G = field(128, 128, (u, v) => N1.fbm(u, v, 5, 5, 4)); P = field(64, 64, (u, v) => Math.max(0, N2.fbm(u, v, 2, 2, 3))); } });
+}
+
+/** Unglazed terracotta: fine grit, firing blush, lime specks. Near-white albedo × colour in the material. */
+export function terracottaTextures(seed = 59) {
+  const N1 = new Noise(seed), N2 = new Noise(seed + 2);
+  const C = new Cells(seed + 4, 120, 120, 1);
+  let G, B;
+  return build(res(512), res(512), [0.3, 0.3], (u, v, px, x, y) => {
+    const g = G(u, v), bl = B(u, v), s = hash2(x, y, seed);
+    let r = 0.93 + bl * 0.06 + g * 0.03 + (s - 0.5) * 0.04, gg = r * (0.98 - bl * 0.03), bb = r * (0.97 - bl * 0.04);
+    const c = C.at(u, v);
+    if (c[0] < 0.08 && c[2] < 0.3) { r = gg = bb = 1.06; } // lime / grog specks
+    px.r = r; px.g = gg; px.b = bb;
+    px.rough = 0.88 + s * 0.06;
+    px.h = g * 0.5 + s * 0.4 - (c[0] < 0.06 && c[2] > 0.8 ? 0.6 : 0);
+  }, { normalStrength: 1.3, placeholder: [0.94, 0.92, 0.9], prep: () => { G = field(128, 128, (u, v) => N1.fbm(u, v, 6, 6, 4)); B = field(32, 32, (u, v) => N2.fbm(u, v, 2, 2, 3)); } });
+}
+
+/**
+ * Terrazzo: cement matrix with marble/stone chips (mixed sizes, angular Worley cells), honed–polished.
+ * base / chips = hex colours. Tile 0.6 m.
+ */
+export function terrazzoTextures(seed = 63, { base = '#ece6dc', chips = ['#b5674a', '#9a958c', '#d8cfc0', '#3c3a37', '#c9a77a'] } = {}) {
+  const N1 = new Noise(seed);
+  const Cb = new Cells(seed + 1, 18, 18, 1), Cs = new Cells(seed + 2, 60, 60, 1);
+  const bc = hexToRgb(base), cc = chips.map(hexToRgb);
+  let G;
+  return build(res(1024), res(1024), [0.6, 0.6], (u, v, px, x, y) => {
+    const g = G(u, v);
+    let c = [bc[0] + g * 0.02, bc[1] + g * 0.02, bc[2] + g * 0.02];
+    let chip = 0;
+    const big = Cb.at(u, v), sm = Cs.at(u, v);
+    // big chips: inside a cell's core (F1 small relative to F2) for ~35 % of cells
+    if (big[2] < 0.38 && big[1] - big[0] > 0.12) { c = cc[Math.floor(big[2] * 13) % cc.length].slice(); chip = 1; }
+    else if (sm[2] < 0.5 && sm[1] - sm[0] > 0.18) { c = cc[Math.floor(sm[2] * 29) % cc.length].slice(); chip = 1; }
+    const s = hash2(x, y, seed) - 0.5;
+    if (!chip) { c = c.map((q) => q + s * 0.03); if (hash2(x >> 1, y >> 1, seed + 3) > 0.985) c = c.map((q) => q * 0.8); }
+    else c = c.map((q) => q * (0.94 + s * 0.08));
+    px.r = c[0]; px.g = c[1]; px.b = c[2];
+    px.rough = chip ? 0.16 : 0.24 + g * 0.04;
+    px.h = chip ? 0.05 : -0.02 + s * 0.02;
+  }, { normalStrength: 0.4, placeholder: [bc[0], bc[1], bc[2]], prep: () => { G = field(64, 64, (u, v) => N1.fbm(u, v, 4, 4, 3)); } });
+}
+
 // ---------------------------------------------------------------- WALLS & PAINT
 
 export function plasterTextures(seed = 61) {
@@ -572,15 +717,30 @@ export function plasterTextures(seed = 61) {
   }, { normalStrength: 0.9, placeholder: [0.985, 0.985, 0.985], prep: () => { M = field(256, 256, (u, v) => N1.fbm(u, v, 3, 3, 5)); T = field(512, 512, (u, v) => N2.fbm(u, v, 12, 9, 3)); } });
 }
 
-export function paintTextures(seed = 71) {
+/**
+ * Eggshell wall paint. Albedo/roughness tile 3 m (large-scale mottling, ±2.5 % × amp, roughness 0.82–0.9);
+ * the roller-stipple normal map is a separate fine tile (see paintStippleTextures).
+ */
+export function paintTextures(seed = 71, amp = 1) {
   const N1 = new Noise(seed), N2 = new Noise(seed + 3);
-  return build(res(512), res(512), [0.5, 0.5], (u, v, px) => {
-    const f = N1.fbm(u, v, 64, 64, 2);
-    const m = N2.n(u * 3, v * 3, 3, 3);
-    px.r = px.g = px.b = 0.99 + m * 0.01;
-    px.rough = 0.72 + m * 0.03;
-    px.h = f * 0.3;
-  }, { normalStrength: 0.8, placeholder: [0.99, 0.99, 0.99] });
+  let M1, M2;
+  const prep = [
+    () => { M1 = field(64, 64, (u, v) => N1.fbm(u, v, 2, 2, 3)); },
+    () => { M2 = field(128, 128, (u, v) => N2.fbm(u, v, 10, 10, 2)); },
+  ];
+  return build(res(512), res(512), [3.0, 3.0], (u, v, px, x, y) => {
+    const m = M1(u, v) * 0.75 + M2(u, v) * 0.25;
+    px.r = px.g = px.b = 0.975 + m * 0.025 * amp + hash2(x, y, seed) * 0.002;
+    px.rough = 0.86 + m * 0.04;
+  }, { height: false, placeholder: [0.975, 0.975, 0.975], prep });
+}
+
+/** Roller stipple: soft 2–3 mm bumps, tile 0.4 m. */
+export function paintStippleTextures(seed = 73) {
+  const N1 = new Noise(seed);
+  return build(res(512), res(512), [0.4, 0.4], (u, v, px) => {
+    px.h = N1.fbm(u, v, 160, 160, 2) * 0.6 + N1.n(u * 40, v * 40, 40, 40) * 0.2;
+  }, { albedo: false, rough: false, normalStrength: 1.0 });
 }
 
 /** Lacquer / powder coat orange-peel. */
@@ -628,11 +788,11 @@ export function boucleTextures(seed = 101) {
     px.r = px.g = px.b = ao * (0.98 + id1 * 0.04);
     px.rough = 0.92;
     px.h = h;
-  }, { normalStrength: 5.0, placeholder: [0.9, 0.9, 0.9] });
+  }, { normalStrength: 2.5, placeholder: [0.9, 0.9, 0.9] });
 }
 
 /** Linen: plain weave with slubs and thread colour variation. Near-white detail map. */
-export function linenTextures(seed = 111, { tile = 0.2, threads = 220 } = {}) {
+export function linenTextures(seed = 111, { tile = 0.2, threads = 220, washed = false } = {}) {
   const N1 = new Noise(seed), N2 = new Noise(seed + 1), N3 = new Noise(seed + 2);
   const r = rng(seed); const tc = new Float32Array(threads * 2); for (let i = 0; i < tc.length; i++) tc[i] = r();
   let SW, SF, MO;
@@ -644,7 +804,10 @@ export function linenTextures(seed = 111, { tile = 0.2, threads = 220 } = {}) {
       SF[t * 128 + k] = Math.max(0, N2.n((k / 128) * 40, t * 0.37, 40, 4096)) * 0.9;
     }
     MO = field(64, 64, (u, v) => N3.fbm(u, v, 3, 3, 3));
+    // stone-washed linen: soft random crinkles a few cm long (ridged noise), periodic over the tile
+    if (washed) CR = field(128, 128, (u, v) => { const n = N3.fbm(u, v, 5, 3, 4) + N1.fbm(v, u, 3, 7, 3) * 0.5; return 1 - Math.abs(n) * 2.2; });
   };
+  let CR = null;
   return build(res(1024), res(1024), [tile, tile], (u, v, px) => {
     const tx = u * threads, ty = v * threads;
     const ix = Math.floor(tx), iy = Math.floor(ty);
@@ -659,24 +822,98 @@ export function linenTextures(seed = 111, { tile = 0.2, threads = 220 } = {}) {
     const h = warpTop ? Math.max(hw, hf * 0.55) : Math.max(hf, hw * 0.55);
     const col = warpTop ? 0.9 + tc[ix] * 0.1 + slubWarp * 0.08 : 0.91 + tc[threads + iy] * 0.09 + slubWeft * 0.08;
     const k = col * (0.78 + 0.22 * h) + MO(u, v) * 0.02;
-    px.r = px.g = px.b = k;
+    const cr = CR ? CR(u, v) : 0;
+    px.r = px.g = px.b = k * (CR ? 0.97 + cr * 0.03 : 1);
     px.rough = 0.9;
-    px.h = h * 0.6 + (warpTop ? slubWarp : slubWeft) * 0.4;
+    px.h = h * 0.6 + (warpTop ? slubWarp : slubWeft) * 0.4 + cr * 6;
   }, { normalStrength: 1.6, placeholder: [0.9, 0.9, 0.9], prep });
 }
 
 /** Fine cotton percale / sateen for bedding (smooth, subtle). */
+/** Cotton percale for bedding: plain weave at 0.6 mm pitch, faint slub/mottle, fully matte. */
 export function cottonTextures(seed = 121) {
-  const N1 = new Noise(seed);
-  const threads = 256;
+  const N1 = new Noise(seed), N2 = new Noise(seed + 4);
+  const threads = 84; // 5 cm tile → 0.6 mm pitch
+  let MO;
   return build(res(512), res(512), [0.05, 0.05], (u, v, px, x, y) => {
+    const tx = u * threads, ty = v * threads, ix = Math.floor(tx), iy = Math.floor(ty);
+    const fx = tx - ix, fy = ty - iy;
+    const warpTop = ((ix + iy) & 1) === 0;
+    const hw = Math.sin(Math.PI * fx) * (0.8 + 0.2 * Math.sin(Math.PI * fy));
+    const hf = Math.sin(Math.PI * fy) * (0.8 + 0.2 * Math.sin(Math.PI * fx));
+    const h = warpTop ? Math.max(hw, hf * 0.6) : Math.max(hf, hw * 0.6);
+    const m = MO(u, v) * 0.012 + hash2(x, y, seed) * 0.006;
+    const k = 0.965 + 0.035 * h + m;
+    px.r = px.g = px.b = k;
+    px.rough = 0.95;
+    px.h = h * 0.5 + N2.n(u * 12, v * 12, 12, 12) * 0.15;
+  }, { normalStrength: 0.9, placeholder: [0.98, 0.98, 0.98], prep: () => { MO = field(32, 32, (u, v) => N1.fbm(u, v, 2, 2, 3)); } });
+}
+
+/** Chunky waffle / knit throw: 10 mm waffle cells with twisted yarn ridges. Near-white detail map. */
+export function knitTextures(seed = 125) {
+  const N1 = new Noise(seed);
+  const cells = 12; // 12 cm tile → 10 mm cells
+  return build(res(512), res(512), [0.12, 0.12], (u, v, px, x, y) => {
+    const cx = fract(u * cells), cy = fract(v * cells);
+    // raised ridges on the cell borders, recessed pockets in the centre
+    const ex = Math.min(cx, 1 - cx), ey = Math.min(cy, 1 - cy);
+    const ridge = Math.max(1 - smooth(0.0, 0.22, ex), 1 - smooth(0.0, 0.22, ey));
+    const pocket = smooth(0.15, 0.45, Math.min(ex, ey));
+    const twist = Math.sin((u * cells * 6 + v * cells * 6) * Math.PI) * 0.08 * ridge;
+    const fib = hash2(x, y, seed) * 0.05 + N1.n(u * 40, v * 40, 40, 40) * 0.05;
+    const h = ridge * 0.9 - pocket * 0.5 + twist + fib;
+    const k = 0.8 + 0.2 * clamp01(h * 0.6 + 0.5);
+    px.r = px.g = px.b = k;
+    px.rough = 0.97;
+    px.h = h;
+  }, { normalStrength: 2.2, placeholder: [0.9, 0.9, 0.9] });
+}
+
+/** Voile / sheer: fine open weave with density variation; alpha in the map's alpha channel. */
+export function voileTextures(seed = 127) {
+  const N1 = new Noise(seed);
+  const threads = 40; // 4 cm tile → 1 mm pitch
+  let D;
+  return build(res(512), res(512), [0.04, 0.04], (u, v, px, x, y) => {
     const fx = fract(u * threads), fy = fract(v * threads);
-    const h = 0.5 * Math.sin(Math.PI * fx) + 0.5 * Math.sin(Math.PI * fy);
-    const m = N1.n(u * 3, v * 3, 3, 3) * 0.01 + hash2(x, y, seed) * 0.004;
-    px.r = px.g = px.b = 0.985 + m;
-    px.rough = 0.78;
-    px.h = h * 0.3;
-  }, { normalStrength: 0.8, placeholder: [0.985, 0.985, 0.985] });
+    const thread = Math.max(Math.pow(Math.sin(Math.PI * fx), 6), Math.pow(Math.sin(Math.PI * fy), 6));
+    const dens = D(u, v);
+    px.r = px.g = px.b = 0.97 + thread * 0.03;
+    px.a = clamp01(0.32 + thread * 0.35 + dens * 0.08);
+    px.rough = 0.95; px.h = thread * 0.4;
+  }, { normalStrength: 0.6, placeholder: [0.97, 0.97, 0.97], prep: () => { D = field(32, 32, (u, v) => N1.fbm(u, v, 2, 2, 3)); } });
+}
+
+/** Paper-cord weave (Danish cord seats): diagonal-ish over/under of twisted cords. */
+export function cordTextures(seed = 129, color = '#cdb58a') {
+  const base = hexToRgb(color);
+  const cords = 16; // 8 cm tile → 5 mm cords
+  return build(res(512), res(512), [0.08, 0.08], (u, v, px, x, y) => {
+    const tx = u * cords, ty = v * cords, ix = Math.floor(tx), iy = Math.floor(ty);
+    const fx = tx - ix, fy = ty - iy;
+    const top = ((ix + (iy >> 1)) & 1) === 0; // 2-over-2 pattern
+    const across = top ? fy : fx, along = top ? fx : fy;
+    const prof = Math.pow(Math.sin(Math.PI * across), 0.6);
+    const tw = Math.sin((along * 3 + across * 1.2) * Math.PI * 2) * 0.12; // twist
+    const gap = smooth(0.0, 0.1, across) * smooth(0.0, 0.1, 1 - across);
+    const k = (0.78 + 0.22 * prof + tw * 0.4) * (0.6 + 0.4 * gap) + hash2(x, y, seed) * 0.02;
+    px.r = base[0] * k; px.g = base[1] * k; px.b = base[2] * k;
+    px.rough = 0.8; px.h = prof * 0.8 + tw;
+  }, { normalStrength: 2.4, placeholder: base });
+}
+
+/** Lit lamp-shade emission: linen-like weave × vertical falloff (bright at bulb height, darker at rims). v∈[0,1] across the shade height. */
+export function shadeGlowTextures(seed = 133) {
+  const threads = 60; // u: 0.2 m tile
+  return build(res(256), res(256), [0.2, 1], (u, v, px, x, y) => {
+    const fx = fract(u * threads), fy = fract(v * 80);
+    const weave = 0.85 + 0.15 * Math.max(Math.sin(Math.PI * fx), Math.sin(Math.PI * fy)) + hash2(x, y, seed) * 0.03;
+    const g = 0.42 + 0.58 * Math.exp(-Math.pow((v - 0.5) / 0.32, 2));
+    const rim = smooth(0.0, 0.05, v) * smooth(0.0, 0.05, 1 - v);
+    const k = g * weave * (0.7 + 0.3 * rim);
+    px.r = k; px.g = k * 0.97; px.b = k * 0.92;
+  }, { rough: false, height: false, placeholder: [0.8, 0.78, 0.74] });
 }
 
 export function velvetTextures(seed = 131) {
@@ -790,17 +1027,22 @@ export function woolPileTextures(seed = 171) {
   }, { normalStrength: 3.0, placeholder: [0.88, 0.88, 0.88] });
 }
 
+/** Potting top dressing: dark-brown bark-mulch chips with a few pale pebbles. */
 export function soilTextures(seed = 181) {
-  const C = new Cells(seed, 40, 40, 1);
+  const C = new Cells(seed, 26, 40, 1), P = new Cells(seed + 3, 14, 14, 1);
   const N1 = new Noise(seed + 1);
-  const dark = hexToRgb('#3a2a1e'), light = hexToRgb('#5b4632');
+  const dark = hexToRgb('#2e2016'), bark = hexToRgb('#5a3d27'), peb = hexToRgb('#b9ad9c');
   const tmp = [0, 0, 0];
-  return build(res(256), res(256), [0.2, 0.2], (u, v, px) => {
-    const c = C.at(u, v); const n = N1.fbm(u, v, 16, 16, 3);
-    const peb = Math.max(0, 1 - c[0] * 1.6);
-    mixRgb(dark, light, clamp01(n * 0.6 + 0.4 + peb * 0.3 * c[2]), tmp);
+  return build(res(256), res(256), [0.2, 0.2], (u, v, px, x, y) => {
+    const c = C.at(u, v); const n = N1.fbm(u, v, 8, 8, 3);
+    const chip = smooth(0.0, 0.18, c[1] - c[0]);                 // chip plates, dark gaps between
+    mixRgb(dark, bark, clamp01(chip * (0.55 + 0.45 * c[2]) + n * 0.15), tmp);
+    const p = P.at(u, v);
+    const pebble = p[2] < 0.12 ? 1 - smooth(0.18, 0.3, p[0]) : 0;
+    if (pebble > 0) mixRgb(tmp, peb, pebble * (0.85 + 0.15 * p[2]), tmp);
     px.r = tmp[0]; px.g = tmp[1]; px.b = tmp[2];
-    px.rough = 0.96; px.h = peb + n * 0.3;
+    px.rough = 0.92 - pebble * 0.25;
+    px.h = chip * 0.6 + pebble * 1.4 + n * 0.2 + hash2(x, y, seed) * 0.05;
   }, { normalStrength: 3, placeholder: dark });
 }
 
@@ -821,6 +1063,36 @@ export function leafTextures(seed = 191) {
   }, { normalStrength: 2.0, placeholder: [0.9, 0.9, 0.88] });
 }
 
+/**
+ * Sansevieria trifasciata 'Laurentii' blade in leaf space (u across 0..1, v base→tip 0..1):
+ * dark green with wavy pale grey-green transverse bands (~40 per blade) and a yellow margin.
+ * Used with vertex colour ≈ white (per-leaf ±5 % variation).
+ */
+export function snakeLeafTextures(seed = 233) {
+  const N1 = new Noise(seed), N2 = new Noise(seed + 7);
+  const sm = (t) => { t = clamp01(t); return t * t * (3 - 2 * t); };
+  const dark = [0.15, 0.24, 0.13], pale = [0.36, 0.45, 0.31], yel = [0.78, 0.71, 0.33], mid = [0.2, 0.3, 0.16];
+  return build(res(256), res(1024), [1, 1], (u, v, px) => {
+    const x = Math.abs(u - 0.5) * 2;
+    // transverse bands: wavy, broken, variable width (~42 per blade)
+    const w = N1.fbm(u, v, 2, 8, 3);
+    const ph = v * 34 + Math.sin(u * 5 + v * 11) * 0.4 + w * 2.2;
+    const band = sm((Math.sin(ph * Math.PI * 2) * 0.5 + 0.5 - 0.6 + N2.fbm(u, v, 6, 40, 3) * 0.45) / 0.3);
+    const blot = 0.85 + N2.fbm(u, v, 3, 12, 3) * 0.25;
+    let c = [0, 1, 2].map((k) => (dark[k] + (pale[k] - dark[k]) * band * 0.75) * blot);
+    // darker green zone just inside the margin, then the yellow edge
+    const inner = sm((x - 0.7) / 0.12);
+    c = c.map((ck, k) => ck + (mid[k] - ck) * inner * 0.6);
+    const edge = sm((x - 0.84 - N1.fbm(u, v, 1, 4, 2) * 0.03) / 0.05);
+    c = c.map((ck, k) => ck + (yel[k] - ck) * edge);
+    const tip = sm((v - 0.93) / 0.07);
+    c = c.map((ck) => ck * (1 - tip * 0.3));
+    px.r = c[0]; px.g = c[1]; px.b = c[2];
+    px.rough = 0.42 + band * 0.06;
+    px.h = -Math.exp(-Math.pow((u - 0.5) / 0.02, 2)) * 0.3 + band * 0.1;
+  }, { normalStrength: 1.0, placeholder: [0.25, 0.34, 0.2] });
+}
+
 export function canvasWeaveTextures(seed = 201) {
   const threads = 120;
   return build(res(512), res(512), [0.05, 0.05], (u, v, px, x, y) => {
@@ -834,7 +1106,12 @@ export function canvasWeaveTextures(seed = 201) {
 
 // ---------------------------------------------------------------- RUG PATTERN (canvas, rug UV 0..1)
 
-export function rugPatternTexture({ w = 2.9, d = 2.0, color = '#e3dacb', patternColor = '#b9a88e', pattern = 'plain-border', seed = 1, shape = 'rect' } = {}) {
+export function rugPatternTexture(opts = {}) {
+  const draw = () => drawRug(opts);
+  return canvasTexture(draw(), { redraw: draw });
+}
+
+function drawRug({ w = 2.9, d = 2.0, color = '#e3dacb', patternColor = '#b9a88e', pattern = 'plain-border', seed = 1, shape = 'rect' } = {}) {
   const ppm = 200; // px per metre (≈5 mm)
   const W = Math.min(1024, Math.round(w * ppm)), H = Math.min(1024, Math.round(d * ppm));
   const cv = makeCanvas(W, H); const g = cv.getContext('2d');
@@ -895,7 +1172,7 @@ export function rugPatternTexture({ w = 2.9, d = 2.0, color = '#e3dacb', pattern
     g.globalAlpha = 1;
   }
   // 'solid' / 'plain' / unknown → plain
-  return canvasTexture(cv);
+  return cv;
 }
 
 // ---------------------------------------------------------------- ART (canvas)
@@ -903,7 +1180,32 @@ export function rugPatternTexture({ w = 2.9, d = 2.0, color = '#e3dacb', pattern
 const MOTIFS = ['abstract-arches', 'sun', 'organic', 'lines', 'landscape', 'botanical', 'stripes', 'grid', 'blocks', 'textured'];
 
 /** Returns a CanvasTexture; with relief: true returns { map, normalMap } (impasto / plaster relief). */
-export function artTexture({ motif = 'abstract-arches', colors = ['#B5653F', '#E6DDCF', '#7A7B55'], aspect = 0.7, seed = 1, relief = false } = {}) {
+export function artTexture(opts = {}) {
+  const r0 = renderArt(opts);
+  const t = canvasTexture(r0.canvas);
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  releaseAfterUpload(t, 'canvas');
+  let nt = null;
+  if (r0.normal) {
+    nt = new THREE.DataTexture(r0.normal.data, r0.normal.w, r0.normal.h, THREE.RGBAFormat, THREE.UnsignedByteType);
+    nt.flipY = false; nt.colorSpace = THREE.NoColorSpace; nt.generateMipmaps = true; nt.minFilter = THREE.LinearMipmapLinearFilter; nt.magFilter = THREE.LinearFilter; nt.anisotropy = MAX_ANISO;
+    nt.wrapS = nt.wrapT = THREE.ClampToEdgeWrapping;
+    // canvas rows run top→bottom while DataTexture rows run bottom→top: flip via the texture transform
+    nt.repeat.set(1, -1); nt.offset.set(0, 1);
+    nt.needsUpdate = true;
+    releaseAfterUpload(nt, 'data');
+  }
+  const regen = () => {
+    const r = renderArt(opts);
+    t.image = r.canvas; t.needsUpdate = true; releaseAfterUpload(t, 'canvas');
+    if (nt && r.normal) { nt.image.data = r.normal.data; nt.needsUpdate = true; releaseAfterUpload(nt, 'data'); }
+  };
+  REGEN.add(regen);
+  t.addEventListener('dispose', () => REGEN.delete(regen));
+  return nt ? { map: t, normalMap: nt } : t;
+}
+
+function renderArt({ motif = 'abstract-arches', colors = ['#B5653F', '#E6DDCF', '#7A7B55'], aspect = 0.7, seed = 1, relief = false } = {}) {
   const H = 1024, W = Math.max(64, Math.round(H * aspect));
   const cv = makeCanvas(W, H); const g = cv.getContext('2d');
   const r = rng(seed + hashStr(motif));
@@ -985,9 +1287,7 @@ export function artTexture({ motif = 'abstract-arches', colors = ['#B5653F', '#E
   const img = g.getImageData(0, 0, W, H); const d = img.data; const rr = rng(seed + 99);
   for (let i = 0; i < d.length; i += 4) { const n = (rr() - 0.5) * 10; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
   g.putImageData(img, 0, 0);
-  const t = canvasTexture(cv);
-  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
-  if (!relief) return t;
+  if (!relief) return { canvas: cv, normal: null };
   // relief: height from blurred luminance edges (shapes stand proud) + knife strokes + fine grain
   const RW = Math.min(512, W), RH = Math.round(RW * H / W);
   const sc = makeCanvas(RW, RH); const sg = sc.getContext('2d');
@@ -1005,14 +1305,7 @@ export function artTexture({ motif = 'abstract-arches', colors = ['#B5653F', '#E
       if (d < 1) Hh[yy * RW + xx] += hh * (1 - d) * (0.6 + 0.4 * Math.sin(u2 * 9));
     }
   }
-  const N = heightToNormal(Hh, RW, RH, 3.0);
-  const nt = new THREE.DataTexture(N, RW, RH, THREE.RGBAFormat, THREE.UnsignedByteType);
-  nt.flipY = false; nt.colorSpace = THREE.NoColorSpace; nt.generateMipmaps = true; nt.minFilter = THREE.LinearMipmapLinearFilter; nt.magFilter = THREE.LinearFilter; nt.anisotropy = MAX_ANISO;
-  nt.wrapS = nt.wrapT = THREE.ClampToEdgeWrapping;
-  // canvas rows run top→bottom while DataTexture rows run bottom→top: flip via texture transform
-  nt.repeat.set(1, -1); nt.offset.set(0, 1);
-  nt.needsUpdate = true;
-  return { map: t, normalMap: nt };
+  return { canvas: cv, normal: { data: heightToNormal(Hh, RW, RH, 3.0), w: RW, h: RH } };
 }
 
 function lum(hex) { const [r, g, b] = hexToRgb(hex); return 0.3 * r + 0.59 * g + 0.11 * b; }

@@ -25,7 +25,8 @@
    "inStock": null,
    "notes": "REJECT width 244>240; rattan side panels",
    "status": "rejected",
-   "reason": "REJECT width 244>240; rattan side panels"
+   "reason": "REJECT width 244>240; rattan side panels",
+   "brand": null
   },
   {
    "pid": "166008877",
@@ -47,7 +48,8 @@
    "inStock": true,
    "notes": "dark walnut base rail + legs, straight track arms, removable cushions (dup listing 169693528)",
    "status": "accepted",
-   "reason": "Used in: sofa-lansbury-3"
+   "reason": "Used in: sofa-lansbury-3",
+   "brand": "Home Centre"
   },
   {
    "pid": "166913947",
@@ -69,14 +71,15 @@
    "inStock": true,
    "notes": "cream, dark walnut base + block legs, straight arms",
    "status": "accepted",
-   "reason": "Used in: sofa-hadley-3"
+   "reason": "Used in: sofa-hadley-3",
+   "brand": "Home Centre"
   },
   {
    "pid": "168708283",
    "sku": "168708283",
    "title": "Brighton 3-Seater Fabric Sofa",
    "slotType": "sofa",
-   "url": "https://www.homecentre.com/ae/en/buy-brighton-3seater-fabric-sofa/p/168708283",
+   "url": "https://www.homecentre.com/ae/en/p/168708283",
    "regularPrice": 2999,
    "salePrice": 2099,
    "dimsCm": {
@@ -86,12 +89,13 @@
    },
    "materials": "frame solid wood; leg wooden; fabric",
    "colour": "Brown",
-   "category": "Sofas & Sofa Sets",
+   "category": "Sofas",
    "image": "https://media.homecentre.com/i/homecentre/168708283-166892999-HC05092024_01-2100.jpg?v=2",
    "inStock": true,
    "notes": "taupe/greige, dark walnut legs, curved arms, 2 scatter cushions",
-   "status": "review",
-   "reason": "Taupe/greige upholstery reads N3 (light taupe); rules allow N3 only with an N1 rug — kept out of options"
+   "status": "accepted",
+   "reason": "Used in: sofa-brighton-3",
+   "brand": "Home Centre"
   },
   {
    "pid": "168211181",
@@ -113,7 +117,8 @@
    "inStock": true,
    "notes": "cream tufted back, dark wood taper legs, curved arms",
    "status": "rejected",
-   "reason": "Button-tufted back = capitonné, forbidden for sofas by stylepack rules"
+   "reason": "Button-tufted back = capitonné, forbidden for sofas by stylepack rules; also bouclé-like fabric",
+   "brand": null
   },
   {
    "pid": "169195825",
@@ -135,7 +140,8 @@
    "inStock": true,
    "notes": "ivory body, dark walnut frame + rattan side panels",
    "status": "accepted",
-   "reason": "Used in: sofa-lockwood-2"
+   "reason": "Used in: sofa-lockwood-2",
+   "brand": "Home Centre"
   },
   {
    "pid": "168743849",
@@ -157,7 +163,8 @@
    "inStock": null,
    "notes": "REJECT 242x110 > slot",
    "status": "rejected",
-   "reason": "REJECT 242x110 > slot"
+   "reason": "REJECT 242x110 > slot",
+   "brand": null
   },
   {
    "pid": "167008988",
@@ -179,7 +186,8 @@
    "inStock": null,
    "notes": "REJECT too big",
    "status": "rejected",
-   "reason": "REJECT too big"
+   "reason": "REJECT too big",
+   "brand": null
   },
   {
    "pid": "165463765",
@@ -201,7 +209,8 @@
    "inStock": null,
    "notes": "REJECT too big",
    "status": "rejected",
-   "reason": "REJECT too big"
+   "reason": "REJECT too big",
+   "brand": null
   },
   {
    "pid": "167540047",
@@ -223,7 +232,8 @@
    "inStock": true,
    "notes": "cognac tufted leather, black metal legs",
    "status": "rejected",
-   "reason": "Leather sofa forbidden (rules: no leather sofas; cognac reserved for one item type); also black metal legs"
+   "reason": "Leather sofa forbidden (rules: no leather sofas; cognac reserved for one item type); also black metal legs",
+   "brand": null
   },
   {
    "pid": "169195605",
@@ -245,7 +255,8 @@
    "inStock": null,
    "notes": "REJECT depth 107>105",
    "status": "rejected",
-   "reason": "REJECT depth 107>105"
+   "reason": "REJECT depth 107>105",
+   "brand": null
   },
   {
    "pid": "169278833",
@@ -267,7 +278,8 @@
    "inStock": null,
    "notes": "REJECT width",
    "status": "rejected",
-   "reason": "REJECT width"
+   "reason": "REJECT width",
+   "brand": null
   },
   {
    "pid": "167070108",
@@ -289,7 +301,8 @@
    "inStock": true,
    "notes": "cognac",
    "status": "rejected",
-   "reason": "Leather sofa forbidden by rules"
+   "reason": "Leather sofa forbidden by rules",
+   "brand": null
   },
   {
    "pid": "165214580",
@@ -311,7 +324,8 @@
    "inStock": true,
    "notes": "cognac leather, walnut mid-century frame",
    "status": "accepted",
-   "reason": "Used in: armchair-luna-leather"
+   "reason": "Used in: armchair-luna-leather",
+   "brand": "Home Centre"
   },
   {
    "pid": "166776595",
@@ -333,7 +347,8 @@
    "inStock": true,
    "notes": "cream cushions on walnut frame, accent chair",
    "status": "accepted",
-   "reason": "Used in: armchair-luna-fabric"
+   "reason": "Used in: armchair-luna-fabric",
+   "brand": "Home Centre"
   },
   {
    "pid": "169195824",
@@ -355,7 +370,8 @@
    "inStock": true,
    "notes": "dark walnut frame + rattan side + cream; depth 96 > 95 max!",
    "status": "rejected",
-   "reason": "Depth 96 > slot max 95 (by 1 cm); otherwise ideal walnut + rattan armchair"
+   "reason": "Depth 96 > slot max 95 (by 1 cm); otherwise ideal walnut + rattan armchair",
+   "brand": null
   },
   {
    "pid": "169195833",
@@ -377,7 +393,8 @@
    "inStock": true,
    "notes": "cognac leather barrel/club, dark wood legs",
    "status": "accepted",
-   "reason": "Used in: armchair-clyde-leather"
+   "reason": "Used in: armchair-clyde-leather",
+   "brand": "Home Centre"
   },
   {
    "pid": "169294872",
@@ -399,7 +416,8 @@
    "inStock": true,
    "notes": "cream/ivory leather seat+back on walnut frame",
    "status": "rejected",
-   "reason": "Ivory/white leather — white leather armchairs forbidden by rules"
+   "reason": "Ivory/white leather — white leather armchairs forbidden by rules",
+   "brand": null
   },
   {
    "pid": "169693526",
@@ -421,7 +439,8 @@
    "inStock": null,
    "notes": "REJECT width 110>95",
    "status": "rejected",
-   "reason": "REJECT width 110>95"
+   "reason": "REJECT width 110>95",
+   "brand": null
   },
   {
    "pid": "166597944",
@@ -443,7 +462,8 @@
    "inStock": true,
    "notes": "ivory boucle slipper chair on dark brown wooden sled base",
    "status": "accepted",
-   "reason": "Used in: armchair-pebble"
+   "reason": "Used in: armchair-pebble",
+   "brand": "Home Centre"
   },
   {
    "pid": "168901452",
@@ -465,7 +485,8 @@
    "inStock": null,
    "notes": "REJECT 108>95",
    "status": "rejected",
-   "reason": "REJECT 108>95"
+   "reason": "REJECT 108>95",
+   "brand": null
   },
   {
    "pid": "166548162",
@@ -487,7 +508,8 @@
    "inStock": true,
    "notes": "dark walnut organic oval/pebble top on 4 cylinder legs, low 27cm",
    "status": "accepted",
-   "reason": "Used in: coffee-baku-low"
+   "reason": "Used in: coffee-baku-low",
+   "brand": "Home Centre"
   },
   {
    "pid": "166548161",
@@ -509,7 +531,8 @@
    "inStock": true,
    "notes": "dark walnut pebble top, cylinder legs",
    "status": "accepted",
-   "reason": "Used in: coffee-baku-high"
+   "reason": "Used in: coffee-baku-high",
+   "brand": "Home Centre"
   },
   {
    "pid": "169441675",
@@ -531,7 +554,8 @@
    "inStock": true,
    "notes": "oval travertine top on 2 dark brown block pedestals",
    "status": "accepted",
-   "reason": "Used in: coffee-moxie"
+   "reason": "Used in: coffee-moxie",
+   "brand": "Home Centre"
   },
   {
    "pid": "169441685",
@@ -553,7 +577,8 @@
    "inStock": null,
    "notes": "REJECT D100 > 90 slot",
    "status": "rejected",
-   "reason": "REJECT D100 > 90 slot"
+   "reason": "REJECT D100 > 90 slot",
+   "brand": null
   },
   {
    "pid": "168196892",
@@ -575,7 +600,8 @@
    "inStock": true,
    "notes": "round travertine top on dark brown sculpted ball pedestal",
    "status": "accepted",
-   "reason": "Used in: coffee-arras"
+   "reason": "Used in: coffee-arras",
+   "brand": "Home Centre"
   },
   {
    "pid": "166086742",
@@ -597,7 +623,8 @@
    "inStock": true,
    "notes": "round travertine pedestal drum; brand Lilacs (marketplace)",
    "status": "review",
-   "reason": "Diameter 70 < rule 80–100 for coffee tables; marketplace brand (Lilacs)"
+   "reason": "Diameter 70 < rule 80–100 for coffee tables; marketplace brand (Lilacs)",
+   "brand": null
   },
   {
    "pid": "167999154",
@@ -619,7 +646,8 @@
    "inStock": null,
    "notes": "REJECT W150>130",
    "status": "rejected",
-   "reason": "REJECT W150>130"
+   "reason": "REJECT W150>130",
+   "brand": null
   },
   {
    "pid": "169793843",
@@ -641,7 +669,8 @@
    "inStock": true,
    "notes": "medium-dark walnut rect, drawer/shelf, tapered legs",
    "status": "review",
-   "reason": "Medium walnut, estimated ~#75523A (dE76 ~13 from #553C2C > 10) — lighter than the W1 band"
+   "reason": "Medium walnut, estimated ~#75523A (dE76 ~13 from #553C2C > 10) — lighter than the W1 band",
+   "brand": null
   },
   {
    "pid": "168492408",
@@ -663,7 +692,8 @@
    "inStock": null,
    "notes": "dark walnut fluted front, black legs - not chosen (black metal)",
    "status": "not-selected",
-   "reason": "Black metal legs on a large walnut piece; enough walnut coffee options"
+   "reason": "Black metal legs on a large walnut piece; enough walnut coffee options",
+   "brand": null
   },
   {
    "pid": "168492326",
@@ -685,7 +715,8 @@
    "inStock": true,
    "notes": "round travertine-look top on dark fluted walnut-tone pedestal",
    "status": "accepted",
-   "reason": "Used in: side-tom"
+   "reason": "Used in: side-tom",
+   "brand": "Home Centre"
   },
   {
    "pid": "169441678",
@@ -707,7 +738,8 @@
    "inStock": true,
    "notes": "round travertine top, dark brown block base",
    "status": "accepted",
-   "reason": "Used in: side-moxie"
+   "reason": "Used in: side-moxie",
+   "brand": "Home Centre"
   },
   {
    "pid": "168196895",
@@ -729,7 +761,8 @@
    "inStock": true,
    "notes": "round travertine top, dark turned pedestal",
    "status": "accepted",
-   "reason": "Used in: side-arras"
+   "reason": "Used in: side-arras",
+   "brand": "Home Centre"
   },
   {
    "pid": "169294905",
@@ -751,7 +784,8 @@
    "inStock": true,
    "notes": "medium walnut round 2-tier with cut-out base",
    "status": "review",
-   "reason": "Medium walnut, lighter than W1 band (dE > 10 est.)"
+   "reason": "Medium walnut, lighter than W1 band (dE > 10 est.)",
+   "brand": null
   },
   {
    "pid": "169441686",
@@ -773,7 +807,8 @@
    "inStock": true,
    "notes": "fluted walnut drum top, brass-tone legs",
    "status": "review",
-   "reason": "Fluted veneer reads reddish-medium in photos; tone borderline vs W1 — excluded"
+   "reason": "Fluted veneer reads reddish-medium in photos; tone borderline vs W1 — excluded",
+   "brand": null
   },
   {
    "pid": "169793844",
@@ -795,7 +830,8 @@
    "inStock": true,
    "notes": "medium walnut, drawer+shelf, splayed legs",
    "status": "review",
-   "reason": "Medium walnut, lighter than W1 band (dE > 10 est.)"
+   "reason": "Medium walnut, lighter than W1 band (dE > 10 est.)",
+   "brand": null
   },
   {
    "pid": "168492476",
@@ -817,7 +853,8 @@
    "inStock": null,
    "notes": "REJECT W200>190",
    "status": "rejected",
-   "reason": "REJECT W200>190"
+   "reason": "REJECT W200>190",
+   "brand": null
   },
   {
    "pid": "169793842",
@@ -839,7 +876,8 @@
    "inStock": null,
    "notes": "REJECT W200>190",
    "status": "rejected",
-   "reason": "REJECT W200>190"
+   "reason": "REJECT W200>190",
+   "brand": null
   },
   {
    "pid": "164575270",
@@ -861,7 +899,8 @@
    "inStock": null,
    "notes": "REJECT W201>190",
    "status": "rejected",
-   "reason": "REJECT W201>190"
+   "reason": "REJECT W201>190",
+   "brand": null
   },
   {
    "pid": "166170461",
@@ -883,7 +922,8 @@
    "inStock": true,
    "notes": "medium walnut, 2 doors + open centre shelf, light marble top",
    "status": "review",
-   "reason": "Medium walnut, est. ~#75563D (dE ~13); white marble top — excluded on wood tone"
+   "reason": "Medium walnut, est. ~#75563D (dE ~13); white marble top — excluded on wood tone",
+   "brand": null
   },
   {
    "pid": "169294904",
@@ -905,7 +945,8 @@
    "inStock": true,
    "notes": "medium walnut, 2 doors 2 drawers 1 shelf, plinth/short legs",
    "status": "review",
-   "reason": "Medium/orange-leaning walnut, est. ~#7A5538 (dE ~15) — lighter than W1"
+   "reason": "Medium/orange-leaning walnut, est. ~#7A5538 (dE ~15) — lighter than W1",
+   "brand": null
   },
   {
    "pid": "168492403",
@@ -927,7 +968,8 @@
    "inStock": true,
    "notes": "walnut, slatted (fluted) doors, open shelf, splayed legs",
    "status": "accepted",
-   "reason": "Used in: tv-hege"
+   "reason": "Used in: tv-hege",
+   "brand": "Home Centre"
   },
   {
    "pid": "169859748",
@@ -949,7 +991,8 @@
    "inStock": true,
    "notes": "dark walnut, 2 doors 2 drawers, flat fronts, slim brass legs, soft-close",
    "status": "accepted",
-   "reason": "Used in: tv-jasper"
+   "reason": "Used in: tv-jasper",
+   "brand": "Home Centre"
   },
   {
    "pid": "165660335",
@@ -971,7 +1014,8 @@
    "inStock": true,
    "notes": "dark walnut, 2 doors 3 shelves, black hairpin-ish legs",
    "status": "accepted",
-   "reason": "Used in: tv-eden"
+   "reason": "Used in: tv-eden",
+   "brand": "Home Centre"
   },
   {
    "pid": "165358428",
@@ -993,7 +1037,8 @@
    "inStock": true,
    "notes": "dark walnut, 4 drawers + shelf, wood legs",
    "status": "accepted",
-   "reason": "Used in: tv-espresso"
+   "reason": "Used in: tv-espresso",
+   "brand": "Home Centre"
   },
   {
    "pid": "170032421",
@@ -1015,7 +1060,8 @@
    "inStock": null,
    "notes": "REJECT H135>125",
    "status": "rejected",
-   "reason": "REJECT H135>125"
+   "reason": "REJECT H135>125",
+   "brand": null
   },
   {
    "pid": "168534073",
@@ -1036,8 +1082,9 @@
    "image": "https://media.homecentre.com/i/homecentre/168534073-168534073-HC01102025_01-2100.jpg?v=1",
    "inStock": true,
    "notes": "medium-dark walnut platform, wood panel headboard, short wood legs",
-   "status": "rejected",
-   "reason": "Wood reads medium/light walnut (est. #7C5C42, dE ~15); matching nightstand photographs as light oak"
+   "status": "accepted",
+   "reason": "Used in: bed-forren-160",
+   "brand": "Home Centre"
   },
   {
    "pid": "165857224",
@@ -1059,7 +1106,8 @@
    "inStock": null,
    "notes": "REJECT H140",
    "status": "rejected",
-   "reason": "REJECT H140"
+   "reason": "REJECT H140",
+   "brand": null
   },
   {
    "pid": "169321915",
@@ -1081,7 +1129,8 @@
    "inStock": null,
    "notes": "REJECT W232",
    "status": "rejected",
-   "reason": "REJECT W232"
+   "reason": "REJECT W232",
+   "brand": null
   },
   {
    "pid": "168541482",
@@ -1103,7 +1152,8 @@
    "inStock": true,
    "notes": "beige upholstered, button-tufted cushion headboard, upholstered base",
    "status": "accepted",
-   "reason": "Used in: bed-cloud-160"
+   "reason": "Used in: bed-cloud-160",
+   "brand": "Home Centre"
   },
   {
    "pid": "170038378",
@@ -1125,7 +1175,8 @@
    "inStock": null,
    "notes": "REJECT W196",
    "status": "rejected",
-   "reason": "REJECT W196"
+   "reason": "REJECT W196",
+   "brand": null
   },
   {
    "pid": "167382607",
@@ -1147,7 +1198,8 @@
    "inStock": null,
    "notes": "REJECT W200",
    "status": "rejected",
-   "reason": "REJECT W200"
+   "reason": "REJECT W200",
+   "brand": null
   },
   {
    "pid": "168468139",
@@ -1169,7 +1221,8 @@
    "inStock": null,
    "notes": "REJECT",
    "status": "rejected",
-   "reason": "REJECT"
+   "reason": "REJECT",
+   "brand": null
   },
   {
    "pid": "169868261",
@@ -1191,7 +1244,8 @@
    "inStock": null,
    "notes": "REJECT",
    "status": "rejected",
-   "reason": "REJECT"
+   "reason": "REJECT",
+   "brand": null
   },
   {
    "pid": "170032451",
@@ -1213,7 +1267,8 @@
    "inStock": null,
    "notes": "REJECT H",
    "status": "rejected",
-   "reason": "REJECT H"
+   "reason": "REJECT H",
+   "brand": null
   },
   {
    "pid": "168860625",
@@ -1235,7 +1290,8 @@
    "inStock": null,
    "notes": "REJECT H",
    "status": "rejected",
-   "reason": "REJECT H"
+   "reason": "REJECT H",
+   "brand": null
   },
   {
    "pid": "170038411",
@@ -1257,7 +1313,8 @@
    "inStock": null,
    "notes": "REJECT D238",
    "status": "rejected",
-   "reason": "REJECT D238"
+   "reason": "REJECT D238",
+   "brand": null
   },
   {
    "pid": "170032442",
@@ -1279,7 +1336,8 @@
    "inStock": null,
    "notes": "REJECT H",
    "status": "rejected",
-   "reason": "REJECT H"
+   "reason": "REJECT H",
+   "brand": null
   },
   {
    "pid": "164619133",
@@ -1301,7 +1359,8 @@
    "inStock": true,
    "notes": "medium walnut, wood panel headboard with top rail, footboard",
    "status": "accepted",
-   "reason": "Used in: bed-nazario-160"
+   "reason": "Used in: bed-nazario-160",
+   "brand": "Home Centre"
   },
   {
    "pid": "169040813",
@@ -1323,7 +1382,8 @@
    "inStock": null,
    "notes": "REJECT H140 (looked ideal: cream headboard + walnut frame)",
    "status": "rejected",
-   "reason": "REJECT H140 (looked ideal: cream headboard + walnut frame)"
+   "reason": "REJECT H140 (looked ideal: cream headboard + walnut frame)",
+   "brand": null
   },
   {
    "pid": "169792385",
@@ -1345,7 +1405,8 @@
    "inStock": null,
    "notes": "REJECT W",
    "status": "rejected",
-   "reason": "REJECT W"
+   "reason": "REJECT W",
+   "brand": null
   },
   {
    "pid": "168860604",
@@ -1367,7 +1428,8 @@
    "inStock": null,
    "notes": "REJECT H",
    "status": "rejected",
-   "reason": "REJECT H"
+   "reason": "REJECT H",
+   "brand": null
   },
   {
    "pid": "165937013",
@@ -1389,7 +1451,8 @@
    "inStock": true,
    "notes": "beige vertical channel headboard, LED guide lights under frame",
    "status": "accepted",
-   "reason": "Used in: bed-maison-160"
+   "reason": "Used in: bed-maison-160",
+   "brand": "Home Centre"
   },
   {
    "pid": "169868278",
@@ -1411,7 +1474,8 @@
    "inStock": null,
    "notes": "REJECT W",
    "status": "rejected",
-   "reason": "REJECT W"
+   "reason": "REJECT W",
+   "brand": null
   },
   {
    "pid": "168860622",
@@ -1433,7 +1497,8 @@
    "inStock": null,
    "notes": "REJECT H",
    "status": "rejected",
-   "reason": "REJECT H"
+   "reason": "REJECT H",
+   "brand": null
   },
   {
    "pid": "167797832",
@@ -1455,7 +1520,8 @@
    "inStock": true,
    "notes": "greige upholstered panel headboard",
    "status": "rejected",
-   "reason": "Headboard upholstery reads taupe-grey; grey headboard textile forbidden"
+   "reason": "Headboard upholstery reads taupe-grey; grey headboard textile forbidden",
+   "brand": null
   },
   {
    "pid": "166645317",
@@ -1477,7 +1543,8 @@
    "inStock": null,
    "notes": "REJECT W51>50 (1cm)",
    "status": "rejected",
-   "reason": "REJECT W51>50 (1cm)"
+   "reason": "REJECT W51>50 (1cm)",
+   "brand": null
   },
   {
    "pid": "169987052",
@@ -1499,7 +1566,8 @@
    "inStock": null,
    "notes": "REJECT W60",
    "status": "rejected",
-   "reason": "REJECT W60"
+   "reason": "REJECT W60",
+   "brand": null
   },
   {
    "pid": "169334866",
@@ -1521,7 +1589,8 @@
    "inStock": null,
    "notes": "REJECT",
    "status": "rejected",
-   "reason": "REJECT"
+   "reason": "REJECT",
+   "brand": null
   },
   {
    "pid": "158515545",
@@ -1543,14 +1612,15 @@
    "inStock": null,
    "notes": "REJECT",
    "status": "rejected",
-   "reason": "REJECT"
+   "reason": "REJECT",
+   "brand": null
   },
   {
    "pid": "168534067",
    "sku": "168534067",
    "title": "Forren Nightstand",
    "slotType": "nightstand",
-   "url": "https://www.homecentre.com/ae/en/p/168534067",
+   "url": "https://www.homecentre.com/ae/en/buy-forren-nightstand/p/168534067",
    "regularPrice": 349,
    "salePrice": 239,
    "dimsCm": {
@@ -1560,12 +1630,13 @@
    },
    "materials": "engineered wood",
    "colour": "Brown",
-   "category": "",
-   "image": "",
-   "inStock": null,
+   "category": "Nightstands",
+   "image": "https://media.homecentre.com/i/homecentre/168534067-168534067-HC01102025_01-2100.jpg?v=1",
+   "inStock": true,
    "notes": "REJECT tone: reads light oak in photo",
-   "status": "rejected",
-   "reason": "REJECT tone: reads light oak in photo"
+   "status": "accepted",
+   "reason": "Used in: nightstand-forren",
+   "brand": "Home Centre"
   },
   {
    "pid": "162645652",
@@ -1587,7 +1658,8 @@
    "inStock": true,
    "notes": "medium walnut, open niche top + drawer(s), plinth",
    "status": "accepted",
-   "reason": "Used in: nightstand-nazario"
+   "reason": "Used in: nightstand-nazario",
+   "brand": "Home Centre"
   },
   {
    "pid": "168390457",
@@ -1609,7 +1681,8 @@
    "inStock": null,
    "notes": "REJECT",
    "status": "rejected",
-   "reason": "REJECT"
+   "reason": "REJECT",
+   "brand": null
   },
   {
    "pid": "164398822",
@@ -1631,7 +1704,8 @@
    "inStock": null,
    "notes": "REJECT",
    "status": "rejected",
-   "reason": "REJECT"
+   "reason": "REJECT",
+   "brand": null
   },
   {
    "pid": "169494930",
@@ -1653,7 +1727,8 @@
    "inStock": null,
    "notes": "REJECT colour",
    "status": "rejected",
-   "reason": "REJECT colour"
+   "reason": "REJECT colour",
+   "brand": null
   },
   {
    "pid": "168036633",
@@ -1675,7 +1750,8 @@
    "inStock": true,
    "notes": "reddish dark walnut, fully fluted front, 2 drawers, short block legs",
    "status": "accepted",
-   "reason": "Used in: nightstand-suri"
+   "reason": "Used in: nightstand-suri",
+   "brand": "Wood Culture"
   },
   {
    "pid": "168064952",
@@ -1697,7 +1773,8 @@
    "inStock": null,
    "notes": "REJECT colour taupe/grey",
    "status": "rejected",
-   "reason": "REJECT colour taupe/grey"
+   "reason": "REJECT colour taupe/grey",
+   "brand": null
   },
   {
    "pid": "170306275",
@@ -1719,7 +1796,8 @@
    "inStock": null,
    "notes": "REJECT colour",
    "status": "rejected",
-   "reason": "REJECT colour"
+   "reason": "REJECT colour",
+   "brand": null
   },
   {
    "pid": "166839165",
@@ -1741,7 +1819,8 @@
    "inStock": null,
    "notes": "REJECT W",
    "status": "rejected",
-   "reason": "REJECT W"
+   "reason": "REJECT W",
+   "brand": null
   },
   {
    "pid": "169278861",
@@ -1763,7 +1842,8 @@
    "inStock": null,
    "notes": "REJECT D46",
    "status": "rejected",
-   "reason": "REJECT D46"
+   "reason": "REJECT D46",
+   "brand": null
   },
   {
    "pid": "164375194",
@@ -1785,7 +1865,8 @@
    "inStock": null,
    "notes": "REJECT kids",
    "status": "rejected",
-   "reason": "REJECT kids"
+   "reason": "REJECT kids",
+   "brand": null
   },
   {
    "pid": "166547889",
@@ -1807,7 +1888,8 @@
    "inStock": null,
    "notes": "REJECT kids white/oak",
    "status": "rejected",
-   "reason": "REJECT kids white/oak"
+   "reason": "REJECT kids white/oak",
+   "brand": null
   },
   {
    "pid": "169487751",
@@ -1829,7 +1911,8 @@
    "inStock": true,
    "notes": "dark walnut herringbone door, black metal legs",
    "status": "accepted",
-   "reason": "Used in: nightstand-verve"
+   "reason": "Used in: nightstand-verve",
+   "brand": "Art and Craft"
   },
   {
    "pid": "170215656",
@@ -1851,7 +1934,8 @@
    "inStock": null,
    "notes": "REJECT tone: honey/amber mango, brass legs",
    "status": "rejected",
-   "reason": "REJECT tone: honey/amber mango, brass legs"
+   "reason": "REJECT tone: honey/amber mango, brass legs",
+   "brand": null
   },
   {
    "pid": "168036692",
@@ -1873,7 +1957,8 @@
    "inStock": true,
    "notes": "round light marble top on slatted walnut drum pedestal (Wood Culture)",
    "status": "accepted",
-   "reason": "Used in: dining-kentana-100"
+   "reason": "Used in: dining-kentana-100",
+   "brand": "Wood Culture"
   },
   {
    "pid": "169745120",
@@ -1895,7 +1980,8 @@
    "inStock": true,
    "notes": "square parsons table, medium walnut",
    "status": "accepted",
-   "reason": "Used in: dining-mahmayi-80"
+   "reason": "Used in: dining-square-80",
+   "brand": "Mahmayi"
   },
   {
    "pid": "169745123",
@@ -1917,14 +2003,15 @@
    "inStock": true,
    "notes": "square parsons, darker smoked walnut",
    "status": "rejected",
-   "reason": "Smoked grey-brown finish reads grey-washed (C* < 9 risk)"
+   "reason": "Smoked grey-brown finish reads grey-washed (C* < 9 risk)",
+   "brand": null
   },
   {
    "pid": "165850107",
    "sku": "165850107",
    "title": "Keira 4-Seater Wooden Top Dining Table",
    "slotType": "dining_table",
-   "url": "https://www.homecentre.com/ae/en/p/165850107",
+   "url": "https://www.homecentre.com/ae/en/buy-keira-4seater-wooden-top-dining-table/p/165850107",
    "regularPrice": 699,
    "salePrice": 449,
    "dimsCm": {
@@ -1934,12 +2021,13 @@
    },
    "materials": "solid wood",
    "colour": "Brown",
-   "category": "",
-   "image": "",
-   "inStock": null,
+   "category": "Dining Tables",
+   "image": "https://media.homecentre.com/i/homecentre/165850107-165850107-HC17102023_01-2100.jpg",
+   "inStock": true,
    "notes": "REJECT tone: light oak/ash",
-   "status": "rejected",
-   "reason": "REJECT tone: light oak/ash"
+   "status": "accepted",
+   "reason": "Used in: dining-keira-100",
+   "brand": "Home Centre"
   },
   {
    "pid": "167753064",
@@ -1961,7 +2049,8 @@
    "inStock": null,
    "notes": "REJECT size",
    "status": "rejected",
-   "reason": "REJECT size"
+   "reason": "REJECT size",
+   "brand": null
   },
   {
    "pid": "167207489",
@@ -1983,7 +2072,8 @@
    "inStock": null,
    "notes": "REJECT size",
    "status": "rejected",
-   "reason": "REJECT size"
+   "reason": "REJECT size",
+   "brand": null
   },
   {
    "pid": "163351664",
@@ -2005,7 +2095,8 @@
    "inStock": null,
    "notes": "REJECT colour black",
    "status": "rejected",
-   "reason": "REJECT colour black"
+   "reason": "REJECT colour black",
+   "brand": null
   },
   {
    "pid": "170403682",
@@ -2027,7 +2118,8 @@
    "inStock": null,
    "notes": "REJECT size",
    "status": "rejected",
-   "reason": "REJECT size"
+   "reason": "REJECT size",
+   "brand": null
   },
   {
    "pid": "169011695",
@@ -2049,7 +2141,8 @@
    "inStock": null,
    "notes": "REJECT size",
    "status": "rejected",
-   "reason": "REJECT size"
+   "reason": "REJECT size",
+   "brand": null
   },
   {
    "pid": "168405064",
@@ -2071,7 +2164,8 @@
    "inStock": null,
    "notes": "REJECT size",
    "status": "rejected",
-   "reason": "REJECT size"
+   "reason": "REJECT size",
+   "brand": null
   },
   {
    "pid": "166973693",
@@ -2093,7 +2187,8 @@
    "inStock": null,
    "notes": "REJECT size",
    "status": "rejected",
-   "reason": "REJECT size"
+   "reason": "REJECT size",
+   "brand": null
   },
   {
    "pid": "910010230-HC23102024",
@@ -2115,7 +2210,8 @@
    "inStock": null,
    "notes": "REJECT size (marketplace)",
    "status": "rejected",
-   "reason": "REJECT size (marketplace)"
+   "reason": "REJECT size (marketplace)",
+   "brand": null
   },
   {
    "pid": "166813853",
@@ -2137,7 +2233,8 @@
    "inStock": null,
    "notes": "REJECT size",
    "status": "rejected",
-   "reason": "REJECT size"
+   "reason": "REJECT size",
+   "brand": null
   },
   {
    "pid": "168257409",
@@ -2159,7 +2256,8 @@
    "inStock": null,
    "notes": "REJECT size",
    "status": "rejected",
-   "reason": "REJECT size"
+   "reason": "REJECT size",
+   "brand": null
   },
   {
    "pid": "158671351",
@@ -2181,7 +2279,8 @@
    "inStock": null,
    "notes": "REJECT outdoor, light acacia",
    "status": "rejected",
-   "reason": "REJECT outdoor, light acacia"
+   "reason": "REJECT outdoor, light acacia",
+   "brand": null
   },
   {
    "pid": "170184034",
@@ -2203,7 +2302,8 @@
    "inStock": null,
    "notes": "REJECT size",
    "status": "rejected",
-   "reason": "REJECT size"
+   "reason": "REJECT size",
+   "brand": null
   },
   {
    "pid": "169741919",
@@ -2225,7 +2325,8 @@
    "inStock": null,
    "notes": "REJECT size",
    "status": "rejected",
-   "reason": "REJECT size"
+   "reason": "REJECT size",
+   "brand": null
   },
   {
    "pid": "170702967",
@@ -2247,7 +2348,8 @@
    "inStock": null,
    "notes": "REJECT size",
    "status": "rejected",
-   "reason": "REJECT size"
+   "reason": "REJECT size",
+   "brand": null
   },
   {
    "pid": "169123965",
@@ -2269,7 +2371,8 @@
    "inStock": true,
    "notes": "walnut wishbone/curved-back frame, oat cushion seat",
    "status": "accepted",
-   "reason": "Used in: chair-linden"
+   "reason": "Used in: chair-linden",
+   "brand": "Home Centre"
   },
   {
    "pid": "166523813",
@@ -2291,7 +2394,8 @@
    "inStock": true,
    "notes": "greige upholstered shell seat+back on dark walnut-stained legs",
    "status": "accepted",
-   "reason": "Used in: chair-pebble"
+   "reason": "Used in: chair-pebble",
+   "brand": "Home Centre"
   },
   {
    "pid": "170215771",
@@ -2313,7 +2417,8 @@
    "inStock": null,
    "notes": "REJECT D61>60",
    "status": "rejected",
-   "reason": "REJECT D61>60"
+   "reason": "REJECT D61>60",
+   "brand": null
   },
   {
    "pid": "170215778",
@@ -2335,7 +2440,8 @@
    "inStock": true,
    "notes": "dark walnut frame, cane back panel, cream seat; NOTE dims 40x40 look like seat size",
    "status": "review",
-   "reason": "Listed dims 40x40x87 look like seat size, not overall footprint — unreliable data, excluded"
+   "reason": "Listed dims 40x40x87 look like seat size, not overall footprint — unreliable data, excluded",
+   "brand": null
   },
   {
    "pid": "168036638",
@@ -2357,7 +2463,8 @@
    "inStock": true,
    "notes": "dark walnut frame w/ curved back, cream upholstered seat+back pad",
    "status": "accepted",
-   "reason": "Used in: chair-viona"
+   "reason": "Used in: chair-viona",
+   "brand": "Wood Culture"
   },
   {
    "pid": "168036539",
@@ -2379,7 +2486,8 @@
    "inStock": true,
    "notes": "walnut frame, cane back, cream seat pad",
    "status": "accepted",
-   "reason": "Used in: chair-alfred"
+   "reason": "Used in: chair-alfred",
+   "brand": "Wood Culture"
   },
   {
    "pid": "168036558",
@@ -2401,7 +2509,8 @@
    "inStock": true,
    "notes": "walnut wishbone (Y-back), natural cord seat",
    "status": "accepted",
-   "reason": "Used in: chair-wishbone"
+   "reason": "Used in: chair-wishbone",
+   "brand": "Wood Culture"
   },
   {
    "pid": "165452450",
@@ -2423,7 +2532,8 @@
    "inStock": null,
    "notes": "REJECT footprint 55>50",
    "status": "rejected",
-   "reason": "REJECT footprint 55>50"
+   "reason": "REJECT footprint 55>50",
+   "brand": null
   },
   {
    "pid": "168337814",
@@ -2445,7 +2555,8 @@
    "inStock": null,
    "notes": "REJECT footprint 60>50 (angled arm)",
    "status": "rejected",
-   "reason": "REJECT footprint 60>50 (angled arm)"
+   "reason": "REJECT footprint 60>50 (angled arm)",
+   "brand": null
   },
   {
    "pid": "168337813",
@@ -2467,7 +2578,8 @@
    "inStock": true,
    "notes": "walnut turned stem, pleated cream shade",
    "status": "accepted",
-   "reason": "Used in: floorlamp-frosty"
+   "reason": "Used in: floorlamp-frosty",
+   "brand": "Home Centre"
   },
   {
    "pid": "168429617",
@@ -2489,7 +2601,8 @@
    "inStock": true,
    "notes": "sand/travertine-look ceramic column, cylinder linen shade",
    "status": "review",
-   "reason": "Height 145 < rule 150–175 for floor lamps"
+   "reason": "Height 145 < rule 150–175 for floor lamps",
+   "brand": null
   },
   {
    "pid": "168514888",
@@ -2511,7 +2624,8 @@
    "inStock": true,
    "notes": "brass stem+disc base, white mushroom/dome shade",
    "status": "accepted",
-   "reason": "Used in: floorlamp-austen"
+   "reason": "Used in: floorlamp-austen",
+   "brand": "Home Centre"
   },
   {
    "pid": "168514889",
@@ -2533,7 +2647,8 @@
    "inStock": true,
    "notes": "brass stem with swing joint, tapered linen shade, round brass base",
    "status": "accepted",
-   "reason": "Used in: floorlamp-sable"
+   "reason": "Used in: floorlamp-sable",
+   "brand": "Home Centre"
   },
   {
    "pid": "166895135",
@@ -2555,7 +2670,8 @@
    "inStock": null,
    "notes": "not used (dims unclear)",
    "status": "not-selected",
-   "reason": "Listed dims (25x14) unclear for a floor lamp"
+   "reason": "Listed dims (25x14) unclear for a floor lamp",
+   "brand": null
   },
   {
    "pid": "168337818",
@@ -2577,7 +2693,8 @@
    "inStock": true,
    "notes": "walnut turned stem on round base, scalloped cream linen shade",
    "status": "accepted",
-   "reason": "Used in: tablelamp-frosty"
+   "reason": "Used in: tablelamp-frosty",
+   "brand": "Home Centre"
   },
   {
    "pid": "167808764",
@@ -2599,7 +2716,8 @@
    "inStock": null,
    "notes": "REJECT shade 50 > rule 25-40 (overhangs nightstand)",
    "status": "rejected",
-   "reason": "REJECT shade 50 > rule 25-40 (overhangs nightstand)"
+   "reason": "REJECT shade 50 > rule 25-40 (overhangs nightstand)",
+   "brand": null
   },
   {
    "pid": "167808765",
@@ -2621,7 +2739,8 @@
    "inStock": null,
    "notes": "REJECT shade 50",
    "status": "rejected",
-   "reason": "REJECT shade 50"
+   "reason": "REJECT shade 50",
+   "brand": null
   },
   {
    "pid": "166689599",
@@ -2643,7 +2762,8 @@
    "inStock": true,
    "notes": "cream ribbed ceramic gourd + linen coolie shade",
    "status": "accepted",
-   "reason": "Used in: tablelamp-tolima"
+   "reason": "Used in: tablelamp-tolima",
+   "brand": "Home Centre"
   },
   {
    "pid": "168429630",
@@ -2665,7 +2785,8 @@
    "inStock": true,
    "notes": "cream matte double-gourd + oatmeal drum shade",
    "status": "accepted",
-   "reason": "Used in: tablelamp-crosby"
+   "reason": "Used in: tablelamp-crosby",
+   "brand": "Home Centre"
   },
   {
    "pid": "168112162",
@@ -2687,7 +2808,8 @@
    "inStock": true,
    "notes": "brass column + alabaster dome mushroom",
    "status": "accepted",
-   "reason": "Used in: tablelamp-dania"
+   "reason": "Used in: tablelamp-dania",
+   "brand": "Home Centre"
   },
   {
    "pid": "168337817",
@@ -2709,7 +2831,8 @@
    "inStock": true,
    "notes": "cream linen tiered/scalloped drum; H150 = overall incl. suspension; shade body ~40 (estimated from photo)",
    "status": "accepted",
-   "reason": "Used in: pendant-dexter"
+   "reason": "Used in: pendant-dexter",
+   "brand": "Home Centre"
   },
   {
    "pid": "168337812",
@@ -2731,7 +2854,8 @@
    "inStock": true,
    "notes": "cream linen drum with natural stitched rim",
    "status": "accepted",
-   "reason": "Used in: pendant-cosme"
+   "reason": "Used in: pendant-cosme",
+   "brand": "Home Centre"
   },
   {
    "pid": "161885277",
@@ -2753,7 +2877,8 @@
    "inStock": true,
    "notes": "natural woven oval/saucer",
    "status": "accepted",
-   "reason": "Used in: pendant-naturel"
+   "reason": "Used in: pendant-naturel",
+   "brand": "Home Centre"
   },
   {
    "pid": "167811523",
@@ -2775,7 +2900,8 @@
    "inStock": true,
    "notes": "natural rattan dome",
    "status": "accepted",
-   "reason": "Used in: pendant-tobin"
+   "reason": "Used in: pendant-tobin",
+   "brand": "Home Centre"
   },
   {
    "pid": "165855189",
@@ -2797,7 +2923,8 @@
    "inStock": true,
    "notes": "organic wavy rattan shade",
    "status": "accepted",
-   "reason": "Used in: pendant-accorsa"
+   "reason": "Used in: pendant-accorsa",
+   "brand": "Home Centre"
   },
   {
    "pid": "168535211",
@@ -2819,7 +2946,8 @@
    "inStock": null,
    "notes": "cream drum with rattan band - not used",
    "status": "not-selected",
-   "reason": "Enough pendant options; drum with contrasting band"
+   "reason": "Enough pendant options; drum with contrasting band",
+   "brand": null
   },
   {
    "pid": "165204346",
@@ -2841,7 +2969,8 @@
    "inStock": true,
    "notes": "oatmeal plain flat-weave with fine texture",
    "status": "accepted",
-   "reason": "Used in: rug-heaton-200x290"
+   "reason": "Used in: rug-heaton-200x290",
+   "brand": "Home Centre"
   },
   {
    "pid": "168271528",
@@ -2863,7 +2992,8 @@
    "inStock": true,
    "notes": "cream with low-contrast sand abstract waves",
    "status": "accepted",
-   "reason": "Used in: rug-dione-200x290"
+   "reason": "Used in: rug-dione-200x290",
+   "brand": "Home Centre"
   },
   {
    "pid": "169808857",
@@ -2885,7 +3015,8 @@
    "inStock": true,
    "notes": "REVIEW: cream with thin dark brown vertical lines (contrast > rule dL 25) - not in options",
    "status": "review",
-   "reason": "Thin dark-brown stripes on cream exceed low-contrast rule (dL* > 25)"
+   "reason": "Thin dark-brown stripes on cream exceed low-contrast rule (dL* > 25)",
+   "brand": null
   },
   {
    "pid": "168407218",
@@ -2907,7 +3038,8 @@
    "inStock": true,
    "notes": "natural/cream flat dhurrie with subtle stripes",
    "status": "accepted",
-   "reason": "Used in: rug-pulara-160x230"
+   "reason": "Used in: rug-pulara-160x230",
+   "brand": "Home Centre"
   },
   {
    "pid": "170024146",
@@ -2929,7 +3061,8 @@
    "inStock": true,
    "notes": "beige with tone-on-tone border (matte synthetic)",
    "status": "accepted",
-   "reason": "Used in: rug-marlow-200x290"
+   "reason": "Used in: rug-marlow-200x290",
+   "brand": "Home Centre"
   },
   {
    "pid": "170024140",
@@ -2951,7 +3084,8 @@
    "inStock": null,
    "notes": "beige with fine grid - not used",
    "status": "not-selected",
-   "reason": "Polypropylene grid rug — Marlow chosen as the single synthetic budget option"
+   "reason": "Polypropylene grid rug — Marlow chosen as the single synthetic budget option",
+   "brand": null
   },
   {
    "pid": "165177420",
@@ -2973,7 +3107,8 @@
    "inStock": null,
    "notes": "REJECT viscose sheen",
    "status": "rejected",
-   "reason": "REJECT viscose sheen"
+   "reason": "REJECT viscose sheen",
+   "brand": null
   },
   {
    "pid": "166575741",
@@ -2995,7 +3130,8 @@
    "inStock": null,
    "notes": "REJECT greige with sheen",
    "status": "rejected",
-   "reason": "REJECT greige with sheen"
+   "reason": "REJECT greige with sheen",
+   "brand": null
   },
   {
    "pid": "168765589",
@@ -3017,7 +3153,8 @@
    "inStock": null,
    "notes": "REJECT too dark (L*<65)",
    "status": "rejected",
-   "reason": "REJECT too dark (L*<65)"
+   "reason": "REJECT too dark (L*<65)",
+   "brand": null
   },
   {
    "pid": "167088596",
@@ -3039,7 +3176,8 @@
    "inStock": null,
    "notes": "REJECT shaggy bright white",
    "status": "rejected",
-   "reason": "REJECT shaggy bright white"
+   "reason": "REJECT shaggy bright white",
+   "brand": null
   },
   {
    "pid": "167629421",
@@ -3061,7 +3199,8 @@
    "inStock": null,
    "notes": "REJECT too close to oak floor tone",
    "status": "rejected",
-   "reason": "REJECT too close to oak floor tone"
+   "reason": "REJECT too close to oak floor tone",
+   "brand": null
   },
   {
    "pid": "165279975",
@@ -3083,7 +3222,8 @@
    "inStock": true,
    "notes": "plain warm-white sheer; per set 2 panels 135x300",
    "status": "accepted",
-   "reason": "Used in: curtains-sullivan-layered, curtains-sullivan-sheer"
+   "reason": "Used in: curtains-sullivan-layered, curtains-sullivan-sheer",
+   "brand": "Home Centre"
   },
   {
    "pid": "166840461",
@@ -3105,7 +3245,8 @@
    "inStock": true,
    "notes": "light greige linen-look blackout; per set 2 panels",
    "status": "accepted",
-   "reason": "Used in: curtains-sullivan-layered"
+   "reason": "Used in: curtains-sullivan-layered",
+   "brand": "Home Centre"
   },
   {
    "pid": "166008879",
@@ -3127,7 +3268,8 @@
    "inStock": true,
    "notes": "plain white sheer",
    "status": "accepted",
-   "reason": "Used in: curtains-khor-sheer"
+   "reason": "Used in: curtains-khor-sheer",
+   "brand": "Home Centre"
   },
   {
    "pid": "165424819",
@@ -3149,7 +3291,8 @@
    "inStock": null,
    "notes": "REJECT pattern",
    "status": "rejected",
-   "reason": "REJECT pattern"
+   "reason": "REJECT pattern",
+   "brand": null
   },
   {
    "pid": "169395069",
@@ -3171,7 +3314,8 @@
    "inStock": null,
    "notes": "REJECT pattern",
    "status": "rejected",
-   "reason": "REJECT pattern"
+   "reason": "REJECT pattern",
+   "brand": null
   },
   {
    "pid": "165210522",
@@ -3193,7 +3337,8 @@
    "inStock": null,
    "notes": "REJECT pattern",
    "status": "rejected",
-   "reason": "REJECT pattern"
+   "reason": "REJECT pattern",
+   "brand": null
   },
   {
    "pid": "168540074",
@@ -3215,7 +3360,8 @@
    "inStock": true,
    "notes": "arched dark-walnut frame, desert palms landscape in terracotta/sand/cream",
    "status": "accepted",
-   "reason": "Used in: art-sylvan-60x90"
+   "reason": "Used in: art-sylvan-60x90",
+   "brand": "Home Centre"
   },
   {
    "pid": "168528348",
@@ -3237,7 +3383,8 @@
    "inStock": true,
    "notes": "terracotta vase silhouette on sage-green panel (cut-out relief)",
    "status": "accepted",
-   "reason": "Used in: art-aquarelle-53x80"
+   "reason": "Used in: art-aquarelle-53x80",
+   "brand": "Home Centre"
   },
   {
    "pid": "168528349",
@@ -3259,7 +3406,8 @@
    "inStock": true,
    "notes": "sand/terracotta amphora relief on cream panel",
    "status": "accepted",
-   "reason": "Used in: art-vaseo-53x80"
+   "reason": "Used in: art-vaseo-53x80",
+   "brand": "Home Centre"
   },
   {
    "pid": "170064364",
@@ -3281,7 +3429,8 @@
    "inStock": true,
    "notes": "textured cream with fine gold-brown crackle lines, natural frame",
    "status": "accepted",
-   "reason": "Used in: art-zuri-80"
+   "reason": "Used in: art-zuri-80",
+   "brand": "Home Centre"
   },
   {
    "pid": "168481783",
@@ -3303,7 +3452,8 @@
    "inStock": true,
    "notes": "white textured botanical relief, light frame",
    "status": "accepted",
-   "reason": "Used in: art-ember-90x60"
+   "reason": "Used in: art-ember-90x60",
+   "brand": "Home Centre"
   },
   {
    "pid": "170064362",
@@ -3325,7 +3475,8 @@
    "inStock": true,
    "notes": "beige textured leaf relief, light wood frame",
    "status": "accepted",
-   "reason": "Used in: art-nyla-50x70"
+   "reason": "Used in: art-nyla-50x70",
+   "brand": "Home Centre"
   },
   {
    "pid": "169910445",
@@ -3347,7 +3498,8 @@
    "inStock": null,
    "notes": "REJECT pink/red/blue blocks",
    "status": "rejected",
-   "reason": "REJECT pink/red/blue blocks"
+   "reason": "REJECT pink/red/blue blocks",
+   "brand": null
   },
   {
    "pid": "169910446",
@@ -3369,7 +3521,8 @@
    "inStock": null,
    "notes": "REJECT blue/teal",
    "status": "rejected",
-   "reason": "REJECT blue/teal"
+   "reason": "REJECT blue/teal",
+   "brand": null
   },
   {
    "pid": "168518574",
@@ -3391,7 +3544,8 @@
    "inStock": true,
    "notes": "artificial olive tree in small white nursery pot; listed W/L 175 = data error, canopy ~60 est. from photo",
    "status": "accepted",
-   "reason": "Used in: plant-olive-themis"
+   "reason": "Used in: plant-olive-themis",
+   "brand": "Home Centre"
   },
   {
    "pid": "167557633",
@@ -3413,7 +3567,8 @@
    "inStock": true,
    "notes": "cream speckled planter used with Olive Tree 175 as a set",
    "status": "accepted",
-   "reason": "Used in: plant-olive-themis"
+   "reason": "Used in: plant-olive-themis",
+   "brand": "Home Centre"
   },
   {
    "pid": "169868215",
@@ -3435,7 +3590,8 @@
    "inStock": true,
    "notes": "olive tree in cream moulded pot; width not listed, canopy ~60 est.",
    "status": "accepted",
-   "reason": "Used in: plant-olive-urbano"
+   "reason": "Used in: plant-olive-urbano",
+   "brand": "Home Centre"
   },
   {
    "pid": "166898008",
@@ -3457,7 +3613,8 @@
    "inStock": true,
    "notes": "slim olive in white pot (dims est.)",
    "status": "accepted",
-   "reason": "Used in: plant-olive-homekode"
+   "reason": "Used in: plant-olive-180",
+   "brand": "Home Kode"
   },
   {
    "pid": "166936344",
@@ -3479,7 +3636,8 @@
    "inStock": null,
    "notes": "REJECT spread 90 > 70",
    "status": "rejected",
-   "reason": "REJECT spread 90 > 70"
+   "reason": "REJECT spread 90 > 70",
+   "brand": null
   },
   {
    "pid": "165439601",
@@ -3501,7 +3659,8 @@
    "inStock": null,
    "notes": "not used (black nursery pot, dims missing)",
    "status": "not-selected",
-   "reason": "Black nursery pot, no footprint dims"
+   "reason": "Black nursery pot, no footprint dims",
+   "brand": null
   },
   {
    "pid": "170140863",
@@ -3523,7 +3682,8 @@
    "inStock": true,
    "notes": "ivory linen with self piping",
    "status": "accepted",
-   "reason": "Used in: cushions-linen-olive-rust, cushions-linen-clay"
+   "reason": "Used in: cushions-linen-olive-rust, cushions-linen-clay, cushions-linen-olive, cushions-linen-oat, cushions-oat-ivory-4",
+   "brand": "Knot Home"
   },
   {
    "pid": "170140895",
@@ -3545,7 +3705,8 @@
    "inStock": true,
    "notes": "deep olive/khaki textured",
    "status": "accepted",
-   "reason": "Used in: bedding-white-oat-olive, cushions-linen-olive-rust, cushions-oat-velvet-olive"
+   "reason": "Used in: bedding-white-oat-olive, cushions-linen-olive-rust, cushions-oat-velvet-olive, cushions-linen-olive",
+   "brand": "Knot Home"
   },
   {
    "pid": "170140966",
@@ -3567,7 +3728,8 @@
    "inStock": true,
    "notes": "terracotta rust",
    "status": "accepted",
-   "reason": "Used in: cushions-linen-olive-rust, cushions-linen-clay"
+   "reason": "Used in: cushions-linen-olive-rust, cushions-linen-clay",
+   "brand": "Knot Home"
   },
   {
    "pid": "170140856",
@@ -3589,7 +3751,8 @@
    "inStock": true,
    "notes": "clay/terracotta lumbar",
    "status": "accepted",
-   "reason": "Used in: bedding-white-oat-clay, cushions-linen-clay"
+   "reason": "Used in: bedding-white-oat-clay, cushions-linen-clay",
+   "brand": "Knot Home"
   },
   {
    "pid": "170140987",
@@ -3611,7 +3774,8 @@
    "inStock": true,
    "notes": "oat linen with fine stripe",
    "status": "accepted",
-   "reason": "Used in: cushions-oat-velvet-olive"
+   "reason": "Used in: cushions-oat-velvet-olive, cushions-linen-oat, cushions-oat-ivory-4",
+   "brand": "Knot Home"
   },
   {
    "pid": "168176915",
@@ -3633,7 +3797,8 @@
    "inStock": true,
    "notes": "rust velvet with self flange",
    "status": "accepted",
-   "reason": "Used in: cushions-oat-velvet-olive"
+   "reason": "Used in: cushions-oat-velvet-olive",
+   "brand": "Knot Home"
   },
   {
    "pid": "168176984",
@@ -3655,7 +3820,8 @@
    "inStock": null,
    "notes": "REJECT reads teal/mint",
    "status": "rejected",
-   "reason": "REJECT reads teal/mint"
+   "reason": "REJECT reads teal/mint",
+   "brand": null
   },
   {
    "pid": "170096965",
@@ -3677,7 +3843,8 @@
    "inStock": null,
    "notes": "REJECT sheen",
    "status": "rejected",
-   "reason": "REJECT sheen"
+   "reason": "REJECT sheen",
+   "brand": null
   },
   {
    "pid": "170140917",
@@ -3699,7 +3866,8 @@
    "inStock": null,
    "notes": "not used (reads brown stripe)",
    "status": "not-selected",
-   "reason": "Reads brown stripe rather than olive"
+   "reason": "Reads brown stripe rather than olive",
+   "brand": null
   },
   {
    "pid": "164824383",
@@ -3721,7 +3889,8 @@
    "inStock": true,
    "notes": "cream sand stone-look ovoid vase (diameter est.)",
    "status": "accepted",
-   "reason": "Used in: decor-sand-travertine-walnut"
+   "reason": "Used in: decor-sand-travertine-walnut, decor-cream-ceramic, decor-travertine-cream",
+   "brand": "Home Centre"
   },
   {
    "pid": "164824384",
@@ -3743,7 +3912,8 @@
    "inStock": true,
    "notes": "same, smaller",
    "status": "accepted",
-   "reason": "Used in: decor-terracotta, centerpiece-sable-eucalyptus"
+   "reason": "Used in: decor-terracotta, centerpiece-sable-eucalyptus",
+   "brand": "Home Centre"
   },
   {
    "pid": "169037988",
@@ -3765,7 +3935,8 @@
    "inStock": true,
    "notes": "footed travertine bowl",
    "status": "accepted",
-   "reason": "Used in: decor-sand-travertine-walnut"
+   "reason": "Used in: decor-sand-travertine-walnut",
+   "brand": "Touche Deco"
   },
   {
    "pid": "169440274",
@@ -3787,7 +3958,8 @@
    "inStock": true,
    "notes": "dark warm wood ovoid vase",
    "status": "accepted",
-   "reason": "Used in: decor-sand-travertine-walnut, nsdecor-walnut-vase"
+   "reason": "Used in: decor-sand-travertine-walnut, nsdecor-walnut-vase",
+   "brand": "Home Centre"
   },
   {
    "pid": "169440275",
@@ -3809,7 +3981,8 @@
    "inStock": true,
    "notes": "same, taller",
    "status": "accepted",
-   "reason": "Used in: decor-white-ceramic"
+   "reason": "Used in: decor-white-ceramic",
+   "brand": "Home Centre"
   },
   {
    "pid": "170590024",
@@ -3831,7 +4004,8 @@
    "inStock": true,
    "notes": "footed terracotta bowl",
    "status": "accepted",
-   "reason": "Used in: decor-terracotta"
+   "reason": "Used in: decor-terracotta",
+   "brand": "Knot Home"
   },
   {
    "pid": "165839001",
@@ -3853,7 +4027,8 @@
    "inStock": true,
    "notes": "cream textured round vase",
    "status": "accepted",
-   "reason": "Used in: decor-terracotta"
+   "reason": "Used in: decor-terracotta",
+   "brand": "Home Centre"
   },
   {
    "pid": "169767116",
@@ -3875,7 +4050,8 @@
    "inStock": true,
    "notes": "white sculptural disc vase",
    "status": "accepted",
-   "reason": "Used in: decor-white-ceramic"
+   "reason": "Used in: decor-white-ceramic, decor-cream-ceramic",
+   "brand": "Home Centre"
   },
   {
    "pid": "165839004",
@@ -3897,7 +4073,8 @@
    "inStock": true,
    "notes": "white textured low bowl",
    "status": "accepted",
-   "reason": "Used in: decor-white-ceramic, kitchen-laimai-dark, kitchen-white-basic"
+   "reason": "Used in: decor-white-ceramic, decor-cream-ceramic",
+   "brand": "Home Centre"
   },
   {
    "pid": "170590033",
@@ -3919,7 +4096,8 @@
    "inStock": null,
    "notes": "REJECT black stripes",
    "status": "rejected",
-   "reason": "REJECT black stripes"
+   "reason": "REJECT black stripes",
+   "brand": null
   },
   {
    "pid": "169767127",
@@ -3941,7 +4119,8 @@
    "inStock": null,
    "notes": "REJECT metallic grey",
    "status": "rejected",
-   "reason": "REJECT metallic grey"
+   "reason": "REJECT metallic grey",
+   "brand": null
   },
   {
    "pid": "167025199",
@@ -3963,7 +4142,8 @@
    "inStock": true,
    "notes": "white knitted cover, soft",
    "status": "accepted",
-   "reason": "Used in: mattress-rejuvenate-160"
+   "reason": "Used in: mattress-rejuvenate-160",
+   "brand": "Home Centre"
   },
   {
    "pid": "170118972",
@@ -3985,7 +4165,8 @@
    "inStock": true,
    "notes": "white knitted cover, soft",
    "status": "accepted",
-   "reason": "Used in: mattress-bliss-gel-160"
+   "reason": "Used in: mattress-bliss-gel-160",
+   "brand": "Home Centre"
   },
   {
    "pid": "166047242",
@@ -4007,7 +4188,8 @@
    "inStock": null,
    "notes": "REVIEW thickness 31 > rule 20-30, not in options",
    "status": "review",
-   "reason": "Thickness 31 > rule 20–30"
+   "reason": "Thickness 31 > rule 20–30",
+   "brand": null
   },
   {
    "pid": "161124290",
@@ -4029,7 +4211,8 @@
    "inStock": true,
    "notes": "duvet cover + 2 pillowcases, warm white",
    "status": "accepted",
-   "reason": "Used in: bedding-white-oat-clay"
+   "reason": "Used in: bedding-white-oat-clay, bedding-white-oat",
+   "brand": "Home Centre"
   },
   {
    "pid": "165322100",
@@ -4051,7 +4234,8 @@
    "inStock": true,
    "notes": "oat beige",
    "status": "accepted",
-   "reason": "Used in: bedding-oat-rust"
+   "reason": "Used in: bedding-oat-rust",
+   "brand": "Home Centre"
   },
   {
    "pid": "166835106",
@@ -4073,7 +4257,8 @@
    "inStock": true,
    "notes": "white",
    "status": "accepted",
-   "reason": "Used in: bedding-white-oat-olive"
+   "reason": "Used in: bedding-white-oat-olive, bedding-white-sateen-oat",
+   "brand": "Home Centre"
   },
   {
    "pid": "164494890",
@@ -4095,7 +4280,8 @@
    "inStock": true,
    "notes": "oat fringed throw",
    "status": "accepted",
-   "reason": "Used in: bedding-white-oat-clay"
+   "reason": "Used in: bedding-white-oat-clay",
+   "brand": "Home Centre"
   },
   {
    "pid": "166836255",
@@ -4117,7 +4303,8 @@
    "inStock": true,
    "notes": "oat/cream fringed throw",
    "status": "accepted",
-   "reason": "Used in: bedding-white-oat-olive"
+   "reason": "Used in: bedding-white-oat-olive, bedding-white-oat, throw-boras-oat",
+   "brand": "Home Centre"
   },
   {
    "pid": "168125153",
@@ -4139,7 +4326,8 @@
    "inStock": true,
    "notes": "rust/terracotta throw",
    "status": "accepted",
-   "reason": "Used in: bedding-oat-rust"
+   "reason": "Used in: bedding-oat-rust",
+   "brand": "Home Centre"
   },
   {
    "pid": "167289519",
@@ -4161,7 +4349,8 @@
    "inStock": true,
    "notes": "beige low lounge sofa on recessed plinth, track arms; W240 = slot max",
    "status": "accepted",
-   "reason": "Used in: sofa-doree-3"
+   "reason": "Used in: sofa-doree-3",
+   "brand": "Home Centre"
   },
   {
    "pid": "168565651",
@@ -4183,7 +4372,8 @@
    "inStock": true,
    "notes": "ivory, straight arms, dark tapered wood legs, horizontal channel stitch on back (not button tufting)",
    "status": "accepted",
-   "reason": "Used in: sofa-engler-3"
+   "reason": "Used in: sofa-engler-3",
+   "brand": "Home Centre"
   },
   {
    "pid": "165049640",
@@ -4205,7 +4395,8 @@
    "inStock": true,
    "notes": "cream track-arm sofa on slim matte-black legs",
    "status": "accepted",
-   "reason": "Used in: sofa-anders-3"
+   "reason": "Used in: sofa-anders-3",
+   "brand": "Home Centre"
   },
   {
    "pid": "169739598",
@@ -4227,7 +4418,8 @@
    "inStock": true,
    "notes": "sand textured ground, white relief stripes, small terracotta-brown triangles; light natural frame",
    "status": "accepted",
-   "reason": "Used in: art-madar-aziza-100"
+   "reason": "Used in: art-madar-aziza-100",
+   "brand": "Home Centre"
   },
   {
    "pid": "169739599",
@@ -4249,7 +4441,8 @@
    "inStock": true,
    "notes": "mirror composition of Madar Aziza",
    "status": "accepted",
-   "reason": "Used in: art-madar-hiba-100"
+   "reason": "Used in: art-madar-hiba-100",
+   "brand": "Home Centre"
   },
   {
    "pid": "169910440",
@@ -4271,7 +4464,8 @@
    "inStock": true,
    "notes": "blush-sand poppy line study, thin warm wood-look frame; landscape",
    "status": "accepted",
-   "reason": "Used in: art-najla-120x80"
+   "reason": "Used in: art-najla-120x80",
+   "brand": "Home Centre"
   },
   {
    "pid": "168125176",
@@ -4293,7 +4487,8 @@
    "inStock": true,
    "notes": "cream botanical with subtle gold-foil accents, natural frame",
    "status": "accepted",
-   "reason": "Used in: art-olina-120x60"
+   "reason": "Used in: art-olina-120x60",
+   "brand": "Home Centre"
   },
   {
    "pid": "168684906",
@@ -4315,7 +4510,8 @@
    "inStock": true,
    "notes": "sage green panels with white palm/banana leaves; hung as a row 30+60+30 with 3 cm gaps = 126x60",
    "status": "accepted",
-   "reason": "Used in: art-caitlin-triptych"
+   "reason": "Used in: art-caitlin-triptych",
+   "brand": "Home Centre"
   },
   {
    "pid": "169897144",
@@ -4337,7 +4533,8 @@
    "inStock": null,
    "notes": "not-selected: traditional dark landscape",
    "status": "not-selected",
-   "reason": "Traditional dark landscape; Madar/Najla chosen for the sofa wall"
+   "reason": "Traditional dark landscape; Madar/Najla chosen for the sofa wall",
+   "brand": null
   },
   {
    "pid": "170064348",
@@ -4359,7 +4556,8 @@
    "inStock": null,
    "notes": "REJECT cool blue-grey sky",
    "status": "rejected",
-   "reason": "REJECT cool blue-grey sky"
+   "reason": "REJECT cool blue-grey sky",
+   "brand": null
   },
   {
    "pid": "170075117",
@@ -4381,7 +4579,8 @@
    "inStock": null,
    "notes": "REJECT portrait 40x120, too tall",
    "status": "rejected",
-   "reason": "REJECT portrait 40x120, too tall"
+   "reason": "REJECT portrait 40x120, too tall",
+   "brand": null
   },
   {
    "pid": "169739597",
@@ -4403,7 +4602,8 @@
    "inStock": null,
    "notes": "REJECT terracotta arches (ideal motif) but panels 120 tall > any slot",
    "status": "rejected",
-   "reason": "REJECT terracotta arches (ideal motif) but panels 120 tall > any slot"
+   "reason": "REJECT terracotta arches (ideal motif) but panels 120 tall > any slot",
+   "brand": null
   },
   {
    "pid": "167823008",
@@ -4425,7 +4625,8 @@
    "inStock": null,
    "notes": "not-selected: metal panel decor",
    "status": "not-selected",
-   "reason": "Iron panel decor, not artwork in palette"
+   "reason": "Iron panel decor, not artwork in palette",
+   "brand": null
   },
   {
    "pid": "169910442",
@@ -4447,7 +4648,1986 @@
    "inStock": null,
    "notes": "REJECT gold-leaf tree (shiny gold)",
    "status": "rejected",
-   "reason": "REJECT gold-leaf tree (shiny gold)"
+   "reason": "REJECT gold-leaf tree (shiny gold)",
+   "brand": null
+  },
+  {
+   "pid": "169124142",
+   "sku": "169124142",
+   "title": "Daventry 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/169124142",
+   "regularPrice": 2199,
+   "salePrice": 1539,
+   "dimsCm": {
+    "w": 230,
+    "d": 95,
+    "h": 82
+   },
+   "materials": "frame wood; metal block legs (brass tone); boucle fabric",
+   "colour": "White",
+   "category": "Sofas",
+   "image": "https://media.homecentre.com/i/homecentre/169124142-169124142-HC01062026_01-2100.jpg?v=2",
+   "inStock": true,
+   "notes": "ivory boucle, rounded arms, small brass-tone block feet; boucle = the studio's one boucle piece (pairing keeps the boucle armchair out)",
+   "status": "accepted",
+   "reason": "Used in: sofa-daventry-3",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "165928794",
+   "sku": "165928794",
+   "title": "Stanton Fabric Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/p/165928794",
+   "regularPrice": 429,
+   "salePrice": 429,
+   "dimsCm": {
+    "w": 52,
+    "d": 58,
+    "h": 85
+   },
+   "materials": "solid wood legs; fabric",
+   "colour": "Beige",
+   "category": "Dining Chairs",
+   "image": "https://media.homecentre.com/i/homecentre/165928794-165928791-HC17122023_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "ivory woven shell seat on tapered walnut-tone legs, armless",
+   "status": "accepted",
+   "reason": "Used in: chair-stanton",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "166548091",
+   "sku": "166548091",
+   "title": "Herald Side Table",
+   "slotType": "side_table",
+   "url": "https://www.homecentre.com/ae/en/p/166548091",
+   "regularPrice": 749,
+   "salePrice": 519,
+   "dimsCm": {
+    "w": 50,
+    "d": 50,
+    "h": 50
+   },
+   "materials": "engineered wood, walnut veneer; MDF top",
+   "colour": "Brown",
+   "category": "Side Tables",
+   "image": "https://media.homecentre.com/i/homecentre/166548091-166548091-HC02072024_01-2100.jpg",
+   "inStock": true,
+   "notes": "round walnut top on stem + drum pedestal; tone matches Jasper TV / Linden (W1)",
+   "status": "accepted",
+   "reason": "Used in: side-herald",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "170380029",
+   "sku": "170380029",
+   "title": "Selric Wooden Top Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/p/170380029",
+   "regularPrice": 2659,
+   "salePrice": 1679,
+   "dimsCm": {
+    "w": 90,
+    "d": 90,
+    "h": 40
+   },
+   "materials": "engineered wood, walnut veneer; solid wood top",
+   "colour": "Brown",
+   "category": "Coffee Tables",
+   "image": "https://cdn.media.amplience.net/i/lmg/170380029-170380029-HC04092026_01-2100.jpg",
+   "inStock": true,
+   "notes": "round walnut drum with sliding-top storage, Ø90 h40",
+   "status": "accepted",
+   "reason": "Used in: coffee-selric",
+   "brand": "Onesto"
+  },
+  {
+   "pid": "166548090",
+   "sku": "166548090",
+   "title": "Herald Ceramic Top Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/p/166548090",
+   "regularPrice": 1399,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 80,
+    "d": 80,
+    "h": 47
+   },
+   "materials": "veneer drum; ceramic top",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT h47 > 45",
+   "status": "rejected",
+   "reason": "REJECT h47 > 45",
+   "brand": null
+  },
+  {
+   "pid": "168492238",
+   "sku": "168492238",
+   "title": "Artwin Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/p/168492238",
+   "regularPrice": 499,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 100,
+    "d": 100,
+    "h": 45
+   },
+   "materials": "engineered wood",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT Ø100 > slot depth 90",
+   "status": "rejected",
+   "reason": "REJECT Ø100 > slot depth 90",
+   "brand": null
+  },
+  {
+   "pid": "168159693",
+   "sku": "168159693",
+   "title": "Arkas Ceramic Top Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/buy-arkas-ceramic-top-coffee-table/p/168159693",
+   "regularPrice": 1689,
+   "salePrice": 1179,
+   "dimsCm": {
+    "w": 130,
+    "d": 70,
+    "h": 40
+   },
+   "materials": "ceramic top; engineered wood legs",
+   "colour": "Beige/Oak",
+   "category": "Coffee Tables",
+   "image": "https://media.homecentre.com/i/homecentre/168159693-168159693-HC18082025_01-2100.jpg",
+   "inStock": true,
+   "notes": "REJECT for DW: smoked grey-oak legs (not W1); oval travertine-look top - candidate for greige-luxe",
+   "status": "accepted",
+   "reason": "Used in: coffee-arkas",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "168159685",
+   "sku": "168159685",
+   "title": "Countryside Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/p/168159685",
+   "regularPrice": 629,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 90,
+    "d": 90,
+    "h": 40
+   },
+   "materials": "veneer top; black metal ring",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT orange medium walnut (photo #925A37) + industrial black ring base",
+   "status": "rejected",
+   "reason": "REJECT orange medium walnut (photo #925A37) + industrial black ring base",
+   "brand": null
+  },
+  {
+   "pid": "167302787",
+   "sku": "167302787",
+   "title": "Nexus Side Table",
+   "slotType": "side_table",
+   "url": "https://www.homecentre.com/ae/en/p/167302787",
+   "regularPrice": 1099,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 50,
+    "d": 45,
+    "h": 50
+   },
+   "materials": "metal, walnut-print; mirror-gold top",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT polished/mirror gold top",
+   "status": "rejected",
+   "reason": "REJECT polished/mirror gold top",
+   "brand": null
+  },
+  {
+   "pid": "159592027",
+   "sku": "159592027",
+   "title": "Weyline Side Table",
+   "slotType": "side_table",
+   "url": "https://www.homecentre.com/ae/en/p/159592027",
+   "regularPrice": 429,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 60,
+    "d": 60,
+    "h": 55
+   },
+   "materials": "solid wood",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT Ø60 > rule 35–50 and slot 55",
+   "status": "rejected",
+   "reason": "REJECT Ø60 > rule 35–50 and slot 55",
+   "brand": null
+  },
+  {
+   "pid": "168405021",
+   "sku": "168405021",
+   "title": "Jordan 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/168405021",
+   "regularPrice": 2199,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 220,
+    "d": 93,
+    "h": 94
+   },
+   "materials": "fabric; wood legs",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT back 94 > 85",
+   "status": "rejected",
+   "reason": "REJECT back 94 > 85",
+   "brand": null
+  },
+  {
+   "pid": "169042318",
+   "sku": "169042318",
+   "title": "Alvin 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/169042318",
+   "regularPrice": 2299,
+   "salePrice": 1609,
+   "dimsCm": {
+    "w": 207,
+    "d": 96,
+    "h": 86
+   },
+   "materials": "fabric; wood legs",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT back 86 > 85 and rolled arms",
+   "status": "rejected",
+   "reason": "REJECT back 86 > 85 and rolled arms",
+   "brand": null
+  },
+  {
+   "pid": "168468083",
+   "sku": "168468083",
+   "title": "Oshawa 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/buy-oshawa-3seater-fabric-sofa/p/168468083",
+   "regularPrice": 3999,
+   "salePrice": 2799,
+   "dimsCm": {
+    "w": 224,
+    "d": 96,
+    "h": 84
+   },
+   "materials": "fabric; light oak legs; cane arm panels",
+   "colour": "Beige",
+   "category": "Sofas & Sofa Sets",
+   "image": "https://media.homecentre.com/i/homecentre/168468083-168468083-HC20112025_01-2100.jpg",
+   "inStock": true,
+   "notes": "REJECT for DW: light oak + cane (not W1) - candidate for light-oak / mediterranean",
+   "status": "accepted",
+   "reason": "Used in: sofa-oshawa-3",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "169320233",
+   "sku": "169320233",
+   "title": "Sora 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/169320233",
+   "regularPrice": 2599,
+   "salePrice": 1819,
+   "dimsCm": {
+    "w": 225,
+    "d": 85,
+    "h": 82
+   },
+   "materials": "textured fabric; hidden legs",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REVIEW photo #B1A8A2 (L*69 C*5) reads light grey",
+   "status": "review",
+   "reason": "REVIEW photo #B1A8A2 (L*69 C*5) reads light grey",
+   "brand": null
+  },
+  {
+   "pid": "166839119",
+   "sku": "166839119",
+   "title": "Rubik 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/166839119",
+   "regularPrice": 2499,
+   "salePrice": 1749,
+   "dimsCm": {
+    "w": 205,
+    "d": 87,
+    "h": 83
+   },
+   "materials": "textured fabric; ABS fold-under legs",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REVIEW photo #CBC8C0 (C*4.4) between N1 and N2; sculptural scroll arms",
+   "status": "review",
+   "reason": "REVIEW photo #CBC8C0 (C*4.4) between N1 and N2; sculptural scroll arms",
+   "brand": null
+  },
+  {
+   "pid": "167788348",
+   "sku": "167788348",
+   "title": "Mondo 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/167788348",
+   "regularPrice": 1899,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 220,
+    "d": 87,
+    "h": 86
+   },
+   "materials": "fabric; black metal legs",
+   "colour": "Grey",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT grey, black legs, back 86",
+   "status": "rejected",
+   "reason": "REJECT grey, black legs, back 86",
+   "brand": null
+  },
+  {
+   "pid": "168554790",
+   "sku": "168554790",
+   "title": "Dover 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/168554790",
+   "regularPrice": 2999,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 225,
+    "d": 90,
+    "h": 85
+   },
+   "materials": "velvet; gold base",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT velvet sheen + polished gold plinth",
+   "status": "rejected",
+   "reason": "REJECT velvet sheen + polished gold plinth",
+   "brand": null
+  },
+  {
+   "pid": "169011690",
+   "sku": "169011690",
+   "title": "Studio Obliq Lumo 4-Seater Dining Table",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/169011690",
+   "regularPrice": 3739,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 120,
+    "d": 120,
+    "h": 75
+   },
+   "materials": "engineered wood",
+   "colour": "Cream",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT 120 > slot 100 (marketplace brand)",
+   "status": "rejected",
+   "reason": "REJECT 120 > slot 100 (marketplace brand)",
+   "brand": null
+  },
+  {
+   "pid": "167207628",
+   "sku": "167207628",
+   "title": "Arkas Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/p/167207628",
+   "regularPrice": 699,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 52,
+    "d": 60,
+    "h": 84
+   },
+   "materials": "solid wood; fabric",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT depth 60 > 58; smoked grey-oak frame",
+   "status": "rejected",
+   "reason": "REJECT depth 60 > 58; smoked grey-oak frame",
+   "brand": null
+  },
+  {
+   "pid": "168233688",
+   "sku": "168233688",
+   "title": "Edwyn Fabric Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/p/168233688",
+   "regularPrice": 499,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 51,
+    "d": 64,
+    "h": 86
+   },
+   "materials": "solid wood; fabric",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT depth 64",
+   "status": "rejected",
+   "reason": "REJECT depth 64",
+   "brand": null
+  },
+  {
+   "pid": "169561220",
+   "sku": "169561220",
+   "title": "Salalah Fabric Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/buy-salalah-fabric-dining-chair/p/169561220",
+   "regularPrice": 399,
+   "salePrice": 279,
+   "dimsCm": {
+    "w": 51,
+    "d": 56,
+    "h": 83
+   },
+   "materials": "wood; fabric",
+   "colour": "Brown",
+   "category": "Chairs & Benches",
+   "image": "https://media.homecentre.com/i/homecentre/169561220-169561220-HC24082026_01-2100.jpg",
+   "inStock": true,
+   "notes": "REJECT for DW: grey-olive smoked frame - candidate for greige-luxe",
+   "status": "accepted",
+   "reason": "Used in: chair-salalah",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "166392551",
+   "sku": "166392551",
+   "title": "Rockwell 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/buy-rockwell-3seater-fabric-sofa/p/166392551",
+   "regularPrice": 1799,
+   "salePrice": 1049,
+   "dimsCm": {
+    "w": 200,
+    "d": 83,
+    "h": 85
+   },
+   "materials": "frame solid wood; legs wooden (charcoal); fabric",
+   "colour": "Beige",
+   "category": "Sofas & Sofa Sets",
+   "image": "https://media.homecentre.com/i/homecentre/166392551-166392551-HC01072024_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "stone-linen weave (photo #C7C2B7, N2), sloped arms, thin charcoal tapered legs - light-oak",
+   "status": "accepted",
+   "reason": "Used in: sofa-rockwell-3",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "166562670",
+   "sku": "166562670",
+   "title": "Pebble 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/buy-pebble-3seater-fabric-sofa/p/166562670",
+   "regularPrice": 2999,
+   "salePrice": 2099,
+   "dimsCm": {
+    "w": 210,
+    "d": 98,
+    "h": 75
+   },
+   "materials": "frame solid wood; legs hidden; boucle",
+   "colour": "Beige",
+   "category": "Sofas & Sofa Sets",
+   "image": "https://media.homecentre.com/i/homecentre/166562670-166562670-HC28052024_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "ivory bouclé, low rounded modular silhouette - greige-luxe signature",
+   "status": "accepted",
+   "reason": "Used in: sofa-pebble-3",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "169441719",
+   "sku": "169441719",
+   "title": "Natura Fabric Armchair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/buy-natura-fabric-armchair/p/169441719",
+   "regularPrice": 1299,
+   "salePrice": 909,
+   "dimsCm": {
+    "w": 78,
+    "d": 79,
+    "h": 81
+   },
+   "materials": "solid wood frame; fabric",
+   "colour": "Beige",
+   "category": "Armchairs",
+   "image": "https://media.homecentre.com/i/homecentre/169441719-169441719-HC26062026_01-2100.jpg",
+   "inStock": true,
+   "notes": "light oak open frame, oat cushions - light-oak",
+   "status": "accepted",
+   "reason": "Used in: armchair-natura",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "165710560",
+   "sku": "165710560",
+   "title": "Oti Boucle Accent Chair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/buy-oti-boucle-accent-chair/p/165710560",
+   "regularPrice": 4899,
+   "salePrice": 4899,
+   "dimsCm": {
+    "w": 75,
+    "d": 73,
+    "h": 72
+   },
+   "materials": "solid wood frame; boucle",
+   "colour": "White",
+   "category": "Armchairs",
+   "image": "https://cdn.media.amplience.net/i/lmg/165710560-165710560-HC15052023_01-2100.jpg",
+   "inStock": true,
+   "notes": "ivory bouclé sculptural accent chair (marketplace) - greige-luxe",
+   "status": "accepted",
+   "reason": "Used in: armchair-oti",
+   "brand": "Cortina"
+  },
+  {
+   "pid": "165710556",
+   "sku": "165710556",
+   "title": "Mons Fabric Chair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/buy-mons-fabric-chair/p/165710556",
+   "regularPrice": 3699,
+   "salePrice": 3699,
+   "dimsCm": {
+    "w": 67,
+    "d": 82,
+    "h": 76
+   },
+   "materials": "solid wood frame; ABS legs; fabric",
+   "colour": "Cream",
+   "category": "Armchairs",
+   "image": "https://cdn.media.amplience.net/i/lmg/165710556-165710556-HC15052023_01-2100.jpg",
+   "inStock": true,
+   "notes": "cream textured low chair - greige-luxe (w 67 < band 70)",
+   "status": "accepted",
+   "reason": "Used in: armchair-mons",
+   "brand": "Cortina"
+  },
+  {
+   "pid": "167996652",
+   "sku": "167996652",
+   "title": "Emma Boucle Chair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/buy-emma-boucle-chair/p/167996652",
+   "regularPrice": 2200,
+   "salePrice": 2200,
+   "dimsCm": {
+    "w": 83,
+    "d": 95,
+    "h": 73
+   },
+   "materials": "boucle",
+   "colour": "Cream",
+   "category": "Armchairs",
+   "image": "https://cdn.media.amplience.net/i/lmg/167996652-167996652-HC28022025_01-2100.jpg",
+   "inStock": true,
+   "notes": "cream bouclé lounge chair, armless - greige-luxe (d 95 = slot max)",
+   "status": "accepted",
+   "reason": "Used in: armchair-emma",
+   "brand": "Villa Home"
+  },
+  {
+   "pid": "168036583",
+   "sku": "168036583",
+   "title": "Wood Culture Sukhna Rattan Chair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/buy-wood-culture-sukhna-rattan-chair/p/168036583",
+   "regularPrice": 1499,
+   "salePrice": 1129,
+   "dimsCm": {
+    "w": 64,
+    "d": 82,
+    "h": 66
+   },
+   "materials": "solid wood frame; cane seat and back",
+   "colour": "Brown",
+   "category": "Armchairs",
+   "image": "https://cdn.media.amplience.net/i/lmg/168036583-168036582-HC11032193_01-2100.jpg",
+   "inStock": true,
+   "notes": "Jeanneret-style cane lounge chair, teak-brown frame - mediterranean (frame darker than W6, exception)",
+   "status": "accepted",
+   "reason": "Used in: armchair-sukhna",
+   "brand": "Wood Culture"
+  },
+  {
+   "pid": "167137027",
+   "sku": "167137027",
+   "title": "The 8 Senses Living Candis Wicker Lounge Chair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/p/167137027",
+   "regularPrice": 1299,
+   "salePrice": 1199,
+   "dimsCm": {
+    "w": 74,
+    "d": 68,
+    "h": 70
+   },
+   "materials": "wicker; wood",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT for MED: outdoor-category synthetic wicker (rules forbid outdoor plastic rattan)",
+   "status": "rejected",
+   "reason": "REJECT for MED: outdoor-category synthetic wicker (rules forbid outdoor plastic rattan)",
+   "brand": null
+  },
+  {
+   "pid": "170702985",
+   "sku": "170702985",
+   "title": "Corta Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/buy-corta-coffee-table/p/170702985",
+   "regularPrice": 1599,
+   "salePrice": 949,
+   "dimsCm": {
+    "w": 90,
+    "d": 90,
+    "h": 42
+   },
+   "materials": "engineered wood veneer",
+   "colour": "Brown",
+   "category": "Coffee Tables",
+   "image": "https://cdn.media.amplience.net/i/lmg/170702985-170702985-HC06112026_01-2100.jpg",
+   "inStock": true,
+   "notes": "round warm natural oak (photo #B18E6A ~W6) - mediterranean",
+   "status": "accepted",
+   "reason": "Used in: coffee-corta",
+   "brand": "Onesto"
+  },
+  {
+   "pid": "167996573",
+   "sku": "167996573",
+   "title": "Pavia Marble Top Side Table",
+   "slotType": "side_table",
+   "url": "https://www.homecentre.com/ae/en/buy-pavia-marble-top-side-table/p/167996573",
+   "regularPrice": 879,
+   "salePrice": 531,
+   "dimsCm": {
+    "w": 50,
+    "d": 50,
+    "h": 50
+   },
+   "materials": "marble top and base",
+   "colour": "Beige",
+   "category": "Side & End Tables",
+   "image": "https://media.homecentre.com/i/homecentre/167996573-166839032-HC12112024_01-2100.jpg",
+   "inStock": true,
+   "notes": "all-marble square block, beige - greige-luxe / light-oak / mediterranean (stone, no dark support)",
+   "status": "accepted",
+   "reason": "Used in: side-pavia",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "168535210",
+   "sku": "168535210",
+   "title": "Berit Paper Rope Pendant Lamp",
+   "slotType": "pendant_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-berit-paper-rope-pendant-lamp/p/168535210",
+   "regularPrice": 189,
+   "salePrice": 113,
+   "dimsCm": {
+    "w": 50.5,
+    "d": 50.5,
+    "h": 20.5
+   },
+   "materials": "paper rope",
+   "colour": "White",
+   "category": "Pendant Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/168535210-168535210-HC09012025_01-2100.jpg?v=3",
+   "inStock": true,
+   "notes": "natural paper-cord dome - light-oak",
+   "status": "accepted",
+   "reason": "Used in: pendant-berit",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "167811526",
+   "sku": "167811526",
+   "title": "Audrey Rattan Floor Lamp - 155 cm",
+   "slotType": "floor_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-audrey-rattan-floor-lamp-155-cm/p/167811526",
+   "regularPrice": 329,
+   "salePrice": 229,
+   "dimsCm": {
+    "w": 50,
+    "d": 50,
+    "h": 155
+   },
+   "materials": "rattan shade",
+   "colour": "Brown",
+   "category": "Floor Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/167811526-167811526-HC01272025_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "woven rattan shade on wooden tripod - mediterranean",
+   "status": "accepted",
+   "reason": "Used in: floorlamp-audrey",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "169250331",
+   "sku": "169250331",
+   "title": "Diamant Paper Rope Floor Lamp - 140 cm",
+   "slotType": "floor_lamp",
+   "url": "https://www.homecentre.com/ae/en/buy-diamant-paper-rope-floor-lamp-140-cm/p/169250331",
+   "regularPrice": 499,
+   "salePrice": 499,
+   "dimsCm": {
+    "w": 20,
+    "d": 20,
+    "h": 140
+   },
+   "materials": "paper rope",
+   "colour": "Beige",
+   "category": "Floor Lamps",
+   "image": "https://media.homecentre.com/i/homecentre/169250331-169250331-HC02182026_01-2100.jpg",
+   "inStock": true,
+   "notes": "tiered cream paper-rope column lamp - light-oak",
+   "status": "accepted",
+   "reason": "Used in: floorlamp-diamant",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "167337726",
+   "sku": "167337726",
+   "title": "Mackenzie Arch Wall Mirror - 80x120 cm",
+   "slotType": "mirror",
+   "url": "https://www.homecentre.com/ae/en/buy-mackenzie-arch-wall-mirror-80x120-cm/p/167337726",
+   "regularPrice": 449,
+   "salePrice": 449,
+   "dimsCm": {
+    "w": 80,
+    "d": 3,
+    "h": 120
+   },
+   "materials": "glass; metal frame",
+   "colour": "Black",
+   "category": "Wall Mirrors",
+   "image": "https://media.homecentre.com/i/homecentre/167337726-167337726-HC10112024_01-2100.jpg",
+   "inStock": true,
+   "notes": "thin matte black arch frame - light-oak / mediterranean",
+   "status": "accepted",
+   "reason": "Used in: mirror-mackenzie-arch",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "166794486",
+   "sku": "166794486",
+   "title": "Artemis Wall Mirror - 80 cm",
+   "slotType": "mirror",
+   "url": "https://www.homecentre.com/ae/en/buy-artemis-wall-mirror-80-cm/p/166794486",
+   "regularPrice": 199,
+   "salePrice": 132,
+   "dimsCm": {
+    "w": 80,
+    "d": 3,
+    "h": 80
+   },
+   "materials": "glass; metal frame",
+   "colour": "Black",
+   "category": "Wall Mirrors",
+   "image": "https://media.homecentre.com/i/homecentre/166794486-166794486-HC05162024_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "thin matte black round frame - light-oak",
+   "status": "accepted",
+   "reason": "Used in: mirror-artemis-round-black",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "169023442",
+   "sku": "169023442",
+   "title": "Durham 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/169023442",
+   "regularPrice": 3999,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 252,
+    "d": 100,
+    "h": 72
+   },
+   "materials": "fabric",
+   "colour": "White",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w252 > slot 240",
+   "status": "rejected",
+   "reason": "REJECT w252 > slot 240",
+   "brand": null
+  },
+  {
+   "pid": "167942854",
+   "sku": "167942854",
+   "title": "Olsberg 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/167942854",
+   "regularPrice": 2799,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 227,
+    "d": 111,
+    "h": 79
+   },
+   "materials": "fabric",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT d111 > slot 105",
+   "status": "rejected",
+   "reason": "REJECT d111 > slot 105",
+   "brand": null
+  },
+  {
+   "pid": "168372839",
+   "sku": "168372839",
+   "title": "Orell 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/168372839",
+   "regularPrice": 3199,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 243,
+    "d": 103,
+    "h": 85
+   },
+   "materials": "fabric",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w243 > slot 240",
+   "status": "rejected",
+   "reason": "REJECT w243 > slot 240",
+   "brand": null
+  },
+  {
+   "pid": "167349538",
+   "sku": "167349538",
+   "title": "Qubba 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/167349538",
+   "regularPrice": 2699,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 230,
+    "d": 92,
+    "h": 80
+   },
+   "materials": "fabric; gold legs",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REVIEW curved, champagne legs; fabric photographs light taupe (#B6A695, L*69) - below greige-luxe sofa L*75",
+   "status": "review",
+   "reason": "REVIEW curved, champagne legs; fabric photographs light taupe (#B6A695, L*69) - below greige-luxe sofa L*75",
+   "brand": null
+  },
+  {
+   "pid": "165795449",
+   "sku": "165795449",
+   "title": "Nordic French 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/165795449",
+   "regularPrice": 3299,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 237,
+    "d": 99,
+    "h": 75
+   },
+   "materials": "fabric",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT reads grey (#ADA9A8)",
+   "status": "rejected",
+   "reason": "REJECT reads grey (#ADA9A8)",
+   "brand": null
+  },
+  {
+   "pid": "165710554",
+   "sku": "165710554",
+   "title": "Martin 3-Seater Boucle Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/165710554",
+   "regularPrice": 7499,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 250,
+    "d": 90,
+    "h": 65
+   },
+   "materials": "boucle",
+   "colour": "Cream",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w250 > slot",
+   "status": "rejected",
+   "reason": "REJECT w250 > slot",
+   "brand": null
+  },
+  {
+   "pid": "169575885",
+   "sku": "169575885",
+   "title": "Wood Culture Ashley Cloudy 3-Seater Fabric Sofa",
+   "slotType": "sofa",
+   "url": "https://www.homecentre.com/ae/en/p/169575885",
+   "regularPrice": 4759,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 240,
+    "d": 110,
+    "h": 72
+   },
+   "materials": "fabric",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT d110 > slot",
+   "status": "rejected",
+   "reason": "REJECT d110 > slot",
+   "brand": null
+  },
+  {
+   "pid": "168228622",
+   "sku": "168228622",
+   "title": "Kai Fabric Armchair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/p/168228622",
+   "regularPrice": 2199,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 106,
+    "d": 99,
+    "h": 75
+   },
+   "materials": "fabric",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w106 > slot 95",
+   "status": "rejected",
+   "reason": "REJECT w106 > slot 95",
+   "brand": null
+  },
+  {
+   "pid": "168524084",
+   "sku": "168524084",
+   "title": "Sansa Fabric Armchair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/p/168524084",
+   "regularPrice": 1999,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 100,
+    "d": 84,
+    "h": 78
+   },
+   "materials": "fabric",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w100 > slot 95",
+   "status": "rejected",
+   "reason": "REJECT w100 > slot 95",
+   "brand": null
+  },
+  {
+   "pid": "168468082",
+   "sku": "168468082",
+   "title": "Oshawa Fabric Armchair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/p/168468082",
+   "regularPrice": 1999,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 113,
+    "d": 96,
+    "h": 84
+   },
+   "materials": "fabric; cane",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w113 > slot",
+   "status": "rejected",
+   "reason": "REJECT w113 > slot",
+   "brand": null
+  },
+  {
+   "pid": "165710573",
+   "sku": "165710573",
+   "title": "Bomu Boucle Armchair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/p/165710573",
+   "regularPrice": 5599,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 90,
+    "d": 99,
+    "h": 83
+   },
+   "materials": "boucle",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT d99 > slot 95",
+   "status": "rejected",
+   "reason": "REJECT d99 > slot 95",
+   "brand": null
+  },
+  {
+   "pid": "170493765",
+   "sku": "170493765",
+   "title": "Wood Culture Bradley Fabric Chair",
+   "slotType": "armchair",
+   "url": "https://www.homecentre.com/ae/en/p/170493765",
+   "regularPrice": 1899,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 67,
+    "d": 70,
+    "h": 80
+   },
+   "materials": "fabric",
+   "colour": "Grey",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT blue-grey upholstery",
+   "status": "rejected",
+   "reason": "REJECT blue-grey upholstery",
+   "brand": null
+  },
+  {
+   "pid": "169441687",
+   "sku": "169441687",
+   "title": "Carson Travertine Top Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/p/169441687",
+   "regularPrice": 3199,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 145,
+    "d": 100,
+    "h": 38
+   },
+   "materials": "travertine",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT 145x100 > slot 130x90",
+   "status": "rejected",
+   "reason": "REJECT 145x100 > slot 130x90",
+   "brand": null
+  },
+  {
+   "pid": "168492243",
+   "sku": "168492243",
+   "title": "Rena Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/p/168492243",
+   "regularPrice": 549,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 100,
+    "d": 100,
+    "h": 45
+   },
+   "materials": "engineered wood",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT Ø100 > slot depth 90",
+   "status": "rejected",
+   "reason": "REJECT Ø100 > slot depth 90",
+   "brand": null
+  },
+  {
+   "pid": "169978381",
+   "sku": "169978381",
+   "title": "Kairo TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/p/169978381",
+   "regularPrice": 2499,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 200,
+    "d": 45,
+    "h": 55
+   },
+   "materials": "engineered wood",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w200 > slot 190",
+   "status": "rejected",
+   "reason": "REJECT w200 > slot 190",
+   "brand": null
+  },
+  {
+   "pid": "170702984",
+   "sku": "170702984",
+   "title": "Finn TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/p/170702984",
+   "regularPrice": 3459,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 200,
+    "d": 39,
+    "h": 50
+   },
+   "materials": "engineered wood; metal legs",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w200 > slot 190",
+   "status": "rejected",
+   "reason": "REJECT w200 > slot 190",
+   "brand": null
+  },
+  {
+   "pid": "168372600",
+   "sku": "168372600",
+   "title": "Zeus TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/p/168372600",
+   "regularPrice": 2229,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 200,
+    "d": 46,
+    "h": 50
+   },
+   "materials": "engineered wood",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w200 > slot 190",
+   "status": "rejected",
+   "reason": "REJECT w200 > slot 190",
+   "brand": null
+  },
+  {
+   "pid": "165205597",
+   "sku": "165205597",
+   "title": "Costal TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/p/165205597",
+   "regularPrice": 629,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 180,
+    "d": 40,
+    "h": 60
+   },
+   "materials": "melamine",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "not-selected: medium walnut melamine (DW-only tone)",
+   "status": "not-selected",
+   "reason": "not-selected: medium walnut melamine (DW-only tone)",
+   "brand": null
+  },
+  {
+   "pid": "168112172",
+   "sku": "168112172",
+   "title": "Ivey Rattan Table Lamp - 55 cm",
+   "slotType": "table_lamp",
+   "url": "https://www.homecentre.com/ae/en/p/168112172",
+   "regularPrice": 199,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 45,
+    "d": 45,
+    "h": 55
+   },
+   "materials": "rattan",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT shade Ø45 > 40",
+   "status": "rejected",
+   "reason": "REJECT shade Ø45 > 40",
+   "brand": null
+  },
+  {
+   "pid": "168532162",
+   "sku": "168532162",
+   "title": "Zanzibar Fabric Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/p/168532162",
+   "regularPrice": 899,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 63,
+    "d": 60,
+    "h": 75
+   },
+   "materials": "fabric; gold metal",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w63/d60 > band, velvet-look",
+   "status": "rejected",
+   "reason": "REJECT w63/d60 > band, velvet-look",
+   "brand": null
+  },
+  {
+   "pid": "167128993",
+   "sku": "167128993",
+   "title": "Joyce TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/buy-joyce-tv-unit/p/167128993",
+   "regularPrice": 2229,
+   "salePrice": 2229,
+   "dimsCm": {
+    "w": 180,
+    "d": 40,
+    "h": 45
+   },
+   "materials": "engineered wood, ivory matte paint; travertine top",
+   "colour": "Beige",
+   "category": "TV & Media Units",
+   "image": "https://media.homecentre.com/i/homecentre/167128993-167128993-HC05092024_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "ivory rounded-corner body with travertine top - greige-luxe",
+   "status": "accepted",
+   "reason": "Used in: tv-joyce",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "167109453",
+   "sku": "167109453",
+   "title": "Joyce Stone Top Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/buy-joyce-stone-top-coffee-table/p/167109453",
+   "regularPrice": 1699,
+   "salePrice": 1189,
+   "dimsCm": {
+    "w": 120,
+    "d": 70,
+    "h": 40
+   },
+   "materials": "sintered stone top; painted engineered wood",
+   "colour": "White",
+   "category": "Coffee Tables",
+   "image": "https://media.homecentre.com/i/homecentre/167109453-167109453-HC04092024_01-2100.jpg",
+   "inStock": true,
+   "notes": "rectangular, rounded; travertine-look top on ivory base - greige-luxe option (rect footprint = exception)",
+   "status": "accepted",
+   "reason": "Used in: coffee-joyce",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "167109456",
+   "sku": "167109456",
+   "title": "Joyce Stone Top Side Table",
+   "slotType": "side_table",
+   "url": "https://www.homecentre.com/ae/en/buy-joyce-stone-top-side-table/p/167109456",
+   "regularPrice": 719,
+   "salePrice": 499,
+   "dimsCm": {
+    "w": 45,
+    "d": 45,
+    "h": 50
+   },
+   "materials": "sintered stone top; painted engineered wood",
+   "colour": "White",
+   "category": "Side & End Tables",
+   "image": "https://media.homecentre.com/i/homecentre/167109456-167109456-HC04092024_01-2100.jpg",
+   "inStock": true,
+   "notes": "round ivory drum + stone top - greige-luxe",
+   "status": "accepted",
+   "reason": "Used in: side-joyce",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "165660332",
+   "sku": "165660332",
+   "title": "Echo TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/buy-echo-tv-unit/p/165660332",
+   "regularPrice": 639,
+   "salePrice": 439,
+   "dimsCm": {
+    "w": 180,
+    "d": 40,
+    "h": 43
+   },
+   "materials": "engineered wood",
+   "colour": "Brown",
+   "category": "TV & Media Units",
+   "image": "https://media.homecentre.com/i/homecentre/165660332-165660332-HC06102023_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "light oak, slatted sliding doors, tapered legs - light-oak (+ mediterranean, h 43 = exception)",
+   "status": "accepted",
+   "reason": "Used in: tv-echo",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "165205593",
+   "sku": "165205593",
+   "title": "Echo Coffee Table",
+   "slotType": "coffee_table",
+   "url": "https://www.homecentre.com/ae/en/buy-echo-coffee-table/p/165205593",
+   "regularPrice": 429,
+   "salePrice": 299,
+   "dimsCm": {
+    "w": 120,
+    "d": 60,
+    "h": 40
+   },
+   "materials": "engineered wood",
+   "colour": "Brown",
+   "category": "Coffee Tables",
+   "image": "https://media.homecentre.com/i/homecentre/165205593-165205593-HC19012023_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "light oak rectangle with lower shelf, curved legs - light-oak",
+   "status": "accepted",
+   "reason": "Used in: coffee-echo",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "167360952",
+   "sku": "167360952",
+   "title": "Qubba Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/buy-qubba-nightstand/p/167360952",
+   "regularPrice": 499,
+   "salePrice": 349,
+   "dimsCm": {
+    "w": 50,
+    "d": 45,
+    "h": 50
+   },
+   "materials": "engineered wood, melamine",
+   "colour": "Cream",
+   "category": "Nightstands",
+   "image": "https://media.homecentre.com/i/homecentre/167360952-167360952-HC13112024_01-2100.jpg",
+   "inStock": true,
+   "notes": "cream, ribbed drawer fronts - greige-luxe",
+   "status": "accepted",
+   "reason": "Used in: nightstand-qubba",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "165782060",
+   "sku": "165782060",
+   "title": "Sven Fabric Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/buy-sven-fabric-dining-chair/p/165782060",
+   "regularPrice": 449,
+   "salePrice": 309,
+   "dimsCm": {
+    "w": 48,
+    "d": 52,
+    "h": 82
+   },
+   "materials": "solid oak legs; PU-coated fabric",
+   "colour": "Beige",
+   "category": "Chairs & Benches",
+   "image": "https://media.homecentre.com/i/homecentre/165782060-165782060-HC19072023_01-2100.jpg?v=1",
+   "inStock": true,
+   "notes": "beige shell on oak legs - light-oak; PU-coated seat is borderline vs the faux-leather ban (flagged)",
+   "status": "accepted",
+   "reason": "Used in: chair-sven",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "170215567",
+   "sku": "170215567",
+   "title": "Art and Craft Windsor Tv Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/buy-art-and-craft-windsor-tv-unit/p/170215567",
+   "regularPrice": 3649,
+   "salePrice": 3139,
+   "dimsCm": {
+    "w": 180,
+    "d": 40,
+    "h": 50
+   },
+   "materials": "solid mango wood; cane doors; black metal legs",
+   "colour": "Natural",
+   "category": "TV & Media Units",
+   "image": "https://cdn.media.amplience.net/i/lmg/170215567-170215567-HC31072026_01-2100.JPG",
+   "inStock": true,
+   "notes": "warm natural mango (W6), cane door fronts, rounded ends, thin black legs - mediterranean",
+   "status": "accepted",
+   "reason": "Used in: tv-windsor",
+   "brand": "Art and Craft"
+  },
+  {
+   "pid": "166917111",
+   "sku": "166917111",
+   "title": "Studio Obliq Willow 4-Seater Dining Table",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/166917111",
+   "regularPrice": 3299,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 120,
+    "d": 120,
+    "h": 75
+   },
+   "materials": "-",
+   "colour": "White",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT 120 > slot 100",
+   "status": "rejected",
+   "reason": "REJECT 120 > slot 100",
+   "brand": null
+  },
+  {
+   "pid": "167839263",
+   "sku": "167839263",
+   "title": "Vinet 2-Seater Ceramic Top Dining Table",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/167839263",
+   "regularPrice": 449,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 80,
+    "d": 70,
+    "h": 75
+   },
+   "materials": "ceramic top; metal legs",
+   "colour": "White",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT rectangle on black metal legs (greige-luxe forbids black metal supports)",
+   "status": "rejected",
+   "reason": "REJECT rectangle on black metal legs (greige-luxe forbids black metal supports)",
+   "brand": null
+  },
+  {
+   "pid": "170493692",
+   "sku": "170493692",
+   "title": "Ripple TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/p/170493692",
+   "regularPrice": 4199,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 200,
+    "d": 45,
+    "h": 50
+   },
+   "materials": "microcement",
+   "colour": "Cream",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w200 > slot 190",
+   "status": "rejected",
+   "reason": "REJECT w200 > slot 190",
+   "brand": null
+  },
+  {
+   "pid": "169392918",
+   "sku": "169392918",
+   "title": "Myra TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/p/169392918",
+   "regularPrice": 3959,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 200,
+    "d": 40,
+    "h": 52
+   },
+   "materials": "engineered wood",
+   "colour": "Cream",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w200 > slot 190",
+   "status": "rejected",
+   "reason": "REJECT w200 > slot 190",
+   "brand": null
+  },
+  {
+   "pid": "168492245",
+   "sku": "168492245",
+   "title": "Rena TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/p/168492245",
+   "regularPrice": 1259,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 200,
+    "d": 45,
+    "h": 55
+   },
+   "materials": "engineered wood",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w200 > slot 190",
+   "status": "rejected",
+   "reason": "REJECT w200 > slot 190",
+   "brand": null
+  },
+  {
+   "pid": "164376958",
+   "sku": "164376958",
+   "title": "Vittoria TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/p/164376958",
+   "regularPrice": 1369,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 270,
+    "d": 45,
+    "h": 45
+   },
+   "materials": "melamine",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w270",
+   "status": "rejected",
+   "reason": "REJECT w270",
+   "brand": null
+  },
+  {
+   "pid": "168575231",
+   "sku": "168575231",
+   "title": "Jakomen TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/p/168575231",
+   "regularPrice": 879,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 160,
+    "d": 37,
+    "h": 43
+   },
+   "materials": "melamine; black hairpin legs",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT smoked mid-brown + black hairpin legs (not W2, not greige-luxe)",
+   "status": "rejected",
+   "reason": "REJECT smoked mid-brown + black hairpin legs (not W2, not greige-luxe)",
+   "brand": null
+  },
+  {
+   "pid": "167111989",
+   "sku": "167111989",
+   "title": "Tone TV Unit",
+   "slotType": "tv_unit",
+   "url": "https://www.homecentre.com/ae/en/p/167111989",
+   "regularPrice": 1009,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 180,
+    "d": 29.6,
+    "h": 30
+   },
+   "materials": "melamine",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT h30 (floating unit, far below 40–60)",
+   "status": "rejected",
+   "reason": "REJECT h30 (floating unit, far below 40–60)",
+   "brand": null
+  },
+  {
+   "pid": "166901966",
+   "sku": "166901966",
+   "title": "Roma Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/p/166901966",
+   "regularPrice": 779,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 55,
+    "d": 66,
+    "h": 75
+   },
+   "materials": "acacia",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT d66 > slot 60",
+   "status": "rejected",
+   "reason": "REJECT d66 > slot 60",
+   "brand": null
+  },
+  {
+   "pid": "168569583",
+   "sku": "168569583",
+   "title": "Qila Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/p/168569583",
+   "regularPrice": 649,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 51,
+    "d": 56,
+    "h": 83
+   },
+   "materials": "PU leather",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT PU leather",
+   "status": "rejected",
+   "reason": "REJECT PU leather",
+   "brand": null
+  },
+  {
+   "pid": "168541467",
+   "sku": "168541467",
+   "title": "Lumi Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/168541467",
+   "regularPrice": 299,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 45,
+    "d": 40,
+    "h": 50
+   },
+   "materials": "engineered wood",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT dark brown finish",
+   "status": "rejected",
+   "reason": "REJECT dark brown finish",
+   "brand": null
+  },
+  {
+   "pid": "166385606",
+   "sku": "166385606",
+   "title": "Malta 4-Seater Ceramic Top Dining Table",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/buy-malta-4seater-ceramic-top-dining-table/p/166385606",
+   "regularPrice": 849,
+   "salePrice": 499,
+   "dimsCm": {
+    "w": 90,
+    "d": 90,
+    "h": 75
+   },
+   "materials": "ceramic marble-look top; pedestal base",
+   "colour": "White",
+   "category": "Dining Tables",
+   "image": "https://media.homecentre.com/i/homecentre/166385606-166385606-HC15052024_01-2100.jpg",
+   "inStock": true,
+   "notes": "soft-square white marble-look ceramic top on ivory tulip pedestal - greige-luxe (square 90 instead of round = exception)",
+   "status": "accepted",
+   "reason": "Used in: dining-malta-90",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "167535199",
+   "sku": "167535199",
+   "title": "Wood Culture Emily Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/buy-emily-dining-chair/p/167535199",
+   "regularPrice": 1069,
+   "salePrice": 809,
+   "dimsCm": {
+    "w": 54,
+    "d": 55,
+    "h": 74
+   },
+   "materials": "teak frame (pale natural); woven rope seat",
+   "colour": "Beige",
+   "category": "Chairs & Benches",
+   "image": "https://media.homecentre.com/i/homecentre/167535199-167535199-HC01012025_01-2100.jpg",
+   "inStock": true,
+   "notes": "Y-back wishbone chair, pale natural wood + rope seat; listing says W74 D55 H54 (width/height swapped) - light-oak / mediterranean",
+   "status": "accepted",
+   "reason": "Used in: chair-emily",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "170215763",
+   "sku": "170215763",
+   "title": "Art and Craft Canovia Fabric Dining Chair",
+   "slotType": "dining_chair",
+   "url": "https://www.homecentre.com/ae/en/buy-art-and-craft-canovia-fabric-dining-chair/p/170215763",
+   "regularPrice": 899,
+   "salePrice": 779,
+   "dimsCm": {
+    "w": 48,
+    "d": 40,
+    "h": 80
+   },
+   "materials": "solid wood; cane back; fabric seat",
+   "colour": "Beige",
+   "category": "Chairs & Benches",
+   "image": "https://cdn.media.amplience.net/i/lmg/170215763-170215763-HC31072026_01-2100.jpg",
+   "inStock": true,
+   "notes": "honey wood frame, cane back, cream seat pad - mediterranean; listed depth 40 looks like seat depth",
+   "status": "accepted",
+   "reason": "Used in: chair-canovia",
+   "brand": "Home Centre"
+  },
+  {
+   "pid": "170686860",
+   "sku": "170686860",
+   "title": "Modena 4-Seater Travertine Top Dining Table",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/170686860",
+   "regularPrice": 1799,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 120,
+    "d": 120,
+    "h": 76
+   },
+   "materials": "travertine top",
+   "colour": "Beige",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT 120 > slot 100",
+   "status": "rejected",
+   "reason": "REJECT 120 > slot 100",
+   "brand": null
+  },
+  {
+   "pid": "169789898",
+   "sku": "169789898",
+   "title": "Tensa 4-Seater Dining Table",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/169789898",
+   "regularPrice": 1999,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 120,
+    "d": 120,
+    "h": 76
+   },
+   "materials": "veneer",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT 120 > slot 100",
+   "status": "rejected",
+   "reason": "REJECT 120 > slot 100",
+   "brand": null
+  },
+  {
+   "pid": "168334662",
+   "sku": "168334662",
+   "title": "Neon 4-Seater Marble Top Dining Table",
+   "slotType": "dining_table",
+   "url": "https://www.homecentre.com/ae/en/p/168334662",
+   "regularPrice": 3199,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 110,
+    "d": 110,
+    "h": 76
+   },
+   "materials": "marble; gold pedestal",
+   "colour": "White",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT 110 > slot 100",
+   "status": "rejected",
+   "reason": "REJECT 110 > slot 100",
+   "brand": null
+  },
+  {
+   "pid": "169726905",
+   "sku": "169726905",
+   "title": "Grant Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/169726905",
+   "regularPrice": 349,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 45,
+    "d": 40,
+    "h": 51
+   },
+   "materials": "oak veneer, fluted",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT out of stock online (ideal pale oak fluted LO nightstand - recheck later)",
+   "status": "rejected",
+   "reason": "REJECT out of stock online (ideal pale oak fluted LO nightstand - recheck later)",
+   "brand": null
+  },
+  {
+   "pid": "169795599",
+   "sku": "169795599",
+   "title": "Anasa Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/169795599",
+   "regularPrice": 999,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 70,
+    "d": 43,
+    "h": 55
+   },
+   "materials": "oak veneer; rattan fronts",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w70 > slot 50",
+   "status": "rejected",
+   "reason": "REJECT w70 > slot 50",
+   "brand": null
+  },
+  {
+   "pid": "162053567",
+   "sku": "162053567",
+   "title": "Warner Left Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/162053567",
+   "regularPrice": 399,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 58,
+    "d": 41.3,
+    "h": 41.9
+   },
+   "materials": "melamine lacquer",
+   "colour": "Brown",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w58 > slot 50",
+   "status": "rejected",
+   "reason": "REJECT w58 > slot 50",
+   "brand": null
+  },
+  {
+   "pid": "166990407",
+   "sku": "166990407",
+   "title": "Lorenzo Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/166990407",
+   "regularPrice": 429,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 60,
+    "d": 40,
+    "h": 45
+   },
+   "materials": "glossy",
+   "colour": "White",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w60, glossy",
+   "status": "rejected",
+   "reason": "REJECT w60, glossy",
+   "brand": null
+  },
+  {
+   "pid": "168180568",
+   "sku": "168180568",
+   "title": "Frank Nightstand",
+   "slotType": "nightstand",
+   "url": "https://www.homecentre.com/ae/en/p/168180568",
+   "regularPrice": 299,
+   "salePrice": null,
+   "dimsCm": {
+    "w": 55,
+    "d": 45,
+    "h": 55
+   },
+   "materials": "engineered wood",
+   "colour": "White",
+   "category": "",
+   "image": "",
+   "inStock": null,
+   "notes": "REJECT w55 > slot 50",
+   "status": "rejected",
+   "reason": "REJECT w55 > slot 50",
+   "brand": null
   },
   {
    "pid": "166976150",
@@ -4465,7 +6645,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: tableware-mia-amber"
+   "reason": "Used in: tableware-mia-amber, tableware-mia-smoke-wood",
+   "brand": "Home Centre"
   },
   {
    "pid": "166767932",
@@ -4483,7 +6664,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: tableware-mia-amber"
+   "reason": "Used in: tableware-mia-amber, tableware-lillian-amber-brass",
+   "brand": "Home Centre"
   },
   {
    "pid": "167454969",
@@ -4501,7 +6683,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: tableware-mia-amber"
+   "reason": "Used in: tableware-mia-amber, tableware-lillian-amber-brass",
+   "brand": "Home Centre"
   },
   {
    "pid": "162548996",
@@ -4519,7 +6702,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: tableware-mia-amber"
+   "reason": "Used in: tableware-mia-amber, tableware-lillian-amber-brass",
+   "brand": "Home Centre"
   },
   {
    "pid": "161914224",
@@ -4537,7 +6721,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: tableware-stoneage-olive"
+   "reason": "Used in: tableware-stoneage-olive",
+   "brand": "Home Centre"
   },
   {
    "pid": "168589393",
@@ -4555,7 +6740,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: tableware-stoneage-olive"
+   "reason": "Used in: tableware-stoneage-olive",
+   "brand": "Home Centre"
   },
   {
    "pid": "169037982",
@@ -4573,7 +6759,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: tableware-stoneage-olive"
+   "reason": "Used in: tableware-stoneage-olive",
+   "brand": "Touche Deco"
   },
   {
    "pid": "169612553",
@@ -4591,7 +6778,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: tableware-stoneage-olive"
+   "reason": "Used in: tableware-stoneage-olive, tableware-mia-smoke-wood",
+   "brand": "Home Centre"
   },
   {
    "pid": "170013253",
@@ -4609,7 +6797,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: tableware-lillian-smoke"
+   "reason": "Used in: tableware-lillian-smoke, tableware-lillian-amber-brass",
+   "brand": "Home Centre"
   },
   {
    "pid": "169551262",
@@ -4627,7 +6816,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: tableware-lillian-smoke"
+   "reason": "Used in: tableware-lillian-smoke, tableware-mia-smoke-wood",
+   "brand": "Home Centre"
   },
   {
    "pid": "163717249",
@@ -4645,7 +6835,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: tableware-lillian-smoke"
+   "reason": "Used in: tableware-lillian-smoke, tableware-mia-smoke-wood",
+   "brand": "Home Centre"
   },
   {
    "pid": "169192897",
@@ -4663,7 +6854,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: tableware-lillian-smoke"
+   "reason": "Used in: tableware-lillian-smoke",
+   "brand": "Home Centre"
   },
   {
    "pid": "165960506",
@@ -4681,7 +6873,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: centerpiece-sable-eucalyptus, nsdecor-dara-box"
+   "reason": "Used in: centerpiece-sable-eucalyptus, nsdecor-dara-box",
+   "brand": "Home Centre"
   },
   {
    "pid": "165282170",
@@ -4699,7 +6892,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: centerpiece-candles-travertine"
+   "reason": "Used in: centerpiece-candles-travertine",
+   "brand": "Home Centre"
   },
   {
    "pid": "165839835",
@@ -4717,7 +6911,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: centerpiece-candles-travertine, nsdecor-travertine-candle"
+   "reason": "Used in: centerpiece-candles-travertine, nsdecor-travertine-candle, kitchen-white-travertine, decor-travertine-cream",
+   "brand": "Home Centre"
   },
   {
    "pid": "165839002",
@@ -4735,7 +6930,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: centerpiece-maya-eucalyptus"
+   "reason": "Used in: centerpiece-maya-eucalyptus, decor-travertine-cream",
+   "brand": "Home Centre"
   },
   {
    "pid": "161882497",
@@ -4753,7 +6949,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: centerpiece-maya-eucalyptus"
+   "reason": "Used in: centerpiece-maya-eucalyptus",
+   "brand": "Home Centre"
   },
   {
    "pid": "166447854",
@@ -4771,7 +6968,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: kitchen-walnut-black, kitchen-laimai-dark"
+   "reason": "Used in: kitchen-walnut-black, kitchen-laimai-dark, kitchen-black-basic",
+   "brand": "Kenwood"
   },
   {
    "pid": "167283781",
@@ -4789,7 +6987,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: kitchen-walnut-black, kitchen-white-basic"
+   "reason": "Used in: kitchen-walnut-black, kitchen-white-basic, kitchen-black-basic, kitchen-white-travertine",
+   "brand": "Home Centre"
   },
   {
    "pid": "166926347",
@@ -4807,7 +7006,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: kitchen-walnut-black"
+   "reason": "Used in: kitchen-walnut-black",
+   "brand": "Billi"
   },
   {
    "pid": "169401408",
@@ -4825,7 +7025,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: kitchen-walnut-black"
+   "reason": "Used in: kitchen-walnut-black, kitchen-white-travertine",
+   "brand": "Home Centre"
   },
   {
    "pid": "169440272",
@@ -4842,8 +7043,9 @@
    "image": "https://media.homecentre.com/i/homecentre/169440272-169440272-HC27042026_01-2100.jpg?v=1",
    "inStock": true,
    "notes": "",
-   "status": "accepted",
-   "reason": "Used in: kitchen-walnut-black"
+   "status": "not-selected",
+   "reason": "Candidate checked, not needed",
+   "brand": null
   },
   {
    "pid": "166926343",
@@ -4861,7 +7063,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: kitchen-laimai-dark"
+   "reason": "Used in: kitchen-laimai-dark",
+   "brand": "Billi"
   },
   {
    "pid": "167529013",
@@ -4879,7 +7082,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: kitchen-laimai-dark"
+   "reason": "Used in: kitchen-laimai-dark",
+   "brand": "Aryan Vikaas"
   },
   {
    "pid": "162470181",
@@ -4897,7 +7101,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: kitchen-laimai-dark, kitchen-white-basic"
+   "reason": "Used in: kitchen-laimai-dark, kitchen-white-basic, kitchen-black-basic",
+   "brand": "Home Centre"
   },
   {
    "pid": "167848914",
@@ -4915,7 +7120,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: kitchen-white-basic"
+   "reason": "Used in: kitchen-white-basic, kitchen-white-travertine",
+   "brand": "Crownline"
   },
   {
    "pid": "166522631",
@@ -4933,7 +7139,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: kitchen-white-basic"
+   "reason": "Used in: kitchen-white-basic, kitchen-black-basic",
+   "brand": "Home Centre"
   },
   {
    "pid": "168405619",
@@ -4951,7 +7158,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: throw-olivia-terracotta"
+   "reason": "Used in: throw-olivia-terracotta",
+   "brand": "Home Centre"
   },
   {
    "pid": "168125154",
@@ -4969,7 +7177,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: throw-vayu-sage"
+   "reason": "Used in: throw-vayu-sage",
+   "brand": "Home Centre"
   },
   {
    "pid": "165629487",
@@ -4987,7 +7196,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: throw-norham-olive"
+   "reason": "Used in: throw-norham-olive",
+   "brand": "Home Centre"
   },
   {
    "pid": "166836257",
@@ -5005,7 +7215,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: throw-thorn-oat"
+   "reason": "Used in: throw-thorn-oat, bedding-white-sateen-oat",
+   "brand": "Home Centre"
   },
   {
    "pid": "168452371",
@@ -5023,7 +7234,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: nsdecor-dara-box"
+   "reason": "Used in: nsdecor-dara-box",
+   "brand": "Home Centre"
   },
   {
    "pid": "165877266",
@@ -5041,7 +7253,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: nsdecor-dara-box"
+   "reason": "Used in: nsdecor-dara-box, nsdecor-bud-vase-tealight",
+   "brand": "Home Centre"
   },
   {
    "pid": "165877244",
@@ -5059,7 +7272,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: nsdecor-travertine-candle"
+   "reason": "Used in: nsdecor-travertine-candle",
+   "brand": "Home Centre"
   },
   {
    "pid": "165282172",
@@ -5077,7 +7291,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: nsdecor-travertine-candle"
+   "reason": "Used in: nsdecor-travertine-candle",
+   "brand": "Home Centre"
   },
   {
    "pid": "165629591",
@@ -5095,7 +7310,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: nsdecor-walnut-vase"
+   "reason": "Used in: nsdecor-walnut-vase, nsdecor-bud-vase-tealight",
+   "brand": "Home Centre"
   },
   {
    "pid": "169271520",
@@ -5113,7 +7329,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: mirror-sora-eda"
+   "reason": "Used in: mirror-sora-eda",
+   "brand": "Home Centre"
   },
   {
    "pid": "163463491",
@@ -5131,7 +7348,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: mirror-agnek-80"
+   "reason": "Used in: mirror-agnek-80",
+   "brand": "Home Centre"
   },
   {
    "pid": "166794499",
@@ -5149,7 +7367,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: mirror-artemis-arch-60"
+   "reason": "Used in: mirror-artemis-arch-60",
+   "brand": "Home Centre"
   },
   {
    "pid": "166846998",
@@ -5167,7 +7386,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: mirror-artemis-arch-80"
+   "reason": "Used in: mirror-artemis-arch-80",
+   "brand": "Home Centre"
   },
   {
    "pid": "166157211",
@@ -5185,7 +7405,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: runner-zen-bianca"
+   "reason": "Used in: runner-zen-bianca",
+   "brand": "Knot Home"
   },
   {
    "pid": "167758300",
@@ -5203,7 +7424,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: runner-marco-sandy"
+   "reason": "Used in: runner-marco-sandy",
+   "brand": "Knot Home"
   },
   {
    "pid": "167648537",
@@ -5221,7 +7443,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: runner-zen-alba"
+   "reason": "Used in: runner-zen-alba",
+   "brand": "Knot Home"
   },
   {
    "pid": "169009369",
@@ -5239,7 +7462,8 @@
    "inStock": true,
    "notes": "",
    "status": "accepted",
-   "reason": "Used in: runner-kaela"
+   "reason": "Used in: runner-kaela",
+   "brand": "Home Centre"
   }
  ],
  "catalogItems": [
@@ -5256,6 +7480,9 @@
    ],
    "regularTotal": 2499,
    "publicPrice": 2999,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5271,6 +7498,7 @@
    ],
    "regularTotal": 2499,
    "publicPrice": 2999,
+   "offeredBy": [],
    "note": ""
   },
   {
@@ -5286,6 +7514,7 @@
    ],
    "regularTotal": 3999,
    "publicPrice": 4799,
+   "offeredBy": [],
    "note": ""
   },
   {
@@ -5301,6 +7530,7 @@
    ],
    "regularTotal": 2299,
    "publicPrice": 2759,
+   "offeredBy": [],
    "note": ""
   },
   {
@@ -5316,6 +7546,7 @@
    ],
    "regularTotal": 3999,
    "publicPrice": 4799,
+   "offeredBy": [],
    "note": ""
   },
   {
@@ -5331,6 +7562,10 @@
    ],
    "regularTotal": 1799,
    "publicPrice": 2159,
+   "offeredBy": [
+    "light-oak",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -5346,6 +7581,9 @@
    ],
    "regularTotal": 2499,
    "publicPrice": 2999,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5361,6 +7599,9 @@
    ],
    "regularTotal": 2499,
    "publicPrice": 2999,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5376,6 +7617,9 @@
    ],
    "regularTotal": 1499,
    "publicPrice": 1799,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5391,6 +7635,9 @@
    ],
    "regularTotal": 1499,
    "publicPrice": 1799,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5406,6 +7653,7 @@
    ],
    "regularTotal": 1249,
    "publicPrice": 1499,
+   "offeredBy": [],
    "note": ""
   },
   {
@@ -5421,6 +7669,7 @@
    ],
    "regularTotal": 1129,
    "publicPrice": 1355,
+   "offeredBy": [],
    "note": ""
   },
   {
@@ -5436,6 +7685,9 @@
    ],
    "regularTotal": 2229,
    "publicPrice": 2675,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5451,6 +7703,9 @@
    ],
    "regularTotal": 2129,
    "publicPrice": 2555,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5466,6 +7721,9 @@
    ],
    "regularTotal": 999,
    "publicPrice": 1199,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5481,6 +7739,9 @@
    ],
    "regularTotal": 769,
    "publicPrice": 923,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5496,6 +7757,9 @@
    ],
    "regularTotal": 1079,
    "publicPrice": 1295,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5511,6 +7775,9 @@
    ],
    "regularTotal": 849,
    "publicPrice": 1019,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5526,6 +7793,9 @@
    ],
    "regularTotal": 799,
    "publicPrice": 959,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5541,6 +7811,9 @@
    ],
    "regularTotal": 849,
    "publicPrice": 1019,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5556,6 +7829,9 @@
    ],
    "regularTotal": 799,
    "publicPrice": 959,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5571,6 +7847,12 @@
    ],
    "regularTotal": 1799,
    "publicPrice": 2159,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -5586,6 +7868,7 @@
    ],
    "regularTotal": 1099,
    "publicPrice": 1319,
+   "offeredBy": [],
    "note": ""
   },
   {
@@ -5601,6 +7884,12 @@
    ],
    "regularTotal": 2399,
    "publicPrice": 2879,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -5616,6 +7905,12 @@
    ],
    "regularTotal": 1129,
    "publicPrice": 1355,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -5631,6 +7926,12 @@
    ],
    "regularTotal": 1499,
    "publicPrice": 1799,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -5658,6 +7959,10 @@
    ],
    "regularTotal": 627,
    "publicPrice": 752,
+   "offeredBy": [
+    "dark-walnut",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -5679,6 +7984,10 @@
    ],
    "regularTotal": 328,
    "publicPrice": 394,
+   "offeredBy": [
+    "dark-walnut",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -5706,6 +8015,11 @@
    ],
    "regularTotal": 637,
    "publicPrice": 764,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -5721,6 +8035,9 @@
    ],
    "regularTotal": 1939,
    "publicPrice": 2327,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5736,6 +8053,9 @@
    ],
    "regularTotal": 299,
    "publicPrice": 359,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5751,6 +8071,9 @@
    ],
    "regularTotal": 1669,
    "publicPrice": 2003,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5766,6 +8089,12 @@
    ],
    "regularTotal": 149,
    "publicPrice": 179,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -5781,6 +8110,11 @@
    ],
    "regularTotal": 179,
    "publicPrice": 215,
+   "offeredBy": [
+    "dark-walnut",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -5796,6 +8130,9 @@
    ],
    "regularTotal": 249,
    "publicPrice": 299,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5811,6 +8148,10 @@
    ],
    "regularTotal": 199,
    "publicPrice": 239,
+   "offeredBy": [
+    "dark-walnut",
+    "greige-luxe"
+   ],
    "note": ""
   },
   {
@@ -5826,10 +8167,13 @@
    ],
    "regularTotal": 3659,
    "publicPrice": 4391,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
-   "id": "dining-mahmayi-80",
+   "id": "dining-square-80",
    "type": "dining_table",
    "components": [
     {
@@ -5841,6 +8185,9 @@
    ],
    "regularTotal": 979,
    "publicPrice": 1175,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5856,6 +8203,9 @@
    ],
    "regularTotal": 649,
    "publicPrice": 779,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5871,6 +8221,7 @@
    ],
    "regularTotal": 849,
    "publicPrice": 1019,
+   "offeredBy": [],
    "note": ""
   },
   {
@@ -5886,6 +8237,7 @@
    ],
    "regularTotal": 2039,
    "publicPrice": 2447,
+   "offeredBy": [],
    "note": ""
   },
   {
@@ -5901,6 +8253,7 @@
    ],
    "regularTotal": 1349,
    "publicPrice": 1619,
+   "offeredBy": [],
    "note": ""
   },
   {
@@ -5916,6 +8269,9 @@
    ],
    "regularTotal": 1069,
    "publicPrice": 1283,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5931,6 +8287,10 @@
    ],
    "regularTotal": 399,
    "publicPrice": 479,
+   "offeredBy": [
+    "dark-walnut",
+    "greige-luxe"
+   ],
    "note": ""
   },
   {
@@ -5946,6 +8306,9 @@
    ],
    "regularTotal": 449,
    "publicPrice": 539,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -5961,6 +8324,10 @@
    ],
    "regularTotal": 399,
    "publicPrice": 479,
+   "offeredBy": [
+    "dark-walnut",
+    "greige-luxe"
+   ],
    "note": ""
   },
   {
@@ -5976,6 +8343,12 @@
    ],
    "regularTotal": 179,
    "publicPrice": 215,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -5991,6 +8364,11 @@
    ],
    "regularTotal": 299,
    "publicPrice": 359,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe"
+   ],
    "note": ""
   },
   {
@@ -6006,6 +8384,10 @@
    ],
    "regularTotal": 299,
    "publicPrice": 359,
+   "offeredBy": [
+    "dark-walnut",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6021,6 +8403,10 @@
    ],
    "regularTotal": 349,
    "publicPrice": 419,
+   "offeredBy": [
+    "dark-walnut",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6036,6 +8422,10 @@
    ],
    "regularTotal": 229,
    "publicPrice": 275,
+   "offeredBy": [
+    "dark-walnut",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6051,6 +8441,12 @@
    ],
    "regularTotal": 1649,
    "publicPrice": 1979,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6066,6 +8462,11 @@
    ],
    "regularTotal": 1099,
    "publicPrice": 1319,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe"
+   ],
    "note": ""
   },
   {
@@ -6081,6 +8482,11 @@
    ],
    "regularTotal": 649,
    "publicPrice": 779,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6096,6 +8502,9 @@
    ],
    "regularTotal": 749,
    "publicPrice": 899,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -6117,6 +8526,12 @@
    ],
    "regularTotal": 896,
    "publicPrice": 1075,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6132,6 +8547,12 @@
    ],
    "regularTotal": 398,
    "publicPrice": 478,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6147,6 +8568,10 @@
    ],
    "regularTotal": 298,
    "publicPrice": 358,
+   "offeredBy": [
+    "dark-walnut",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6162,6 +8587,11 @@
    ],
    "regularTotal": 249,
    "publicPrice": 299,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe"
+   ],
    "note": ""
   },
   {
@@ -6177,6 +8607,9 @@
    ],
    "regularTotal": 79,
    "publicPrice": 95,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -6192,6 +8625,10 @@
    ],
    "regularTotal": 199,
    "publicPrice": 239,
+   "offeredBy": [
+    "dark-walnut",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6207,6 +8644,10 @@
    ],
    "regularTotal": 199,
    "publicPrice": 239,
+   "offeredBy": [
+    "dark-walnut",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6222,6 +8663,12 @@
    ],
    "regularTotal": 379,
    "publicPrice": 455,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6237,6 +8684,11 @@
    ],
    "regularTotal": 129,
    "publicPrice": 155,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe"
+   ],
    "note": ""
   },
   {
@@ -6258,6 +8710,12 @@
    ],
    "regularTotal": 578,
    "publicPrice": 694,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6273,10 +8731,16 @@
    ],
    "regularTotal": 349,
    "publicPrice": 419,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
-   "id": "plant-olive-homekode",
+   "id": "plant-olive-180",
    "type": "plant",
    "components": [
     {
@@ -6288,6 +8752,12 @@
    ],
    "regularTotal": 929,
    "publicPrice": 1115,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6315,6 +8785,10 @@
    ],
    "regularTotal": 847,
    "publicPrice": 1016,
+   "offeredBy": [
+    "dark-walnut",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6342,6 +8816,10 @@
    ],
    "regularTotal": 687,
    "publicPrice": 824,
+   "offeredBy": [
+    "dark-walnut",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6369,6 +8847,9 @@
    ],
    "regularTotal": 1047,
    "publicPrice": 1256,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -6396,6 +8877,9 @@
    ],
    "regularTotal": 437,
    "publicPrice": 524,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -6423,6 +8907,10 @@
    ],
    "regularTotal": 477,
    "publicPrice": 572,
+   "offeredBy": [
+    "dark-walnut",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6450,6 +8938,9 @@
    ],
    "regularTotal": 377,
    "publicPrice": 452,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -6465,6 +8956,10 @@
    ],
    "regularTotal": 499,
    "publicPrice": 599,
+   "offeredBy": [
+    "dark-walnut",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6480,6 +8975,10 @@
    ],
    "regularTotal": 499,
    "publicPrice": 599,
+   "offeredBy": [
+    "dark-walnut",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6495,6 +8994,9 @@
    ],
    "regularTotal": 399,
    "publicPrice": 479,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -6510,6 +9012,9 @@
    ],
    "regularTotal": 199,
    "publicPrice": 239,
+   "offeredBy": [
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6525,6 +9030,10 @@
    ],
    "regularTotal": 199,
    "publicPrice": 239,
+   "offeredBy": [
+    "dark-walnut",
+    "greige-luxe"
+   ],
    "note": ""
   },
   {
@@ -6558,6 +9067,10 @@
    ],
    "regularTotal": 476,
    "publicPrice": 571,
+   "offeredBy": [
+    "dark-walnut",
+    "greige-luxe"
+   ],
    "note": ""
   },
   {
@@ -6591,6 +9104,9 @@
    ],
    "regularTotal": 495,
    "publicPrice": 594,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -6624,6 +9140,12 @@
    ],
    "regularTotal": 366,
    "publicPrice": 439,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6645,6 +9167,12 @@
    ],
    "regularTotal": 204,
    "publicPrice": 245,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6666,6 +9194,11 @@
    ],
    "regularTotal": 78,
    "publicPrice": 94,
+   "offeredBy": [
+    "dark-walnut",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6687,6 +9220,12 @@
    ],
    "regularTotal": 191,
    "publicPrice": 229,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6716,16 +9255,13 @@
      "qty": 1,
      "regular": 59,
      "sale": 41
-    },
-    {
-     "pid": "169440272",
-     "qty": 1,
-     "regular": 99,
-     "sale": 99
     }
    ],
-   "regularTotal": 395,
-   "publicPrice": 474,
+   "regularTotal": 296,
+   "publicPrice": 355,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -6755,16 +9291,13 @@
      "qty": 1,
      "regular": 25,
      "sale": 17
-    },
-    {
-     "pid": "165839004",
-     "qty": 1,
-     "regular": 99,
-     "sale": 99
     }
    ],
-   "regularTotal": 611,
-   "publicPrice": 733,
+   "regularTotal": 512,
+   "publicPrice": 614,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -6794,16 +9327,15 @@
      "qty": 1,
      "regular": 25,
      "sale": 17
-    },
-    {
-     "pid": "165839004",
-     "qty": 1,
-     "regular": 99,
-     "sale": 99
     }
    ],
-   "regularTotal": 239,
-   "publicPrice": 287,
+   "regularTotal": 140,
+   "publicPrice": 168,
+   "offeredBy": [
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6819,6 +9351,10 @@
    ],
    "regularTotal": 229,
    "publicPrice": 275,
+   "offeredBy": [
+    "dark-walnut",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6834,6 +9370,11 @@
    ],
    "regularTotal": 99,
    "publicPrice": 119,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6849,6 +9390,11 @@
    ],
    "regularTotal": 99,
    "publicPrice": 119,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6864,6 +9410,12 @@
    ],
    "regularTotal": 139,
    "publicPrice": 167,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6891,6 +9443,10 @@
    ],
    "regularTotal": 189,
    "publicPrice": 227,
+   "offeredBy": [
+    "dark-walnut",
+    "greige-luxe"
+   ],
    "note": ""
   },
   {
@@ -6918,6 +9474,12 @@
    ],
    "regularTotal": 96,
    "publicPrice": 115,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6939,6 +9501,9 @@
    ],
    "regularTotal": 118,
    "publicPrice": 142,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -6954,6 +9519,12 @@
    ],
    "regularTotal": 399,
    "publicPrice": 479,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6969,6 +9540,12 @@
    ],
    "regularTotal": 499,
    "publicPrice": 599,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6984,6 +9561,12 @@
    ],
    "regularTotal": 399,
    "publicPrice": 479,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -6999,6 +9582,11 @@
    ],
    "regularTotal": 199,
    "publicPrice": 239,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "mediterranean"
+   ],
    "note": ""
   },
   {
@@ -7014,6 +9602,9 @@
    ],
    "regularTotal": 299,
    "publicPrice": 359,
+   "offeredBy": [
+    "dark-walnut"
+   ],
    "note": ""
   },
   {
@@ -7029,6 +9620,10 @@
    ],
    "regularTotal": 149,
    "publicPrice": 179,
+   "offeredBy": [
+    "dark-walnut",
+    "greige-luxe"
+   ],
    "note": ""
   },
   {
@@ -7044,6 +9639,10 @@
    ],
    "regularTotal": 199,
    "publicPrice": 239,
+   "offeredBy": [
+    "dark-walnut",
+    "greige-luxe"
+   ],
    "note": ""
   },
   {
@@ -7059,6 +9658,1065 @@
    ],
    "regularTotal": 349,
    "publicPrice": 419,
+   "offeredBy": [
+    "dark-walnut"
+   ],
+   "note": ""
+  },
+  {
+   "id": "sofa-brighton-3",
+   "type": "sofa",
+   "components": [
+    {
+     "pid": "168708283",
+     "qty": 1,
+     "regular": 2999,
+     "sale": 2099
+    }
+   ],
+   "regularTotal": 2999,
+   "publicPrice": 3599,
+   "offeredBy": [
+    "dark-walnut"
+   ],
+   "note": ""
+  },
+  {
+   "id": "sofa-daventry-3",
+   "type": "sofa",
+   "components": [
+    {
+     "pid": "169124142",
+     "qty": 1,
+     "regular": 2199,
+     "sale": 1539
+    }
+   ],
+   "regularTotal": 2199,
+   "publicPrice": 2639,
+   "offeredBy": [
+    "dark-walnut",
+    "greige-luxe"
+   ],
+   "note": ""
+  },
+  {
+   "id": "coffee-selric",
+   "type": "coffee_table",
+   "components": [
+    {
+     "pid": "170380029",
+     "qty": 1,
+     "regular": 2659,
+     "sale": 1679
+    }
+   ],
+   "regularTotal": 2659,
+   "publicPrice": 3191,
+   "offeredBy": [
+    "dark-walnut"
+   ],
+   "note": ""
+  },
+  {
+   "id": "side-herald",
+   "type": "side_table",
+   "components": [
+    {
+     "pid": "166548091",
+     "qty": 1,
+     "regular": 749,
+     "sale": 519
+    }
+   ],
+   "regularTotal": 749,
+   "publicPrice": 899,
+   "offeredBy": [
+    "dark-walnut"
+   ],
+   "note": ""
+  },
+  {
+   "id": "chair-stanton",
+   "type": "dining_chair",
+   "components": [
+    {
+     "pid": "165928794",
+     "qty": 1,
+     "regular": 429,
+     "sale": 429
+    }
+   ],
+   "regularTotal": 429,
+   "publicPrice": 515,
+   "offeredBy": [
+    "dark-walnut"
+   ],
+   "note": ""
+  },
+  {
+   "id": "sofa-rockwell-3",
+   "type": "sofa",
+   "components": [
+    {
+     "pid": "166392551",
+     "qty": 1,
+     "regular": 1799,
+     "sale": 1049
+    }
+   ],
+   "regularTotal": 1799,
+   "publicPrice": 2159,
+   "offeredBy": [
+    "light-oak"
+   ],
+   "note": ""
+  },
+  {
+   "id": "sofa-pebble-3",
+   "type": "sofa",
+   "components": [
+    {
+     "pid": "166562670",
+     "qty": 1,
+     "regular": 2999,
+     "sale": 2099
+    }
+   ],
+   "regularTotal": 2999,
+   "publicPrice": 3599,
+   "offeredBy": [
+    "greige-luxe"
+   ],
+   "note": ""
+  },
+  {
+   "id": "sofa-oshawa-3",
+   "type": "sofa",
+   "components": [
+    {
+     "pid": "168468083",
+     "qty": 1,
+     "regular": 3999,
+     "sale": 2799
+    }
+   ],
+   "regularTotal": 3999,
+   "publicPrice": 4799,
+   "offeredBy": [
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "armchair-natura",
+   "type": "armchair",
+   "components": [
+    {
+     "pid": "169441719",
+     "qty": 1,
+     "regular": 1299,
+     "sale": 909
+    }
+   ],
+   "regularTotal": 1299,
+   "publicPrice": 1559,
+   "offeredBy": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "armchair-oti",
+   "type": "armchair",
+   "components": [
+    {
+     "pid": "165710560",
+     "qty": 1,
+     "regular": 4899,
+     "sale": 4899
+    }
+   ],
+   "regularTotal": 4899,
+   "publicPrice": 5879,
+   "offeredBy": [
+    "greige-luxe"
+   ],
+   "note": ""
+  },
+  {
+   "id": "armchair-mons",
+   "type": "armchair",
+   "components": [
+    {
+     "pid": "165710556",
+     "qty": 1,
+     "regular": 3699,
+     "sale": 3699
+    }
+   ],
+   "regularTotal": 3699,
+   "publicPrice": 4439,
+   "offeredBy": [
+    "greige-luxe"
+   ],
+   "note": ""
+  },
+  {
+   "id": "armchair-emma",
+   "type": "armchair",
+   "components": [
+    {
+     "pid": "167996652",
+     "qty": 1,
+     "regular": 2200,
+     "sale": 2200
+    }
+   ],
+   "regularTotal": 2200,
+   "publicPrice": 2640,
+   "offeredBy": [
+    "greige-luxe"
+   ],
+   "note": ""
+  },
+  {
+   "id": "armchair-sukhna",
+   "type": "armchair",
+   "components": [
+    {
+     "pid": "168036583",
+     "qty": 1,
+     "regular": 1499,
+     "sale": 1129
+    }
+   ],
+   "regularTotal": 1499,
+   "publicPrice": 1799,
+   "offeredBy": [
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "coffee-arkas",
+   "type": "coffee_table",
+   "components": [
+    {
+     "pid": "168159693",
+     "qty": 1,
+     "regular": 1689,
+     "sale": 1179
+    }
+   ],
+   "regularTotal": 1689,
+   "publicPrice": 2027,
+   "offeredBy": [
+    "greige-luxe"
+   ],
+   "note": ""
+  },
+  {
+   "id": "coffee-corta",
+   "type": "coffee_table",
+   "components": [
+    {
+     "pid": "170702985",
+     "qty": 1,
+     "regular": 1599,
+     "sale": 949
+    }
+   ],
+   "regularTotal": 1599,
+   "publicPrice": 1919,
+   "offeredBy": [
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "side-pavia",
+   "type": "side_table",
+   "components": [
+    {
+     "pid": "167996573",
+     "qty": 1,
+     "regular": 879,
+     "sale": 531
+    }
+   ],
+   "regularTotal": 879,
+   "publicPrice": 1055,
+   "offeredBy": [
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "chair-salalah",
+   "type": "dining_chair",
+   "components": [
+    {
+     "pid": "169561220",
+     "qty": 1,
+     "regular": 399,
+     "sale": 279
+    }
+   ],
+   "regularTotal": 399,
+   "publicPrice": 479,
+   "offeredBy": [
+    "greige-luxe"
+   ],
+   "note": ""
+  },
+  {
+   "id": "dining-keira-100",
+   "type": "dining_table",
+   "components": [
+    {
+     "pid": "165850107",
+     "qty": 1,
+     "regular": 699,
+     "sale": 449
+    }
+   ],
+   "regularTotal": 699,
+   "publicPrice": 839,
+   "offeredBy": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "bed-forren-160",
+   "type": "bed",
+   "components": [
+    {
+     "pid": "168534073",
+     "qty": 1,
+     "regular": 1299,
+     "sale": 909
+    }
+   ],
+   "regularTotal": 1299,
+   "publicPrice": 1559,
+   "offeredBy": [
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "nightstand-forren",
+   "type": "nightstand",
+   "components": [
+    {
+     "pid": "168534067",
+     "qty": 1,
+     "regular": 349,
+     "sale": 239
+    }
+   ],
+   "regularTotal": 349,
+   "publicPrice": 419,
+   "offeredBy": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "pendant-berit",
+   "type": "pendant_lamp",
+   "components": [
+    {
+     "pid": "168535210",
+     "qty": 1,
+     "regular": 189,
+     "sale": 113
+    }
+   ],
+   "regularTotal": 189,
+   "publicPrice": 227,
+   "offeredBy": [
+    "light-oak"
+   ],
+   "note": ""
+  },
+  {
+   "id": "floorlamp-audrey",
+   "type": "floor_lamp",
+   "components": [
+    {
+     "pid": "167811526",
+     "qty": 1,
+     "regular": 329,
+     "sale": 229
+    }
+   ],
+   "regularTotal": 329,
+   "publicPrice": 395,
+   "offeredBy": [
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "floorlamp-diamant",
+   "type": "floor_lamp",
+   "components": [
+    {
+     "pid": "169250331",
+     "qty": 1,
+     "regular": 499,
+     "sale": 499
+    }
+   ],
+   "regularTotal": 499,
+   "publicPrice": 599,
+   "offeredBy": [
+    "light-oak"
+   ],
+   "note": ""
+  },
+  {
+   "id": "mirror-mackenzie-arch",
+   "type": "mirror",
+   "components": [
+    {
+     "pid": "167337726",
+     "qty": 1,
+     "regular": 449,
+     "sale": 449
+    }
+   ],
+   "regularTotal": 449,
+   "publicPrice": 539,
+   "offeredBy": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "mirror-artemis-round-black",
+   "type": "mirror",
+   "components": [
+    {
+     "pid": "166794486",
+     "qty": 1,
+     "regular": 199,
+     "sale": 132
+    }
+   ],
+   "regularTotal": 199,
+   "publicPrice": 239,
+   "offeredBy": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "tv-joyce",
+   "type": "tv_unit",
+   "components": [
+    {
+     "pid": "167128993",
+     "qty": 1,
+     "regular": 2229,
+     "sale": 2229
+    }
+   ],
+   "regularTotal": 2229,
+   "publicPrice": 2675,
+   "offeredBy": [
+    "greige-luxe"
+   ],
+   "note": ""
+  },
+  {
+   "id": "coffee-joyce",
+   "type": "coffee_table",
+   "components": [
+    {
+     "pid": "167109453",
+     "qty": 1,
+     "regular": 1699,
+     "sale": 1189
+    }
+   ],
+   "regularTotal": 1699,
+   "publicPrice": 2039,
+   "offeredBy": [
+    "greige-luxe"
+   ],
+   "note": ""
+  },
+  {
+   "id": "side-joyce",
+   "type": "side_table",
+   "components": [
+    {
+     "pid": "167109456",
+     "qty": 1,
+     "regular": 719,
+     "sale": 499
+    }
+   ],
+   "regularTotal": 719,
+   "publicPrice": 863,
+   "offeredBy": [
+    "greige-luxe"
+   ],
+   "note": ""
+  },
+  {
+   "id": "tv-echo",
+   "type": "tv_unit",
+   "components": [
+    {
+     "pid": "165660332",
+     "qty": 1,
+     "regular": 639,
+     "sale": 439
+    }
+   ],
+   "regularTotal": 639,
+   "publicPrice": 767,
+   "offeredBy": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "coffee-echo",
+   "type": "coffee_table",
+   "components": [
+    {
+     "pid": "165205593",
+     "qty": 1,
+     "regular": 429,
+     "sale": 299
+    }
+   ],
+   "regularTotal": 429,
+   "publicPrice": 515,
+   "offeredBy": [
+    "light-oak"
+   ],
+   "note": ""
+  },
+  {
+   "id": "nightstand-qubba",
+   "type": "nightstand",
+   "components": [
+    {
+     "pid": "167360952",
+     "qty": 1,
+     "regular": 499,
+     "sale": 349
+    }
+   ],
+   "regularTotal": 499,
+   "publicPrice": 599,
+   "offeredBy": [
+    "greige-luxe"
+   ],
+   "note": ""
+  },
+  {
+   "id": "chair-sven",
+   "type": "dining_chair",
+   "components": [
+    {
+     "pid": "165782060",
+     "qty": 1,
+     "regular": 449,
+     "sale": 309
+    }
+   ],
+   "regularTotal": 449,
+   "publicPrice": 539,
+   "offeredBy": [
+    "light-oak"
+   ],
+   "note": ""
+  },
+  {
+   "id": "tv-windsor",
+   "type": "tv_unit",
+   "components": [
+    {
+     "pid": "170215567",
+     "qty": 1,
+     "regular": 3649,
+     "sale": 3139
+    }
+   ],
+   "regularTotal": 3649,
+   "publicPrice": 4379,
+   "offeredBy": [
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "decor-cream-ceramic",
+   "type": "decor_set",
+   "components": [
+    {
+     "pid": "164824383",
+     "qty": 1,
+     "regular": 179,
+     "sale": 179
+    },
+    {
+     "pid": "169767116",
+     "qty": 1,
+     "regular": 99,
+     "sale": 99
+    },
+    {
+     "pid": "165839004",
+     "qty": 1,
+     "regular": 99,
+     "sale": 99
+    }
+   ],
+   "regularTotal": 377,
+   "publicPrice": 452,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "cushions-linen-olive",
+   "type": "cushions",
+   "components": [
+    {
+     "pid": "170140863",
+     "qty": 2,
+     "regular": 219,
+     "sale": 179
+    },
+    {
+     "pid": "170140895",
+     "qty": 1,
+     "regular": 329,
+     "sale": 289
+    }
+   ],
+   "regularTotal": 767,
+   "publicPrice": 920,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "cushions-linen-oat",
+   "type": "cushions",
+   "components": [
+    {
+     "pid": "170140863",
+     "qty": 2,
+     "regular": 219,
+     "sale": 179
+    },
+    {
+     "pid": "170140987",
+     "qty": 1,
+     "regular": 339,
+     "sale": 299
+    }
+   ],
+   "regularTotal": 777,
+   "publicPrice": 932,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe"
+   ],
+   "note": ""
+  },
+  {
+   "id": "bedding-white-oat",
+   "type": "bedding",
+   "components": [
+    {
+     "pid": "161124290",
+     "qty": 1,
+     "regular": 229,
+     "sale": 159
+    },
+    {
+     "pid": "166836255",
+     "qty": 1,
+     "regular": 129,
+     "sale": 90
+    }
+   ],
+   "regularTotal": 358,
+   "publicPrice": 430,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "dining-malta-90",
+   "type": "dining_table",
+   "components": [
+    {
+     "pid": "166385606",
+     "qty": 1,
+     "regular": 849,
+     "sale": 499
+    }
+   ],
+   "regularTotal": 849,
+   "publicPrice": 1019,
+   "offeredBy": [
+    "greige-luxe"
+   ],
+   "note": ""
+  },
+  {
+   "id": "chair-emily",
+   "type": "dining_chair",
+   "components": [
+    {
+     "pid": "167535199",
+     "qty": 1,
+     "regular": 1069,
+     "sale": 809
+    }
+   ],
+   "regularTotal": 1069,
+   "publicPrice": 1283,
+   "offeredBy": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "chair-canovia",
+   "type": "dining_chair",
+   "components": [
+    {
+     "pid": "170215763",
+     "qty": 1,
+     "regular": 899,
+     "sale": 779
+    }
+   ],
+   "regularTotal": 899,
+   "publicPrice": 1079,
+   "offeredBy": [
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "tableware-mia-smoke-wood",
+   "type": "tableware",
+   "components": [
+    {
+     "pid": "166976150",
+     "qty": 1,
+     "regular": 129,
+     "sale": 90
+    },
+    {
+     "pid": "169551262",
+     "qty": 1,
+     "regular": 69,
+     "sale": 69
+    },
+    {
+     "pid": "163717249",
+     "qty": 1,
+     "regular": 79,
+     "sale": 55
+    },
+    {
+     "pid": "169612553",
+     "qty": 1,
+     "regular": 39,
+     "sale": 39
+    }
+   ],
+   "regularTotal": 316,
+   "publicPrice": 379,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "tableware-lillian-amber-brass",
+   "type": "tableware",
+   "components": [
+    {
+     "pid": "170013253",
+     "qty": 1,
+     "regular": 189,
+     "sale": 189
+    },
+    {
+     "pid": "166767932",
+     "qty": 1,
+     "regular": 69,
+     "sale": 48
+    },
+    {
+     "pid": "167454969",
+     "qty": 1,
+     "regular": 199,
+     "sale": 139
+    },
+    {
+     "pid": "162548996",
+     "qty": 1,
+     "regular": 79,
+     "sale": 55
+    }
+   ],
+   "regularTotal": 536,
+   "publicPrice": 643,
+   "offeredBy": [
+    "dark-walnut",
+    "greige-luxe"
+   ],
+   "note": ""
+  },
+  {
+   "id": "kitchen-black-basic",
+   "type": "kitchen_decor",
+   "components": [
+    {
+     "pid": "166447854",
+     "qty": 1,
+     "regular": 99,
+     "sale": 69
+    },
+    {
+     "pid": "167283781",
+     "qty": 1,
+     "regular": 29,
+     "sale": 20
+    },
+    {
+     "pid": "166522631",
+     "qty": 1,
+     "regular": 39,
+     "sale": 27
+    },
+    {
+     "pid": "162470181",
+     "qty": 1,
+     "regular": 25,
+     "sale": 17
+    }
+   ],
+   "regularTotal": 192,
+   "publicPrice": 230,
+   "offeredBy": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "kitchen-white-travertine",
+   "type": "kitchen_decor",
+   "components": [
+    {
+     "pid": "167848914",
+     "qty": 1,
+     "regular": 47,
+     "sale": 47
+    },
+    {
+     "pid": "167283781",
+     "qty": 1,
+     "regular": 29,
+     "sale": 20
+    },
+    {
+     "pid": "165839835",
+     "qty": 1,
+     "regular": 49,
+     "sale": 49
+    },
+    {
+     "pid": "169401408",
+     "qty": 1,
+     "regular": 59,
+     "sale": 41
+    }
+   ],
+   "regularTotal": 184,
+   "publicPrice": 221,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "nsdecor-bud-vase-tealight",
+   "type": "nightstand_decor",
+   "components": [
+    {
+     "pid": "165877266",
+     "qty": 1,
+     "regular": 15,
+     "sale": 10
+    },
+    {
+     "pid": "165629591",
+     "qty": 1,
+     "regular": 39,
+     "sale": 39
+    }
+   ],
+   "regularTotal": 54,
+   "publicPrice": 65,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "decor-travertine-cream",
+   "type": "decor_set",
+   "components": [
+    {
+     "pid": "164824383",
+     "qty": 1,
+     "regular": 179,
+     "sale": 179
+    },
+    {
+     "pid": "165839835",
+     "qty": 1,
+     "regular": 49,
+     "sale": 49
+    },
+    {
+     "pid": "165839002",
+     "qty": 1,
+     "regular": 149,
+     "sale": 149
+    }
+   ],
+   "regularTotal": 377,
+   "publicPrice": 452,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "cushions-oat-ivory-4",
+   "type": "cushions",
+   "components": [
+    {
+     "pid": "170140863",
+     "qty": 2,
+     "regular": 219,
+     "sale": 179
+    },
+    {
+     "pid": "170140987",
+     "qty": 2,
+     "regular": 339,
+     "sale": 299
+    }
+   ],
+   "regularTotal": 1116,
+   "publicPrice": 1339,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "bedding-white-sateen-oat",
+   "type": "bedding",
+   "components": [
+    {
+     "pid": "166835106",
+     "qty": 1,
+     "regular": 179,
+     "sale": 125
+    },
+    {
+     "pid": "166836257",
+     "qty": 1,
+     "regular": 139,
+     "sale": 97
+    }
+   ],
+   "regularTotal": 318,
+   "publicPrice": 382,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "note": ""
+  },
+  {
+   "id": "throw-boras-oat",
+   "type": "throw",
+   "components": [
+    {
+     "pid": "166836255",
+     "qty": 1,
+     "regular": 129,
+     "sale": 90
+    }
+   ],
+   "regularTotal": 129,
+   "publicPrice": 155,
+   "offeredBy": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
    "note": ""
   }
  ]

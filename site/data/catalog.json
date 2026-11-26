@@ -47,183 +47,6 @@
    }
   },
   {
-   "id": "sofa-hadley-3",
-   "type": "sofa",
-   "name": "Диван Hadley, трёхместный",
-   "nameEn": "Hadley 3-seater sofa",
-   "price": 2999,
-   "dims": {
-    "w": 213,
-    "d": 92,
-    "h": 88
-   },
-   "materials": [
-    "Рогожка",
-    "Каркас — массив дерева",
-    "Цоколь и ножки — дерево, тон орех"
-   ],
-   "materialsEn": [
-    "Woven fabric",
-    "Solid wood frame",
-    "Walnut-tone wood base and legs"
-   ],
-   "color": "Молочный",
-   "colorEn": "Cream",
-   "colorHex": "#E3DCCF",
-   "tags": [
-    "dark-walnut"
-   ],
-   "model": {
-    "archetype": "sofa",
-    "params": {
-     "seats": 3,
-     "arm": "track",
-     "legs": "wood-block",
-     "base": "wood-rail",
-     "fabric": "weave",
-     "fabricColor": "#E3DCCF",
-     "wood": "walnut-dark",
-     "woodColor": "#5A3F2E",
-     "cushion": "tight",
-     "backHeight": "mid",
-     "seatHeight": 0.45
-    }
-   }
-  },
-  {
-   "id": "sofa-doree-3",
-   "type": "sofa",
-   "name": "Диван Doree, трёхместный",
-   "nameEn": "Doree 3-seater sofa",
-   "price": 4799,
-   "dims": {
-    "w": 240,
-    "d": 102,
-    "h": 79
-   },
-   "materials": [
-    "Шенилл",
-    "Каркас — массив дерева",
-    "Скрытый цоколь"
-   ],
-   "materialsEn": [
-    "Chenille",
-    "Solid wood frame",
-    "Recessed plinth"
-   ],
-   "color": "Песочный",
-   "colorEn": "Sand",
-   "colorHex": "#D6CBB9",
-   "tags": [
-    "dark-walnut"
-   ],
-   "model": {
-    "archetype": "sofa",
-    "params": {
-     "seats": 3,
-     "arm": "track",
-     "legs": "plinth",
-     "fabric": "weave",
-     "fabricColor": "#D6CBB9",
-     "wood": "none",
-     "cushion": "loose",
-     "backHeight": "low",
-     "seatHeight": 0.42,
-     "depthStyle": "lounge"
-    }
-   }
-  },
-  {
-   "id": "sofa-engler-3",
-   "type": "sofa",
-   "name": "Диван Engler, трёхместный",
-   "nameEn": "Engler 3-seater sofa",
-   "price": 2759,
-   "dims": {
-    "w": 228,
-    "d": 95,
-    "h": 92
-   },
-   "materials": [
-    "Ткань",
-    "Каркас — массив дерева",
-    "Ножки — дерево, тон орех"
-   ],
-   "materialsEn": [
-    "Fabric",
-    "Solid wood frame",
-    "Walnut-tone wood legs"
-   ],
-   "color": "Слоновая кость",
-   "colorEn": "Ivory",
-   "colorHex": "#E6E0D4",
-   "tags": [
-    "dark-walnut"
-   ],
-   "model": {
-    "archetype": "sofa",
-    "params": {
-     "seats": 3,
-     "arm": "slim",
-     "legs": "wood-taper",
-     "fabric": "weave",
-     "fabricColor": "#E6E0D4",
-     "wood": "walnut-dark",
-     "woodColor": "#553C2C",
-     "cushion": "tight",
-     "backHeight": "high",
-     "seatHeight": 0.45,
-     "backStitch": "horizontal-channel"
-    }
-   }
-  },
-  {
-   "id": "sofa-lockwood-2",
-   "type": "sofa",
-   "name": "Диван Lockwood, двухместный, с ротангом",
-   "nameEn": "Lockwood 2-seater sofa with rattan",
-   "price": 4799,
-   "dims": {
-    "w": 194,
-    "d": 96,
-    "h": 85
-   },
-   "materials": [
-    "Ткань",
-    "Каркас — массив дерева, тон орех",
-    "Боковины — ротанг"
-   ],
-   "materialsEn": [
-    "Fabric",
-    "Walnut-tone solid wood frame",
-    "Rattan side panels"
-   ],
-   "color": "Слоновая кость",
-   "colorEn": "Ivory",
-   "colorHex": "#E9E3D8",
-   "tags": [
-    "dark-walnut"
-   ],
-   "model": {
-    "archetype": "sofa",
-    "params": {
-     "seats": 2,
-     "arm": "track",
-     "armPanel": "rattan",
-     "armPanelColor": "#C2A77D",
-     "legs": "plinth",
-     "base": "wood-frame",
-     "fabric": "weave",
-     "fabricColor": "#E9E3D8",
-     "wood": "walnut-dark",
-     "woodColor": "#553C2C",
-     "cushion": "loose",
-     "backHeight": "mid",
-     "seatHeight": 0.44
-    }
-   }
-  },
-  {
    "id": "sofa-anders-3",
    "type": "sofa",
    "name": "Диван Anders, трёхместный",
@@ -248,7 +71,8 @@
    "colorEn": "Cream",
    "colorHex": "#E4DDD0",
    "tags": [
-    "dark-walnut"
+    "light-oak",
+    "mediterranean"
    ],
    "model": {
     "archetype": "sofa",
@@ -427,82 +251,6 @@
      "woodColor": "#4A3528",
      "cushion": "tight",
      "backHeight": "mid"
-    }
-   }
-  },
-  {
-   "id": "coffee-baku-low",
-   "type": "coffee_table",
-   "name": "Журнальный стол Baku, низкий",
-   "nameEn": "Baku coffee table, low",
-   "price": 1499,
-   "dims": {
-    "w": 106,
-    "d": 88,
-    "h": 27
-   },
-   "materials": [
-    "Шпон ореха",
-    "Инженерная древесина"
-   ],
-   "materialsEn": [
-    "Walnut veneer",
-    "Engineered wood"
-   ],
-   "color": "Тёмный орех",
-   "colorEn": "Dark walnut",
-   "colorHex": "#4F3A2C",
-   "tags": [
-    "dark-walnut"
-   ],
-   "model": {
-    "archetype": "coffee_table",
-    "params": {
-     "shape": "pebble",
-     "top": "walnut-dark",
-     "topThickness": 0.05,
-     "legs": "four-block",
-     "legShape": "cylinder",
-     "legMaterial": "walnut-dark",
-     "tiers": 1
-    }
-   }
-  },
-  {
-   "id": "coffee-baku-high",
-   "type": "coffee_table",
-   "name": "Журнальный стол Baku, высокий",
-   "nameEn": "Baku coffee table, tall",
-   "price": 1355,
-   "dims": {
-    "w": 96,
-    "d": 78,
-    "h": 32
-   },
-   "materials": [
-    "Шпон ореха",
-    "Инженерная древесина"
-   ],
-   "materialsEn": [
-    "Walnut veneer",
-    "Engineered wood"
-   ],
-   "color": "Тёмный орех",
-   "colorEn": "Dark walnut",
-   "colorHex": "#4F3A2C",
-   "tags": [
-    "dark-walnut"
-   ],
-   "model": {
-    "archetype": "coffee_table",
-    "params": {
-     "shape": "pebble",
-     "top": "walnut-dark",
-     "topThickness": 0.05,
-     "legs": "four-block",
-     "legShape": "cylinder",
-     "legMaterial": "walnut-dark",
-     "tiers": 1
     }
    }
   },
@@ -896,7 +644,10 @@
    "colorEn": "Oatmeal",
    "colorHex": "#CFC3B1",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "bed",
@@ -909,48 +660,6 @@
      "legs": "hidden",
      "railHeight": 0.3,
      "fabric": "weave"
-    }
-   }
-  },
-  {
-   "id": "bed-nazario-160",
-   "type": "bed",
-   "name": "Кровать Nazario, 160×200, орех",
-   "nameEn": "Nazario walnut bed, 160×200",
-   "price": 1319,
-   "dims": {
-    "w": 169,
-    "d": 225,
-    "h": 119
-   },
-   "materials": [
-    "Инженерная древесина",
-    "Отделка — орех",
-    "Ламели"
-   ],
-   "materialsEn": [
-    "Engineered wood",
-    "Walnut finish",
-    "Wooden slats"
-   ],
-   "color": "Орех",
-   "colorEn": "Walnut",
-   "colorHex": "#6A4B35",
-   "tags": [
-    "dark-walnut"
-   ],
-   "model": {
-    "archetype": "bed",
-    "params": {
-     "headboard": "wood-panel",
-     "headboardColor": "#6A4B35",
-     "headboardHeight": 1.19,
-     "frame": "walnut-dark",
-     "woodColor": "#6A4B35",
-     "legs": "wood-short",
-     "footboard": true,
-     "footboardHeight": 0.45,
-     "railHeight": 0.3
     }
    }
   },
@@ -979,7 +688,10 @@
    "colorEn": "Light greige",
    "colorHex": "#D2C8BA",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "bed",
@@ -1020,7 +732,10 @@
    "colorEn": "White",
    "colorHex": "#F2EFE9",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "mattress",
@@ -1055,7 +770,10 @@
    "colorEn": "White",
    "colorHex": "#F2EFE9",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "mattress",
@@ -1090,7 +808,8 @@
    "colorEn": "Warm white / oat / terracotta",
    "colorHex": "#F1EEE8",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "mediterranean"
    ],
    "model": {
     "archetype": "bedding",
@@ -1129,7 +848,8 @@
    "colorEn": "Oat / rust",
    "colorHex": "#DDD2C1",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "mediterranean"
    ],
    "model": {
     "archetype": "bedding",
@@ -1169,7 +889,9 @@
    "colorEn": "Warm white / oat / olive",
    "colorHex": "#F0EDE6",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "mediterranean"
    ],
    "model": {
     "archetype": "bedding",
@@ -1329,7 +1051,10 @@
    "colorEn": "Cream / oat",
    "colorHex": "#E6DFD3",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "table_lamp",
@@ -1366,7 +1091,9 @@
    "colorEn": "Cream",
    "colorHex": "#E3DCD0",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "table_lamp",
@@ -1442,7 +1169,8 @@
    "colorEn": "Brass / alabaster",
    "colorHex": "#A88B55",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "greige-luxe"
    ],
    "model": {
     "archetype": "table_lamp",
@@ -1497,7 +1225,7 @@
    }
   },
   {
-   "id": "dining-mahmayi-80",
+   "id": "dining-square-80",
    "type": "dining_table",
    "name": "Обеденный стол квадратный, 80×80",
    "nameEn": "Square dining table, 80×80",
@@ -1572,119 +1300,6 @@
    }
   },
   {
-   "id": "chair-pebble",
-   "type": "dining_chair",
-   "name": "Стул Pebble, мягкий",
-   "nameEn": "Pebble upholstered dining chair",
-   "price": 1019,
-   "dims": {
-    "w": 59,
-    "d": 53,
-    "h": 84
-   },
-   "materials": [
-    "Ткань",
-    "Ножки — массив гевеи, тон тёмный орех"
-   ],
-   "materialsEn": [
-    "Fabric",
-    "Dark walnut-tone rubberwood legs"
-   ],
-   "color": "Светлый греж / орех",
-   "colorEn": "Light greige / walnut",
-   "colorHex": "#D2CABD",
-   "tags": [
-    "dark-walnut"
-   ],
-   "model": {
-    "archetype": "dining_chair",
-    "params": {
-     "frame": "walnut-dark",
-     "woodColor": "#4F3A2C",
-     "seat": "fabric-linen",
-     "seatColor": "#D2CABD",
-     "back": "upholstered",
-     "backShape": "rounded-shell"
-    }
-   }
-  },
-  {
-   "id": "chair-viona",
-   "type": "dining_chair",
-   "name": "Стул Viona, массив",
-   "nameEn": "Viona solid wood dining chair",
-   "price": 2447,
-   "dims": {
-    "w": 59,
-    "d": 55,
-    "h": 80
-   },
-   "materials": [
-    "Массив дерева, тон орех",
-    "Мягкое сиденье и спинка — ткань"
-   ],
-   "materialsEn": [
-    "Walnut-tone solid wood",
-    "Upholstered seat and back"
-   ],
-   "color": "Орех / молочный",
-   "colorEn": "Walnut / cream",
-   "colorHex": "#5C4030",
-   "tags": [
-    "dark-walnut"
-   ],
-   "model": {
-    "archetype": "dining_chair",
-    "params": {
-     "frame": "walnut-dark",
-     "woodColor": "#5C4030",
-     "seat": "fabric-linen",
-     "seatColor": "#E3DBCC",
-     "back": "curved",
-     "arms": true
-    }
-   }
-  },
-  {
-   "id": "chair-alfred",
-   "type": "dining_chair",
-   "name": "Стул Alfred, венская сетка",
-   "nameEn": "Alfred cane dining chair",
-   "price": 1619,
-   "dims": {
-    "w": 49,
-    "d": 52,
-    "h": 87
-   },
-   "materials": [
-    "Массив дерева, тон орех",
-    "Венская сетка",
-    "Мягкое сиденье — ткань"
-   ],
-   "materialsEn": [
-    "Walnut-tone solid wood",
-    "Rattan cane",
-    "Upholstered seat"
-   ],
-   "color": "Орех / ротанг",
-   "colorEn": "Walnut / rattan",
-   "colorHex": "#664430",
-   "tags": [
-    "dark-walnut"
-   ],
-   "model": {
-    "archetype": "dining_chair",
-    "params": {
-     "frame": "walnut-dark",
-     "woodColor": "#664430",
-     "seat": "fabric-linen",
-     "seatColor": "#E3DBCC",
-     "back": "cane",
-     "caneColor": "#C2A77D"
-    }
-   }
-  },
-  {
    "id": "chair-wishbone",
    "type": "dining_chair",
    "name": "Стул Wishbone, бумажный шнур",
@@ -1745,7 +1360,8 @@
    "colorEn": "Brass / linen",
    "colorHex": "#A88B55",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "greige-luxe"
    ],
    "model": {
     "archetype": "floor_lamp",
@@ -1819,7 +1435,8 @@
    "colorEn": "Brass / cream",
    "colorHex": "#A88B55",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "greige-luxe"
    ],
    "model": {
     "archetype": "floor_lamp",
@@ -1858,7 +1475,10 @@
    "colorEn": "Cream linen",
    "colorHex": "#E6DFD3",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "pendant_lamp",
@@ -1895,7 +1515,9 @@
    "colorEn": "Cream linen",
    "colorHex": "#E8E1D6",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe"
    ],
    "model": {
     "archetype": "pendant_lamp",
@@ -1932,7 +1554,8 @@
    "colorEn": "Natural rattan",
    "colorHex": "#C2A77D",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "mediterranean"
    ],
    "model": {
     "archetype": "pendant_lamp",
@@ -1966,7 +1589,8 @@
    "colorEn": "Natural",
    "colorHex": "#B89B6E",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "mediterranean"
    ],
    "model": {
     "archetype": "pendant_lamp",
@@ -2002,7 +1626,8 @@
    "colorEn": "Natural rattan",
    "colorHex": "#C2A77D",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "mediterranean"
    ],
    "model": {
     "archetype": "pendant_lamp",
@@ -2040,7 +1665,10 @@
    "colorEn": "Oatmeal",
    "colorHex": "#D3C6B1",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "rug",
@@ -2076,7 +1704,9 @@
    "colorEn": "Cream / sand",
    "colorHex": "#E3DACB",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe"
    ],
    "model": {
     "archetype": "rug",
@@ -2114,7 +1744,9 @@
    "colorEn": "Natural",
    "colorHex": "#D8CCB6",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "mediterranean"
    ],
    "model": {
     "archetype": "rug",
@@ -2170,7 +1802,7 @@
    "nameEn": "Sullivan curtains: sheer + blackout, 8 panels",
    "price": 1075,
    "dims": {
-    "w": 390,
+    "w": 380,
     "d": 15,
     "h": 283
    },
@@ -2186,7 +1818,10 @@
    "colorEn": "Warm white / light linen",
    "colorHex": "#EEEAE3",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "curtains",
@@ -2218,7 +1853,7 @@
    "nameEn": "Sullivan sheer curtains, 4 panels",
    "price": 478,
    "dims": {
-    "w": 390,
+    "w": 380,
     "d": 10,
     "h": 283
    },
@@ -2232,7 +1867,10 @@
    "colorEn": "Warm white",
    "colorHex": "#EEEAE3",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "curtains",
@@ -2251,7 +1889,7 @@
    "nameEn": "Khor sheer curtains, 4 panels",
    "price": 358,
    "dims": {
-    "w": 390,
+    "w": 380,
     "d": 10,
     "h": 283
    },
@@ -2265,7 +1903,8 @@
    "colorEn": "White",
    "colorHex": "#F0EDE8",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "mediterranean"
    ],
    "model": {
     "archetype": "curtains",
@@ -2301,7 +1940,8 @@
    "colorHex": "#E6DFD3",
    "tags": [
     "dark-walnut",
-    "dark-walnut"
+    "light-oak",
+    "greige-luxe"
    ],
    "model": {
     "archetype": "wall_art",
@@ -2377,7 +2017,8 @@
    "colorEn": "Sage / terracotta",
    "colorHex": "#9A9C7E",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "mediterranean"
    ],
    "model": {
     "archetype": "wall_art",
@@ -2415,7 +2056,8 @@
    "colorEn": "Cream / sand",
    "colorHex": "#E3D7C4",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "mediterranean"
    ],
    "model": {
     "archetype": "wall_art",
@@ -2453,7 +2095,10 @@
    "colorEn": "Warm white",
    "colorHex": "#EEE9E1",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "wall_art",
@@ -2491,7 +2136,9 @@
    "colorEn": "Beige",
    "colorHex": "#D9CDB8",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe"
    ],
    "model": {
     "archetype": "wall_art",
@@ -2509,8 +2156,8 @@
   {
    "id": "plant-olive-themis",
    "type": "plant",
-   "name": "Оливковое дерево 175 см в керамическом кашпо",
-   "nameEn": "Olive tree 175 cm in ceramic planter",
+   "name": "Оливковое дерево в керамическом кашпо, 180 см",
+   "nameEn": "Olive tree in speckled ceramic planter, 180 cm",
    "price": 694,
    "dims": {
     "w": 60,
@@ -2529,7 +2176,10 @@
    "colorEn": "Olive / cream",
    "colorHex": "#7D7A55",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "plant",
@@ -2565,7 +2215,10 @@
    "colorEn": "Olive / cream",
    "colorHex": "#7D7A55",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "plant",
@@ -2579,7 +2232,7 @@
    }
   },
   {
-   "id": "plant-olive-homekode",
+   "id": "plant-olive-180",
    "type": "plant",
    "name": "Оливковое дерево в горшке, 180 см",
    "nameEn": "Potted olive tree, 180 cm",
@@ -2601,7 +2254,10 @@
    "colorEn": "Olive / white",
    "colorHex": "#7D7A55",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "plant",
@@ -2637,7 +2293,8 @@
    "colorEn": "Cream / olive / terracotta",
    "colorHex": "#6B6A45",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "mediterranean"
    ],
    "model": {
     "archetype": "cushions",
@@ -2689,7 +2346,8 @@
    "colorEn": "Cream / terracotta",
    "colorHex": "#A85A3A",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "mediterranean"
    ],
    "model": {
     "archetype": "cushions",
@@ -2848,7 +2506,8 @@
    "colorEn": "Cream / terracotta",
    "colorHex": "#B5674A",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "mediterranean"
    ],
    "model": {
     "archetype": "decor_set",
@@ -2940,7 +2599,8 @@
    "colorEn": "Sand / terracotta",
    "colorHex": "#D8CBB6",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "mediterranean"
    ],
    "model": {
     "archetype": "wall_art",
@@ -2979,7 +2639,8 @@
    "colorEn": "Sand / terracotta",
    "colorHex": "#D8CBB6",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "mediterranean"
    ],
    "model": {
     "archetype": "wall_art",
@@ -3057,8 +2718,7 @@
    "colorEn": "Sage / white",
    "colorHex": "#9A9C7E",
    "tags": [
-    "dark-walnut",
-    "dark-walnut"
+    "mediterranean"
    ],
    "model": {
     "archetype": "wall_art",
@@ -3110,7 +2770,8 @@
    "colorEn": "Cream",
    "colorHex": "#ECE6DB",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "greige-luxe"
    ],
    "model": {
     "archetype": "wall_art",
@@ -3152,7 +2813,8 @@
    "colorEn": "Sand / amber / brass",
    "colorHex": "#D6CCBC",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "greige-luxe"
    ],
    "model": {
     "archetype": "tableware",
@@ -3270,7 +2932,10 @@
    "colorEn": "Beige / smoke",
    "colorHex": "#D9CDB8",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "tableware",
@@ -3325,7 +2990,10 @@
    "colorEn": "Sand / green",
    "colorHex": "#DCD3C3",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "centerpiece",
@@ -3368,7 +3036,9 @@
    "colorEn": "White / travertine",
    "colorHex": "#EFEBE3",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "centerpiece",
@@ -3415,7 +3085,10 @@
    "colorEn": "Cream / green",
    "colorHex": "#E8E1D6",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "centerpiece",
@@ -3440,18 +3113,17 @@
    "type": "kitchen_decor",
    "name": "Кухня: чёрный чайник, керамика, доска из акации",
    "nameEn": "Kitchen: black kettle, ceramics, acacia board",
-   "price": 474,
+   "price": 355,
    "dims": {
-    "w": 100,
+    "w": 52,
     "d": 30,
-    "h": 25
+    "h": 38
    },
    "materials": [
     "Чайник — пластик, матовый чёрный",
     "Подставка для приборов — керамика",
     "Доска — акация",
-    "Бутылка для масла и уксуса — керамика",
-    "Чаша — дерево"
+    "Бутылка для масла и уксуса — керамика"
    ],
    "materialsEn": [
     "Matte black kettle",
@@ -3491,18 +3163,17 @@
    "type": "kitchen_decor",
    "name": "Кухня: тёмная доска Laimai, деревянная подставка",
    "nameEn": "Kitchen: dark Laimai board, wooden caddy",
-   "price": 733,
+   "price": 614,
    "dims": {
-    "w": 100,
+    "w": 52,
     "d": 30,
-    "h": 25
+    "h": 41
    },
    "materials": [
     "Чайник — пластик, матовый чёрный",
     "Подставка для приборов — дерево",
     "Доска — тёмное дерево",
-    "Бутылки — стекло",
-    "Чаша — керамика"
+    "Бутылки — стекло"
    ],
    "materialsEn": [
     "Matte black kettle",
@@ -3542,18 +3213,17 @@
    "type": "kitchen_decor",
    "name": "Кухня: белый чайник, керамика, бамбуковая доска",
    "nameEn": "Kitchen: white kettle, ceramics, wooden board",
-   "price": 287,
+   "price": 168,
    "dims": {
-    "w": 100,
+    "w": 52,
     "d": 30,
-    "h": 24
+    "h": 36
    },
    "materials": [
     "Чайник — пластик, белый",
     "Подставка для приборов — керамика",
     "Доска — дерево",
-    "Бутылки — стекло",
-    "Чаша — керамика"
+    "Бутылки — стекло"
    ],
    "materialsEn": [
     "White kettle",
@@ -3566,7 +3236,9 @@
    "colorEn": "White / sand",
    "colorHex": "#ECE7DE",
    "tags": [
-    "dark-walnut"
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "kitchen_decor",
@@ -3611,7 +3283,8 @@
    "colorEn": "Terracotta",
    "colorHex": "#A85A3A",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "mediterranean"
    ],
    "model": {
     "archetype": "throw",
@@ -3647,7 +3320,9 @@
    "colorEn": "Sage",
    "colorHex": "#8A8C6E",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "mediterranean"
    ],
    "model": {
     "archetype": "throw",
@@ -3683,7 +3358,9 @@
    "colorEn": "Olive",
    "colorHex": "#6B6A45",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "mediterranean"
    ],
    "model": {
     "archetype": "throw",
@@ -3722,7 +3399,10 @@
    "colorEn": "Oat",
    "colorHex": "#D6CBB8",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "throw",
@@ -3762,7 +3442,8 @@
    "colorEn": "Beige / taupe",
    "colorHex": "#D6CBB8",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "greige-luxe"
    ],
    "model": {
     "archetype": "nightstand_decor",
@@ -3805,7 +3486,10 @@
    "colorEn": "Travertine / cream",
    "colorHex": "#D7C8AF",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "nightstand_decor",
@@ -3885,7 +3569,10 @@
    "colorEn": "Beige",
    "colorHex": "#D8CDBB",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "runner",
@@ -3921,7 +3608,10 @@
    "colorEn": "Sand",
    "colorHex": "#CFC2AC",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "runner",
@@ -3957,7 +3647,10 @@
    "colorEn": "Cream",
    "colorHex": "#E3DACB",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
    ],
    "model": {
     "archetype": "runner",
@@ -3993,7 +3686,9 @@
    "colorEn": "Beige",
    "colorHex": "#D6CBB8",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "light-oak",
+    "mediterranean"
    ],
    "model": {
     "archetype": "runner",
@@ -4066,7 +3761,8 @@
    "colorEn": "Brass",
    "colorHex": "#A88B55",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "greige-luxe"
    ],
    "model": {
     "archetype": "mirror",
@@ -4102,7 +3798,8 @@
    "colorEn": "Brass",
    "colorHex": "#A88B55",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "greige-luxe"
    ],
    "model": {
     "archetype": "mirror",
@@ -4148,6 +3845,2068 @@
      "frameColor": "#6E5640",
      "frameWidth": 0.02,
      "mount": "wall"
+    }
+   }
+  },
+  {
+   "id": "sofa-brighton-3",
+   "type": "sofa",
+   "name": "Диван Brighton, трёхместный",
+   "nameEn": "Brighton three-seat sofa",
+   "price": 3599,
+   "dims": {
+    "w": 222,
+    "d": 90,
+    "h": 82
+   },
+   "materials": [
+    "Рогожка",
+    "Каркас — массив дерева",
+    "Цоколь и ножки — дерево, тон орех"
+   ],
+   "materialsEn": [
+    "Woven fabric",
+    "Solid wood frame",
+    "Walnut-tone wooden base and legs"
+   ],
+   "color": "Светлый тауп",
+   "colorEn": "Light taupe",
+   "colorHex": "#D0C1B7",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "sofa",
+    "params": {
+     "seats": 3,
+     "arm": "rolled",
+     "legs": "wood-taper",
+     "base": "wood-rail",
+     "fabric": "weave",
+     "fabricColor": "#D0C1B7",
+     "wood": "walnut-dark",
+     "woodColor": "#5A3F2E",
+     "cushion": "loose",
+     "backHeight": "mid",
+     "seatHeight": 0.45
+    }
+   }
+  },
+  {
+   "id": "sofa-daventry-3",
+   "type": "sofa",
+   "name": "Диван Daventry, трёхместный, букле",
+   "nameEn": "Daventry three-seat bouclé sofa",
+   "price": 2639,
+   "dims": {
+    "w": 230,
+    "d": 95,
+    "h": 82
+   },
+   "materials": [
+    "Букле",
+    "Каркас — дерево",
+    "Ножки — металл, тон латунь"
+   ],
+   "materialsEn": [
+    "Bouclé",
+    "Wooden frame",
+    "Brass-tone metal feet"
+   ],
+   "color": "Молочный",
+   "colorEn": "Milk white",
+   "colorHex": "#DDD8D3",
+   "tags": [
+    "dark-walnut",
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "sofa",
+    "params": {
+     "seats": 3,
+     "arm": "rolled",
+     "legs": "metal-block",
+     "legMaterial": "metal-brass",
+     "legHeight": 0.06,
+     "fabric": "boucle",
+     "fabricColor": "#DDD8D3",
+     "wood": "none",
+     "cushion": "loose",
+     "backHeight": "mid",
+     "seatHeight": 0.44
+    }
+   }
+  },
+  {
+   "id": "coffee-selric",
+   "type": "coffee_table",
+   "name": "Журнальный стол Selric, орех, Ø90",
+   "nameEn": "Selric walnut coffee table, Ø90",
+   "price": 3191,
+   "dims": {
+    "w": 90,
+    "d": 90,
+    "h": 40,
+    "round": true
+   },
+   "materials": [
+    "Шпон ореха",
+    "Столешница — массив дерева",
+    "Каркас — МДФ"
+   ],
+   "materialsEn": [
+    "Walnut veneer",
+    "Solid wood top",
+    "MDF body"
+   ],
+   "color": "Орех",
+   "colorEn": "Walnut",
+   "colorHex": "#5E4230",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "coffee_table",
+    "params": {
+     "shape": "round",
+     "top": "walnut-dark",
+     "topColor": "#5E4230",
+     "topThickness": 0.03,
+     "legs": "pedestal",
+     "pedestalStyle": "drum",
+     "legMaterial": "walnut-dark",
+     "legColor": "#5E4230",
+     "tiers": 1
+    }
+   }
+  },
+  {
+   "id": "side-herald",
+   "type": "side_table",
+   "name": "Приставной столик Herald, орех",
+   "nameEn": "Herald walnut side table",
+   "price": 899,
+   "dims": {
+    "w": 50,
+    "d": 50,
+    "h": 50,
+    "round": true
+   },
+   "materials": [
+    "Шпон ореха",
+    "МДФ"
+   ],
+   "materialsEn": [
+    "Walnut veneer",
+    "MDF"
+   ],
+   "color": "Орех",
+   "colorEn": "Walnut",
+   "colorHex": "#5E4230",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "side_table",
+    "params": {
+     "shape": "round",
+     "top": "walnut-dark",
+     "topColor": "#5E4230",
+     "legs": "pedestal",
+     "pedestalStyle": "drum",
+     "legMaterial": "walnut-dark",
+     "legColor": "#5E4230",
+     "tiers": 1
+    }
+   }
+  },
+  {
+   "id": "chair-stanton",
+   "type": "dining_chair",
+   "name": "Стул Stanton, мягкий",
+   "nameEn": "Stanton upholstered dining chair",
+   "price": 515,
+   "dims": {
+    "w": 52,
+    "d": 58,
+    "h": 85
+   },
+   "materials": [
+    "Ткань",
+    "Ножки — массив дерева, тон орех"
+   ],
+   "materialsEn": [
+    "Fabric",
+    "Solid wood legs, walnut tone"
+   ],
+   "color": "Слоновая кость / орех",
+   "colorEn": "Ivory / walnut",
+   "colorHex": "#E4DDD0",
+   "tags": [
+    "dark-walnut"
+   ],
+   "model": {
+    "archetype": "dining_chair",
+    "params": {
+     "frame": "walnut-dark",
+     "woodColor": "#5E4230",
+     "seat": "fabric-linen",
+     "seatColor": "#E4DDD0",
+     "back": "upholstered",
+     "backShape": "rounded-shell"
+    }
+   }
+  },
+  {
+   "id": "sofa-rockwell-3",
+   "type": "sofa",
+   "name": "Диван Rockwell, трёхместный",
+   "nameEn": "Rockwell three-seat sofa",
+   "price": 2159,
+   "dims": {
+    "w": 200,
+    "d": 83,
+    "h": 85
+   },
+   "materials": [
+    "Рогожка",
+    "Каркас — массив дерева",
+    "Ножки — дерево, угольный тон"
+   ],
+   "materialsEn": [
+    "Woven fabric",
+    "Solid wood frame",
+    "Charcoal-tone wooden legs"
+   ],
+   "color": "Лён-камень",
+   "colorEn": "Stone linen",
+   "colorHex": "#C9C3B7",
+   "tags": [
+    "light-oak"
+   ],
+   "model": {
+    "archetype": "sofa",
+    "params": {
+     "seats": 3,
+     "arm": "slim",
+     "legs": "wood-taper",
+     "fabric": "weave",
+     "fabricColor": "#C9C3B7",
+     "wood": "ash-black",
+     "woodColor": "#2B2926",
+     "legMaterial": "ash-black",
+     "cushion": "tight",
+     "backHeight": "mid",
+     "seatHeight": 0.44
+    }
+   }
+  },
+  {
+   "id": "sofa-pebble-3",
+   "type": "sofa",
+   "name": "Диван Pebble, трёхместный, букле",
+   "nameEn": "Pebble three-seat bouclé sofa",
+   "price": 3599,
+   "dims": {
+    "w": 210,
+    "d": 98,
+    "h": 75
+   },
+   "materials": [
+    "Букле",
+    "Каркас — массив дерева",
+    "Опора скрыта"
+   ],
+   "materialsEn": [
+    "Bouclé",
+    "Solid wood frame",
+    "Hidden base"
+   ],
+   "color": "Слоновая кость",
+   "colorEn": "Ivory",
+   "colorHex": "#DCD6CC",
+   "tags": [
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "sofa",
+    "params": {
+     "seats": 3,
+     "arm": "round",
+     "legs": "plinth",
+     "fabric": "boucle",
+     "fabricColor": "#DCD6CC",
+     "wood": "none",
+     "cushion": "tight",
+     "backHeight": "low",
+     "seatHeight": 0.43
+    }
+   }
+  },
+  {
+   "id": "sofa-oshawa-3",
+   "type": "sofa",
+   "name": "Диван Oshawa, трёхместный, с ротангом",
+   "nameEn": "Oshawa three-seat sofa with cane sides",
+   "price": 4799,
+   "dims": {
+    "w": 224,
+    "d": 96,
+    "h": 84
+   },
+   "materials": [
+    "Ткань",
+    "Каркас — массив дерева",
+    "Боковины — ротанг",
+    "Ножки — дерево, светлый дуб"
+   ],
+   "materialsEn": [
+    "Fabric",
+    "Solid wood frame",
+    "Cane side panels",
+    "Light oak legs"
+   ],
+   "color": "Молочный / ротанг",
+   "colorEn": "Cream / cane",
+   "colorHex": "#D2C6B9",
+   "tags": [
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "sofa",
+    "params": {
+     "seats": 3,
+     "arm": "track",
+     "armPanel": "rattan",
+     "armPanelColor": "#C4A57A",
+     "legs": "wood-taper",
+     "base": "wood-frame",
+     "fabric": "linen",
+     "fabricColor": "#D2C6B9",
+     "wood": "oak-light",
+     "woodColor": "#C9AE86",
+     "cushion": "loose",
+     "backHeight": "mid",
+     "seatHeight": 0.45
+    }
+   }
+  },
+  {
+   "id": "armchair-natura",
+   "type": "armchair",
+   "name": "Кресло Natura, дубовый каркас",
+   "nameEn": "Natura armchair, oak frame",
+   "price": 1559,
+   "dims": {
+    "w": 78,
+    "d": 79,
+    "h": 81
+   },
+   "materials": [
+    "Ткань",
+    "Каркас — массив дерева, светлый дуб"
+   ],
+   "materialsEn": [
+    "Fabric",
+    "Solid light oak frame"
+   ],
+   "color": "Лён / светлый дуб",
+   "colorEn": "Linen / light oak",
+   "colorHex": "#C4B9AD",
+   "tags": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "armchair",
+    "params": {
+     "style": "lounge",
+     "arm": "wood-open",
+     "legs": "wood-taper",
+     "fabric": "linen",
+     "fabricColor": "#C4B9AD",
+     "frame": "oak-light",
+     "woodColor": "#D2BA94",
+     "cushion": "loose",
+     "backHeight": "mid"
+    }
+   }
+  },
+  {
+   "id": "armchair-oti",
+   "type": "armchair",
+   "name": "Кресло Oti, букле",
+   "nameEn": "Oti bouclé armchair",
+   "price": 5879,
+   "dims": {
+    "w": 75,
+    "d": 73,
+    "h": 72
+   },
+   "materials": [
+    "Букле",
+    "Каркас — массив дерева"
+   ],
+   "materialsEn": [
+    "Bouclé",
+    "Solid wood frame"
+   ],
+   "color": "Молочный",
+   "colorEn": "Milk white",
+   "colorHex": "#DDD6CE",
+   "tags": [
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "armchair",
+    "params": {
+     "style": "club",
+     "arm": "round",
+     "legs": "hidden",
+     "fabric": "boucle",
+     "fabricColor": "#DDD6CE",
+     "frame": "none",
+     "cushion": "tight",
+     "backHeight": "low"
+    }
+   }
+  },
+  {
+   "id": "armchair-mons",
+   "type": "armchair",
+   "name": "Кресло Mons, низкое",
+   "nameEn": "Mons low armchair",
+   "price": 4439,
+   "dims": {
+    "w": 67,
+    "d": 82,
+    "h": 76
+   },
+   "materials": [
+    "Ткань",
+    "Каркас — массив дерева"
+   ],
+   "materialsEn": [
+    "Fabric",
+    "Solid wood frame"
+   ],
+   "color": "Молочный",
+   "colorEn": "Milk white",
+   "colorHex": "#E0DCD1",
+   "tags": [
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "armchair",
+    "params": {
+     "style": "club",
+     "arm": "slim",
+     "legs": "hidden",
+     "fabric": "weave",
+     "fabricColor": "#E0DCD1",
+     "frame": "none",
+     "cushion": "tight",
+     "backHeight": "low"
+    }
+   }
+  },
+  {
+   "id": "armchair-emma",
+   "type": "armchair",
+   "name": "Кресло Emma, букле",
+   "nameEn": "Emma bouclé lounge chair",
+   "price": 2640,
+   "dims": {
+    "w": 83,
+    "d": 95,
+    "h": 73
+   },
+   "materials": [
+    "Букле"
+   ],
+   "materialsEn": [
+    "Bouclé"
+   ],
+   "color": "Крем",
+   "colorEn": "Cream",
+   "colorHex": "#D1C1B4",
+   "tags": [
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "armchair",
+    "params": {
+     "style": "slipper",
+     "arm": "none",
+     "legs": "hidden",
+     "fabric": "boucle",
+     "fabricColor": "#D1C1B4",
+     "frame": "none",
+     "cushion": "tight",
+     "backHeight": "low"
+    }
+   }
+  },
+  {
+   "id": "armchair-sukhna",
+   "type": "armchair",
+   "name": "Кресло Sukhna, венская сетка",
+   "nameEn": "Sukhna cane lounge chair",
+   "price": 1799,
+   "dims": {
+    "w": 64,
+    "d": 82,
+    "h": 66
+   },
+   "materials": [
+    "Сиденье и спинка — венская сетка",
+    "Каркас — массив дерева"
+   ],
+   "materialsEn": [
+    "Cane seat and back",
+    "Solid wood frame"
+   ],
+   "color": "Ротанг / тёплое дерево",
+   "colorEn": "Cane / warm wood",
+   "colorHex": "#C4A57A",
+   "tags": [
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "armchair",
+    "params": {
+     "style": "lounge",
+     "arm": "none",
+     "legs": "wood-taper",
+     "fabric": "cane",
+     "fabricColor": "#C4A57A",
+     "frame": "oak-light",
+     "woodColor": "#8E6446",
+     "cushion": "none",
+     "backHeight": "low"
+    }
+   }
+  },
+  {
+   "id": "coffee-arkas",
+   "type": "coffee_table",
+   "name": "Журнальный стол Arkas, овальный",
+   "nameEn": "Arkas oval coffee table",
+   "price": 2027,
+   "dims": {
+    "w": 130,
+    "d": 70,
+    "h": 40
+   },
+   "materials": [
+    "Столешница — керамика под травертин",
+    "Опоры — МДФ, шпон копчёного дуба"
+   ],
+   "materialsEn": [
+    "Travertine-look ceramic top",
+    "Smoked oak veneer pedestals"
+   ],
+   "color": "Травертин / копчёный дуб",
+   "colorEn": "Travertine / smoked oak",
+   "colorHex": "#D7C8AF",
+   "tags": [
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "coffee_table",
+    "params": {
+     "shape": "oval",
+     "top": "travertine",
+     "topThickness": 0.02,
+     "legs": "slab",
+     "legCount": 2,
+     "legMaterial": "oak-smoked",
+     "legColor": "#8C7462",
+     "tiers": 1
+    }
+   }
+  },
+  {
+   "id": "coffee-corta",
+   "type": "coffee_table",
+   "name": "Журнальный стол Corta, дуб, Ø90",
+   "nameEn": "Corta oak coffee table, Ø90",
+   "price": 1919,
+   "dims": {
+    "w": 90,
+    "d": 90,
+    "h": 42,
+    "round": true
+   },
+   "materials": [
+    "МДФ, шпон дуба"
+   ],
+   "materialsEn": [
+    "Oak veneer on MDF"
+   ],
+   "color": "Тёплый дуб",
+   "colorEn": "Warm oak",
+   "colorHex": "#B18E6A",
+   "tags": [
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "coffee_table",
+    "params": {
+     "shape": "round",
+     "top": "oak-light",
+     "topColor": "#B18E6A",
+     "topThickness": 0.03,
+     "legs": "pedestal",
+     "pedestalStyle": "drum",
+     "legMaterial": "oak-light",
+     "legColor": "#B18E6A",
+     "tiers": 1
+    }
+   }
+  },
+  {
+   "id": "side-pavia",
+   "type": "side_table",
+   "name": "Приставной столик Pavia, мрамор",
+   "nameEn": "Pavia marble side table",
+   "price": 1055,
+   "dims": {
+    "w": 50,
+    "d": 50,
+    "h": 50
+   },
+   "materials": [
+    "Мрамор"
+   ],
+   "materialsEn": [
+    "Marble"
+   ],
+   "color": "Бежевый мрамор",
+   "colorEn": "Beige marble",
+   "colorHex": "#D9CBB8",
+   "tags": [
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "side_table",
+    "params": {
+     "shape": "square",
+     "top": "marble-white",
+     "topColor": "#D9CBB8",
+     "legs": "pedestal",
+     "pedestalStyle": "block",
+     "legMaterial": "marble-white",
+     "legColor": "#D9CBB8",
+     "tiers": 1
+    }
+   }
+  },
+  {
+   "id": "chair-salalah",
+   "type": "dining_chair",
+   "name": "Стул Salalah, мягкий",
+   "nameEn": "Salalah upholstered dining chair",
+   "price": 479,
+   "dims": {
+    "w": 51,
+    "d": 56,
+    "h": 83
+   },
+   "materials": [
+    "Ткань фактурная",
+    "Каркас — дерево, копчёный дуб"
+   ],
+   "materialsEn": [
+    "Textured fabric",
+    "Smoked oak frame"
+   ],
+   "color": "Грейж / копчёный дуб",
+   "colorEn": "Greige / smoked oak",
+   "colorHex": "#C9C1B6",
+   "tags": [
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "dining_chair",
+    "params": {
+     "frame": "oak-smoked",
+     "woodColor": "#7E6E60",
+     "seat": "fabric-boucle",
+     "seatColor": "#C9C1B6",
+     "back": "upholstered",
+     "backShape": "rounded"
+    }
+   }
+  },
+  {
+   "id": "dining-keira-100",
+   "type": "dining_table",
+   "name": "Обеденный стол Keira, дуб, Ø100",
+   "nameEn": "Keira round oak dining table, Ø100",
+   "price": 839,
+   "dims": {
+    "w": 100,
+    "d": 100,
+    "h": 77,
+    "round": true
+   },
+   "materials": [
+    "Массив дерева"
+   ],
+   "materialsEn": [
+    "Solid wood"
+   ],
+   "color": "Светлый дуб",
+   "colorEn": "Light oak",
+   "colorHex": "#C9B08A",
+   "tags": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "dining_table",
+    "params": {
+     "shape": "round",
+     "top": "oak-light",
+     "topColor": "#C9B08A",
+     "legs": "wood-taper",
+     "legMaterial": "oak-light",
+     "legColor": "#C9B08A"
+    }
+   }
+  },
+  {
+   "id": "bed-forren-160",
+   "type": "bed",
+   "name": "Кровать Forren, 160×200",
+   "nameEn": "Forren queen bed, 160×200",
+   "price": 1559,
+   "dims": {
+    "w": 170,
+    "d": 207,
+    "h": 100
+   },
+   "materials": [
+    "МДФ, отделка под дуб",
+    "Ламели — дерево"
+   ],
+   "materialsEn": [
+    "Oak-finish MDF",
+    "Wooden slats"
+   ],
+   "color": "Тёплый дуб",
+   "colorEn": "Warm oak",
+   "colorHex": "#B58F66",
+   "tags": [
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "bed",
+    "params": {
+     "headboard": "wood-panel",
+     "headboardColor": "#B58F66",
+     "headboardHeight": 1.0,
+     "frame": "oak-light",
+     "woodColor": "#B58F66",
+     "legs": "wood-short",
+     "railHeight": 0.3
+    }
+   }
+  },
+  {
+   "id": "nightstand-forren",
+   "type": "nightstand",
+   "name": "Тумба Forren",
+   "nameEn": "Forren nightstand",
+   "price": 419,
+   "dims": {
+    "w": 45,
+    "d": 40,
+    "h": 52
+   },
+   "materials": [
+    "МДФ, отделка под дуб"
+   ],
+   "materialsEn": [
+    "Oak-finish MDF"
+   ],
+   "color": "Тёплый дуб",
+   "colorEn": "Warm oak",
+   "colorHex": "#B58F66",
+   "tags": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "nightstand",
+    "params": {
+     "doors": 0,
+     "drawers": 1,
+     "open": 1,
+     "legs": "wood-taper",
+     "legHeight": 0.1,
+     "wood": "oak-light",
+     "woodColor": "#B58F66",
+     "handles": "cutout",
+     "fronts": "flat"
+    }
+   }
+  },
+  {
+   "id": "pendant-berit",
+   "type": "pendant_lamp",
+   "name": "Подвес Berit, бумажный шнур, Ø50",
+   "nameEn": "Berit paper-cord pendant, Ø50",
+   "price": 227,
+   "dims": {
+    "w": 50,
+    "d": 50,
+    "h": 21,
+    "round": true
+   },
+   "materials": [
+    "Бумажный шнур",
+    "Каркас — металл"
+   ],
+   "materialsEn": [
+    "Paper cord",
+    "Metal frame"
+   ],
+   "color": "Натуральный",
+   "colorEn": "Natural",
+   "colorHex": "#D9D3C2",
+   "tags": [
+    "light-oak"
+   ],
+   "model": {
+    "archetype": "pendant_lamp",
+    "params": {
+     "body": "paper",
+     "shade": "dome",
+     "shadeColor": "#D9D3C2",
+     "drop": 1.11
+    }
+   }
+  },
+  {
+   "id": "floorlamp-audrey",
+   "type": "floor_lamp",
+   "name": "Торшер Audrey, ротанг",
+   "nameEn": "Audrey rattan floor lamp",
+   "price": 395,
+   "dims": {
+    "w": 50,
+    "d": 50,
+    "h": 155
+   },
+   "materials": [
+    "Абажур — ротанг",
+    "Тренога — дерево"
+   ],
+   "materialsEn": [
+    "Rattan shade",
+    "Wooden tripod"
+   ],
+   "color": "Натуральный ротанг",
+   "colorEn": "Natural rattan",
+   "colorHex": "#C4A57A",
+   "tags": [
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "floor_lamp",
+    "params": {
+     "base": "oak-light",
+     "baseColor": "#B99A72",
+     "stem": "tripod",
+     "shade": "dome",
+     "shadeMaterial": "rattan",
+     "shadeColor": "#C4A57A",
+     "shadeDiameter": 0.5
+    }
+   }
+  },
+  {
+   "id": "floorlamp-diamant",
+   "type": "floor_lamp",
+   "name": "Торшер Diamant, бумажный шнур",
+   "nameEn": "Diamant paper-cord column floor lamp",
+   "price": 599,
+   "dims": {
+    "w": 20,
+    "d": 20,
+    "h": 140
+   },
+   "materials": [
+    "Бумажный шнур"
+   ],
+   "materialsEn": [
+    "Paper cord"
+   ],
+   "color": "Молочный",
+   "colorEn": "Milk white",
+   "colorHex": "#EEE8DE",
+   "tags": [
+    "light-oak"
+   ],
+   "model": {
+    "archetype": "floor_lamp",
+    "params": {
+     "base": "paper",
+     "baseColor": "#EEE8DE",
+     "stem": "column",
+     "shade": "column",
+     "shadeMaterial": "paper",
+     "shadeColor": "#EEE8DE",
+     "shadeDiameter": 0.2
+    }
+   }
+  },
+  {
+   "id": "mirror-mackenzie-arch",
+   "type": "mirror",
+   "name": "Зеркало Mackenzie, арка 80×120",
+   "nameEn": "Mackenzie arched mirror, 80×120",
+   "price": 539,
+   "dims": {
+    "w": 80,
+    "d": 3,
+    "h": 120
+   },
+   "materials": [
+    "Зеркало",
+    "Рама — дерево, матовый чёрный"
+   ],
+   "materialsEn": [
+    "Mirror glass",
+    "Matte black wooden frame"
+   ],
+   "color": "Чёрный",
+   "colorEn": "Black",
+   "colorHex": "#1F1E1C",
+   "tags": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "mirror",
+    "params": {
+     "shape": "arch",
+     "frame": "metal-black",
+     "frameColor": "#1F1E1C",
+     "frameWidth": 0.015,
+     "mount": "wall"
+    }
+   }
+  },
+  {
+   "id": "mirror-artemis-round-black",
+   "type": "mirror",
+   "name": "Зеркало Artemis, круглое, Ø80",
+   "nameEn": "Artemis round mirror, Ø80",
+   "price": 239,
+   "dims": {
+    "w": 80,
+    "d": 3,
+    "h": 80,
+    "round": true
+   },
+   "materials": [
+    "Зеркало",
+    "Рама — металл, матовый чёрный"
+   ],
+   "materialsEn": [
+    "Mirror glass",
+    "Matte black metal frame"
+   ],
+   "color": "Чёрный",
+   "colorEn": "Black",
+   "colorHex": "#1F1E1C",
+   "tags": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "mirror",
+    "params": {
+     "shape": "round",
+     "frame": "metal-black",
+     "frameColor": "#1F1E1C",
+     "frameWidth": 0.012,
+     "mount": "wall"
+    }
+   }
+  },
+  {
+   "id": "tv-joyce",
+   "type": "tv_unit",
+   "name": "ТВ-тумба Joyce, травертин",
+   "nameEn": "Joyce TV unit with travertine top",
+   "price": 2675,
+   "dims": {
+    "w": 180,
+    "d": 40,
+    "h": 45
+   },
+   "materials": [
+    "МДФ, матовая краска цвета слоновой кости",
+    "Столешница — травертин"
+   ],
+   "materialsEn": [
+    "Ivory matte painted MDF",
+    "Travertine top"
+   ],
+   "color": "Слоновая кость / травертин",
+   "colorEn": "Ivory / travertine",
+   "colorHex": "#E6DFD3",
+   "tags": [
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "tv_unit",
+    "params": {
+     "doors": 2,
+     "drawers": 0,
+     "open": 1,
+     "legs": "plinth",
+     "wood": "paint",
+     "woodColor": "#E6DFD3",
+     "topMaterial": "travertine",
+     "topColor": "#D7C8AF",
+     "handles": "none",
+     "fronts": "flat",
+     "corners": "rounded"
+    }
+   }
+  },
+  {
+   "id": "coffee-joyce",
+   "type": "coffee_table",
+   "name": "Журнальный стол Joyce, камень",
+   "nameEn": "Joyce stone-top coffee table",
+   "price": 2039,
+   "dims": {
+    "w": 120,
+    "d": 70,
+    "h": 40
+   },
+   "materials": [
+    "Столешница — спечённый камень под травертин",
+    "Основание — МДФ, краска цвета слоновой кости"
+   ],
+   "materialsEn": [
+    "Travertine-look sintered stone top",
+    "Ivory painted MDF base"
+   ],
+   "color": "Травертин / слоновая кость",
+   "colorEn": "Travertine / ivory",
+   "colorHex": "#D9CDBB",
+   "tags": [
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "coffee_table",
+    "params": {
+     "shape": "soft-rect",
+     "top": "travertine",
+     "topThickness": 0.02,
+     "legs": "slab",
+     "legCount": 2,
+     "legMaterial": "paint",
+     "legColor": "#E6DFD3",
+     "tiers": 1
+    }
+   }
+  },
+  {
+   "id": "side-joyce",
+   "type": "side_table",
+   "name": "Приставной столик Joyce, камень",
+   "nameEn": "Joyce stone-top side table",
+   "price": 863,
+   "dims": {
+    "w": 45,
+    "d": 45,
+    "h": 50,
+    "round": true
+   },
+   "materials": [
+    "Столешница — спечённый камень",
+    "Основание — МДФ, краска цвета слоновой кости"
+   ],
+   "materialsEn": [
+    "Sintered stone top",
+    "Ivory painted MDF base"
+   ],
+   "color": "Слоновая кость / камень",
+   "colorEn": "Ivory / stone",
+   "colorHex": "#E6DFD3",
+   "tags": [
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "side_table",
+    "params": {
+     "shape": "round",
+     "top": "travertine",
+     "topColor": "#D9CDBB",
+     "legs": "pedestal",
+     "pedestalStyle": "drum",
+     "legMaterial": "paint",
+     "legColor": "#E6DFD3",
+     "tiers": 1
+    }
+   }
+  },
+  {
+   "id": "tv-echo",
+   "type": "tv_unit",
+   "name": "ТВ-тумба Echo, светлый дуб",
+   "nameEn": "Echo TV unit, light oak",
+   "price": 767,
+   "dims": {
+    "w": 180,
+    "d": 40,
+    "h": 43
+   },
+   "materials": [
+    "МДФ, отделка под светлый дуб",
+    "Раздвижные дверцы — рейка"
+   ],
+   "materialsEn": [
+    "Light oak finish MDF",
+    "Slatted sliding doors"
+   ],
+   "color": "Светлый дуб",
+   "colorEn": "Light oak",
+   "colorHex": "#D2BA94",
+   "tags": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "tv_unit",
+    "params": {
+     "doors": 2,
+     "drawers": 0,
+     "open": 1,
+     "legs": "wood-taper",
+     "legMaterial": "oak-light",
+     "legHeight": 0.12,
+     "wood": "oak-light",
+     "woodColor": "#D2BA94",
+     "handles": "none",
+     "fronts": "slatted"
+    }
+   }
+  },
+  {
+   "id": "coffee-echo",
+   "type": "coffee_table",
+   "name": "Журнальный стол Echo, светлый дуб",
+   "nameEn": "Echo coffee table, light oak",
+   "price": 515,
+   "dims": {
+    "w": 120,
+    "d": 60,
+    "h": 40
+   },
+   "materials": [
+    "МДФ, отделка под светлый дуб"
+   ],
+   "materialsEn": [
+    "Light oak finish MDF"
+   ],
+   "color": "Светлый дуб",
+   "colorEn": "Light oak",
+   "colorHex": "#D2BA94",
+   "tags": [
+    "light-oak"
+   ],
+   "model": {
+    "archetype": "coffee_table",
+    "params": {
+     "shape": "rect",
+     "top": "oak-light",
+     "topColor": "#D2BA94",
+     "topThickness": 0.03,
+     "legs": "wood-taper",
+     "legMaterial": "oak-light",
+     "legColor": "#D2BA94",
+     "tiers": 2
+    }
+   }
+  },
+  {
+   "id": "nightstand-qubba",
+   "type": "nightstand",
+   "name": "Тумба Qubba, рифлёная",
+   "nameEn": "Qubba ribbed nightstand",
+   "price": 599,
+   "dims": {
+    "w": 50,
+    "d": 45,
+    "h": 50
+   },
+   "materials": [
+    "МДФ, меламин цвета крема"
+   ],
+   "materialsEn": [
+    "Cream melamine MDF"
+   ],
+   "color": "Крем",
+   "colorEn": "Cream",
+   "colorHex": "#DBCCBB",
+   "tags": [
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "nightstand",
+    "params": {
+     "doors": 0,
+     "drawers": 2,
+     "open": 0,
+     "legs": "plinth",
+     "wood": "paint",
+     "woodColor": "#DBCCBB",
+     "handles": "none",
+     "fronts": "fluted"
+    }
+   }
+  },
+  {
+   "id": "chair-sven",
+   "type": "dining_chair",
+   "name": "Стул Sven, дубовые ножки",
+   "nameEn": "Sven dining chair, oak legs",
+   "price": 539,
+   "dims": {
+    "w": 48,
+    "d": 52,
+    "h": 82
+   },
+   "materials": [
+    "Ткань с ПУ-покрытием",
+    "Ножки — массив дуба"
+   ],
+   "materialsEn": [
+    "PU-coated fabric",
+    "Solid oak legs"
+   ],
+   "color": "Бежевый / дуб",
+   "colorEn": "Beige / oak",
+   "colorHex": "#C9BCAE",
+   "tags": [
+    "light-oak"
+   ],
+   "model": {
+    "archetype": "dining_chair",
+    "params": {
+     "frame": "oak-light",
+     "woodColor": "#D2BA94",
+     "seat": "fabric-linen",
+     "seatColor": "#C9BCAE",
+     "back": "upholstered",
+     "backShape": "rounded-shell"
+    }
+   }
+  },
+  {
+   "id": "tv-windsor",
+   "type": "tv_unit",
+   "name": "ТВ-тумба Windsor, манго и сетка",
+   "nameEn": "Windsor mango and cane TV unit",
+   "price": 4379,
+   "dims": {
+    "w": 180,
+    "d": 40,
+    "h": 50
+   },
+   "materials": [
+    "Массив манго",
+    "Фасады — венская сетка",
+    "Ножки — металл, матовый чёрный"
+   ],
+   "materialsEn": [
+    "Solid mango wood",
+    "Cane door panels",
+    "Matte black metal legs"
+   ],
+   "color": "Тёплое дерево / сетка",
+   "colorEn": "Warm wood / cane",
+   "colorHex": "#B89575",
+   "tags": [
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "tv_unit",
+    "params": {
+     "doors": 4,
+     "drawers": 0,
+     "open": 0,
+     "legs": "metal-slim",
+     "legMaterial": "metal-black",
+     "legHeight": 0.12,
+     "wood": "oak-light",
+     "woodColor": "#B89575",
+     "handles": "knob-black",
+     "fronts": "cane",
+     "corners": "rounded"
+    }
+   }
+  },
+  {
+   "id": "decor-cream-ceramic",
+   "type": "decor_set",
+   "name": "Декор: кремовая и белая керамика",
+   "nameEn": "Decor: cream and white ceramics",
+   "price": 452,
+   "dims": {
+    "w": 50,
+    "d": 30,
+    "h": 40
+   },
+   "materials": [
+    "Матовая керамика"
+   ],
+   "materialsEn": [
+    "Matte ceramic"
+   ],
+   "color": "Молочный / песочный",
+   "colorEn": "Milk / sand",
+   "colorHex": "#E8E1D6",
+   "tags": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "decor_set",
+    "params": {
+     "items": [
+      "vase-tall",
+      "sculpture",
+      "bowl"
+     ],
+     "colors": [
+      "#DCD3C3",
+      "#EEE9E1",
+      "#ECE7DE"
+     ],
+     "heights": [
+      0.4,
+      0.29,
+      0.1
+     ]
+    }
+   }
+  },
+  {
+   "id": "cushions-linen-olive",
+   "type": "cushions",
+   "name": "Подушки: лён и олива — комплект из 3",
+   "nameEn": "Cushions: linen and olive, set of 3",
+   "price": 920,
+   "dims": {
+    "w": 50,
+    "d": 15,
+    "h": 50
+   },
+   "materials": [
+    "Лён",
+    "Фактурная ткань"
+   ],
+   "materialsEn": [
+    "Linen",
+    "Textured fabric"
+   ],
+   "color": "Молочный / олива",
+   "colorEn": "Milk / olive",
+   "colorHex": "#6B6A45",
+   "tags": [
+    "dark-walnut",
+    "light-oak",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "cushions",
+    "params": {
+     "count": 3,
+     "colors": [
+      "#ECE6DC",
+      "#ECE6DC",
+      "#6B6A45"
+     ],
+     "fabric": "linen",
+     "sizes": [
+      [
+       0.5,
+       0.5
+      ],
+      [
+       0.5,
+       0.5
+      ],
+      [
+       0.5,
+       0.5
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "cushions-linen-oat",
+   "type": "cushions",
+   "name": "Подушки: молочный и овсяный лён — комплект из 3",
+   "nameEn": "Cushions: milk and oat linen, set of 3",
+   "price": 932,
+   "dims": {
+    "w": 50,
+    "d": 15,
+    "h": 50
+   },
+   "materials": [
+    "Лён"
+   ],
+   "materialsEn": [
+    "Linen"
+   ],
+   "color": "Молочный / овсяный",
+   "colorEn": "Milk / oat",
+   "colorHex": "#D6CBB8",
+   "tags": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "cushions",
+    "params": {
+     "count": 3,
+     "colors": [
+      "#ECE6DC",
+      "#ECE6DC",
+      "#D6CBB8"
+     ],
+     "fabric": "linen",
+     "sizes": [
+      [
+       0.5,
+       0.5
+      ],
+      [
+       0.5,
+       0.5
+      ],
+      [
+       0.5,
+       0.5
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "bedding-white-oat",
+   "type": "bedding",
+   "name": "Постель: белый перкаль, овсяный плед",
+   "nameEn": "Bedding: white percale, oat throw",
+   "price": 430,
+   "dims": {
+    "w": 200,
+    "d": 200,
+    "h": 5
+   },
+   "materials": [
+    "Хлопок-перкаль 325 TC",
+    "Хлопковый плед"
+   ],
+   "materialsEn": [
+    "Cotton percale 325 TC",
+    "Cotton throw"
+   ],
+   "color": "Тёплый белый / овсяный",
+   "colorEn": "Warm white / oat",
+   "colorHex": "#F1EEE8",
+   "tags": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "bedding",
+    "params": {
+     "duvetColor": "#F1EEE8",
+     "throwColor": "#D6CBB8",
+     "pillows": 2,
+     "pillowColors": [
+      "#F1EEE8",
+      "#F1EEE8"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dining-malta-90",
+   "type": "dining_table",
+   "name": "Обеденный стол Malta, керамика, 90×90",
+   "nameEn": "Malta ceramic-top dining table, 90×90",
+   "price": 1019,
+   "dims": {
+    "w": 90,
+    "d": 90,
+    "h": 75
+   },
+   "materials": [
+    "Столешница — керамика под мрамор",
+    "Опора-тюльпан — металл, окрашенный"
+   ],
+   "materialsEn": [
+    "Marble-look ceramic top",
+    "Painted metal tulip pedestal"
+   ],
+   "color": "Белый мрамор / слоновая кость",
+   "colorEn": "White marble / ivory",
+   "colorHex": "#ECE8E1",
+   "tags": [
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "dining_table",
+    "params": {
+     "shape": "soft-square",
+     "top": "marble-white",
+     "topColor": "#ECE8E1",
+     "legs": "pedestal",
+     "pedestalStyle": "tulip",
+     "legMaterial": "paint",
+     "legColor": "#EEEAE3"
+    }
+   }
+  },
+  {
+   "id": "chair-emily",
+   "type": "dining_chair",
+   "name": "Стул Emily, плетёное сиденье",
+   "nameEn": "Emily wishbone chair, woven seat",
+   "price": 1283,
+   "dims": {
+    "w": 54,
+    "d": 55,
+    "h": 74
+   },
+   "materials": [
+    "Каркас — массив тика, светлый",
+    "Сиденье — плетёный шнур"
+   ],
+   "materialsEn": [
+    "Pale solid teak frame",
+    "Woven rope seat"
+   ],
+   "color": "Светлое дерево / натуральный шнур",
+   "colorEn": "Pale wood / natural cord",
+   "colorHex": "#D9C3A0",
+   "tags": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "dining_chair",
+    "params": {
+     "frame": "oak-light",
+     "woodColor": "#D9C3A0",
+     "seat": "cord",
+     "seatColor": "#CDB48C",
+     "back": "curved",
+     "backStyle": "y-splat",
+     "arms": true
+    }
+   }
+  },
+  {
+   "id": "chair-canovia",
+   "type": "dining_chair",
+   "name": "Стул Canovia, венская сетка",
+   "nameEn": "Canovia cane-back dining chair",
+   "price": 1079,
+   "dims": {
+    "w": 48,
+    "d": 40,
+    "h": 80
+   },
+   "materials": [
+    "Каркас — массив дерева",
+    "Спинка — венская сетка",
+    "Подушка сиденья — ткань"
+   ],
+   "materialsEn": [
+    "Solid wood frame",
+    "Cane back",
+    "Fabric seat pad"
+   ],
+   "color": "Тёплое дерево / сетка",
+   "colorEn": "Warm wood / cane",
+   "colorHex": "#C9A27A",
+   "tags": [
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "dining_chair",
+    "params": {
+     "frame": "oak-light",
+     "woodColor": "#C9A27A",
+     "seat": "fabric-linen",
+     "seatColor": "#E6DCCB",
+     "back": "cane",
+     "caneColor": "#C4A57A"
+    }
+   }
+  },
+  {
+   "id": "tableware-mia-smoke-wood",
+   "type": "tableware",
+   "name": "Сервировка на двоих: песочный керамогранит, дымчатое стекло, деревянные приборы",
+   "nameEn": "Table for two: sand stoneware, smoked glass, wooden cutlery",
+   "price": 379,
+   "dims": {
+    "w": 90,
+    "d": 40,
+    "h": 12
+   },
+   "materials": [
+    "Керамогранит (сервиз на 4 персоны)",
+    "Дымчатое стекло, 6 стаканов",
+    "Приборы с деревянными ручками, 16 предметов",
+    "Хлопковые салфетки, 4 шт."
+   ],
+   "materialsEn": [
+    "Stoneware (dinner set for 4)",
+    "Smoked glass, 6 tumblers",
+    "Wood-handled cutlery, 16 pieces",
+    "Cotton napkins, set of 4"
+   ],
+   "color": "Песочный / дым / дерево",
+   "colorEn": "Sand / smoke / wood",
+   "colorHex": "#D6CCBC",
+   "tags": [
+    "dark-walnut",
+    "light-oak",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "tableware",
+    "params": {
+     "plates": {
+      "color": "#D6CCBC",
+      "speckle": true
+     },
+     "bowl": {
+      "color": "#D6CCBC"
+     },
+     "glass": {
+      "color": "#8A8378",
+      "kind": "smoke"
+     },
+     "cutlery": {
+      "material": "wood",
+      "color": "#8C6A4A"
+     },
+     "napkin": {
+      "color": "#D8CFC0"
+     }
+    }
+   }
+  },
+  {
+   "id": "tableware-lillian-amber-brass",
+   "type": "tableware",
+   "name": "Сервировка на двоих: бежевый керамогранит с крапом, янтарное стекло, латунные приборы",
+   "nameEn": "Table for two: speckled beige stoneware, amber glass, brass cutlery",
+   "price": 643,
+   "dims": {
+    "w": 90,
+    "d": 40,
+    "h": 12
+   },
+   "materials": [
+    "Керамогранит с крапом (сервиз на 6 персон)",
+    "Янтарное стекло, 6 стаканов",
+    "Нерж. сталь с матовым золотым покрытием, 16 предметов",
+    "Льняные салфетки, 4 шт."
+   ],
+   "materialsEn": [
+    "Speckled stoneware (dinner set for 6)",
+    "Amber glass, 6 tumblers",
+    "Matte gold-coated stainless steel, 16 pieces",
+    "Linen napkins, set of 4"
+   ],
+   "color": "Бежевый / янтарь / латунь",
+   "colorEn": "Beige / amber / brass",
+   "colorHex": "#D9CDB8",
+   "tags": [
+    "dark-walnut",
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "tableware",
+    "params": {
+     "plates": {
+      "color": "#D9CDB8",
+      "speckle": true
+     },
+     "bowl": {
+      "color": "#D9CDB8"
+     },
+     "glass": {
+      "color": "#B27A3E",
+      "kind": "amber"
+     },
+     "cutlery": {
+      "material": "metal-brass",
+      "color": "#B8A27A"
+     },
+     "napkin": {
+      "color": "#E3DACB"
+     }
+    }
+   }
+  },
+  {
+   "id": "kitchen-black-basic",
+   "type": "kitchen_decor",
+   "name": "Кухня: чёрный чайник, керамика, светлая доска",
+   "nameEn": "Kitchen: black kettle, ceramic, light board",
+   "price": 230,
+   "dims": {
+    "w": 52,
+    "d": 30,
+    "h": 36
+   },
+   "materials": [
+    "Чайник — пластик, матовый чёрный",
+    "Подставка для приборов — керамика",
+    "Доска — дерево",
+    "Бутылки — стекло"
+   ],
+   "materialsEn": [
+    "Matte black plastic kettle",
+    "Ceramic utensil holder",
+    "Wooden board",
+    "Glass bottles"
+   ],
+   "color": "Чёрный / молочный / дерево",
+   "colorEn": "Black / milk / wood",
+   "colorHex": "#1F1E1C",
+   "tags": [
+    "light-oak",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "kitchen_decor",
+    "params": {
+     "kettle": {
+      "color": "#1F1E1C"
+     },
+     "crock": {
+      "color": "#ECE7DE"
+     },
+     "board": {
+      "color": "#CDB48C",
+      "lean": true
+     },
+     "bottles": {
+      "color": "#DDE3DA",
+      "kind": "clear"
+     }
+    }
+   }
+  },
+  {
+   "id": "kitchen-white-travertine",
+   "type": "kitchen_decor",
+   "name": "Кухня: белый чайник, керамика, травертиновый поднос",
+   "nameEn": "Kitchen: white kettle, ceramic, travertine tray",
+   "price": 221,
+   "dims": {
+    "w": 52,
+    "d": 30,
+    "h": 28
+   },
+   "materials": [
+    "Чайник — пластик, белый",
+    "Подставка для приборов — керамика",
+    "Поднос — травертин",
+    "Бутылка для масла и уксуса — керамика"
+   ],
+   "materialsEn": [
+    "White plastic kettle",
+    "Ceramic utensil holder",
+    "Travertine tray",
+    "Ceramic oil and vinegar bottle"
+   ],
+   "color": "Белый / молочный / травертин",
+   "colorEn": "White / milk / travertine",
+   "colorHex": "#ECE7DE",
+   "tags": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "kitchen_decor",
+    "params": {
+     "kettle": {
+      "color": "#EEEAE3"
+     },
+     "crock": {
+      "color": "#ECE7DE"
+     },
+     "tray": {
+      "material": "travertine",
+      "color": "#D7C8AF"
+     },
+     "bottles": {
+      "color": "#E8E1D6",
+      "kind": "ceramic"
+     }
+    }
+   }
+  },
+  {
+   "id": "nsdecor-bud-vase-tealight",
+   "type": "nightstand_decor",
+   "name": "У кровати: керамическая мини-ваза и подсвечник",
+   "nameEn": "Bedside: ceramic bud vase and tealight holder",
+   "price": 65,
+   "dims": {
+    "w": 20,
+    "d": 12,
+    "h": 12
+   },
+   "materials": [
+    "Ваза — керамика",
+    "Подсвечник — керамика"
+   ],
+   "materialsEn": [
+    "Ceramic vase",
+    "Ceramic candle holder"
+   ],
+   "color": "Тауп / белый",
+   "colorEn": "Taupe / white",
+   "colorHex": "#8C7B6B",
+   "tags": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "nightstand_decor",
+    "params": {
+     "items": [
+      "bud-vase",
+      "candle"
+     ],
+     "colors": [
+      "#8C7B6B",
+      "#EEE9E1"
+     ]
+    }
+   }
+  },
+  {
+   "id": "decor-travertine-cream",
+   "type": "decor_set",
+   "name": "Декор: песочная ваза, травертин, кремовая керамика",
+   "nameEn": "Decor: sand vase, travertine, cream ceramic",
+   "price": 452,
+   "dims": {
+    "w": 45,
+    "d": 25,
+    "h": 40
+   },
+   "materials": [
+    "Матовая керамика",
+    "Травертин"
+   ],
+   "materialsEn": [
+    "Matte ceramic",
+    "Travertine"
+   ],
+   "color": "Песочный / травертин / молочный",
+   "colorEn": "Sand / travertine / milk",
+   "colorHex": "#DCD3C3",
+   "tags": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "decor_set",
+    "params": {
+     "items": [
+      "vase-tall",
+      "tray",
+      "vase-round"
+     ],
+     "colors": [
+      "#DCD3C3",
+      "#D7C8AF",
+      "#E8E1D6"
+     ],
+     "heights": [
+      0.4,
+      0.02,
+      0.21
+     ]
+    }
+   }
+  },
+  {
+   "id": "cushions-oat-ivory-4",
+   "type": "cushions",
+   "name": "Подушки: молочный и овсяный лён — комплект из 4",
+   "nameEn": "Cushions: milk and oat linen, set of 4",
+   "price": 1339,
+   "dims": {
+    "w": 50,
+    "d": 15,
+    "h": 50
+   },
+   "materials": [
+    "Лён"
+   ],
+   "materialsEn": [
+    "Linen"
+   ],
+   "color": "Молочный / овсяный",
+   "colorEn": "Milk / oat",
+   "colorHex": "#D6CBB8",
+   "tags": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "cushions",
+    "params": {
+     "count": 4,
+     "colors": [
+      "#ECE6DC",
+      "#D6CBB8",
+      "#ECE6DC",
+      "#D6CBB8"
+     ],
+     "fabric": "linen",
+     "sizes": [
+      [
+       0.5,
+       0.5
+      ],
+      [
+       0.5,
+       0.5
+      ],
+      [
+       0.5,
+       0.5
+      ],
+      [
+       0.5,
+       0.5
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "bedding-white-sateen-oat",
+   "type": "bedding",
+   "name": "Постель: белый сатин, овсяный плед",
+   "nameEn": "Bedding: white sateen, oat throw",
+   "price": 382,
+   "dims": {
+    "w": 200,
+    "d": 200,
+    "h": 5
+   },
+   "materials": [
+    "Хлопковый сатин 200 TC",
+    "Плотный плетёный плед"
+   ],
+   "materialsEn": [
+    "Cotton sateen 200 TC",
+    "Dense woven throw"
+   ],
+   "color": "Тёплый белый / овсяный",
+   "colorEn": "Warm white / oat",
+   "colorHex": "#F0EDE6",
+   "tags": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "bedding",
+    "params": {
+     "duvetColor": "#F0EDE6",
+     "throwColor": "#D6CBB8",
+     "pillows": 2,
+     "pillowColors": [
+      "#F0EDE6",
+      "#F0EDE6"
+     ]
+    }
+   }
+  },
+  {
+   "id": "throw-boras-oat",
+   "type": "throw",
+   "name": "Плед Boras, хлопок, овсяный, 130×170",
+   "nameEn": "Boras cotton throw, oat, 130×170",
+   "price": 155,
+   "dims": {
+    "w": 130,
+    "d": 170,
+    "h": 1
+   },
+   "materials": [
+    "Хлопок",
+    "Бахрома"
+   ],
+   "materialsEn": [
+    "Cotton",
+    "Fringed edge"
+   ],
+   "color": "Овсяный",
+   "colorEn": "Oat",
+   "colorHex": "#D8CDBA",
+   "tags": [
+    "dark-walnut",
+    "light-oak",
+    "greige-luxe",
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "throw",
+    "params": {
+     "fabric": "cotton-weave",
+     "color": "#D8CDBA",
+     "fringe": true,
+     "size": [
+      1.3,
+      1.7
+     ]
     }
    }
   }

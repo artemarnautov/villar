@@ -21,13 +21,14 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
   // ---------------------------------------------------------------- materials
   const floorKey = A.floor || 'oak-light';
   const M = {
-    wall: materials.get('paint', { color: A.walls || '#EDE7DE' }),
+    wall: own(materials.get('paint', { color: A.walls || '#EDE7DE' }).clone()),      // own: wall colour follows the style
     ceiling: materials.get('paint', { color: A.ceiling || '#F5F2EC' }),
-    floor: WOOD_SPECIES.includes(floorKey) ? materials.get('oak-floor', { species: floorKey }) : materials.get(floorKey),
-    skirting: materials.get('kitchen-front', { color: A.walls || '#EDE7DE', roughness: 0.5 }),
+    floor: own(satin(WOOD_SPECIES.includes(floorKey) ? materials.get('oak-floor', { species: floorKey }) : materials.get(floorKey))),
+    skirting: own(materials.get('kitchen-front', { color: A.walls || '#EDE7DE', roughness: 0.5 }).clone()),
     front: materials.get('kitchen-front', { color: A.kitchenFronts || '#D6CFBF' }),
     wfront: materials.get('kitchen-front', { color: A.wardrobeFronts || A.kitchenFronts || '#D6CFBF' }),
-    carcass: materials.get('kitchen-front', { color: shade(A.kitchenFronts || '#D8D0C4', 0.82), roughness: 0.6 }),
+    // dark recess seen through the 4 mm front gaps: reads as a continuous shadow line
+    carcass: own(new THREE.MeshStandardMaterial({ color: '#2b2723', roughness: 1, metalness: 0, name: 'cabinet-recess' })),
     plinth: materials.get('kitchen-front', { color: shade(A.kitchenFronts || '#D8D0C4', 0.45), roughness: 0.7 }),
     worktop: materials.get(A.worktop || 'travertine'),
     black: materials.get('metal-black', { color: '#1b1b1b' }),
@@ -35,7 +36,7 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     steel: materials.get('metal-nickel'),
     white: materials.get('metal-white'),
     doorEntry: null,
-    tile: materials.get('porcelain-tile', { color: '#cfc7bb' }),
+    tile: own(materials.get('porcelain-tile', { color: '#cfc7bb' }).clone()),
     facade: materials.get('paint', { color: '#d9d3c9' }),
     concrete: materials.get('paint', { color: '#b9b3aa' }),
     cap: own(new THREE.MeshStandardMaterial({ color: '#34312e', roughness: 0.9, name: 'cutaway-cap' })),
@@ -44,8 +45,8 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     hob: own(new THREE.MeshPhysicalMaterial({ color: '#08080a', roughness: 0.08, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.03, name: 'hob-glass' })),
     hobRing: own(new THREE.MeshStandardMaterial({ color: '#2a2a2c', roughness: 0.4, name: 'hob-ring' })),
     sinkDark: own(new THREE.MeshStandardMaterial({ color: '#202022', roughness: 0.5, metalness: 0.6, name: 'drain' })),
-    glass: own(makeGlass('#ffffff', 0.08)),
-    railGlass: own(makeGlass('#e3f1ec', 0.14)),
+    glass: own(makeGlass('#ffffff')),
+    railGlass: own(makeGlass('#dff0ea')),
     diffuser: materials.get('bulb', { color: '#f3f1ec', lit: false, tag: 'downlight' }),
     led: materials.get('bulb', { color: '#fff3de', lit: false, tag: 'led-strip' }),
     grilleSlot: own(new THREE.MeshStandardMaterial({ color: '#2b2a29', roughness: 0.8, name: 'grille-slot' })),
@@ -55,7 +56,20 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     wood: materials.get('walnut-medium'),
     mirror: materials.get('mirror'),
   };
-  const doorFinish = (o) => materials.get(o.finish === 'paint' ? 'kitchen-front' : (o.finish || A.doorFinish || 'walnut-dark'), o.finish === 'paint' ? { color: A.walls || '#EDE7DE', roughness: 0.45 } : {});
+  // door finish: from the opening if the layout pins it, else from the active pack (doorFinish);
+  // one engine-owned material per door so a style change can dissolve to another finish
+  const finishMaterial = (finish, walls) => (finish === 'paint'
+    ? materials.get('kitchen-front', { color: walls || '#EDE7DE', roughness: 0.45 })
+    : materials.get(finish || 'walnut-dark'));
+  const doorMats = new Map(); // opening id → { mat, finish, fromPack }
+  const doorFinish = (o) => {
+    const key = o.id || `${o.wall}@${o.center}`;
+    if (!doorMats.has(key)) {
+      const finish = o.finish || A.doorFinish || 'walnut-dark';
+      doorMats.set(key, { mat: own(finishMaterial(finish, A.walls).clone()), finish, fromPack: !o.finish });
+    }
+    return doorMats.get(key).mat;
+  };
 
   // ---------------------------------------------------------------- walls geometry model
   const walls = layout.walls.map((w) => {
@@ -219,7 +233,7 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     P(s1 - 0.02, s1, 0, hgt, -depth, 0.0, fin);
     P(s0, s1, hgt - 0.02, hgt, -depth, 0.0, fin);
     // leaf (closed), set 3 cm into the opening
-    P(s0 + 0.022, s1 - 0.022, 0.006, hgt - 0.022, -0.075, -0.03, fin);
+    P(s0 + 0.022, s1 - 0.022, 0.006, hgt - 0.022, -0.075, -0.03, fin, { uvVertical: true });
     // architrave (painted)
     const aw = 0.07, ap = 0.016;
     P(s0 - aw, s0, 0, hgt + aw, 0, ap, M.skirting);
@@ -327,7 +341,7 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
   function kitchen(box, B, k, cut) {
     // local frame: d = distance from wall face (x = X - d), z along the wall
     const K = (mat, d0, d1, y0, y1, z0, z1, opts) => box(mat, X - d1, X - d0, y0, y1, z0, z1, opts);
-    const g = 0.003; // front gap
+    const g = 0.004; // front gap (4 mm, dark recess behind)
     const base = k.base, up = k.uppers, tall = k.tallUnit;
     const D = base.depth, BH = base.height;
     const fD0 = D - 0.02, fD1 = D;
@@ -394,7 +408,8 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     K(M.front, 0, D + 0.02, 0, BH, base.zTo, base.zTo + 0.018);
     // uppers
     const uD = up.depth;
-    K(M.carcass, 0, uD - 0.02, up.y0, up.y1, up.zFrom, up.zTo);
+    K(M.carcass, 0, uD - 0.02, up.y0 + 0.016, up.y1, up.zFrom, up.zTo);
+    K(M.front, 0, uD - 0.02, up.y0, up.y0 + 0.016, up.zFrom, up.zTo); // underside panel
     const n = 4, uw = (up.zTo - up.zFrom) / n;
     for (let i = 0; i < n; i++) {
       const a = up.zFrom + i * uw + g / 2, b = up.zFrom + (i + 1) * uw - g / 2;
@@ -427,10 +442,12 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
 
   // ---------------------------------------------------------------- wardrobe
   function wardrobe(box, B, w) {
-    const g = 0.003, x0 = w.x0, x1 = w.x1, z0 = w.z0, z1 = w.z1, h = w.height;
+    const g = 0.004, x0 = w.x0, x1 = w.x1, z0 = w.z0, z1 = w.z1, h = w.height;
     const fx0 = x1 - 0.02;
     box(M.plinth, x0, x1 - 0.05, 0, 0.08, z0 + 0.02, z1 - 0.02);
-    box(M.carcass, x0, fx0, 0.08, h, z0, z1);
+    box(M.carcass, x0, fx0, 0.08, h, z0 + 0.018, z1 - 0.018);
+    box(M.wfront, x0, x1, 0, h, z0, z0 + 0.018);   // end panels (front finish)
+    box(M.wfront, x0, x1, 0, h, z1 - 0.018, z1);
     const n = w.doors || 3, dw = (z1 - z0) / n;
     for (let i = 0; i < n; i++) {
       const a = z0 + i * dw + g / 2, b = z0 + (i + 1) * dw - g / 2;
@@ -548,10 +565,60 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     if (b.type === 'wardrobe') colliders.push({ x0: b.x0 - 0.05, x1: b.x1 + 0.03, z0: b.z0, z1: b.z1, kind: 'wardrobe' });
   }
 
+  const exterior = [M.railGlass, M.tile, shadowClones.get(M.facade) || M.facade, shadowClones.get(M.concrete) || M.concrete];
   return {
     group, full, cutGroup,
     glass: allGlass,
     glassMaterials: [M.glass, M.railGlass],
+    /** Materials that carry the wall colour (walls, skirting, painted doors) — animated on style changes. */
+    get wallMaterials() { return [M.wall, M.skirting, ...[...doorMats.values()].filter((d) => d.finish === 'paint').map((d) => d.mat)]; },
+    get doorFinish() { return [...doorMats.values()].find((d) => d.fromPack)?.finish || null; },
+    /**
+     * Stage a door-finish change: new meshes (same geometry, new material) are added next to the old
+     * ones for a dissolve; `commit()` removes the old ones. Doors pinned by the layout are kept.
+     */
+    prepareDoorFinish(finish) {
+      const inn = [], out = [], jobs = [];
+      for (const d of doorMats.values()) {
+        if (!d.fromPack || d.finish === finish) continue;
+        const mat = own(finishMaterial(finish, '#' + M.wall.color.getHexString()).clone());
+        mat.shadowSide = THREE.DoubleSide;
+        const found = [];
+        for (const g of [full, cutGroup]) g.traverse((o) => { if (o.isMesh && o.material === d.mat) found.push(o); });
+        for (const o of found) {
+          const m2 = new THREE.Mesh(o.geometry, mat);
+          m2.position.copy(o.position); m2.quaternion.copy(o.quaternion); m2.scale.copy(o.scale);
+          m2.castShadow = o.castShadow; m2.receiveShadow = o.receiveShadow; m2.renderOrder = o.renderOrder;
+          m2.userData = { ...o.userData }; m2.name = o.name;
+          o.parent.add(m2);
+          inn.push(m2); out.push(o);
+        }
+        jobs.push({ d, mat });
+      }
+      return {
+        inn, out,
+        commit() {
+          for (const o of out) o.removeFromParent();
+          for (const { d, mat } of jobs) { d.mat = mat; d.finish = finish; }
+        },
+      };
+    },
+    get wallColor() { return '#' + M.wall.color.getHexString(); },
+    /** Exterior surfaces reflect the sky PMREM, never the interior capture. */
+    setSkyEnv(tex) { for (const m of exterior) { if (m.envMap !== tex) { m.envMap = tex; m.needsUpdate = true; } } },
+    /** Path tracer: real transmissive glass (white + subtle attenuation, no teal), no PMREM maps. */
+    preparePhoto() {
+      const saved = [];
+      const set = (m, k, v) => { saved.push([m, k, m[k]]); m[k] = v; };
+      for (const [m, att, dist] of [[M.glass, '#f2f6f4', 1.0], [M.railGlass, '#e9f2ee', 0.5]]) {
+        set(m, 'color', new THREE.Color(0xffffff)); set(m, 'transmission', 1); set(m, 'thickness', 0.012);
+        set(m, 'attenuationColor', new THREE.Color(att)); set(m, 'attenuationDistance', dist);
+        set(m, 'specularColor', new THREE.Color(0xffffff)); set(m, 'transparent', false); set(m, 'blending', THREE.NormalBlending);
+        set(m, 'roughness', 0); set(m, 'opacity', 1);
+      }
+      for (const m of exterior) set(m, 'envMap', null);
+      return () => { for (let i = saved.length - 1; i >= 0; i--) { const [m, k, v] = saved[i]; m[k] = v; } };
+    },
     downlights: lightsPts,
     downlightMaterial: M.diffuser,
     ledMaterial: M.led,
@@ -568,11 +635,25 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
   };
 }
 
-function makeGlass(color, opacity) {
+/**
+ * Raster glass = Fresnel reflection only, added on top of whatever is behind it (no diffuse, so no
+ * milky veil by day; at night the box-projected room capture makes the glazing a dim mirror).
+ * The path tracer gets real transmissive glass instead (see preparePhoto).
+ */
+function makeGlass(specular) {
   return new THREE.MeshPhysicalMaterial({
-    color, roughness: 0.03, metalness: 0, transparent: true, opacity, ior: 1.5,
-    specularIntensity: 1, envMapIntensity: 1, depthWrite: false, side: THREE.DoubleSide, name: 'window-glass',
+    color: 0x000000, roughness: 0.02, metalness: 0, ior: 1.5, specularIntensity: 1, specularColor: new THREE.Color(specular),
+    transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.FrontSide,
+    envMapIntensity: 1, name: 'window-glass',
   });
+}
+
+/** Engine clone of the floor with a matte lacquer coat (broad soft window reflection). */
+function satin(m) {
+  const c = m.clone();
+  if ('clearcoat' in c) { c.clearcoat = Math.max(c.clearcoat || 0, 0.3); c.clearcoatRoughness = 0.32; }
+  c.userData = { ...m.userData };
+  return c;
 }
 
 function shade(hex, k) {

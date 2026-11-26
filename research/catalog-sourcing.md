@@ -172,10 +172,162 @@ Round items carry `dims.round = true` (w = d = diameter), which `formatDims` in 
 
 ## 8. Validation
 
-`node` script (kept outside the repo) checks: every layout slot type has a default inside its options; every
-option exists in the catalog with the right type; all prices are integers equal to `round(Σ regular × 1.2)` and
-match the raw file; public JSON has no `http`, supplier name, pid/sku/url keys or 9-digit codes; every option fits
-the `max` of every slot it is offered in (pendant: `h + drop`); slot keys resolve as in `store.js` (slot id →
-group → type) and every layout slot gets a default; pendant shade bottom is 70–85 cm above every dining-table
-option; art_bed options clear the default headboard by ≥ 15 cm; the three wall-art defaults are different.
-Result: 0 errors, 0 warnings.
+`node` script (kept outside the repo, run after every build) checks, for **every pack in `styles.json`**:
+
+- **Catalog:**
+  - every layout slot resolves a default inside its options (slot id → group → type, as in `store.js`);
+  - options exist in the catalog with the right type;
+  - prices are integers equal to `round(Σ regular × 1.2)` and match the raw file;
+  - EN fields are present and contain no Cyrillic.
+- **Hygiene:** public JSON has none of the following:
+  - `http`;
+  - the supplier name;
+  - pid / sku / url / price-basis keys;
+  - 9-digit codes;
+  - any of 30+ third-party marketplace brands (the list lives with the script; brands were read from the supplier's `brand` field for every component and are stored per product in `research/homecentre-raw.json`).
+- **Numeric rules:**
+  - every option is checked against the size bands of that pack's `stylepack-rules-<id>.md` (sofa w/d/back/seat, coffee-table footprint and height, dining height, chair w/d/back, lamp heights and shades, art widths per wall, etc.);
+  - documented exceptions are listed as NOTES, not hidden.
+- **Geometry:**
+  - every option fits the `max` of every slot it is offered in (pendant: `h + drop`);
+  - the pendant bottom is 70–85 cm above every dining option;
+  - `art_bed` clears the default headboard by ≥ 15 cm;
+  - sofa–coffee passage ≥ 45 cm and coffee–TV ≥ 75 cm for every option combination (the engine's `align` gap of 0.47 m is honoured).
+- **Pairings and art:**
+  - the three wall-art option sets are disjoint;
+  - pairings reference valid keys and options.
+
+Result (26.11.2026): **0 errors**. NOTES list every exception below. WARN lists slots with fewer than 3 options.
+
+## 9. Phase 2 — QA fixes, details, EN fields, three new packs (25–26.11.2026)
+
+### 9.1 QA fixes on «Тёмный орех»
+
+- **QA-03 — brand names:**
+  - `dining-mahmayi-80` → `dining-square-80` «Обеденный стол квадратный, 80×80»;
+  - `plant-olive-homekode` → `plant-olive-180` «Оливковое дерево в горшке, 180 см».
+  - Public names use model names only. Supplier brands are recorded per product in the raw file.
+- **QA-12:** the Themis olive name now says 180 см, matching `dims.h`.
+- **QA-08 — size bands.** Removed from DW:
+  - sofas Hadley, Engler, Anders, Doree, Lockwood;
+  - coffee tables Baku low and Baku high (this also resolves QA-20 for the Baku pair);
+  - bed Nazario;
+  - chairs Viona, Pebble, Alfred;
+  - art Caitlin.
+
+  Added:
+  - sofas Brighton (222×90×82, light taupe, walnut base) and Daventry (230×95×82, ivory bouclé, brass feet);
+  - coffee table Selric (walnut, Ø90×40);
+  - side table Herald (walnut, Ø50×50);
+  - chair Stanton (52×58×85).
+
+  The default coffee table is now Moxie (oval 130×70×40), with Herald as the default side table, so walnut ↔ travertine holds.
+
+  Documented 1 cm exceptions:
+  - Lansbury back 86;
+  - Kentana h 73;
+  - Wishbone back 74.
+- **QA-09:** the art option sets are disjoint. Pairings carry these rules:
+  - side ↔ coffee material;
+  - one bouclé piece;
+  - Brighton → N1 rug.
+- **QA-06:** solved by the engine's `align` (0.47 m). The validator confirms it for every combination.
+- **Kitchen:**
+  - the slot is 52×30×45, so the 30 cm bowl was dropped and the board leans against the backsplash (all sets 52×30×36–41);
+  - the DW detail rules forbid light or red boards, so the bamboo-board set is no longer offered in DW;
+  - the DW default is the dark-board set.
+- **Curtains:** 390 → 380 to fit the new slot max.
+- **Detail types** (tableware, centerpiece, kitchen_decor, throw, nightstand_decor, runner, mirror) have 2–4 options per pack where stock allows. Home Centre sells no decorative books, so `nightstand_decor` uses a box or tray, a bud vase and a candle or sprig.
+- **EN fields:** every catalog item has `nameEn`, `materialsEn[]` and `colorEn`.
+- **Public catalog:** contains only items offered by at least one pack. The others stay in the raw file with their verdicts.
+
+### 9.2 New packs — defaults and budgets (default room, all placements)
+
+| Pack | Default total | Target | Signature items sourced |
+| --- | --- | --- | --- |
+| light-oak «Светлый дуб» | 23,432 AED | 24–28k | sofa Rockwell (stone weave, charcoal legs), armchair Natura (oak frame), Echo TV unit + Echo coffee table (light oak, slatted), Keira round oak table, Emily wishbone chairs (pale wood, rope seat), Berit paper-cord pendant, Diamant paper column lamp, black round / arch mirrors, Pavia marble side table |
+| greige-luxe «Кашемир» | 31,859 AED | 38–46k | sofa Pebble (curved ivory bouclé), armchairs Oti / Mons / Emma, Joyce TV unit (ivory + travertine top), Arkas oval coffee table, Joyce + Pavia side tables, Qubba ribbed nightstand, Malta marble-look pedestal table, Salalah chair |
+| mediterranean «Средиземноморье» | 30,812 AED | 28–34k | sofa Oshawa (cane sides, light oak), Sukhna cane chair, Windsor mango + cane TV unit, Corta round oak coffee table, Forren bed + nightstand (warm oak), Emily rope-seat and Canovia cane-back chairs, Audrey rattan floor lamp, rattan pendants, terracotta textiles and art |
+
+Light oak and Cashmere come in **below** their target bands. The stock that passes their rules is cheap (light oak: oak melamine pieces) or thin (Cashmere: the only compliant-looking dining table is an 849 AED ceramic pedestal table). Adding options does not change the defaults' prices.
+
+### 9.3 Bridges
+
+Bridge items follow `research/style-system.md` §2.7. Walnut, rattan or cane furniture, charcoal oak and curved bouclé are never bridged.
+
+| Bridge | Items |
+| --- | --- |
+| All four packs | mattresses; Sullivan curtains; Cloud bed; Crosby lamp; Cosme linen pendant; Heaton rug; Ember art; three olive trees; Lillian tableware; Maya and Sable centrepieces; Thorn oat throw; Zen and Marco runners; travertine-candle bedside set; new cream-ceramic decor set; white-oat bedding |
+| DW + LO + GL | Dexter linen pendant; Dione rug; linen-oat cushions; Zuri and Nyla art |
+| DW + LO + MED | white-oat-olive bedding; Vayu / Norham throws; Pulara dhurrie; linen-olive cushions |
+| DW + GL | Sable / Austen floor lamps; Dania lamp; Agnek and Artemis-arch mirrors; Olina art; Dara box; Mia tableware |
+| DW + MED | terracotta cushions, bedding, decor and throw; rattan pendants; Aziza / Hiba / Aquarelle / Vaseo / Caitlin art |
+| LO + GL + MED | Pavia all-marble side table (stone with no dark support) |
+| LO + MED | Keira table; Emily chair; Echo TV unit (MED option, h 43); Mackenzie black arch mirror |
+
+Each new pack has `pairings` on its anchors and its main bridges, so a cross-style swap carries the room along:
+- sofa → cushions, throw, rug, coffee table, side table;
+- bed → bedding, nightstand, lamp, bedside decor, art_bed;
+- dining table → chair, pendant, tableware, centrepiece, art_dining;
+- bridged rug, pendant and throw → their anchors.
+
+### 9.4 Gaps and exceptions — please read
+
+**Size-band exceptions.** These are inside the slot max and pass the clearances, per the coordinator's rule:
+- LO: Rockwell depth 83; Anders back 90; Keira h 77; Emily back 74; Diamant is a Ø20 paper column, not a shade; Zuri 80 over the sofa.
+- GL: Daventry back 82; Mons w 67; Emma d 95; Joyce coffee table is a soft rectangle (option only); Malta dining table is a 90 soft square.
+- MED: Sukhna w 64; Echo TV h 43 (option only); Caitlin 126 over the bed (option only); Emily back 74; Canovia listed depth 40.
+
+**Second pass (26.11.2026, coordinator-requested, time-boxed).**
+- **GL dining table — fixed.** Malta (90×90×75): white marble-look ceramic top on an ivory tulip pedestal. Kentana is no longer offered in Cashmere; it stays in DW. Recorded exception: soft square instead of round Ø90–100. Every round stone or ivory table in stock is 110–120 cm (Modena, Neon, Tensa, Lumo, Willow, Lino).
+- **MED dining chairs — fixed.** Emily (pale teak wishbone, woven rope seat) is the default. Canovia (honey wood, cane back) is the option. Sven is no longer offered in MED; it stays in LO.
+  - Exceptions: Emily back 74 (the listing swaps width and height: "W74 D55 H54"); Canovia's listed depth 40 is the seat depth.
+- **LO chairs — fixed.** Emily is the default; it is the rules' ★ "вишбон" chair. Sven (PU-coated seat) remains as an option.
+- **LO nightstand — still a gap.** Forren (warm oak, ΔE > 8 from the LO oak) stays the default. Checked and rejected:
+  - Grant: pale fluted oak, 45×40×51, ideal, but **out of stock online**; recheck later.
+  - Natura, Anasa, Warner, Lorenzo, Frank: 55–70 cm wide, over the 50 cm slot.
+  - Lumi: dark.
+- **MED armchair — unchanged.** Sukhna's teak-brown frame is darker than W6. No compliant cane or rattan chair ≤ 95 cm was found in the time box.
+- **Stock re-checked on the product page** ("Add To Basket" present, no "Out of Stock") for every new furniture item, including Brighton, Daventry, Selric, Herald, Stanton, Sukhna, Salalah, Arkas and both black mirrors.
+
+**Thin options (1–2 per slot).** Most new-pack furniture slots have only 1–2 options: most Home Centre seating is 100–113 cm deep or over 240 cm wide; most light, ivory and oak TV units are 200 wide or more; Ripple, Myra, Kairo, Finn, Zeus, Rena and Vittoria were rejected. More can be sourced in a follow-up pass.
+
+**Colours.** Colours of the new items are photo-sampled (studio lighting). Rockwell, Pebble, Daventry and Qubba sit near family boundaries. Qubba was held as review (L* ≈ 69, below the GL sofa band).
+
+### 9.5 Bridge widening (data-only pass, 26.11.2026, no new browsing)
+
+**New composite items.** These were built only from components already priced in the raw file:
+
+| Item | Bridges to |
+| --- | --- |
+| `tableware-mia-smoke-wood` (sand stoneware, smoked glass, wooden cutlery) | DW, LO, MED |
+| `tableware-lillian-amber-brass` (brass cutlery) | DW, GL |
+| `kitchen-black-basic` (light board) | LO, MED; not DW, whose rules ban light boards; not GL, which bans black |
+| `kitchen-white-travertine` | all four |
+| `nsdecor-bud-vase-tealight` | all four |
+| `decor-travertine-cream` | all four |
+| `cushions-oat-ivory-4` | all four |
+| `bedding-white-sateen-oat` | all four |
+| `throw-boras-oat` | all four |
+
+**Existing items added where the bridge condition holds:**
+- `bed-maison-160` (soft N2, hidden base) → LO, MED;
+- `mirror-artemis-round-black` (thin K1) → MED;
+- `curtains-khor-sheer` → MED (ΔE 2.2 to the MED walls; Khor fails LO at 5.2 and GL at 6.2);
+- `sofa-anders-3` → MED (cream, slim black legs; back 90 is a band exception, option only);
+- `armchair-natura` → MED (W2 frame, the rules' alternative to W6).
+
+**Unchanged:**
+- Defaults, pairings and IDs; the three art sets stay disjoint.
+- Validator: 0 errors.
+
+**Slots still under 2 options:**
+
+| Pack | Count | Slots |
+| --- | --- | --- |
+| LO | 11 | coffee_table, tv_unit, side_table, armchair, floor_lamp, nightstand, table_lamp, dining_table, and the three art walls (only Ember, Zuri and Nyla pass LO's art rules, so each wall gets one) |
+| GL | 6 | tv_unit, nightstand, dining_table, dining_chair, art_sofa, art_bed |
+| MED | 5 | coffee_table, side_table, floor_lamp, nightstand, dining_table |
+| DW | 0 | – |
+
+Each of these needs new sourcing.

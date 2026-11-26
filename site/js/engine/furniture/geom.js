@@ -14,6 +14,14 @@ export const lerp = (a, b, t) => a + (b - a) * t;
 /** Length param → metres. Catalog lengths are metres (≤ 3); larger numbers are read as centimetres. */
 export const cm = (v, d) => { if (v == null || v === '' || isNaN(v)) return d; const n = Number(v); return n > 3 ? n / 100 : n; };
 
+// ---------------------------------------------------------------- level of detail
+// 2 = high (default), 1 = medium, 0 = low. buildItem() sets it from ctx.quality for the duration of a build.
+let LOD = 2;
+export function setLOD(l) { LOD = l === 0 || l === 1 ? l : 2; }
+export function getLOD() { return LOD; }
+/** Scale a segment count for the current LOD. */
+export const segs = (n, min = 3) => Math.max(min, Math.round(n * (LOD === 2 ? 1 : LOD === 1 ? 0.62 : 0.4)));
+
 // ---------------------------------------------------------------- soft box
 
 function axisCoords(a, r, cs, fs) {
@@ -31,8 +39,9 @@ function axisCoords(a, r, cs, fs) {
  * bulge: { top, bottom, front, back, left, right } in metres (outward displacement at face centre).
  * radius can be a number or { x, y, z }? (single radius). seg = corner segments. cell = target flat cell size.
  */
-export function softBox(w, h, d, { r = 0.02, seg = 3, cell = 0.08, bulge = null, wrinkle = 0, seed = 1, taper = 0 } = {}) {
+export function softBox(w, h, d, { r = 0.02, seg = 3, cell = 0.08, bulge = null, wrinkle = 0, seed = 1, taper = 0, deform = null } = {}) {
   r = Math.max(0.0005, Math.min(r, w / 2 - 1e-4, h / 2 - 1e-4, d / 2 - 1e-4));
+  if (LOD < 2) { seg = Math.max(1, seg - (LOD === 1 ? 1 : 2)); cell *= LOD === 1 ? 1.6 : 2.6; }
   const hx = w / 2, hy = h / 2, hz = d / 2;
   const fsx = bulge ? Math.max(1, Math.round((w - 2 * r) / cell)) : 1;
   const fsy = bulge ? Math.max(1, Math.round((h - 2 * r) / cell)) : 1;
@@ -40,9 +49,10 @@ export function softBox(w, h, d, { r = 0.02, seg = 3, cell = 0.08, bulge = null,
   const X = axisCoords(hx, r, seg, fsx), Y = axisCoords(hy, r, seg, fsy), Z = axisCoords(hz, r, seg, fsz);
   const pos = [];
   const idx = [];
-  let base = 0;
+  const fax = []; // dominant axis per vertex: 0 = x (sides), 1 = y (top/bottom), 2 = z (front/back)
+  let base = 0, curAxis = 1;
   const face = (A, B, mk) => {
-    for (let j = 0; j < B.length; j++) for (let i = 0; i < A.length; i++) { const p = mk(A[i], B[j]); pos.push(p[0], p[1], p[2]); }
+    for (let j = 0; j < B.length; j++) for (let i = 0; i < A.length; i++) { const p = mk(A[i], B[j]); pos.push(p[0], p[1], p[2]); fax.push(curAxis); }
     const n = A.length;
     for (let j = 0; j < B.length - 1; j++) for (let i = 0; i < n - 1; i++) {
       const a = base + j * n + i, b = a + 1, c = a + n, e = c + 1;
@@ -51,11 +61,11 @@ export function softBox(w, h, d, { r = 0.02, seg = 3, cell = 0.08, bulge = null,
     base += A.length * B.length;
   };
   // winding chosen so normals point outward (fixed after via computeVertexNormals sign check)
-  face(X, Z, (x, z) => [x, hy, -z]);   // top
+  curAxis = 1; face(X, Z, (x, z) => [x, hy, -z]);   // top
   face(X, Z, (x, z) => [x, -hy, z]);   // bottom
-  face(X, Y, (x, y) => [x, y, hz]);    // front
+  curAxis = 2; face(X, Y, (x, y) => [x, y, hz]);    // front
   face(X, Y, (x, y) => [-x, y, -hz]);  // back
-  face(Z, Y, (z, y) => [hx, y, -z]);   // right
+  curAxis = 0; face(Z, Y, (z, y) => [hx, y, -z]);   // right
   face(Z, Y, (z, y) => [-hx, y, z]);   // left
   const ix = hx - r, iy = hy - r, iz = hz - r;
   const p = new THREE.Vector3(), q = new THREE.Vector3();
@@ -85,14 +95,60 @@ export function softBox(w, h, d, { r = 0.02, seg = 3, cell = 0.08, bulge = null,
       p.addScaledVector(dir, dz * wrinkle / 6);
     }
     if (taper) { const t = (p.y + hy) / h; p.x *= 1 - taper * t; p.z *= 1 - taper * t; }
+    if (deform) deform(p, hx, hy, hz);
     pos[i] = p.x; pos[i + 1] = p.y; pos[i + 2] = p.z;
   }
-  let g = new THREE.BufferGeometry();
+  return faceGridGeometry(pos, idx, fax);
+}
+
+/** Recompute smooth normals on a softBox-style geometry after editing positions (welds face seams). */
+export function weldNormals(g) {
+  const pos = Array.from(g.attributes.position.array), idx = Array.from(g.index.array);
+  const out = faceGridGeometry(pos, idx, g.userData.faceAxis || new Uint8Array(pos.length / 3));
+  g.setAttribute('normal', out.attributes.normal);
+  if (out.index.array.some((v, i) => v !== idx[i])) g.setIndex(Array.from(out.index.array));
+  return g;
+}
+
+/**
+ * Indexed geometry from per-face grids: normals are computed on a welded copy (smooth across face
+ * seams) but the grids stay separate so each face keeps its own box-projection UVs (no de-indexing).
+ */
+function faceGridGeometry(pos, idx, fax) {
+  const n = pos.length / 3;
+  const weld = new Int32Array(n), keyMap = new Map();
+  let wc = 0;
+  for (let i = 0; i < n; i++) {
+    const k = Math.round(pos[i * 3] * 1e5) + '_' + Math.round(pos[i * 3 + 1] * 1e5) + '_' + Math.round(pos[i * 3 + 2] * 1e5);
+    let w = keyMap.get(k);
+    if (w === undefined) { w = wc++; keyMap.set(k, w); }
+    weld[i] = w;
+  }
+  const wn = new Float32Array(wc * 3);
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), cb = new THREE.Vector3(), ab = new THREE.Vector3();
+  for (let t = 0; t < idx.length; t += 3) {
+    const i0 = idx[t], i1 = idx[t + 1], i2 = idx[t + 2];
+    a.fromArray(pos, i0 * 3); b.fromArray(pos, i1 * 3); c.fromArray(pos, i2 * 3);
+    cb.subVectors(c, b); ab.subVectors(a, b); cb.cross(ab);
+    for (const v of [weld[i0], weld[i1], weld[i2]]) { wn[v * 3] += cb.x; wn[v * 3 + 1] += cb.y; wn[v * 3 + 2] += cb.z; }
+  }
+  const nor = new Float32Array(n * 3);
+  let dot = 0;
+  for (let i = 0; i < n; i++) {
+    const w = weld[i]; let x = wn[w * 3], y = wn[w * 3 + 1], z = wn[w * 3 + 2];
+    const l = Math.hypot(x, y, z) || 1; x /= l; y /= l; z /= l;
+    nor[i * 3] = x; nor[i * 3 + 1] = y; nor[i * 3 + 2] = z;
+    if ((i & 7) === 0) dot += x * pos[i * 3] + y * pos[i * 3 + 1] + z * pos[i * 3 + 2];
+  }
+  if (dot < 0) { // inside-out: flip winding and normals
+    for (let t = 0; t < idx.length; t += 3) { const tmp = idx[t + 1]; idx[t + 1] = idx[t + 2]; idx[t + 2] = tmp; }
+    for (let i = 0; i < nor.length; i++) nor[i] = -nor[i];
+  }
+  const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   g.setIndex(idx);
-  g = mergeVertices(g, 1e-5);
-  g.computeVertexNormals();
-  fixWinding(g);
+  g.userData.faceAxis = Uint8Array.from(fax);
   return g;
 }
 
@@ -115,7 +171,8 @@ function fixWinding(g) {
  * Throw pillow: footprint w (x) × h (y), thickness t (z), centred at origin.
  * pinch = concave edge amount, corner = corner pointiness.
  */
-export function pillowGeometry(w, h, t, { n = 18, pinch = 0.08, plump = 0.6, sag = 0.0, seed = 3, squash = 0 } = {}) {
+export function pillowGeometry(w, h, t, { n: n0 = 18, pinch = 0.08, plump = 0.6, sag = 0.0, seed = 3, squash = 0, dents = null, ears = 0 } = {}) {
+  const n = segs(n0, 8);
   const pos = [], idx = [];
   const r = rng(seed);
   const ph = [r() * 6.28, r() * 6.28, r() * 6.28];
@@ -129,8 +186,12 @@ export function pillowGeometry(w, h, t, { n = 18, pinch = 0.08, plump = 0.6, sag
       let z = sgn * t / 2 * prof;
       // soft wrinkles + gravity sag
       z += sgn * t * 0.04 * prof * Math.sin(s * 5 + ph[0]) * Math.sin(u * 4 + ph[1]);
-      const yy = y - sag * h * prof * (1 - u * u) * 0.5;
-      const xx = x * (1 + squash * prof * 0.1);
+      // shallow dents (someone leaned on it) — front face only
+      if (dents && sgn > 0) for (const [dx, dy, dd, dr] of dents) z -= dd * prof * Math.exp(-(((x - dx) ** 2) + ((y - dy) ** 2)) / (dr * dr));
+      let yy = y - sag * h * prof * (1 - u * u) * 0.5;
+      let xx = x * (1 + squash * prof * 0.1);
+      // corner "ears" slightly compressed (pulled in and flattened)
+      if (ears) { const cq = (s * s) * (u * u); xx *= 1 - ears * 0.05 * cq; yy *= 1 - ears * 0.05 * cq; z *= 1 - ears * 0.25 * cq; }
       pos.push(xx, yy, z);
     }
     const m = n + 1;
@@ -165,14 +226,13 @@ export function squareLeg(wTop, wBot, h, r = 0.003) {
     const y = pos.getY(i); const t = (h / 2 - y) / h; const k = lerp(1, wBot / wTop, t);
     pos.setX(i, pos.getX(i) * k); pos.setZ(i, pos.getZ(i) * k); pos.setY(i, y - h / 2);
   }
-  g.computeVertexNormals();
-  return g;
+  return weldNormals(g);
 }
 
 /** Lathe from [[r, y], ...] profile (y up). */
 export function lathe(profile, seg = 32) {
   const pts = profile.map(([r, y]) => new THREE.Vector2(Math.max(0, r), y));
-  const g = new THREE.LatheGeometry(pts, seg);
+  const g = new THREE.LatheGeometry(pts, segs(seg, 10));
   return g;
 }
 
@@ -225,7 +285,7 @@ export function superellipseShape(w, d, n = 3, seg = 96) {
 /** Tube along points (CatmullRom), for piping, cords, hairpin legs. */
 export function tube(points, radius, { tubular = 64, radial = 8, closed = false, tension = 0.5 } = {}) {
   const curve = new THREE.CatmullRomCurve3(points.map((p) => (p.isVector3 ? p : V3(...p))), closed, 'catmullrom', tension);
-  return new THREE.TubeGeometry(curve, tubular, radius, radial, closed);
+  return new THREE.TubeGeometry(curve, segs(tubular, 6), radius, segs(radial, 4), closed);
 }
 
 /** Rounded rectangle loop (in XZ at height y), as points for piping. */
@@ -267,8 +327,8 @@ export class Builder {
       g = boxProjectUVs(g, { axis, scale: uvScale, offset: off });
     } else if (uv === 'cyl') {
       g = cylinderUVs(g, { offset: uvOffset || [this.rand() * 3, this.rand() * 3], swap: axis === 'around' });
+      if (!g.attributes.normal) g.computeVertexNormals();
     } else {
-      if (g.index) g = g.toNonIndexed();
       if (!g.attributes.uv) {
         g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
       }
@@ -299,6 +359,8 @@ export class Builder {
       if (hasColor) for (const g of geoms) if (!g.attributes.color) {
         const c = new Float32Array(g.attributes.position.count * 3).fill(1); g.setAttribute('color', new THREE.BufferAttribute(c, 3));
       }
+      // merge needs consistent indexing: give non-indexed soups a trivial index (keeps indexed parts compact)
+      if (geoms.length > 1 && geoms.some((g) => g.index)) for (const g of geoms) if (!g.index) { const n = g.attributes.position.count; const ix = n > 65535 ? new Uint32Array(n) : new Uint16Array(n); for (let i = 0; i < n; i++) ix[i] = i; g.setIndex(new THREE.BufferAttribute(ix, 1)); }
       const merged = geoms.length === 1 ? geoms[0] : mergeGeometries(geoms, false);
       merged.computeBoundingBox(); merged.computeBoundingSphere();
       const mesh = new THREE.Mesh(merged, mat);

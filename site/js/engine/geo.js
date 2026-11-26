@@ -7,7 +7,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
  * Axis-aligned box from world extents with UVs in metres on every face (u/v follow the face so
  * textures are never mirrored or stretched). `uvSwap` swaps u/v on horizontal faces (e.g. planks).
  */
-export function boxGeometry(x0, x1, y0, y1, z0, z1, { uvSwap = false, skip = '' } = {}) {
+export function boxGeometry(x0, x1, y0, y1, z0, z1, { uvSwap = false, uvVertical = false, skip = '' } = {}) {
   const pos = [], nor = [], uv = [], idx = [];
   const face = (n, verts, uvs) => {
     const b = pos.length / 3;
@@ -15,18 +15,19 @@ export function boxGeometry(x0, x1, y0, y1, z0, z1, { uvSwap = false, skip = '' 
     idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
   };
   const H = (u, v) => (uvSwap ? [v, u] : [u, v]);
+  const V = (uv) => (uvVertical ? [uv[1], uv[0]] : uv); // grain along Y on vertical faces
   // +X  (u = -z, v = y)
-  if (!skip.includes('px')) face([1, 0, 0], [[x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1]], [[-z1, y0], [-z0, y0], [-z0, y1], [-z1, y1]]);
+  if (!skip.includes('px')) face([1, 0, 0], [[x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1]], [V([-z1, y0]), V([-z0, y0]), V([-z0, y1]), V([-z1, y1])]);
   // -X  (u = z, v = y)
-  if (!skip.includes('nx')) face([-1, 0, 0], [[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]], [[z0, y0], [z1, y0], [z1, y1], [z0, y1]]);
+  if (!skip.includes('nx')) face([-1, 0, 0], [[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]], [V([z0, y0]), V([z1, y0]), V([z1, y1]), V([z0, y1])]);
   // +Y  (u = x, v = -z)
   if (!skip.includes('py')) face([0, 1, 0], [[x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]], [H(x0, -z1), H(x1, -z1), H(x1, -z0), H(x0, -z0)]);
   // -Y  (u = x, v = z)
   if (!skip.includes('ny')) face([0, -1, 0], [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]], [H(x0, z0), H(x1, z0), H(x1, z1), H(x0, z1)]);
   // +Z  (u = x, v = y)
-  if (!skip.includes('pz')) face([0, 0, 1], [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]);
+  if (!skip.includes('pz')) face([0, 0, 1], [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], [V([x0, y0]), V([x1, y0]), V([x1, y1]), V([x0, y1])]);
   // -Z  (u = -x, v = y)
-  if (!skip.includes('nz')) face([0, 0, -1], [[x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0]], [[-x1, y0], [-x0, y0], [-x0, y1], [-x1, y1]]);
+  if (!skip.includes('nz')) face([0, 0, -1], [[x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0]], [V([-x1, y0]), V([-x0, y0]), V([-x0, y1]), V([-x1, y1])]);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
