@@ -51,3 +51,13 @@ end;
 $$;
 revoke all on function public.submit_lead(jsonb) from public;
 grant execute on function public.submit_lead(jsonb) to anon, authenticated;
+
+-- ---------------------------------------------------------------------------------------------------------
+-- Migration 2: style display name + Telegram notification on every new lead.
+-- Bot token and chat id live in Supabase Vault (names telegram_bot_token, telegram_chat_id); until both exist
+-- the trigger does nothing. A notification problem never blocks or loses a lead.
+create extension if not exists pg_net with schema extensions;
+alter table public.leads add column if not exists style_name text check (style_name is null or char_length(style_name) <= 60);
+-- submit_lead(): same as above, plus  style_name := left(nullif(p->>'styleName',''), 60)
+-- notify_lead_telegram(): AFTER INSERT trigger → net.http_post(https://api.telegram.org/bot<token>/sendMessage)
+-- (full text applied via migration "leads_style_name_and_telegram").

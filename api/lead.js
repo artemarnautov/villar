@@ -5,14 +5,13 @@
 // the lead, and notifies the team. Supplier names, links and SKUs never leave the server (only public item
 // names and Villar prices are stored and sent).
 //
-// Storage (first configured wins):
-//   SUPABASE_URL + SUPABASE_KEY → RPC public.submit_lead(p jsonb) (see db/leads.sql; publishable key is enough —
-//   the table itself is not reachable with it).
-// Notifications (any configured, best effort, never block the customer):
-//   TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID → Telegram message.
-//   RESEND_API_KEY + LEAD_EMAIL_TO (+ LEAD_EMAIL_FROM) → e-mail via Resend.
-// With no storage configured the endpoint answers { ok:false, error:'not_configured' } and the UI shows its
-// fallback; nothing is silently dropped.
+// Storage: Supabase project "villar" → RPC public.submit_lead(p jsonb) (db/leads.sql). The publishable key is
+// public by design: with it one can only call submit_lead (constraints + 5/day per phone); the table itself is
+// not readable or writable. SUPABASE_URL / SUPABASE_KEY env vars override the defaults.
+// Notifications: a database trigger sends every new lead to Telegram (bot token + chat id in Supabase Vault), so
+// leads are announced however they arrive. Only if storage fails does this function notify on its own
+// (TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID and/or RESEND_API_KEY + LEAD_EMAIL_TO env vars), so a real customer is
+// never lost; with neither working it answers 503 and the UI keeps the form filled.
 import INDEX from './_catalog.js';
 import { createSim } from '../site/js/ai/core.js';
 
@@ -108,10 +107,12 @@ export function validate(body) {
 }
 
 // ---------------------------------------------------------------- storage + notifications
+const SUPABASE_URL = 'https://hdhwkvbecuzzrugogutd.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_PNx3u8YmdyhZD5Zc-3LzjQ_zQYLq2Ni';
 async function store(lead) {
-  const url = env('SUPABASE_URL'); const key = env('SUPABASE_KEY');
+  const url = env('SUPABASE_URL') || SUPABASE_URL; const key = env('SUPABASE_KEY') || SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return { error: 'not_configured' };
-  const p = { name: lead.name, phone: lead.phone, email: lead.email, comment: lead.comment, contact: lead.contact, lang: lead.lang, style: lead.style, total: lead.total, items: lead.items.map(({ id, name, qty, price, sum }) => ({ id, name, qty, price, sum })) };
+  const p = { name: lead.name, phone: lead.phone, email: lead.email, comment: lead.comment, contact: lead.contact, lang: lead.lang, style: lead.style, styleName: lead.styleName, total: lead.total, items: lead.items.map(({ id, name, qty, price, sum }) => ({ id, name, qty, price, sum })) };
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
   try {
     const r = await fetch(`${url.replace(/\/$/, '')}/rest/v1/rpc/submit_lead`, {
@@ -168,7 +169,7 @@ async function notify(lead, id) {
 
 // ---------------------------------------------------------------- handler
 export default async function handler(req, res) {
-  if (req.method === 'GET' || req.method === 'HEAD') return send(res, 200, { ok: true, configured: !!(env('SUPABASE_URL') && env('SUPABASE_KEY')) });
+  if (req.method === 'GET' || req.method === 'HEAD') return send(res, 200, { ok: true });
   if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return send(res, 405, { ok: false, error: 'method_not_allowed' }); }
 
   const origin = header(req, 'origin');
@@ -191,7 +192,6 @@ export default async function handler(req, res) {
     if (sent) return send(res, 200, { ok: true, id: null, total: v.lead.total });
     return send(res, 503, { ok: false, error: saved.error });
   }
-  await notify(v.lead, saved.id).catch(() => 0);
   console.info(JSON.stringify({ ev: 'lead', id: saved.id, style: v.lead.style, total: v.lead.total, n: v.lead.items.length }));
   return send(res, 200, { ok: true, id: saved.id, total: v.lead.total });
 }
