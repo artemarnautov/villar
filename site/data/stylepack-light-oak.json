@@ -86,7 +86,7 @@
    ]
   },
   "bedding": {
-   "default": "bedding-sage-oat",
+   "default": "bedding-white-oat",
    "options": [
     "bedding-sage-oat",
     "bedding-white-oat-olive",
@@ -185,7 +185,7 @@
    ]
   },
   "throw": {
-   "default": "throw-vayu-sage",
+   "default": "throw-thorn-oat",
    "options": [
     "throw-vayu-sage",
     "throw-thorn-oat",
