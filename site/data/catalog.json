@@ -1499,8 +1499,8 @@
   {
    "id": "dining-mahmayi-80",
    "type": "dining_table",
-   "name": "Обеденный стол Mahmayi, 80×80",
-   "nameEn": "Mahmayi dining table, 80×80",
+   "name": "Обеденный стол квадратный, 80×80",
+   "nameEn": "Square dining table, 80×80",
    "price": 1175,
    "dims": {
     "w": 80,
@@ -2581,8 +2581,8 @@
   {
    "id": "plant-olive-homekode",
    "type": "plant",
-   "name": "Оливковое дерево HomeKode, 180 см",
-   "nameEn": "HomeKode olive tree, 180 cm",
+   "name": "Оливковое дерево в горшке, 180 см",
+   "nameEn": "Potted olive tree, 180 cm",
    "price": 1115,
    "dims": {
     "w": 55,
