@@ -1,126 +1,189 @@
 // Villar landing — boot sequence. Owner: interface.
-// loadData → createStore → static sections → dynamic import of the 3D engine → bind events.
-// The page keeps working (budget, swaps, plan view) if the engine is missing or throws.
-import { loadData, formatAED } from './core/data.js';
+// loadData → multi-style store → static sections → (stage near viewport) import the 3D engine → bind events.
+// The page keeps working (budget, swaps, styles, 2D plan) if the engine is missing, throws, stalls or loses WebGL.
+import { loadData } from './core/data.js';
 import { createStore } from './core/store.js';
-import { $ } from './ui/dom.js';
+import { $, isCompact, quoted } from './ui/dom.js';
+import { t, getLang, setLang, onLang, applyStatic } from './ui/i18n.js';
 import { applyAccent } from './ui/accent.js';
 import { setupReveal, setupNav, scrollToEl } from './ui/motion.js';
-import { renderStudioCopy, renderStyle } from './ui/sections.js';
+import { renderStyle, renderHeroNote } from './ui/sections.js';
 import { createHoverCard } from './ui/hovercard.js';
-import { createSheet } from './ui/sheet.js';
+import { createHud } from './ui/hud.js';
 import { createBudget } from './ui/budget.js';
 import { createOrderModal } from './ui/order-modal.js';
 import { createStage } from './ui/stage.js';
+import { createStylePicker } from './ui/stylepicker.js';
+import { packName } from './ui/format.js';
 
 const warn = (...a) => console.warn('[villar]', ...a);
+const mq = (q) => window.matchMedia(q).matches;
 
+// The assistant agent ships `mountAssistant` from site/js/ai/ (see docs/requests/assistant.md).
+// Set to its module path once it exists; until then the slot under the stage stays empty and collapsed.
+const ASSISTANT_MODULE = './ai/assistant.js';
+
+/** Render tier: phones 'low', tablets / iOS / touch-first / weak machines 'medium', else 'high'. */
 function pickQuality() {
   const q = new URLSearchParams(location.search).get('quality');
   if (q) return q;
-  const small = window.matchMedia('(max-width: 734px) and (hover: none)').matches;
+  const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform));
+  const coarse = mq('(pointer: coarse)');
+  if ((ios || coarse) && mq('(max-width: 734px)')) return 'low';
   const weak = (navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
-  return small || weak ? 'medium' : 'high';
+  return ios || coarse || weak ? 'medium' : 'high';
 }
 
-/** "Студия 38 м² под ключ — от 29 914 AED": cheapest compatible option per placement. */
-function renderHeroNote({ store, layout }) {
-  const el = $('[data-hero-note]');
-  if (!el) return;
-  const min = store.placed().reduce((sum, p) => {
-    const prices = store.options(p.slotId).map((o) => o.price).filter((n) => Number.isFinite(n));
-    return sum + (prices.length ? Math.min(...prices) : p.item.price || 0);
-  }, 0);
-  if (!min) return;
-  el.textContent = `${layout.name || 'Квартира'} под ключ — от ${formatAED(min)}. Мебель, свет, текстиль и декор.`;
-  el.hidden = false;
+function setupLangToggle() {
+  const btn = $('#lang-toggle');
+  if (!btn) return;
+  const sync = () => { btn.textContent = t('lang.toggle'); btn.setAttribute('aria-label', t('lang.aria')); btn.setAttribute('lang', getLang() === 'ru' ? 'en' : 'ru'); };
+  sync();
+  btn.addEventListener('click', () => setLang(getLang() === 'ru' ? 'en' : 'ru'));
+  onLang(sync);
 }
 
 async function boot() {
-  clearTimeout(window.__villarBootGuard);
-  requestAnimationFrame(() => document.documentElement.classList.add('is-loaded'));
+  applyStatic();
   setupNav();
   setupReveal();
+  setupLangToggle();
 
   const announcer = $('#announcer');
   const announce = (msg) => { announcer.textContent = ''; setTimeout(() => (announcer.textContent = msg), 30); };
-
-  // Scroll CTAs
   const stageEl = $('#stage');
+  let startEngine = () => {};
+
+  // CTAs that lead to the 3D view: scroll the stage under the nav, and make sure the engine is coming.
   document.querySelectorAll('[data-scroll-studio]').forEach((a) =>
-    a.addEventListener('click', (e) => { e.preventDefault(); scrollToEl(stageEl); }));
+    a.addEventListener('click', (e) => { e.preventDefault(); startEngine(); scrollToEl($('.style-picker-wrap') || stageEl, { pad: 8 }); }));
 
   let data;
   try {
     data = await loadData();
   } catch (err) {
     warn('data failed to load', err);
-    $('.stage-loading .loading-label').textContent = 'Не удалось загрузить данные. Обновите страницу.';
+    $('.stage-loading .loading-label').textContent = getLang() === 'en' ? 'Could not load the data. Please reload the page.' : 'Не удалось загрузить данные. Обновите страницу.';
     $('.stage-loading .loading-bar').hidden = true;
     return;
   }
-  const { layout, catalog, stylepack, palette } = data;
-  const store = createStore({ catalog, stylepack, layout });
-  const packName = stylepack.name || 'Тёмный орех';
+  const { layout, catalog, packs, palettes = {}, styleId } = data;
+  const store = createStore({ catalog, layout, packs, styleId });
+  const activePalette = () => palettes[store.styleId()] || null;
 
-  applyAccent(palette);
-  renderHeroNote({ store, layout });
-  renderStudioCopy({ root: $('#studio'), layout, stylepack });
-  renderStyle({ root: $('#style'), stylepack, palette });
+  applyAccent(activePalette());
+  const paintHeroNote = renderHeroNote({ el: $('[data-hero-note]'), store });
+  const paintStyle = () => renderStyle({ root: $('#style'), stylepack: store.style(), palette: activePalette() });
+  paintStyle();
 
-  const card = createHoverCard({ el: $('#hovercard'), store });
-  const order = createOrderModal({ el: $('#order'), store, packName, layoutName: layout.name || 'Студия' });
+  const card = createHoverCard({ el: $('#hovercard'), store, bounds: () => stageEl });
+  const order = createOrderModal({ el: $('#order'), store });
 
-  let sheet = null;
+  let hud = null;
+  let budget = null;
   const stage = createStage({
-    root: stageEl, store, layout, stylepack, palette,
-    onHover: (p) => (p ? card.show(p) : card.hide()),
+    root: stageEl, store, layout, palettes,
+    // The HUD already shows everything the card would: no card while it is open.
+    onHover: (p) => (p && !hud?.isOpen ? card.show(p) : card.hide()),
     onSelect: (p) => {
       card.hide();
-      if (p && p.slotType) sheet.open(p, { focus: !!p.keyboard });
-      else sheet.close({ restoreFocus: false });
+      if (p && (p.slotId || p.slotType)) hud.open(p, { focus: !!p.keyboard });
+      else hud.close({ restoreFocus: false });
     },
+    onModeChange: (m) => { if ((m === '3d' || m === 'plan') && hud?.isOpen) hud.refresh(); },
+    onBack: () => hud.close(),
   });
 
-  sheet = createSheet({
-    el: $('#sheet'), scrim: $('#sheet-scrim'), shell: $('.studio-shell'), stage: stageEl,
-    store, packName,
-    onOpen: (cur) => stage.highlight(cur.slotId),
-    onClose: () => stage.highlight(null),
+  hud = createHud({
+    el: $('#hud'), shell: $('.studio-shell'), stage: stageEl, store, palettes, thumbs: stage.thumbs,
+    onOpen: (cur, { same }) => {
+      card.hide();
+      budget?.setSheetOpen(true);
+      // Phones: bring the whole stage under the nav so the object stays visible above the panel.
+      if (!same && isCompact()) scrollToEl(stageEl, { pad: 8 });
+      // Fly to the object once the HUD has its size (it frames the object in the uncovered part).
+      if (!same) requestAnimationFrame(() => requestAnimationFrame(() => { if (hud.isOpen) stage.focus(cur.slotId, hud.insets()); }));
+    },
+    onResize: (insets) => { if (hud.isOpen) stage.setInsets(insets); },
+    onClose: () => { stage.unfocus(); budget?.setSheetOpen(false); },
   });
 
-  createBudget({
-    el: $('#budget'), store, packName, announce,
+  budget = createBudget({
+    el: $('#budget'), store, stage: stageEl, announce,
     onOrder: () => order.open(),
     onLine: (slotId, from) => {
       const slot = store.placed().find((p) => p.slotId === slotId);
       if (!slot) return;
-      scrollToEl(stageEl);
-      setTimeout(() => sheet.open({ slotId: slot.slotId, slotType: slot.slotType, item: slot.item }, { focus: true, from }), 280);
+      startEngine();
+      scrollToEl($('.style-picker-wrap') || stageEl, { pad: 8 });
+      setTimeout(() => hud.open({ slotId: slot.slotId, slotType: slot.slotType, item: slot.item }, { focus: true, from }), 320);
     },
   });
 
-  document.querySelectorAll('[data-order]').forEach((b) => b.addEventListener('click', () => order.open()));
+  createStylePicker({ el: $('#style-picker'), store, palettes });
 
-  // Late reveals for content rendered from data
+  // Style switch: accent, palette section, chip; the engine stages its own transition from the same event.
+  store.on('style', ({ styleId: id }) => {
+    applyAccent(palettes[id] || null);
+    paintStyle();
+    stage.syncStyle();
+    announce(`${t('style')}: ${quoted(packName(store.style(id)))}`);
+  });
+
+  onLang(() => { paintStyle(); paintHeroNote?.(); if (hud.isOpen) hud.refresh(); });
+
+  document.querySelectorAll('[data-order]').forEach((b) => b.addEventListener('click', () => order.open()));
   setupReveal();
 
   // Expose UI hooks for QA (no engine internals).
-  window.villarUI = { store, stage, sheet, card, order };
+  window.villarUI = { store, stage, hud, card, order, setLang };
 
-  // 3D engine (built in parallel by the engine team): import lazily, degrade gracefully.
-  try {
-    const mod = await import('./engine/index.js');
-    const createVillar = mod.createVillar || mod.default?.createVillar || mod.default;
-    if (typeof createVillar !== 'function') throw new Error('engine/index.js does not export createVillar');
-    await stage.mountEngine((opts) => createVillar(opts), { layout, catalog, stylepack, quality: pickQuality() });
-  } catch (err) {
-    stage.fail(err);
+  // AI assistant under the stage (owned by the assistant agent; mounted only when its module exists).
+  async function mountAssistant() {
+    const slot = $('#assistant');
+    if (!ASSISTANT_MODULE || !slot) return;
+    try {
+      const mod = await import(ASSISTANT_MODULE);
+      if (typeof mod.mountAssistant !== 'function') return;
+      slot.hidden = false;
+      document.documentElement.classList.add('has-assistant');
+      await mod.mountAssistant({
+        container: slot, store, lang: getLang(),
+        get villar() { return stage.engine; },
+        getView: () => ({ view: stage.view, time: stage.time, focus: hud.current?.slotId || null, lang: getLang() }),
+        // Keep the dock / time controls and the HUD in sync with what the assistant does.
+        controls: { view: (v) => stage.setView(v), time: (x) => stage.setTime(x) },
+        onFocus: (slotId) => {
+          const p = store.placed().find((x) => x.slotId === slotId);
+          if (p) hud.open(p, { focus: false });
+        },
+      });
+    } catch (err) {
+      slot.hidden = true;
+      document.documentElement.classList.remove('has-assistant');
+      warn('assistant unavailable', err?.message || err);
+    }
   }
+  mountAssistant();
+
+  // 3D engine: import when the stage approaches the viewport (or on a CTA), then degrade gracefully.
+  let started = false;
+  startEngine = async () => {
+    if (started) return;
+    started = true;
+    try {
+      const mod = await import('./engine/index.js');
+      const createVillar = mod.createVillar || mod.default?.createVillar || mod.default;
+      if (typeof createVillar !== 'function') throw new Error('engine/index.js does not export createVillar');
+      await stage.mountEngine((opts) => createVillar(opts), { layout, catalog, stylepack: store.style(), palette: activePalette(), quality: pickQuality() });
+    } catch (err) {
+      stage.fail(err);
+    }
+  };
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { io.disconnect(); startEngine(); } }, { rootMargin: '100% 0px' });
+    io.observe(stageEl);
+  } else startEngine();
 }
 
-boot().catch((err) => {
-  warn('boot failed', err);
-  document.documentElement.classList.add('is-loaded');
-});
-
+boot().catch((err) => warn('boot failed', err));

@@ -49,10 +49,23 @@ export function plural(n, [one, few, many]) {
   return many;
 }
 
-const nf = new Intl.NumberFormat('ru-RU');
-export const fmtNum = (n) => nf.format(Math.round(n));
+import { locale, isEn } from './i18n.js';
+
+const nfs = {};
+const nf = () => (nfs[locale()] ||= new Intl.NumberFormat(locale()));
+export const NBSP = '\u00A0';
+export const fmtNum = (n) => nf().format(Math.round(n));
+/** "32 741 AED" — the unit never wraps away from the number. */
+export const aed = (n) => `${nf().format(Math.round(n))}${NBSP}AED`;
 /** Signed AED delta with a real minus sign: "+350 AED", "−350 AED". */
-export const fmtDelta = (n) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${nf.format(Math.abs(Math.round(n)))} AED`;
+export const fmtDelta = (n) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${nf().format(Math.abs(Math.round(n)))}${NBSP}AED`;
+/** Russian typography: a dash never starts a line. */
+export const typo = (s) => String(s ?? '').replace(/ —/g, '\u00A0—');
+/** «Тёмный орех» with non-breaking spaces inside the quotes. */
+export const quoted = (s) => {
+  const v = String(s || '').trim().replace(/\s+/g, NBSP);
+  return isEn() ? `“${v}”` : `«${v}»`;
+};
 
 export const mq = (q) => window.matchMedia(q);
 export const reducedMotion = () => mq('(prefers-reduced-motion: reduce)').matches;
@@ -76,5 +89,5 @@ export const contrast = (a, b) => {
   const [l1, l2] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (l1 + 0.05) / (l2 + 0.05);
 };
-/** Ink (text) color that reads on a given background. */
-export const inkFor = (bg) => (luminance(bg) > 0.33 ? '#1d1d1f' : '#ffffff');
+/** Ink (text) color that reads best on a given background (higher WCAG contrast wins). */
+export const inkFor = (bg) => (contrast('#1d1d1f', bg) >= contrast('#ffffff', bg) ? '#1d1d1f' : '#ffffff');

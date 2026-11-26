@@ -2,9 +2,12 @@
 // Emits the same hover/select payloads as the engine. Owner: interface.
 import { safeHex } from './dom.js';
 import { typeLabel } from './labels.js';
+import { t, onLang } from './i18n.js';
+import { nameOf } from './format.js';
 
 const NS = 'http://www.w3.org/2000/svg';
-const SKIP = new Set(['cushions', 'mattress', 'bedding', 'decor_set']); // sit on top of a parent; reachable via the budget list
+// Things that sit on (or drape over) a parent: reachable via the budget list, not drawn as footprints.
+const SKIP = new Set(['cushions', 'mattress', 'bedding', 'decor_set', 'throw', 'tableware', 'centerpiece', 'kitchen_decor', 'nightstand_decor', 'towels']);
 const el = (tag, attrs = {}) => {
   const n = document.createElementNS(NS, tag);
   for (const [k, v] of Object.entries(attrs)) if (v != null) n.setAttribute(k, v);
@@ -51,7 +54,7 @@ export function createPlan({ container, layout, store, onHover, onSelect }) {
 
   function draw() {
     const vb = [-40, -40, W() + 80, H() + 80];
-    const s = el('svg', { viewBox: vb.join(' '), role: 'group', 'aria-label': 'План квартиры. Выберите предмет, чтобы увидеть детали и варианты замены.', preserveAspectRatio: 'xMidYMid meet' });
+    const s = el('svg', { viewBox: vb.join(' '), role: 'group', 'aria-label': t('plan.aria'), preserveAspectRatio: 'xMidYMid meet' });
     const g = el('g');
     s.append(g);
 
@@ -77,9 +80,9 @@ export function createPlan({ container, layout, store, onHover, onSelect }) {
       if (along && portrait) t.setAttribute('transform', `rotate(-90 ${px} ${py})`);
       t.textContent = txt; g.append(t);
     };
-    if ((layout.walls || []).some((w) => /bath/.test(w.id))) label('Ванная', 1.0, 1.3);
-    if ((layout.builtIns || []).some((b) => b.type === 'kitchen')) label('Кухня', size.x - 0.31, 2.45, true);
-    label('Прихожая', 3.25, 1.05);
+    if ((layout.walls || []).some((w) => /bath/.test(w.id))) label(t('plan.bath'), 1.0, 1.3);
+    if ((layout.builtIns || []).some((b) => b.type === 'kitchen')) label(t('plan.kitchen'), size.x - 0.31, 2.45, true);
+    label(t('plan.entry'), 3.25, 1.05);
 
     // Items (rug first, then larger → smaller so small things stay clickable)
     const items = [];
@@ -102,7 +105,7 @@ export function createPlan({ container, layout, store, onHover, onSelect }) {
       const grp = el('g', {
         class: `plan-item${slot.type === 'rug' ? ' is-rug' : ''}${it.thin ? ' is-thin' : ''}${slot.mount === 'ceiling' && slot.type !== 'curtains' ? ' is-ceiling' : ''}`,
         tabindex: '0', role: 'button', 'data-slot': slot.id, 'data-type': slot.type,
-        'aria-label': `${typeLabel(slot.type)}: ${item.name}`,
+        'aria-label': `${typeLabel(slot.type)}: ${nameOf(item)}`,
         style: `--c:${safeHex(item.colorHex)}`,
       });
       const round = item.dims && (item.dims.round || item.model?.params?.shape === 'round' || slot.type === 'plant' || slot.type === 'pendant_lamp' || slot.type === 'table_lamp' || slot.type === 'floor_lamp');
@@ -195,9 +198,10 @@ export function createPlan({ container, layout, store, onHover, onSelect }) {
   function highlight(slotId) {
     hot = slotId;
     if (!svgEl) return;
-    const type = slotId ? slots.get(slotId)?.type : null;
-    svgEl.querySelectorAll('.plan-item').forEach((n) => n.classList.toggle('is-hot', !!type && n.dataset.type === type));
-    container.closest('.stage')?.classList.toggle('has-highlight', !!type);
+    // Everything that shares the selection (both nightstands, both chairs) lights up together.
+    const ids = new Set(slotId ? (store.slotsFor?.(slotId) || [slotId]) : []);
+    svgEl.querySelectorAll('.plan-item').forEach((n) => n.classList.toggle('is-hot', ids.has(n.dataset.slot)));
+    container.closest('.stage')?.classList.toggle('has-highlight', ids.size > 0);
   }
 
   function relayout() {
@@ -208,11 +212,19 @@ export function createPlan({ container, layout, store, onHover, onSelect }) {
 
   const ro = 'ResizeObserver' in window ? new ResizeObserver(relayout) : null;
   ro?.observe(container);
-  const off = store.on('change', () => draw());
+  let raf = 0;
+  const schedule = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw(); }); };
+  const off = store.on('change', schedule);
+  const offLang = onLang(() => draw());
   relayout();
 
   return {
     highlight,
-    destroy() { ro?.disconnect(); off?.(); container.replaceChildren(); },
+    destroy() {
+      onHover(null);
+      ro?.disconnect(); off?.(); offLang?.();
+      container.replaceChildren();
+      container.closest('.stage')?.classList.remove('has-highlight');
+    },
   };
 }

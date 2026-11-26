@@ -60,7 +60,8 @@ const browser = await chromium.launch({
   headless: true,
   args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl', '--no-sandbox'],
 });
-const page = await browser.newPage({ viewport: { width: Number(args.w || 1440), height: Number(args.h || 900) }, deviceScaleFactor: Number(args.dpr || 1) });
+// --touch: emulate a phone (touch input, mobile UA hints) so {"tap":[x,y]} steps work.
+const page = await browser.newPage({ viewport: { width: Number(args.w || 1440), height: Number(args.h || 900) }, deviceScaleFactor: Number(args.dpr || 1), hasTouch: !!args.touch, isMobile: !!args.touch });
 const logs = [];
 page.on('console', (m) => { if (['error', 'warning'].includes(m.type())) logs.push(`[${m.type()}] ${m.text()}`); });
 page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
@@ -72,7 +73,16 @@ await page.waitForTimeout(Number(args.wait || 6000));
 
 const steps = args.steps ? JSON.parse(await readFile(args.steps, 'utf8')) : [{ eval: args.eval, wait: 0, out: args.out || 'shots/shot.png' }];
 for (const s of steps) {
-  if (s.eval) { try { await page.evaluate(s.eval); } catch (e) { logs.push(`[eval-error] ${e.message}`); } }
+  if (s.eval) {
+    try {
+      const v = await page.evaluate(s.eval);
+      if (s.log) console.log('eval →', typeof v === 'string' ? v : JSON.stringify(v));
+    } catch (e) { logs.push(`[eval-error] ${e.message}`); }
+  }
+  // Real input (trusted events): {"click":[x,y]} or {"tap":[x,y]} in viewport pixels, {"key":"Escape"}.
+  if (s.click) await page.mouse.click(s.click[0], s.click[1]);
+  if (s.tap) await page.touchscreen.tap(s.tap[0], s.tap[1]);
+  if (s.key) await page.keyboard.press(s.key);
   if (s.wait) await page.waitForTimeout(s.wait);
   if (s.out) {
     await mkdir(dirname(s.out), { recursive: true });

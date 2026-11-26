@@ -21,7 +21,7 @@ export function createSegmented({ label, items, value, onChange, className = '' 
   });
 
   root.addEventListener('keydown', (e) => {
-    const i = buttons.findIndex((b) => b.dataset.value === current);
+    const i = Math.max(0, buttons.findIndex((b) => b.dataset.value === current));
     let n = -1;
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') n = (i + 1) % buttons.length;
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') n = (i - 1 + buttons.length) % buttons.length;
@@ -43,7 +43,15 @@ export function createSegmented({ label, items, value, onChange, className = '' 
   }
 
   function set(v, user = false) {
+    if (v == null) {
+      // No option applies (e.g. the camera was moved freely): nothing checked, thumb hidden.
+      current = null;
+      buttons.forEach((b, i) => { b.setAttribute('aria-checked', 'false'); b.tabIndex = i === 0 ? 0 : -1; });
+      root.classList.add('is-none');
+      return;
+    }
     if (!buttons.some((b) => b.dataset.value === v)) return;
+    root.classList.remove('is-none');
     const changed = v !== current;
     current = v;
     for (const b of buttons) {
@@ -68,6 +76,16 @@ export function createSegmented({ label, items, value, onChange, className = '' 
     el: root,
     get value() { return current; },
     set: (v) => set(v, false),
+    /** New labels (language switch) without rebuilding. */
+    relabel(next, label) {
+      if (label) root.setAttribute('aria-label', label);
+      for (const it of next) {
+        const b = buttons.find((x) => x.dataset.value === it.value);
+        const span = b?.querySelector('span');
+        if (span) span.textContent = it.label;
+      }
+      requestAnimationFrame(place);
+    },
     disable(off) { root.setAttribute('aria-disabled', off ? 'true' : 'false'); buttons.forEach((b) => (b.disabled = !!off)); },
   };
 }

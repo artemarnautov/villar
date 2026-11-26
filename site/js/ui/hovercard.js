@@ -1,9 +1,11 @@
 // Floating item card that follows the cursor over the 3D stage. Owner: interface.
+// Content: category eyebrow, short name, price (set price for pairs), dimensions. Clamped to the stage.
 import { h, clamp } from './dom.js';
 import { typeLabel } from './labels.js';
-import { specRows, price, nameOf } from './format.js';
+import { onLang } from './i18n.js';
+import { shortNameOf, price, unitNote, dims } from './format.js';
 
-export function createHoverCard({ el, store }) {
+export function createHoverCard({ el, store, bounds }) {
   el.setAttribute('role', 'tooltip');
   el.setAttribute('aria-hidden', 'true');
   let key = null;
@@ -13,17 +15,18 @@ export function createHoverCard({ el, store }) {
   let visible = false;
 
   function render(p) {
-    const item = p.item || store.selected(p.slotId || p.slotType);
+    const ref = p.slotId || p.slotType;
+    const item = store.selected(ref) || p.item;
     if (!item) return false;
-    const qty = store.qty(p.slotId || p.slotType);
-    const opts = store.options(p.slotId || p.slotType).length;
-    el.replaceChildren(
+    const qty = store.qty(ref) || 1;
+    const dm = dims(item);
+    const note = unitNote(item, qty);
+    el.replaceChildren(...[
       h('div', { class: 'hc-type' }, typeLabel(p.slotType || item.type)),
-      h('div', { class: 'hc-name' }, nameOf(item)),
-      h('div', { class: 'hc-price' }, price(item), qty > 1 ? h('small', null, `× ${qty} шт.`) : null),
-      h('dl', { class: 'hc-specs' }, specRows(item)),
-      h('div', { class: 'hc-foot' }, opts > 1 ? 'Кликните, чтобы заменить' : 'Кликните для подробностей'),
-    );
+      h('div', { class: 'hc-name' }, shortNameOf(item)),
+      h('div', { class: 'hc-price' }, price(item, qty), note ? h('small', null, note) : null),
+      dm ? h('div', { class: 'hc-dims' }, dm.value) : null,
+    ].filter(Boolean));
     size = { w: el.offsetWidth, h: el.offsetHeight };
     return true;
   }
@@ -31,11 +34,17 @@ export function createHoverCard({ el, store }) {
   function place(x, y) {
     const pad = 12, off = 18;
     const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    // Keep the card inside the visible part of the stage (falls back to the viewport).
+    const r = bounds?.()?.getBoundingClientRect?.();
+    const L = Math.max(pad, r ? r.left + pad : pad);
+    const T = Math.max(pad, r ? r.top + pad : pad);
+    const R = Math.min(vw - pad, r ? r.right - pad : vw - pad);
+    const B = Math.min(vh - pad, r ? r.bottom - pad : vh - pad);
     let left = x + off, top = y + off;
-    if (left + size.w + pad > vw) left = x - off - size.w;
-    if (top + size.h + pad > vh) top = y - off - size.h;
-    left = clamp(left, pad, Math.max(pad, vw - size.w - pad));
-    top = clamp(top, pad, Math.max(pad, vh - size.h - pad));
+    if (left + size.w > R) left = x - off - size.w;
+    if (top + size.h > B) top = y - off - size.h;
+    left = clamp(left, L, Math.max(L, R - size.w));
+    top = clamp(top, T, Math.max(T, B - size.h));
     el.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
   }
 
@@ -43,11 +52,12 @@ export function createHoverCard({ el, store }) {
     raf = 0;
     const p = pending;
     if (!p) return;
-    const k = `${p.slotId}|${(p.item || store.selected(p.slotId || p.slotType))?.id}`;
+    const k = `${p.slotId}|${store.selected(p.slotId || p.slotType)?.id}`;
     if (k !== key) {
       if (!render(p)) return hide();
       key = k;
     }
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return hide();
     place(p.x, p.y);
     if (!visible) { visible = true; el.classList.add('is-visible'); }
   }
@@ -70,6 +80,7 @@ export function createHoverCard({ el, store }) {
   window.addEventListener('scroll', hide, { passive: true });
   window.addEventListener('blur', hide);
   store.on('change', () => { key = null; if (pending) show(pending); });
+  onLang(() => { key = null; hide(); });
 
   return { show, hide, get visible() { return visible; } };
 }

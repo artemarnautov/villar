@@ -112,7 +112,7 @@ ul, ol { padding: 0; list-style: none; }
   color: var(--accent-text);
 }
 .t-hero {
-  font: 700 clamp(44px, 6vw, 88px)/1.05 var(--font);
+  font: 700 clamp(40px, 5.4vw, 72px)/1.06 var(--font);
   letter-spacing: -0.03em;
 }
 .t-h2 {
@@ -147,11 +147,12 @@ ul, ol { padding: 0; list-style: none; }
 }
 .btn:active { transform: scale(0.98); }
 .btn-primary { background: var(--accent); color: #fff; }
-.btn-primary:hover { background: var(--accent-hover); }
+@media (hover: hover) { .btn-primary:hover { background: var(--accent-hover); } }
 .btn-secondary { background: var(--bg-alt); color: var(--text); box-shadow: inset 0 0 0 1px var(--hairline); }
-.btn-secondary:hover { background: #ececef; }
+@media (hover: hover) { .btn-secondary:hover { background: #ececef; } }
 .btn-lg { min-height: 52px; padding: 0 28px; font-size: 17px; }
 .btn-sm { min-height: 32px; padding: 0 14px; font-size: 13px; letter-spacing: -0.01em; }
+@media (hover: none), (pointer: coarse) { .btn-sm { min-height: 44px; padding: 0 18px; font-size: 15px; } }
 
 .link {
   display: inline-flex; align-items: center; gap: 4px;
@@ -159,9 +160,11 @@ ul, ol { padding: 0; list-style: none; }
   font: 500 17px/1.2 var(--font-text);
   border-radius: 6px;
 }
-.link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .link svg { width: 14px; height: 14px; transition: transform var(--t) var(--ease); }
-.link:hover svg { transform: translateX(2px); }
+@media (hover: hover) {
+  .link:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .link:hover svg { transform: translateX(2px); }
+}
 
 .icon { width: 18px; height: 18px; flex: none; }
 
