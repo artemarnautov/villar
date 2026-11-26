@@ -70,7 +70,8 @@ export function createSim({ catalog, layout, packs }) {
   const normalizeSelection = (packId, sel) => {
     const p = pack(packId); const out = defaults(packId);
     for (const [key, id] of Object.entries(sel || {})) {
-      if (p?.slots?.[key]?.options?.includes(id) && items.has(id)) out[key] = id;
+      if (id === null && p?.slots?.[key]) out[key] = null;            // excluded by the budget slider / customer
+      else if (p?.slots?.[key]?.options?.includes(id) && items.has(id)) out[key] = id;
     }
     return out;
   };

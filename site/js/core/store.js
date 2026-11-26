@@ -8,10 +8,18 @@
 //   3. its slot type (shared by every slot of that type — the default)
 // Every API below accepts a slot id, a group, a key or a slot type.
 //
+// Empty slots: selection[key] === null means "not included" (budget slider / removed by the customer):
+// nothing is rendered, priced or ordered there. The curated default room has no nulls.
+// Pins: keys the customer chose by hand (reason 'user' | 'ai') are pinned per style; the budget planner
+// (core/budget.js) plans around them and never changes them. See docs/BUDGET.md.
+//
 // Events:
-//   'change' { key, slotType, slots: [slotIds], itemId, prev, reason }   (one per changed key)
+//   'change' { key, slotType, slots: [slotIds], itemId|null, prev|null, reason }   (one per changed key)
 //   'style'  { styleId, prev, anchor, changes: [{ key, slots, itemId, prev }] }  (emitted BEFORE the
 //            per-key 'change' events of a style switch, so the engine can stage a transition)
+//   'plan'   { reason, changes: [...] }  (emitted BEFORE the per-key 'change' events of applyPlan — a burst
+//            from the budget slider; coalesce, stagger, re-bake once settled)
+//   'pins'   { pins: [keys] }
 
 export function createStore({ catalog, layout, packs, styleId, stylepack, persist = true }) {
   if (!packs) packs = stylepack ? { [stylepack.id]: stylepack } : {};
@@ -21,8 +29,9 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
   const listeners = new Map();
 
   let active = packs[styleId] ? styleId : packIds[0];
-  const selections = {}; // per pack id: { [key]: itemId }
+  const selections = {}; // per pack id: { [key]: itemId | null }
   const defaultsOf = {}; // per pack id
+  const pinsOf = {};     // per pack id: Set of pinned keys
 
   const keyOfSlotIn = (pack, slot) => {
     const ps = pack.slots || {};
@@ -43,25 +52,35 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
       const def = byId.has(cfg.default) ? cfg.default : (cfg.options || []).find((o) => byId.has(o));
       if (def) { sel[key] = def; defs[key] = def; }
     }
-    selections[id] = sel; defaultsOf[id] = defs;
+    selections[id] = sel; defaultsOf[id] = defs; pinsOf[id] = new Set();
   }
 
-  // ---- persistence (best effort: storage may be unavailable) ----
-  const storageKey = persist ? `villar:v2:${layout.id || 'layout'}` : null;
+  // ---- persistence (best effort: storage may be unavailable). v3 adds nulls + pins; v2 still loads. ----
+  const storageKey = persist ? `villar:v3:${layout.id || 'layout'}` : null;
+  const legacyKey = persist ? `villar:v2:${layout.id || 'layout'}` : null;
   if (storageKey) {
     try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+      const saved = JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem(legacyKey) || 'null');
       if (saved?.style && packs[saved.style]) active = saved.style;
       for (const [pid, s] of Object.entries(saved?.selections || {})) {
         const ps = packs[pid]?.slots; if (!ps) continue;
-        for (const [key, itemId] of Object.entries(s)) if (ps[key]?.options?.includes(itemId) && byId.has(itemId)) selections[pid][key] = itemId;
+        for (const [key, itemId] of Object.entries(s)) {
+          if (itemId === null && saved.v >= 3 && ps[key]) selections[pid][key] = null;
+          else if (ps[key]?.options?.includes(itemId) && byId.has(itemId)) selections[pid][key] = itemId;
+        }
+      }
+      for (const [pid, keys] of Object.entries(saved?.pins || {})) {
+        if (!pinsOf[pid] || !Array.isArray(keys)) continue;
+        for (const k of keys) if (packs[pid].slots?.[k]) pinsOf[pid].add(k);
       }
     } catch { /* ignore */ }
   }
   const save = () => {
     if (!storageKey) return;
-    try { localStorage.setItem(storageKey, JSON.stringify({ v: 2, style: active, selections })); } catch { /* ignore */ }
+    const pins = Object.fromEntries(Object.entries(pinsOf).map(([pid, set]) => [pid, [...set]]));
+    try { localStorage.setItem(storageKey, JSON.stringify({ v: 3, style: active, selections, pins })); } catch { /* ignore */ }
   };
+  const validFor = (pid, key, itemId) => itemId === null ? !!packs[pid].slots?.[key] : !!(packs[pid].slots?.[key]?.options?.includes(itemId) && byId.has(itemId));
 
   // One failing listener must never stop the others (e.g. the 3D rebuild after a UI error).
   const emit = (evt, payload) => (listeners.get(evt) || []).forEach((fn) => {
@@ -163,16 +182,20 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
           if (pid === snap.style || !packs[pid] || !m || typeof m !== 'object') continue;
           const pslots = packs[pid].slots || {};
           const keep = { ...defaultsOf[pid] };
-          for (const [k, id] of Object.entries(m)) if (pslots[k]?.options?.includes(id) && byId.has(id)) keep[k] = id;
+          for (const [k, id] of Object.entries(m)) if (pslots[k] && validFor(pid, k, id)) keep[k] = id;
           selections[pid] = keep;
         }
         save();
       }
-      const ps = packs[snap.style].slots || {};
+      if (snap.pins && typeof snap.pins === 'object') {
+        for (const [pid, keys] of Object.entries(snap.pins)) if (pinsOf[pid] && Array.isArray(keys)) pinsOf[pid] = new Set(keys.filter((k) => packs[pid].slots?.[k]));
+        save(); emit('pins', { pins: [...pinsOf[active]] });
+      }
       const next = { ...defaultsOf[snap.style], ...selections[snap.style] };
-      for (const [k, id] of Object.entries(snap.selection || {})) if (ps[k]?.options?.includes(id) && byId.has(id)) next[k] = id;
+      for (const [k, id] of Object.entries(snap.selection || {})) if (validFor(snap.style, k, id)) next[k] = id;
       if (snap.style === active) {
-        for (const [k, id] of Object.entries(next)) if (sel()[k] !== id) store.select(k, id, { reason: 'restore' });
+        const diff = Object.fromEntries(Object.entries(next).filter(([k, id]) => sel()[k] !== id));
+        if (Object.keys(diff).length) store.applyPlan(diff, { reason: 'restore' });
         return true;
       }
       return applyStyle(snap.style, next, { anchor: null, reason: 'restore' });
@@ -188,15 +211,16 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
       return cfg ? cfg.options.map((id) => byId.get(id)).filter(Boolean) : [];
     },
 
+    /** Choose an item for a key (itemId null = remove it from the room). 'user'/'ai' picks are pinned. */
     select(x, itemId, { reason = 'user' } = {}) {
       const key = keyOf(x);
-      const cfg = pack().slots?.[key];
-      if (!cfg || !cfg.options.includes(itemId) || !byId.has(itemId)) {
+      if (itemId === undefined || !validFor(active, key, itemId)) {
         console.warn(`[store] ${itemId} is not a compatible option for ${key} in ${active}`);
         return false;
       }
-      const prev = sel()[key];
-      if (prev === itemId) return true;
+      if ((reason === 'user' || reason === 'ai') && !pinsOf[active].has(key)) { pinsOf[active].add(key); emit('pins', { pins: [...pinsOf[active]] }); }
+      const prev = sel()[key] ?? null;
+      if (prev === itemId) { save(); return true; }
       sel()[key] = itemId;
       save();
       const slots = slotsForKeyIn(pack(), key);
@@ -204,11 +228,47 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
       return true;
     },
 
+    /**
+     * Set many keys at once (nulls allowed) — the budget slider. Emits 'plan' with every change, then one
+     * 'change' per changed key (same reason). Invalid entries are ignored. Does not pin.
+     */
+    applyPlan(selection, { reason = 'budget' } = {}) {
+      const changes = [];
+      for (const [key, itemId] of Object.entries(selection || {})) {
+        if (itemId === undefined || !validFor(active, key, itemId)) continue;
+        const prev = sel()[key] ?? null;
+        if (prev === itemId) continue;
+        sel()[key] = itemId;
+        const slots = slotsForKeyIn(pack(), key);
+        changes.push({ key, slotType: slots[0]?.type || key, slots: slots.map((s) => s.id), itemId, prev });
+      }
+      if (!changes.length) return [];
+      save();
+      emit('plan', { reason, changes });
+      for (const c of changes) emit('change', { ...c, reason });
+      return changes;
+    },
+
+    /** Is anything placed for this slot / key? */
+    included(x) { return sel()[keyOf(x)] != null; },
+
+    // ---------------- pins (customer's own picks; the budget planner keeps them) ----------------
+    pins() { return [...pinsOf[active]]; },
+    isPinned(x) { return pinsOf[active].has(keyOf(x)); },
+    pin(x) { const k = keyOf(x); if (!pack().slots?.[k] || pinsOf[active].has(k)) return; pinsOf[active].add(k); save(); emit('pins', { pins: store.pins() }); },
+    unpin(x) { const k = keyOf(x); if (!pinsOf[active].delete(k)) return; save(); emit('pins', { pins: store.pins() }); },
+    /** The curated (designer) default for a key in the active style. */
+    defaultOf(x) { return byId.get(defaultsOf[active][keyOf(x)]) || null; },
+
     /** True if the visitor changed anything from the active pack's defaults. */
     isCustomized() { const d = defaultsOf[active]; return Object.keys(d).some((k) => sel()[k] !== d[k]); },
 
-    /** Restore the active pack's defaults (one change event per changed key). */
-    reset() { for (const [key, def] of Object.entries(defaultsOf[active])) if (sel()[key] !== def) store.select(key, def, { reason: 'reset' }); },
+    /** Restore the active pack's defaults and clear its pins (one 'plan' + change events). */
+    reset() {
+      if (pinsOf[active].size) { pinsOf[active].clear(); emit('pins', { pins: [] }); }
+      const diff = Object.fromEntries(Object.entries(defaultsOf[active]).filter(([k, d]) => sel()[k] !== d));
+      if (Object.keys(diff).length) store.applyPlan(diff, { reason: 'reset' }); else save();
+    },
 
     // ---------------- placements & budget ----------------
     /** Every concrete placement in the layout (grouped/attached slots included). */
@@ -239,7 +299,8 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
     snapshot() {
       const memory = {};
       for (const [pid, m] of Object.entries(selections)) memory[pid] = { ...m };
-      return { style: active, total: store.total(), selection: { ...sel() }, memory };
+      const pins = Object.fromEntries(Object.entries(pinsOf).map(([pid, set]) => [pid, [...set]]));
+      return { style: active, total: store.total(), selection: { ...sel() }, memory, pins };
     },
 
     on(evt, fn) {

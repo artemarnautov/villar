@@ -1,0 +1,98 @@
+# Budget slider — contract (founder request, 26 Nov)
+
+> «Сделай ползунок с бюджетом, человек чтобы смог в лайве удобно и интуитивно менять ползунок и содержимое квартиры
+> правильно и органично менялось; если поставит минимальный бюджет — там будет условно диван, тумба … (выяви наиболее
+> распространённые конфигурации под бюджет), сделай всё не хуже качеством, чем Apple.»
+
+## Product behaviour
+- One slider, «Бюджет / Budget», under the stage next to the total. The thumb sits at the current room total.
+- **Dragging is live.** The 3D room changes while you drag: items dissolve in and out, and pieces upgrade or downgrade.
+  The total number follows smoothly.
+- **Monotonic and organic.** Moving right only adds or upgrades. Moving left only removes or downgrades. The room
+  never "reshuffles". Every intermediate state is a complete, designer-correct room for its budget:
+  - pairs stay pairs (nightstands, table lamps, dining chairs);
+  - dependencies hold (no bedding without a mattress, no tableware without a table);
+  - style pairings hold (walnut ↔ travertine etc.).
+- **Named levels** are milestones of the ladder for the active style, not fixed AED:
+  1. «Самое нужное / Essentials» — end of tier 1;
+  2. «Удобно жить / Comfortable» — end of tier 2;
+  3. «Под ключ / Move-in ready» — exactly the curated designer set (today's default room);
+  4. «Как в журнале / Magazine-ready» — the premium end.
+  - Tick marks sit on the track. The current level name shows next to the number.
+- **Your picks stay.** Any item the customer picks by hand (HUD, AI, list) is *pinned*: the slider plans around it and
+  never changes it. A pinned item shows a small pin in the list and the card, with «Открепить / Unpin».
+  The slider's minimum rises to include pinned items.
+- **Excluded items are visible.** In «Показать состав / Show items», items not in the current budget are listed muted:
+  «Не входит в бюджет · Добавить» / "Not in this budget · Add". Adding one pins it.
+- **The AI line uses the same planner.** «уложись в 25 000» moves the slider to the best state ≤ 25 000.
+  «добавь торшер» adds and pins it.
+- **Order and lead:** only included items are ordered and priced. The server re-prices with the same rules
+  (null = not included).
+
+## Data model
+- `selection[key] = itemId | null`. `null` means the slot is empty: not rendered, not priced, not ordered.
+  The default room has no nulls.
+- The ladder spec lives in `site/data/budget.json`, built from `research/budget-tiers.md`:
+  - `tiers` — slot type → tier 0..4;
+  - `order` — order within a tier;
+  - `groups` — keys that move together;
+  - `requires` — dependencies;
+  - `heroes` — upgrade order;
+  - `levels` — RU/EN names + milestone.
+
+## Store API (coordinator, `site/js/core/store.js`)
+- `store.applyPlan(selection, { reason: 'budget' })` sets many keys at once (nulls allowed). It emits
+  `'plan' { reason, changes: [{key, slots, itemId|null, prev|null}] }`, then one `'change'` per changed key with
+  the same reason.
+- `store.select(key, itemId, { reason })` pins `key` when `reason` is `'user'` or `'ai'`.
+- `store.pins()`, `store.pin(key)`, `store.unpin(key)`. Each emits `'pins'`.
+- `store.included(key)` → boolean.
+- `selected(x)` returns `null` for an empty slot. `lines()`, `total()` and `placed()` skip empty slots.
+  `options(x)` is unchanged.
+- `snapshot()` / `restore()` carry nulls and pins. Persistence stores nulls and pins (save version v3; v2 loads as
+  "no nulls, no pins").
+
+## Planner (coordinator, `site/js/core/budget.js`, also used by `ai/core.js` server-side)
+- `buildLadder({ pack, packId, catalog, layout, spec, pinned, current })` returns
+  `{ steps: [{ total, selection, delta: [{key, from, to}] }], levels: [{ id, name, nameEn, index, total }], minIndex,
+  defaultIndex, maxIndex }`. It is deterministic and memoised per (packId, pins).
+- `ladderIndexFor(ladder, budget)` returns the last step with `total ≤ budget`.
+- Construction:
+  - the minimum: tier 0 at the cheapest compliant options, plus pins;
+  - add tier 1, tier 2, … one group per step, each at the curated item (falling back to the cheapest);
+  - between tiers, upgrade the hero pieces toward the curated item when the research rule says so;
+  - the ladder passes exactly through the curated default room;
+  - above it, upgrade heroes to pricier options one step at a time, up to the premium room;
+  - pairings are applied within the same step.
+
+## Engine
+- A `'change'` with `itemId: null` dissolves the model out and frees the slot. A slot that goes from null to an item
+  dissolves the model in at the slot.
+- During a drag, `'plan'` events arrive in bursts (up to ~30/s):
+  - coalesce per key (latest wins);
+  - cap concurrent dissolves (stagger ≤ 60 ms);
+  - keep ≥ 50 fps on desktop high;
+  - re-bake GI only once the slider has settled (≥ 350 ms with no plan event), local probes only.
+- `villar.setDragging(true|false)`, called by the UI, lets the engine defer thumbnails and bakes and keep the camera
+  stable. If the camera is focused on an item, the UI calls `unfocus()` when the slider is grabbed, so the whole room
+  stays visible.
+
+## UI
+- The slider component lives in the budget bar on desktop, and in the total/dock on phone.
+- Thumb ≥ 28 px with a 44 px hit area. The track shows level ticks and a filled part. It snaps to ladder steps but
+  feels continuous.
+- The number animates and the level name crossfades. A "what changed" whisper shows during the drag, e.g.
+  «+ Торшер · + Плед» or «− Зеркало», at most two items, then fades.
+- Keyboard: ←/→ move one step, PageUp/PageDown jump to the next level, Home/End go to the minimum/maximum.
+  `aria-valuetext` reads e.g. "28 340 AED, Move-in ready, 29 items".
+- Reduced motion: no number animation; dissolves become cross-fades.
+- Interplay:
+  - grabbing the slider unfocuses the HUD;
+  - a manual swap moves the thumb to the new total;
+  - the style switch toast still offers Undo for slider changes (one undo per drag gesture, using
+    `store.snapshot()` taken at pointerdown).
+
+## Quality gate
+- Apple-level: the review round includes playtest (drag on desktop and phone, keyboard, RU/EN), design (motion,
+  feel, copy), render (intermediate rooms look complete and designed, nothing floating or half-placed) and tech
+  (no long tasks during drag on GPU; no leaks after 50 sweeps).
