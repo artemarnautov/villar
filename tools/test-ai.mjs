@@ -12,6 +12,8 @@ const VERBOSE = process.argv.includes('--verbose');
 const json = (p) => JSON.parse(readFileSync(resolve(ROOT, p), 'utf8'));
 
 const { createSim, parseBudget, sanitizeText } = await import(resolve(ROOT, 'site/js/ai/core.js'));
+// The handler registers the server-only supplier deny list on import; do the same for direct sanitizer tests.
+{ const { addDenyPatterns } = await import(resolve(ROOT, 'site/js/ai/core.js')); const d = await import(resolve(ROOT, 'api/_deny.js')); addDenyPatterns(d.SUPPLIERS, d.SUPPLIERS_RU); }
 const { parseLocal } = await import(resolve(ROOT, 'site/js/ai/local.js'));
 const { createStore } = await import(resolve(ROOT, 'site/js/core/store.js'));
 

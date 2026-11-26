@@ -299,15 +299,15 @@ export function parseBudget(text) {
   return best;
 }
 
-// Retailers / marketplaces we never name, plus URL and SKU-like patterns. A sentence that mentions any of
-// them is dropped whole (cleaner than leaving a hole in it).
-const SUPPLIERS = /\b(home\s*cent(?:re|er)s?|homecentre|landmark\s*group|dragon\s*mart|ikea|pan\s*emirates|danube\s*home|marina\s*home|home\s*box|homebox|2xl|west\s*elm|pottery\s*barn|zara\s*home|h\s*&\s*m\s*home|crate\s*(?:&|and)\s*barrel|amazon|noon\.com)\b/i;
-const SUPPLIERS_RU = /(?<!\p{L})(хоум\s*центр\p{L}*|икеа|икея|драгон\s*март\p{L}*)(?!\p{L})/iu;
+// URL and SKU-like patterns. A sentence that matches any deny pattern is dropped whole (cleaner than leaving a
+// hole in it). Retailer/marketplace names are added server-side (api/_deny.js) so public JS never names them.
 const URLS = /\b(?:https?:\/\/|www\.)[^\s)\]]*[^\s)\].,!?]|\b[\w-]+\.(?:com|ae|net|org|shop|store|ru)\b/i;
 const SKUS = /(?<!\p{L})(?:sku|артикул\p{L}*|арт\.|item\s*(?:no|#)|код товара|product code)(?!\p{L})/iu;
 const MARK = '\u2063';
 const flag = (re) => new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
-const BAD_RES = [URLS, SKUS, SUPPLIERS, SUPPLIERS_RU].map(flag);
+const BAD_RES = [URLS, SKUS].map(flag);
+/** Server-only: register extra deny patterns (e.g. supplier names) for sanitizeText. */
+export function addDenyPatterns(...res) { for (const re of res) BAD_RES.push(flag(re)); }
 
 /** Drop sentences naming suppliers, links or SKUs; strip markdown/control chars; clamp length. */
 export function sanitizeText(s, max = 420) {

@@ -11,7 +11,9 @@
 // No npm dependencies. Written so it runs both as native ESM and when Vercel transpiles it to CommonJS
 // (no import.meta, no top-level await).
 import INDEX from './_catalog.js';
-import { createSim, parseBudget, sanitizeText, sanitizeChips, buildAiIndex, VIEWS, TIMES } from '../site/js/ai/core.js';
+import { createSim, parseBudget, sanitizeText, sanitizeChips, buildAiIndex, VIEWS, TIMES, addDenyPatterns } from '../site/js/ai/core.js';
+import { SUPPLIERS, SUPPLIERS_RU } from './_deny.js';
+addDenyPatterns(SUPPLIERS, SUPPLIERS_RU);
 import { L, keyLabel, itemName, aed, num, defaultChips, styleName, plural } from '../site/js/ai/i18n.js';
 
 const GATEWAY_URL = process.env.AI_GATEWAY_URL || 'https://ai-gateway.vercel.sh/v1/chat/completions';

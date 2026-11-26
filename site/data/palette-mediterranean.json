@@ -13,18 +13,18 @@
     "stone": ["#D9C7A8"]
   },
   "swatches": [
-    { "name": "Известковый белый", "nameEn": "Limewash white", "hex": "#F3EFE6", "role": "walls", "share": 0.36, "paintRef": "Jotun 12303 Natural White — практически в тон потолку (ΔE ≈ 1): стены и потолок читаются как одна побелка; допустима минеральная/известковая фактура того же цвета; альтернатива — Jotun 1453 Cotton Ball (#F0EFE2, LRV 85)", "lrv": 86 },
-    { "name": "Облачный потолок", "nameEn": "Cloud ceiling", "hex": "#F2EFE8", "role": "ceiling", "share": 0.1, "paintRef": "фиксированная отделка застройщика; ≈ Jotun 1001 Egg White / Pantone 11-4201 Cloud Dancer", "lrv": 86 },
-    { "name": "Светлый дуб (пол)", "nameEn": "Light oak floor", "hex": "#C6A984", "role": "floor", "share": 0.14, "paintRef": "фиксированный пол застройщика: натуральный дуб, матовый лак/масло", "lrv": 42 },
-    { "name": "Белёный лён", "nameEn": "Bleached linen", "hex": "#EEE8DC", "role": "textiles", "share": 0.07, "paintRef": "постель, шторы (ΔE ≤ 5 к стенам); без оптического отбеливателя", "lrv": 81 },
-    { "name": "Песочный лён", "nameEn": "Sand linen", "hex": "#DCCFB8", "role": "textiles", "share": 0.09, "paintRef": "диван (льняной или хлопковый чехол), ковёр-дхурри, покрывало", "lrv": 63 },
-    { "name": "Натуральное дерево", "nameEn": "Natural wood", "hex": "#B99A72", "role": "wood", "share": 0.05, "paintRef": "дуб, ясень, вяз или манго — натуральные светлые, масло или браш; на ступень темнее и теплее пола (ΔE ≈ 6); допуск ΔE ≤ 10; не рыжее (h ≥ 68°)", "lrv": 35 },
-    { "name": "Ротанг", "nameEn": "Rattan", "hex": "#C4A57A", "role": "wood", "share": 0.06, "paintRef": "ротанг, венская сетка, рогоз, водный гиацинт, джут, морская трава — натуральный тон, матовый", "lrv": 40 },
-    { "name": "Солнечная терракота", "nameEn": "Sun-baked terracotta", "hex": "#C2704D", "role": "accent", "share": 0.05, "paintRef": "матовая необожжённая глина: лампа, кашпо, вазы, подушки, посуда; светлее и оранжевее терракоты «Тёмного ореха» (#B5674A, ΔE ≈ 5); ориентир — натуральный цвет терракотового горшка", "lrv": 24 },
-    { "name": "Олива", "nameEn": "Olive", "hex": "#76764B", "role": "accent", "share": 0.03, "paintRef": "листва оливы, глазурь, подушка, полоска; на ступень светлее F&B Bancha No. 298 (#686A47)", "lrv": 17 },
-    { "name": "Эгейский синий", "nameEn": "Aegean blue", "hex": "#2F5673", "role": "accent", "share": 0.015, "paintRef": "глубокий приглушённый синий — только посуда, керамика, полоска, искусство; не бирюза и не «тельняшка»", "lrv": 9 },
-    { "name": "Известняк и глина", "nameEn": "Limestone and clay", "hex": "#D9C7A8", "role": "stone", "share": 0.02, "paintRef": "известняк, светлый травертин, неглазурованная светлая глина, штукатурка", "lrv": 58 },
-    { "name": "Кованое железо", "nameEn": "Wrought iron", "hex": "#262422", "role": "metal", "share": 0.015, "paintRef": "матовое кованое железо тонкими линиями: карнизы, каркасы ламп, ножки; состаренная латунь — максимум два мелких предмета", "lrv": 2 }
+    { "name": "Известковый белый", "nameEn": "Limewash white", "hex": "#F3EFE6", "role": "walls", "share": 0.36, "lrv": 86 },
+    { "name": "Облачный потолок", "nameEn": "Cloud ceiling", "hex": "#F2EFE8", "role": "ceiling", "share": 0.1, "lrv": 86 },
+    { "name": "Светлый дуб (пол)", "nameEn": "Light oak floor", "hex": "#C6A984", "role": "floor", "share": 0.14, "lrv": 42 },
+    { "name": "Белёный лён", "nameEn": "Bleached linen", "hex": "#EEE8DC", "role": "textiles", "share": 0.07, "lrv": 81 },
+    { "name": "Песочный лён", "nameEn": "Sand linen", "hex": "#DCCFB8", "role": "textiles", "share": 0.09, "lrv": 63 },
+    { "name": "Натуральное дерево", "nameEn": "Natural wood", "hex": "#B99A72", "role": "wood", "share": 0.05, "lrv": 35 },
+    { "name": "Ротанг", "nameEn": "Rattan", "hex": "#C4A57A", "role": "wood", "share": 0.06, "lrv": 40 },
+    { "name": "Солнечная терракота", "nameEn": "Sun-baked terracotta", "hex": "#C2704D", "role": "accent", "share": 0.05, "lrv": 24 },
+    { "name": "Олива", "nameEn": "Olive", "hex": "#76764B", "role": "accent", "share": 0.03, "lrv": 17 },
+    { "name": "Эгейский синий", "nameEn": "Aegean blue", "hex": "#2F5673", "role": "accent", "share": 0.015, "lrv": 9 },
+    { "name": "Известняк и глина", "nameEn": "Limestone and clay", "hex": "#D9C7A8", "role": "stone", "share": 0.02, "lrv": 58 },
+    { "name": "Кованое железо", "nameEn": "Wrought iron", "hex": "#262422", "role": "metal", "share": 0.015, "lrv": 2 }
   ],
   "architecture": {
     "walls": "#F3EFE6",

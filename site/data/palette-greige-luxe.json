@@ -13,17 +13,17 @@
     "stone": ["#D7C8AF", "#E6DED2"]
   },
   "swatches": [
-    { "name": "Тёплый жемчужный", "nameEn": "Warm pearl", "hex": "#E8E2D4", "role": "walls", "share": 0.36, "paintRef": "Jotun 1281 Pearl Beige (LRV ≈ 76); альтернатива — Sherwin-Williams Shoji White SW 7042 (#E6DFD3) / Benjamin Moore Pale Oak OC-20 (#DDD9CE, LRV 69 — на тон глубже, только при хорошем свете); ниша у кровати по желанию — Jotun 10341 Limestone (#D9D3C7, LRV 65)", "lrv": 76 },
-    { "name": "Облачный потолок", "nameEn": "Cloud ceiling", "hex": "#F2EFE8", "role": "ceiling", "share": 0.1, "paintRef": "фиксированная отделка застройщика; ≈ Jotun 1001 Egg White / Pantone 11-4201 Cloud Dancer", "lrv": 86 },
-    { "name": "Светлый дуб (пол)", "nameEn": "Light oak floor", "hex": "#C6A984", "role": "floor", "share": 0.14, "paintRef": "фиксированный пол застройщика: натуральный дуб, матовый лак/масло", "lrv": 42 },
-    { "name": "Слоновая кость", "nameEn": "Ivory bouclé", "hex": "#EDE6DA", "role": "textiles", "share": 0.11, "paintRef": "диван, изголовье, постель: букле плотной петли, шенилл, матовый хлопок-сатин", "lrv": 80 },
-    { "name": "Грейж", "nameEn": "Greige", "hex": "#CFC4B4", "role": "textiles", "share": 0.09, "paintRef": "ковёр, обеденные стулья, покрывало; на ступень темнее фасадов кухни (ΔE ≈ 4)", "lrv": 56 },
-    { "name": "Травертин", "nameEn": "Travertine", "hex": "#D7C8AF", "role": "stone", "share": 0.07, "paintRef": "журнальный стол, обеденная столешница, лампы; светлый классический, хонингованный, поры заполнены", "lrv": 59 },
-    { "name": "Тёплый мрамор", "nameEn": "Warm marble", "hex": "#E6DED2", "role": "stone", "share": 0.02, "paintRef": "кремовый хонингованный мрамор с мягкими тауп-прожилками; не серая Каррара", "lrv": 74 },
-    { "name": "Тёплый тауп", "nameEn": "Warm taupe", "hex": "#A69686", "role": "textiles", "share": 0.04, "paintRef": "кресло (матовый бархат), подушки, плед", "lrv": 32 },
-    { "name": "Мокко", "nameEn": "Mocha", "hex": "#8B6F5E", "role": "accent", "share": 0.025, "paintRef": "≈ Pantone 17-1230 Mocha Mousse (цвет 2025), на ступень глубже; родственный тон — Jotun 2771 Rustic Terracotta (#9F7D6A); подушка, керамика, плед, искусство", "lrv": 18 },
-    { "name": "Копчёный дуб", "nameEn": "Smoked oak", "hex": "#8C7462", "role": "wood", "share": 0.025, "paintRef": "мокко- или копчёный дуб, матовый: ножки, рамы, подносы, опоры; не больше 5% площади", "lrv": 19 },
-    { "name": "Шампань-латунь", "nameEn": "Champagne brass", "hex": "#B8A27A", "role": "metal", "share": 0.02, "paintRef": "шлифованная/сатинированная светлая латунь; единственный декоративный металл; не полированное «золото»", "lrv": 37 }
+    { "name": "Тёплый жемчужный", "nameEn": "Warm pearl", "hex": "#E8E2D4", "role": "walls", "share": 0.36, "lrv": 76 },
+    { "name": "Облачный потолок", "nameEn": "Cloud ceiling", "hex": "#F2EFE8", "role": "ceiling", "share": 0.1, "lrv": 86 },
+    { "name": "Светлый дуб (пол)", "nameEn": "Light oak floor", "hex": "#C6A984", "role": "floor", "share": 0.14, "lrv": 42 },
+    { "name": "Слоновая кость", "nameEn": "Ivory bouclé", "hex": "#EDE6DA", "role": "textiles", "share": 0.11, "lrv": 80 },
+    { "name": "Грейж", "nameEn": "Greige", "hex": "#CFC4B4", "role": "textiles", "share": 0.09, "lrv": 56 },
+    { "name": "Травертин", "nameEn": "Travertine", "hex": "#D7C8AF", "role": "stone", "share": 0.07, "lrv": 59 },
+    { "name": "Тёплый мрамор", "nameEn": "Warm marble", "hex": "#E6DED2", "role": "stone", "share": 0.02, "lrv": 74 },
+    { "name": "Тёплый тауп", "nameEn": "Warm taupe", "hex": "#A69686", "role": "textiles", "share": 0.04, "lrv": 32 },
+    { "name": "Мокко", "nameEn": "Mocha", "hex": "#8B6F5E", "role": "accent", "share": 0.025, "lrv": 18 },
+    { "name": "Копчёный дуб", "nameEn": "Smoked oak", "hex": "#8C7462", "role": "wood", "share": 0.025, "lrv": 19 },
+    { "name": "Шампань-латунь", "nameEn": "Champagne brass", "hex": "#B8A27A", "role": "metal", "share": 0.02, "lrv": 37 }
   ],
   "architecture": {
     "walls": "#E8E2D4",
