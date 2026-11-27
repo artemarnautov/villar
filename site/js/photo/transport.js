@@ -50,7 +50,7 @@ export function createServerTransport() {
         const r = await fetch(`/api/photo${session ? `?s=${encodeURIComponent(session)}` : ''}`, { method: 'GET', credentials: 'same-origin' });
         if (!r.ok) return { enabled: false };
         const j = await r.json();
-        return { enabled: !!j.enabled, generate: !!j.generate };
+        return { enabled: !!j.enabled, generate: !!j.generate, aspects: Array.isArray(j.aspects) ? j.aspects.filter((x) => typeof x === 'string').slice(0, 24) : null };
       } catch { return { enabled: false }; }
     },
     lookup: (state) => post({ v: 1, op: 'lookup', session, state }, { timeoutMs: 8000 }),

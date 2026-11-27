@@ -26,9 +26,10 @@ import INDEX from './_catalog.js';
 import REFS from './_refs.js';
 import { createSim } from '../site/js/ai/core.js';
 import {
-  env, PROMPT_VERSION, KEY_VERSION, modelList, modelConfig, providersAvailable, abModel, costOf, header, clientIp, ipHash, sha256, send, sameOrigin,
-  readJson, createLimiter, authToken, GatewayError, isFatalGateway, generateImage, resumeImage, supa, objectPath, STYLES_RE, TIMES,
-  STYLE_WORDS, LIGHT_WORDS, GRADE_WORDS, GEMINI_ASPECTS, hfProbe, loadConfig, liveConfig, mayGenerate, dailyCaps, resetConfigForTests, HF_BASE, hfAuth
+  env, PROMPT_VERSION, KEY_VERSION, modelList, modelConfig, pickModels, bestSize, pickAspect, usableProviders, providersAvailable, providerOff, resetBreakers,
+  modelBreakers, tryModels, dryRun, attemptOf, maxUsd, abModel, costOf, header, clientIp, ipHash, sha256, send, sameOrigin, readJson, createLimiter,
+  authToken, GatewayError, isFatalGateway, generateImage, resumeImage, supa, objectPath, STYLES_RE, TIMES, STYLE_WORDS, LIGHT_WORDS, GRADE_WORDS,
+  hfProbe, loadConfig, liveConfig, mayGenerate, dailyCaps, resetConfigForTests, HF_BASE, hfAuth,
 } from './_photo.js';
 import { runPlateJob } from './plate.js';
 import { fromDataUrl, jpegSize, toStorableJpeg, sniff } from './_img.js';
@@ -39,7 +40,7 @@ const MAX_FRAME = 1.6 * 1024 * 1024;
 const MAX_EDGE = 2048;
 const deadlineMs = () => Math.max(5000, Number(env('PHOTO_DEADLINE_MS')) || 55_000); // vercel.json maxDuration 60
 const SIZES = ['1K', '2K'];
-const ASPECTS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'];
+const ASPECTS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', '2:1', '1:2', '7:9', '9:7']; // the union of every model's list
 const POSE_RE = /^[a-z0-9_:;,.|-]{8,220}$/i; // camera, plus the focused item's turn (o:slot_id:yaw)
 const REF_LIMIT = () => Math.max(0, Math.min(10, Number(env('PHOTO_REFS') || 8)));
 const DAILY_IP = () => dailyCaps().perIp;       // photo_config.caps → env → ART §1 defaults (12 / 60)
@@ -54,14 +55,9 @@ const developLimitedSession = createLimiter([{ windowMs: 3_600_000, max: 20 }]);
 const rejectLimited = createLimiter([{ windowMs: 3_600_000, max: 6 }]);
 const diagLimited = createLimiter([{ windowMs: 3_600_000, max: 10 }]);
 const inflight = new Map();             // key → Promise (two requests for the same photo share one generation)
-const breakerUntil = { higgsfield: 0, gateway: 0 }; // a provider said "no balance / bad key": skip it for a while
-const BREAKER_MS = 10 * 60_000;
 const PENDING_STALE_MS = 15 * 60_000;   // a job not finished after this long is given up (and its quota refunded)
-/** Providers with credentials and no open breaker. */
-const usable = (req) => {
-  const a = providersAvailable(req); const t = Date.now();
-  return { higgsfield: a.higgsfield && t > breakerUntil.higgsfield, gateway: a.gateway && t > breakerUntil.gateway };
-};
+/** Providers with credentials and no open breaker (api/_photo.js: no balance / bad key → 10 min; per model → 1 h). */
+const usable = (req) => usableProviders(req);
 
 const killSwitch = () => {
   const v = env('PHOTO_DISABLED').toLowerCase();
@@ -188,7 +184,9 @@ async function storeResult(db, { model, key, meta, bytes, genMs, refs, admin, t0
   catch (e) { throw new GatewayError('empty', `unusable image from ${model.id}: ${e.message}`, 0, model.provider); }
   const path = objectPath(admin ? 'preset' : 'v1', key, img.type === 'image/webp' ? 'webp' : 'jpg');
   await db.put(path, img.bytes, img.type);
-  const usd = costOf(model, meta.size);
+  // the provider's own estimate for this call when there is one (Higgsfield), else the list price
+  const hasEst = Number.isFinite(meta.estimate) && meta.estimate > 0;
+  const usd = hasEst ? meta.estimate : costOf(model, meta.size);
   const row = {
     key, path, kind: 'photo', source: admin ? 'preset' : 'user', status: 'ok', model: model.id, provider: model.provider, request_id: meta.request_id || null,
     prompt_version: PROMPT_VERSION, style: meta.style, time_of_day: meta.time, size: meta.size, aspect: meta.aspect, width: img.width || null,
@@ -196,8 +194,8 @@ async function storeResult(db, { model, key, meta, bytes, genMs, refs, admin, t0
     updated_at: new Date().toISOString(),
   };
   try { await db.upsertRow(row); } catch (e) { console.error(`[photo] index write failed: ${e.message}`); }
-  console.info(JSON.stringify({ ev: 'photo.gen', key: key.slice(0, 12), model: model.id, provider: model.provider, usd, est: !!model.estimate, size: meta.size, aspect: meta.aspect, refs, ms: genMs, total: t0 ? Date.now() - t0 : null, bytes: img.bytes.length, transcoded: img.transcoded, inTok: usage?.prompt_tokens ?? null, outTok: usage?.completion_tokens ?? null, src: row.source, style: meta.style, time: meta.time }));
-  return { url: db.publicUrl(path), key, model: model.id, ms: t0 ? Date.now() - t0 : genMs, w: img.width || null, h: img.height || null };
+  console.info(JSON.stringify({ ev: 'photo.gen', key: key.slice(0, 12), model: model.id, provider: model.provider, usd, est: hasEst ? false : !!model.estimate, size: meta.size, aspect: meta.aspect, refs, ms: genMs, total: t0 ? Date.now() - t0 : null, bytes: img.bytes.length, transcoded: img.transcoded, inTok: usage?.prompt_tokens ?? null, outTok: usage?.completion_tokens ?? null, src: row.source, style: meta.style, time: meta.time }));
+  return { url: db.publicUrl(path), key, model: model.id, ms: t0 ? Date.now() - t0 : genMs, w: img.width || null, h: img.height || null, usd, request_id: meta.request_id || null };
 }
 
 /** The job is still running at the provider: remember it, the client polls (or the webhook finishes it). */
@@ -205,6 +203,7 @@ async function storePending(db, { model, key, meta, requestId, refs, admin }) {
   await db.upsertRow({
     key, path: null, kind: 'photo', source: admin ? 'preset' : 'user', status: 'pending', model: model.id, provider: model.provider, request_id: requestId,
     prompt_version: PROMPT_VERSION, style: meta.style, time_of_day: meta.time, size: meta.size, aspect: meta.aspect, refs,
+    cost_usd: Number.isFinite(meta.estimate) ? meta.estimate : null,
     session: meta.session || null, ip_hash: meta.ip_hash || null, updated_at: new Date().toISOString(),
   });
   console.info(JSON.stringify({ ev: 'photo.pending', key: key.slice(0, 12), model: model.id, request: String(requestId).slice(0, 8) }));
@@ -231,7 +230,7 @@ export async function completePending(db, row, { t0 = Date.now() } = {}) {
   try { out = await resumeImage(model, row.request_id); }
   catch (err) { if (err instanceof GatewayError && (err.code === 'timeout' || err.code === 'busy')) return { pending: true, key: row.key, retryAfter: 3 }; return fail(err?.code || 'gateway'); }
   if (out.pending) return { pending: true, key: row.key, retryAfter: 3 };
-  const meta = { style: row.style, time: row.time_of_day, size: row.size || '2K', aspect: row.aspect, session: row.session, ip_hash: row.ip_hash, request_id: row.request_id };
+  const meta = { style: row.style, time: row.time_of_day, size: row.size || '2K', aspect: row.aspect, session: row.session, ip_hash: row.ip_hash, request_id: row.request_id, estimate: row.cost_usd == null ? NaN : Number(row.cost_usd) };
   return storeResult(db, { model, key: row.key, meta, bytes: out.bytes, genMs: Date.now() - Date.parse(row.updated_at || Date.now()), refs: row.refs ?? 0, admin: row.source === 'preset', t0 });
 }
 
@@ -241,62 +240,58 @@ function webhookUrl(req) {
   return /^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(base.replace(/\/$/, '')) ? `${base.replace(/\/$/, '')}/api/photo-hook` : null;
 }
 
-async function develop({ req, auth, db, st, items, frame, frameSize, tier, session, ipH, t0, admin }) {
+/**
+ * One photo: the tier's models in order (or exactly `named`), estimate first, then submit.
+ *   frameUrl: the frame's public Storage URL (Higgsfield takes URLs; the gateway gets the bytes inline).
+ *   dry: only ask what it would cost → { dry: true, estimates }.
+ * Only models that can return exactly the frame's aspect ratio are tried (another shape would fail the client's
+ * structural check, and that photo would be paid for nothing).
+ */
+async function develop({ req, auth, db, st, items, frame, frameSize, frameUrl = null, tier, session, ipH, t0, admin, named = null, dry = false, trace = [], limitUsd = null }) {
   const avail = usable(req);
-  const list = modelList(tier, avail);
-  if (!list.length) throw new GatewayError('unavailable', 'no provider available (keys missing or breakers open)');
-  const ab = tier === 'default' ? abModel(keyFor(list[0].id, st)) : null;
+  let models = pickModels(tier, avail, named);
+  const ab = !named && tier === 'default' ? abModel(keyFor((models[0] || { id: 'none' }).id, st)) : null;
   const abCfg = ab ? modelConfig(ab) : null;
-  const models = abCfg && avail[abCfg.provider] ? [abCfg, ...list.filter((m) => m.id !== ab)] : list;
+  if (abCfg && avail[abCfg.provider]) models = [abCfg, ...models.filter((m) => m.id !== ab)];
+  const fits = (m) => !m.aspects || m.aspects.includes(st.aspect);
+  for (const m of models.filter((x) => !fits(x))) trace.push({ provider: m.provider, model: m.id, status: null, code: 'aspect', detail: `cannot return ${st.aspect}` });
+  models = models.filter(fits);
+  if (!models.length) { const e = new GatewayError('unavailable', 'no model available for this frame (keys missing, breakers open, or no model with this aspect ratio)'); e.trace = trace; throw e; }
   const deadlineAt = t0 + deadlineMs();
-  const remaining = () => deadlineAt - Date.now();
-  const skip = new Set();                // providers that failed fatally in this request
   const meta = { style: st.style, time: st.time, size: st.size, aspect: st.aspect, session, ip_hash: ipH };
-  const frameImg = { url: `data:image/jpeg;base64,${frame.toString('base64')}`, label: 'Image 1 — the render to turn into a photograph:' };
-  let lastErr = null;
-  for (const model of models) {
-    if (skip.has(model.provider)) continue;
-    if (remaining() < 8000) break;
+  const frameImg = { url: `data:image/jpeg;base64,${frame.toString('base64')}`, publicUrl: frameUrl, label: 'Image 1 — the render to turn into a photograph:' };
+  const used = new Map(); // model id → the references of its latest try
+  const makeOpts = (model, n, lastErr) => {
+    // a second try only when the first was rejected with reference photos (an unreachable image, too many inputs)
+    if (n > 1 || (n === 1 && !(lastErr instanceof GatewayError && lastErr.code === 'rejected' && used.get(model.id)?.length))) return null;
+    const refs = n === 0 ? refImages(items, model, { selection: st.selection, db }) : [];
+    used.set(model.id, refs);
     const key = keyFor(model.id, st);
-    const refs = refImages(items, model, { selection: st.selection, db });
-    let attempt = refs;
-    for (let tries = 0; tries < 2; tries++) {
-      const t1 = Date.now();
-      const inline = model.provider === 'higgsfield';
-      const prompt = buildPrompt({ time: st.time, style: st.style, refs: attempt, inline, closeUp: /;o:/.test(st.pose) });
-      try {
-        const out = env('PHOTO_PROVIDER') === 'stub'
-          ? { bytes: frame, text: '', usage: null }   // server stub: the frame itself (tests, offline)
-          : await generateImage({
-            auth, model, prompt, images: [frameImg, ...attempt], aspectRatio: model.aspects ? st.aspect : null, imageSize: st.size,
-            width: frameSize.width, height: frameSize.height, timeoutMs: Math.min(45_000, remaining() - 3000),
-            deadlineAt: deadlineAt - 4000, idempotencyKey: `${key.slice(0, 32)}-${tries}`, webhook: webhookUrl(req), seed: parseInt(key.slice(0, 7), 16),
-          });
-        if (out.pending) return storePending(db, { model, key, meta, requestId: out.pending.requestId, refs: attempt.length, admin });
-        return await storeResult(db, { model, key, meta: { ...meta, request_id: out.requestId || null }, bytes: out.bytes, genMs: Date.now() - t1, refs: attempt.length, admin, t0, usage: out.usage });
-      } catch (err) {
-        lastErr = err;
-        const code = err instanceof GatewayError ? err.code : 'gateway';
-        console.warn(`[photo] ${model.id} failed (${code}): ${err?.message || err}`);
-        if (isFatalGateway(err)) {
-          const pv = err.provider || model.provider;
-          skip.add(pv);
-          if (err.code === 'unavailable') breakerUntil[pv] = Date.now() + BREAKER_MS;
-          break; // next provider
-        }
-        // a rejected request with reference photos (an unreachable image, too many inputs): once more without them
-        if (code === 'rejected' && attempt.length && tries === 0) { attempt = []; continue; }
-        break; // next model
-      }
-    }
-  }
-  throw lastErr || new GatewayError('gateway', 'no model available');
+    return {
+      auth, prompt: buildPrompt({ time: st.time, style: st.style, refs, inline: model.provider === 'higgsfield', closeUp: /;o:/.test(st.pose) }),
+      images: [frameImg, ...refs], aspectRatio: model.aspects ? st.aspect : null, imageSize: bestSize(model, st.size),
+      width: frameSize.width, height: frameSize.height, timeoutMs: Math.max(5000, Math.min(45_000, deadlineAt - Date.now() - 3000)),
+      deadlineAt: deadlineAt - 4000, idempotencyKey: `${key.slice(0, 32)}-${n}`, webhook: webhookUrl(req), seed: parseInt(key.slice(0, 7), 16),
+      maxCost: limitUsd ?? maxUsd(!admin),
+    };
+  };
+  if (dry) return { dry: true, estimates: await dryRun(models, makeOpts) };
+  if (env('PHOTO_PROVIDER') === 'stub') return storeResult(db, { model: models[0], key: keyFor(models[0].id, st), meta, bytes: frame, genMs: 0, refs: 0, admin, t0 }); // tests, offline
+  const t1 = Date.now();
+  const { model, out } = await tryModels(models, makeOpts, { trace, deadlineAt });
+  const key = keyFor(model.id, st);
+  const refs = used.get(model.id)?.length || 0;
+  const m2 = { ...meta, size: bestSize(model, st.size), estimate: out.pending ? out.pending.estimate : out.estimate, request_id: out.pending ? out.pending.requestId : out.requestId || null };
+  if (out.pending) return { ...(await storePending(db, { model, key, meta: m2, requestId: out.pending.requestId, refs, admin })), model: model.id, usd: m2.estimate ?? null, request_id: out.pending.requestId };
+  return storeResult(db, { model, key, meta: m2, bytes: out.bytes, genMs: Date.now() - t1, refs, admin, t0, usage: out.usage });
 }
 
 async function saveFrame(db, key, frame, st, items) {
   const state = { style: st.style, time: st.time, pose: st.pose, aspect: st.aspect, size: st.size, selection: st.selection };
-  await db.put(`frames/${key}.jpg`, frame, 'image/jpeg', { upsert: true });
-  await db.put(`frames/${key}.json`, Buffer.from(JSON.stringify({ v: 1, state, items })), 'application/json', { upsert: true });
+  await Promise.all([
+    db.put(`frames/${key}.jpg`, frame, 'image/jpeg', { upsert: true }),
+    db.put(`frames/${key}.json`, Buffer.from(JSON.stringify({ v: 1, state, items })), 'application/json', { upsert: true }),
+  ]);
 }
 
 // ---------------------------------------------------------------------------------------------- job queue (ART)
@@ -304,8 +299,10 @@ const JOB_MAX_ATTEMPTS = 40;          // provider polls included
 const runLimited = createLimiter([{ windowMs: 60_000, max: 6 }, { windowMs: 3_600_000, max: 120 }]);
 const jobPatch = (db, id, patch) => db.call(`/rest/v1/photo_jobs?id=eq.${Number(id)}`, { method: 'PATCH', body: JSON.stringify(patch), headers: { 'content-type': 'application/json', prefer: 'return=minimal' } });
 
+const jobUsd = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Math.min(5, Number(v)) : null);
+
 /** Art edition: an original work for a style (docs/ART.md §5). One candidate per step; c1 also becomes art/<id>.jpg. */
-async function runEditionJob(db, job, { req, t0 }) {
+async function runEditionJob(db, job, { req, t0, trace }) {
   const p = job.params || {};
   const id = typeof p.id === 'string' && /^[a-z0-9-]{3,60}$/.test(p.id) ? p.id : null;
   const style = typeof p.style === 'string' && STYLES_RE.test(p.style) ? p.style : null;
@@ -313,71 +310,94 @@ async function runEditionJob(db, job, { req, t0 }) {
   const palette = (Array.isArray(p.palette) ? p.palette : []).filter((h) => /^#[0-9a-f]{6}$/i.test(h)).slice(0, 6);
   if (!id || !style || brief.length < 10) throw new GatewayError('rejected', 'edition: params need id, style and prompt');
   const n = Math.max(1, Math.min(4, Number(p.candidates) || 2));
-  const aspect = GEMINI_ASPECTS.includes(p.aspect) ? p.aspect : '1:1';
-  const size = ['1K', '2K'].includes(p.resolution) ? p.resolution : '2K';
-  const avail = providersAvailable(req);
-  const asked = modelConfig(typeof p.model === 'string' && p.model ? p.model : 'higgsfield:nano_banana_2_1');
-  const model = avail[asked.provider] ? asked : modelList('default', avail)[0];
-  if (!model) throw new GatewayError('unavailable', 'edition: no provider configured');
+  const aspect = ASPECTS.includes(p.aspect) ? p.aspect : '1:1';
+  const want = ['1K', '2K'].includes(p.resolution) ? p.resolution : '2K';
+  const models = pickModels('default', usable(req), p.model).filter((m) => !m.editOnly);
+  if (!models.length) throw new GatewayError('unavailable', `edition: ${p.model ? `model ${p.model} is not available` : 'no model available'}`);
   const keys = Array.from({ length: n }, (_, i) => `art:${id}:c${i + 1}`);
-  const rows = new Map((await db.rows(keys)).map((r) => [r.key, r]));
   const prompt = [
     `An original artwork, made for a ${STYLE_WORDS[style] ? STYLE_WORDS[style].split(':')[0].toLowerCase() : 'calm, refined'} interior: ${brief}.`,
     palette.length ? `Palette strictly from these colours: ${palette.join(', ')}.` : '',
     'Show the whole work flat and front-on, filling the image edge to edge: no frame, no wall, no room, no shadow, no text, no signature, no watermark. Original composition; not in the manner of any named artist; not a reproduction of an existing work.',
   ].filter(Boolean).join('\n');
-  let cost = 0;
+  const optsFor = (i) => (model, k) => (k > 0 ? null : { auth: authToken(req), prompt, images: [], aspectRatio: aspect, imageSize: bestSize(model, want), deadlineAt: t0 + deadlineMs() - 6000, timeoutMs: 45_000, idempotencyKey: `${keys[i]}-${job.id}`.slice(0, 64), seed: 1000 + i, maxCost: jobUsd(p.maxUsd) ?? maxUsd(false) });
+  if (p.dry === true) {
+    const estimates = await dryRun(models, optsFor(0));
+    const first = estimates.find((e) => Number.isFinite(e.usd));
+    return { done: true, result: { dry: true, id, candidates: n, estimates, totalUsd: first ? +(first.usd * n).toFixed(4) : null }, cost: 0 };
+  }
+  const rows = new Map((await db.rows(keys)).map((r) => [r.key, r]));
+  const summary = async () => {
+    const all = new Map((await db.rows(keys)).map((r) => [r.key, r]));
+    const made = keys.map((k, i) => { const r = all.get(k); return r ? { candidate: i + 1, model: r.model, usd: r.cost_usd == null ? null : Number(r.cost_usd), request_id: r.request_id || null, status: r.status } : null; }).filter(Boolean);
+    return { made, cost: +made.reduce((a2, m) => a2 + (m.status === 'ok' ? m.usd || 0 : 0), 0).toFixed(4) };
+  };
   for (let i = 0; i < n; i++) {
     const key = keys[i]; const r = rows.get(key);
     if (r?.status === 'ok') continue;
-    const finish = async (bytes, ms, requestId = null) => {
+    const finish = async (model, bytes, ms, requestId, estimate) => {
       const img = toStorableJpeg(bytes, { maxEdge: 2560, quality: 90 });
       const path = `art/${id}-c${i + 1}.jpg`;
       await db.put(path, img.bytes, img.type, { upsert: true, maxAge: 3600 });
       if (i === 0) await db.put(`art/${id}.jpg`, img.bytes, img.type, { upsert: true, maxAge: 3600 });
-      await db.upsertRow({ key, path, kind: 'edition', source: 'preset', status: 'ok', model: model.id, provider: model.provider, request_id: requestId, prompt_version: PROMPT_VERSION, style, size, aspect, width: img.width || null, height: img.height || null, bytes: img.bytes.length, ms, cost_usd: costOf(model, size), refs: 0, updated_at: new Date().toISOString() });
-      console.info(JSON.stringify({ ev: 'edition.gen', id, candidate: i + 1, model: model.id, usd: costOf(model, size), est: !!model.estimate, ms }));
-      cost += costOf(model, size);
+      const hasEst = Number.isFinite(estimate);
+      const usd = hasEst ? estimate : costOf(model, bestSize(model, want));
+      await db.upsertRow({ key, path, kind: 'edition', source: 'preset', status: 'ok', model: model.id, provider: model.provider, request_id: requestId, prompt_version: PROMPT_VERSION, style, size: bestSize(model, want), aspect, width: img.width || null, height: img.height || null, bytes: img.bytes.length, ms, cost_usd: usd, refs: 0, updated_at: new Date().toISOString() });
+      console.info(JSON.stringify({ ev: 'edition.gen', id, candidate: i + 1, model: model.id, usd, est: hasEst ? false : !!model.estimate, ms }));
     };
     if (r?.status === 'pending' && r.request_id) {
-      const out = await resumeImage(modelConfig(r.model), r.request_id);
-      if (out.pending) return { pending: true, result: { candidate: i + 1, request_id: r.request_id } };
-      await finish(out.bytes, Date.now() - Date.parse(r.updated_at || Date.now()), r.request_id);
+      const model = modelConfig(r.model);
+      const out = await resumeImage(model, r.request_id);
+      if (out.pending) return { pending: true, result: { candidate: i + 1, request_id: r.request_id, model: r.model } };
+      await finish(model, out.bytes, Date.now() - Date.parse(r.updated_at || Date.now()), r.request_id, r.cost_usd == null ? NaN : Number(r.cost_usd));
       continue;
     }
     const t1 = Date.now();
-    const out = env('PHOTO_PROVIDER') === 'stub' ? { bytes: Buffer.from(encodeStub()) } : await generateImage({ auth: authToken(req), model, prompt, images: [], aspectRatio: aspect, imageSize: size, deadlineAt: t0 + deadlineMs() - 6000, timeoutMs: 45_000, idempotencyKey: `${key}-${job.id}`.slice(0, 64), seed: 1000 + i });
+    if (env('PHOTO_PROVIDER') === 'stub') { await finish(models[0], Buffer.from(encodeStub()), 0, null, NaN); continue; }
+    const { model, out } = await tryModels(models, optsFor(i), { trace, deadlineAt: t0 + deadlineMs() });
     if (out.pending) {
-      await db.upsertRow({ key, path: null, kind: 'edition', source: 'preset', status: 'pending', model: model.id, provider: model.provider, request_id: out.pending.requestId, prompt_version: PROMPT_VERSION, style, size, aspect, updated_at: new Date().toISOString() });
-      return { pending: true, result: { candidate: i + 1, request_id: out.pending.requestId } };
+      await db.upsertRow({ key, path: null, kind: 'edition', source: 'preset', status: 'pending', model: model.id, provider: model.provider, request_id: out.pending.requestId, prompt_version: PROMPT_VERSION, style, size: bestSize(model, want), aspect, cost_usd: Number.isFinite(out.pending.estimate) ? out.pending.estimate : null, updated_at: new Date().toISOString() });
+      return { pending: true, result: { candidate: i + 1, request_id: out.pending.requestId, model: model.id, estimate: out.pending.estimate ?? null } };
     }
-    await finish(out.bytes, Date.now() - t1, out.requestId || null);
+    await finish(model, out.bytes, Date.now() - t1, out.requestId || null, out.estimate);
     if (i < n - 1 && deadlineMs() - (Date.now() - t0) < 30_000) return { pending: true, result: { candidate: i + 1, stored: true } };
   }
-  return { done: true, result: { id, image: `art/${id}.jpg`, url: db.publicUrl(`art/${id}.jpg`), candidates: keys.map((_, i) => db.publicUrl(`art/${id}-c${i + 1}.jpg`)) }, cost };
+  const sum = await summary();
+  return { done: true, result: { id, image: `art/${id}.jpg`, url: db.publicUrl(`art/${id}.jpg`), candidates: keys.map((_, i) => db.publicUrl(`art/${id}-c${i + 1}.jpg`)), made: sum.made }, cost: sum.cost };
 }
 const encodeStub = () => Buffer.from('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==', 'base64');
 
-/** Hero / preset: re-develop a stored visitor frame (frames/<key>.jpg + .json) with the hero (Pro) or default tier. */
-async function runHeroJob(db, job, { req, t0 }) {
-  const from = typeof job.params?.from === 'string' && /^[a-f0-9]{64}$/.test(job.params.from) ? job.params.from : null;
+/**
+ * Hero / preset: re-develop a stored visitor frame (frames/<key>.jpg + .json) with the hero or the default tier.
+ * params: { from: <64-hex frame key>, model?: exact model id, size?: '1K' | '2K' | '4K', dry?: true, maxUsd?: number }.
+ */
+async function runHeroJob(db, job, { req, t0, trace }) {
+  const p = job.params || {};
+  const from = typeof p.from === 'string' && /^[a-f0-9]{64}$/.test(p.from) ? p.from : null;
   if (!from) throw new GatewayError('rejected', `${job.kind}: params.from must be the 64-hex key of a stored frame`);
   const tier = job.kind === 'hero' ? 'hero' : 'default';
-  if (job.result?.key) {
+  if (job.result?.key && !p.dry) {
     const row = (await db.rows([job.result.key]))[0];
-    if (row?.status === 'ok') return { done: true, result: { key: row.key, url: db.publicUrl(row.path), model: row.model } };
-    if (row?.status === 'pending') { const out = await completePending(db, row, { t0 }); if (out.pending) return { pending: true, result: job.result }; if (out.url) return { done: true, result: { key: out.key, url: out.url, model: out.model } }; }
+    const done = (r) => ({ done: true, result: { key: r.key, url: db.publicUrl(r.path), model: r.model, usd: r.cost_usd == null ? null : Number(r.cost_usd), request_id: r.request_id || null }, cost: r.cost_usd == null ? null : Number(r.cost_usd) });
+    if (row?.status === 'ok') return done(row);
+    if (row?.status === 'pending') {
+      const out = await completePending(db, row, { t0 });
+      if (out.pending) return { pending: true, result: job.result };
+      if (out.url) return done((await db.rows([row.key]))[0] || { ...row, path: '' });
+    }
   }
   const meta = await fetch(db.publicUrl(`frames/${from}.json`)).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   const frame = await fetch(db.publicUrl(`frames/${from}.jpg`)).then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => (b ? Buffer.from(b) : null)).catch(() => null);
   if (!meta?.state || !frame) throw new GatewayError('rejected', `${job.kind}: frame ${from.slice(0, 12)} not found in Storage`);
-  const { state: st, error } = cleanState({ ...meta.state, size: ['1K', '2K'].includes(job.params?.size) ? job.params.size : meta.state.size || '2K' });
+  const { state: st, error } = cleanState({ ...meta.state });
   if (error) throw new GatewayError('rejected', `${job.kind}: stored state invalid`);
+  st.size = ['1K', '2K', '4K'].includes(p.size) ? p.size : meta.state.size || '2K';
   const frameSize = jpegSize(frame);
   const items = cleanItems(meta.items, st);
-  const out = await develop({ req, auth: authToken(req), db, st, items, frame, frameSize, tier, session: null, ipH: null, t0, admin: true });
-  if (out.pending) return { pending: true, result: { key: out.key } };
-  return { done: true, result: { key: out.key, url: out.url, model: out.model }, cost: costOf(modelConfig(out.model), st.size) };
+  const out = await develop({ req, auth: authToken(req), db, st, items, frame, frameSize, frameUrl: db.publicUrl(`frames/${from}.jpg`), tier, session: null, ipH: null, t0, admin: true, named: p.model || null, dry: p.dry === true, trace, limitUsd: jobUsd(p.maxUsd) });
+  if (out.dry) return { done: true, result: { dry: true, from, estimates: out.estimates }, cost: 0 };
+  if (out.pending) return { pending: true, result: { key: out.key, model: out.model, estimate: out.usd ?? null, request_id: out.request_id || null } };
+  return { done: true, result: { key: out.key, url: out.url, model: out.model, usd: out.usd ?? null, request_id: out.request_id || null }, cost: out.usd ?? null };
 }
 
 /** Claim the oldest runnable job and run one step of it (GET or POST /api/photo?run=1; takes no parameters). */
@@ -389,26 +409,40 @@ async function runQueue(db, req) {
   if (!job) return { ok: true, idle: true };
   const finish = (patch) => jobPatch(db, job.id, { ...patch, locked_until: null, finished_at: new Date().toISOString() }).catch((e) => console.error(`[photo] job ${job.id} update failed: ${e.message}`));
   if (job.attempts > JOB_MAX_ATTEMPTS) { await finish({ status: 'failed', error: 'too many attempts' }); return { job: job.id, kind: job.kind, status: 'failed' }; }
+  // every provider attempt of this step (provider, model, HTTP status, code, ≤ 200 chars): the coordinator reads the
+  // job row, not the function logs. Earlier steps' attempts stay in result.attempts (last 12).
+  const trace = [];
+  const withTrace = (result, extra = []) => {
+    const all = [...(Array.isArray(job.result?.attempts) ? job.result.attempts : []), ...trace, ...extra].slice(-12);
+    return all.length ? { ...(result || {}), attempts: all } : result || null;
+  };
   try {
-    const out = job.kind === 'edition' ? await runEditionJob(db, job, { req, t0 })
-      : job.kind === 'hero' || job.kind === 'preset' ? await runHeroJob(db, job, { req, t0 })
+    const out = job.kind === 'edition' ? await runEditionJob(db, job, { req, t0, trace })
+      : job.kind === 'hero' || job.kind === 'preset' ? await runHeroJob(db, job, { req, t0, trace })
       : job.kind === 'loop' ? (() => { throw new GatewayError('rejected', 'loop: not implemented yet (photo-2)'); })()
-      : await runPlateJob(db, job, { req, t0 });
+      : await runPlateJob(db, job, { req, t0, trace });
     if (out.pending) {
       // the provider job is still running: re-claimable in 20 s (the next ?run=1 call checks it, the webhook may finish it first)
-      await jobPatch(db, job.id, { result: { ...(job.result || {}), ...(out.result || {}) }, locked_until: new Date(Date.now() + 20_000).toISOString() });
-      return { job: job.id, kind: job.kind, status: 'running', ms: Date.now() - t0 };
+      await jobPatch(db, job.id, { result: withTrace({ ...(job.result || {}), ...(out.result || {}) }), locked_until: new Date(Date.now() + 20_000).toISOString() });
+      return { job: job.id, kind: job.kind, status: 'running', result: out.result || null, ms: Date.now() - t0 };
     }
-    await finish({ status: 'done', result: out.result || null, cost: out.cost ?? null, error: null });
+    const result = withTrace({ ...(job.result?.request_id && !out.result?.request_id ? { request_id: job.result.request_id } : {}), ...(out.result || {}) });
+    await finish({ status: 'done', result, cost: out.cost ?? null, error: null });
     console.info(JSON.stringify({ ev: 'photo.job', id: job.id, kind: job.kind, status: 'done', usd: out.cost ?? null, ms: Date.now() - t0 }));
-    return { job: job.id, kind: job.kind, status: 'done', result: out.result || null, ms: Date.now() - t0 };
+    return { job: job.id, kind: job.kind, status: 'done', result, ms: Date.now() - t0 };
   } catch (err) {
-    const msg = String(err?.message || err).slice(0, 1800);
-    // fatal provider state (no balance, bad key): leave the job queued for a later run instead of failing it
-    if (isFatalGateway(err)) { await jobPatch(db, job.id, { status: 'queued', error: msg, locked_until: null }).catch(() => {}); return { job: job.id, kind: job.kind, status: 'queued', error: err.code }; }
-    await finish({ status: 'failed', error: msg });
+    const own = Array.isArray(err?.trace) && err.trace !== trace ? err.trace.filter((x) => !trace.includes(x)) : [];
+    const last = trace.length || own.length ? [] : [attemptOf(null, err)];
+    const result = withTrace(job.result || {}, [...own, ...last]);
+    const lines = (result?.attempts || []).slice(-6).map((x) => `${x.model || x.provider || '-'} ${x.status || ''} ${x.code}: ${x.detail}`.replace(/\s+/g, ' ').trim());
+    const msg = `${String(err?.message || err).slice(0, 700)}${lines.length ? ` || attempts: ${lines.join(' | ')}` : ''}`.slice(0, 1900);
+    // Higgsfield said "no balance / bad key": leave the job queued for a later run instead of failing it (a gateway
+    // without billing is not a reason to wait: then the job fails with the attempts listed)
+    const hfDown = [...trace, ...own].some((x) => x.provider === 'higgsfield' && x.code === 'unavailable') || (isFatalGateway(err) && err.provider === 'higgsfield');
+    if (hfDown) { await jobPatch(db, job.id, { status: 'queued', error: msg, result, locked_until: null }).catch(() => {}); return { job: job.id, kind: job.kind, status: 'queued', error: 'unavailable', attempts: result?.attempts || [] }; }
+    await finish({ status: 'failed', error: msg, result });
     console.info(JSON.stringify({ ev: 'photo.job', id: job.id, kind: job.kind, status: 'failed', error: msg.slice(0, 200) }));
-    return { job: job.id, kind: job.kind, status: 'failed', error: err instanceof GatewayError ? err.code : 'gateway' };
+    return { job: job.id, kind: job.kind, status: 'failed', error: err instanceof GatewayError ? err.code : 'gateway', attempts: result?.attempts || [] };
   }
 }
 
@@ -512,7 +546,7 @@ export default async function handler(req, res) {
         // live config (public.photo_config): who may generate, and which overrides are active (names only)
         config: liveConfig().ok, visitors: liveConfig().visitors, pilots: liveConfig().pilots.size, overrides: liveConfig().names,
         models: modelList('default', usable(req)).map((m) => m.id),
-        breakers: { higgsfield: Date.now() < breakerUntil.higgsfield, gateway: Date.now() < breakerUntil.gateway },
+        breakers: { higgsfield: providerOff('higgsfield'), gateway: providerOff('gateway'), models: modelBreakers() },
         prompt: PROMPT_VERSION,
       });
     }
@@ -527,7 +561,9 @@ export default async function handler(req, res) {
     // GET /api/photo?s=<session>: `generate` = may THIS session start a generation (visitors on, or a pilot session)
     const s = typeof q.s === 'string' && SESSION_RE.test(q.s) ? q.s : null;
     const generate = !ks && !!db && models.length > 0 && mayGenerate(s);
-    return send(res, 200, { ok: true, enabled: ks !== 'all' && !!db, generate, models: models.map((m) => m.id), prompt: PROMPT_VERSION });
+    // aspects: the output shapes the first model can return exactly — the client pads its frame to one of these
+    const aspects = models[0]?.aspects ? models[0].aspects.filter((x) => x !== 'auto') : null;
+    return send(res, 200, { ok: true, enabled: ks !== 'all' && !!db, generate, models: models.map((m) => m.id), ...(aspects ? { aspects } : {}), prompt: PROMPT_VERSION });
   }
   if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return send(res, 405, { error: 'method_not_allowed' }); }
   if (!sameOrigin(req)) return send(res, 403, { error: 'forbidden' });
@@ -595,7 +631,7 @@ export default async function handler(req, res) {
   if (!mayGenerate(session)) return send(res, 200, { error: 'lookup_only' });
   const avail = usable(req);
   if (!avail.higgsfield && !avail.gateway) {
-    if (!providersAvailable(req).higgsfield && !providersAvailable(req).gateway) console.error('[photo] no provider: set HIGGSFIELD_API_KEY (+ HIGGSFIELD_API_SECRET) and/or enable the AI Gateway (OIDC / AI_GATEWAY_API_KEY)');
+    if (!providersAvailable(req).higgsfield && !providersAvailable(req).gateway) console.error('[photo] no provider: set HIGGSFIELD_KEY (id:secret) and/or enable the AI Gateway (OIDC / AI_GATEWAY_API_KEY)');
     return send(res, 200, { error: 'unavailable' });
   }
   const auth = env('PHOTO_PROVIDER') === 'stub' ? { token: 'stub', kind: 'stub' } : authToken(req);
@@ -621,11 +657,14 @@ export default async function handler(req, res) {
       quota = await takeQuota(db, ipH, session);
       if (!quota.ok) throw new GatewayError(quota.error || 'quota', 'daily cap reached');
     }
-    // keep the input frame + its state: a hero / preset job can later re-develop exactly this view (ART §1)
-    const saved = saveFrame(db, keys[0], frame, st, items).catch((e) => console.warn(`[photo] frame not kept: ${e.message}`));
-    try { return await develop({ req, auth, db, st, items, frame, frameSize, tier, session, ipH, t0, admin }); }
-    catch (err) { if (quota.subj) await refundQuota(db, quota.subj); throw err; }
-    finally { await saved; }
+    // keep the input frame + its state: a hero / preset job can later re-develop exactly this view (ART §1), and
+    // Higgsfield reads the frame from this public URL (no second upload)
+    const kept = await saveFrame(db, keys[0], frame, st, items).then(() => true, (e) => { console.warn(`[photo] frame not kept: ${e.message}`); return false; });
+    try {
+      const out = await develop({ req, auth, db, st, items, frame, frameSize, frameUrl: kept ? db.publicUrl(`frames/${keys[0]}.jpg`) : null, tier, session, ipH, t0, admin });
+      const { usd: _usd, request_id: _rid, ...pub } = out; // cost and provider ids stay server-side
+      return pub;
+    } catch (err) { if (quota.subj) await refundQuota(db, quota.subj); throw err; }
   })();
   inflight.set(flightKey, job);
   try {
@@ -640,4 +679,4 @@ export default async function handler(req, res) {
 }
 
 // Test hooks (not part of the HTTP contract).
-export const _test = { cleanState, cleanItems, keyFor, buildPrompt, refImages, resetBreaker: () => { breakerUntil.higgsfield = 0; breakerUntil.gateway = 0; }, resetConfig: resetConfigForTests };
+export const _test = { cleanState, cleanItems, keyFor, buildPrompt, refImages, resetBreaker: resetBreakers, resetConfig: resetConfigForTests };

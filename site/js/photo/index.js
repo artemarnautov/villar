@@ -27,10 +27,13 @@ const now = () => performance.now();
 const raf2 = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
 /** Nearest model aspect ratio (log distance) and the padded canvas the frame sits in. */
-export function fitAspect(w, h, maxEdge = MAX_EDGE, { up = false } = {}) {
+export function fitAspect(w, h, maxEdge = MAX_EDGE, { up = false, aspects = null } = {}) {
   const a = w / h;
-  let best = ASPECTS[0];
-  for (const x of ASPECTS) if (Math.abs(Math.log(x[1] / a)) < Math.abs(Math.log(best[1] / a))) best = x;
+  // the shapes the server's first model can return exactly (GET /api/photo → aspects), else the default list
+  const fromServer = (aspects || []).map((x) => { const m = /^(\d{1,2}):(\d{1,2})$/.exec(x); return m ? [x, Number(m[1]) / Number(m[2])] : null; }).filter(Boolean);
+  const list = fromServer.length ? fromServer : ASPECTS;
+  let best = list[0];
+  for (const x of list) if (Math.abs(Math.log(x[1] / a)) < Math.abs(Math.log(best[1] / a))) best = x;
   const t = best[1];
   let PW, PH;
   if (a >= t) { PW = w; PH = w / t; } else { PH = h; PW = h * t; }
@@ -185,7 +188,7 @@ export async function mountPhoto({ root, store, stage }) {
     const size = '2K'; // docs/ART.md §1: live visitor photos are T2 (2K) on every device
     // the engine's capture renders at any size: give the model 2048 px whatever the screen DPR
     const engineCapture = typeof v.capture === 'function';
-    const fit = fitAspect(fs.width, fs.height, MAX_EDGE, { up: engineCapture });
+    const fit = fitAspect(fs.width, fs.height, MAX_EDGE, { up: engineCapture, aspects: status.aspects });
     const state = { style: store.styleId(), time, selection, pose, aspect: fit.aspect, size };
     const selKey = hashStr(Object.keys(selection).sort().map((k) => `${k}=${selection[k] ?? '-'}`).join('|'));
     return { state, fit, fs, stateKey: `${state.style}|${time}|${selKey}|${pose}|${size}|${fit.aspect}` };

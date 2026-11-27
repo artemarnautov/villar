@@ -104,39 +104,50 @@ and the item's turntable angle (`o:<slot>:<yaw>`) are part of the pose, so every
 
 ## Providers and models (`api/_photo.js`, one ordered list per tier)
 
-| Tier | Default order | Notes |
-|---|---|---|
-| photo, live visitors (`PHOTO_MODELS`) | `higgsfield:nano_banana_2_1` → `google/gemini-3.1-flash-image` → `…-preview`, **2K only (T2)** | 14 image inputs on Higgsfield (frame + 13 refs), 10 on the gateway |
-| hero (`PHOTO_HERO_MODELS`, job queue only) | `higgsfield:nano_banana_pro` → `google/gemini-3-pro-image` → NB2 | |
-| plate (`PLATE_MODELS`, job queue only) | `higgsfield:nano_banana_pro` → `google/gemini-3-pro-image` | 4K, 21:9 |
-| edition (job param `model`, default `higgsfield:nano_banana_2_1`) | the first available provider | 2K, the work's aspect |
-| A/B (`PHOTO_AB=higgsfield:seedream_5_5:0.2`) | 20 % of misses (stable per key) try that model first | Seedream 5.5: "edit that keeps everything untargeted unchanged"; also `bfl/flux-2-pro` on the gateway |
+**Facts, not guesses (photo-2a).** The registry is built from the provider's free `POST /estimate/{path}` run with this
+account's key on 27 Nov 2026 (`GET /api/photo?diag=1&probe=1`) and the body schemas in docs.higgsfield.ai/docs/llms-full.txt.
 
-- **Higgsfield (primary).** `https://api.higgsfield.ai`, `Authorization: Key <id>:<secret>`. Credentials: `HIGGSFIELD_KEY`
-  (the founder's single variable: `id:secret`, or a bare key), then `HIGGSFIELD_API_KEY` (+ `_SECRET`), `HF_API_KEY`
-  (+ `HF_API_SECRET`), `HF_API_KEY_ID` (+ `HF_API_KEY_SECRET`); values are never logged or echoed. Async: `POST /{endpoint}`
-  with `Idempotency-Key` → `request_id`; `GET /requests/{id}/status` → `queued | in_progress | completed | failed |
-  nsfw | canceled`, `images[].url`. Inputs are public HTTPS URLs: the frame goes up via `POST /files/generate-upload-url`
-  + presigned PUT; product photos are already URLs. 403 = no balance (provider skipped for 10 min, the gateway takes
-  over in the same request), 404 = endpoint unknown (next model), 400/422 = once more without references, 429 = next
-  model, `nsfw` = next model. Failed and nsfw jobs are not charged. Outputs expire after 7 days, so every result is
-  copied into our Storage before it is used. The function waits ≤ ~50 s; then it stores a `pending` row and the
-  client polls. With `HIGGSFIELD_WEBHOOK_SECRET` set it also registers `?hf_webhook=<site>/api/photo-hook`; a signed
-  delivery (HMAC-SHA256 over `id.ts.body`, ±5 min) only triggers a re-read of the authenticated status (the payload URL
-  is never trusted), then the same copy-to-Storage.
-  - **Endpoint paths are not in the public docs index** (docs.higgsfield.ai lists Soul, Qwen, Recraft, Seedance …; the
-    Nano Banana / Seedream / GPT Image pages are reachable from console.higgsfield.ai). Defaults follow the documented
-    `{vendor}/{model}/{workflow}` pattern (`google/nano-banana-2.1/edit`, `…/text-to-image`, `google/nano-banana-pro/…`,
-    `bytedance/seedream-5.5/…`, `openai/gpt-image-2.6/…`) with `image_urls`, `aspect_ratio`, `resolution` (1k/2k/4k),
-    `seed`. **Confirm them in the console** and override without a deploy of code:
-    `HIGGSFIELD_MODELS='{"nano_banana_2_1":{"path":"…/edit","t2i":"…/text-to-image","images":"image_urls"}}'`.
-    A wrong path costs nothing: 404 → the gateway model answers, and the log line names the exact override to set
-    (`photo_config` row `models`, live within 30 s, or the env variable).
-- **AI Gateway (fallback).** Nano Banana models via `POST /v1/chat/completions` with `modalities: ['text','image']`,
-  interleaved captions + `image_url` parts, `providerOptions.google.imageConfig { aspectRatio, imageSize }`; image in
-  `choices[0].message.images[0].image_url.url`. FLUX.2 via `POST /v1/images/edits` (JSON `images: [{ image_url }]`,
-  `data[0].b64_json`). Auth = the project's OIDC token or `AI_GATEWAY_API_KEY`, as `api/assistant.js`. The catalog
-  lists `google/gemini-3.1-flash-image` (docs examples still use `…-preview`; both are in the list).
+| Model id | Endpoint (edit · text-to-image) | Inputs | Sizes · aspects | Estimate |
+|---|---|---|---|---|
+| `higgsfield:grok_image_2` | `xai/grok-imagine-image-2.0` (both) | frame + 9 refs (`image_urls` 0–10) | 1k, 2k · auto, 1:1, 1:2, 2:1, 3:2, 2:3, 4:3, 3:4, 16:9, 9:16 · `quality` low/medium | $0.070 at defaults |
+| `higgsfield:qwen_image_3` | `alibaba/qwen-image-3/edit` · `…/text-to-image` | frame + 2 refs (`image_urls` 1–3) | 1k, 2k (PNG) · 1:1 … 21:9, 7:9, 9:7 · `seed`; sent with `prompt_extend:false, enable_thinking:false` | $0.040 |
+| `higgsfield:marketing_image` (explicit only) | `marketing-studio/image` (both) | frame + 15 refs | 1k, 2k, 4k · auto … 21:9 · `quality` low/medium/high (sent explicitly) | $0.452 at defaults |
+| `higgsfield:z_image` (explicit only, drafts) | — · `z-image/turbo` | none | 1k, 2k · as Qwen · prompt ≤ 800 chars | $0.015 |
+| `higgsfield:nano_banana_pro` | `nano-banana-pro/edit` · `nano-banana-pro` | frame + 13 | 1k–4k | **503 model_disabled** today |
+| `higgsfield:nano_banana_2_1`, `seedream_5_5` (explicit only) | guessed paths | | | 404 today |
+| gateway `google/gemini-3.1-flash-image`, `google/gemini-3-pro-image`, `bfl/flux-2-pro` | AI Gateway | | | list prices; today 403 "free tier" (no credits) |
+
+| Tier | Default order |
+|---|---|
+| photo, live visitors and presets | `grok_image_2` → `qwen_image_3` → gateway Nano Banana 2 |
+| hero (queue only) | `nano_banana_pro` → `grok_image_2` → `qwen_image_3` → gateway Pro |
+| plate (queue only; text-to-image 21:9, then edits) | `qwen_image_3` (2k) → `grok_image_2` (2k, nearest shape 2:1) → gateway Pro; `marketing_image` 4k only as the job's `model` |
+
+Order overrides: `photo_config` row `order` = `{"default":[…],"hero":[…],"plate":[…]}`, then env `PHOTO_MODELS` /
+`PHOTO_HERO_MODELS` / `PLATE_MODELS`. Per-model overrides (`path`, `t2i`, `images`, `maxRefs`, `aspects`, `sizes`,
+`quality`, `extra`): `photo_config` row `models`, then env `HIGGSFIELD_MODELS`.
+
+- **Every Higgsfield call estimates first** (`POST /estimate/{path}` with the exact body, free). The estimate is stored
+  as `cost_usd` and logged with `est:false`. A call whose estimate is above the limit is not submitted: $0.20 for a
+  visitor photo, $0.60 for a queue job (`photo_config.caps.maxUsdVisitor` / `maxUsd`, or the job's `maxUsd`).
+- **Only a model that can return exactly the frame's aspect ratio is tried** (another shape would fail the structural
+  check after being paid for). `GET /api/photo` returns the first usable model's `aspects`; the client pads its frame
+  to the nearest of them (a desktop stage → 2:1 with Grok, 21:9 with Qwen).
+- **The frame is passed by URL.** It is stored first as `frames/<key>.jpg` (public Storage), and that URL is the first
+  `image_urls` entry; nothing is uploaded to the provider. Product photos follow, ranked by pixel area, as many as the
+  model takes (Qwen: 2, so the largest item and the selected artwork).
+- **Failures:** 403/401 → the provider is skipped for 10 min (the next provider answers in the same request); 503
+  `model_disabled`, 423 `model_blocked`, 404 → that **model** is skipped for 1 h (`diag.breakers.models`); 400/422
+  with references → once more without them; nsfw, 429, too expensive → the next model. Failed and nsfw jobs are not
+  charged by the provider and refund our quota.
+- **Async:** submit with `Idempotency-Key` → `request_id` → poll `GET /requests/{id}/status` for up to ~50 s → else a
+  `pending` row and the client polls (`op:'poll'`, `GET ?key=`). Optional signed webhook → `/api/photo-hook`. Outputs
+  expire after 7 days at the provider, so every result is copied to our Storage.
+- Credentials: `HIGGSFIELD_KEY` = `id:secret` (then `HIGGSFIELD_API_KEY`+`_SECRET`, `HF_API_KEY`+`HF_API_SECRET`); never
+  logged or echoed. Gateway: OIDC or `AI_GATEWAY_API_KEY`, chat completions with `modalities:['text','image']`
+  (Nano Banana) or `/v1/images/edits` (FLUX.2).
+- Not tried: a contact sheet of several product photos as one Qwen reference. It needs a JPEG decoder on the server
+  (`api/_img.js` only decodes PNG); Qwen currently gets its two best references instead.
 
 **Prompt (`PROMPT_VERSION v1` = docs/ART.md §2).** The fixed skeleton verbatim ("Photograph of this exact interior.
 Keep the camera, framing and every object exactly as shown … 35 mm lens, f/5.6, fine film grain. The view through the
@@ -294,6 +305,14 @@ the oldest runnable job (`photo_claim_job`: queued, or running with an expired 7
 and runs **one step** of it, then returns `{ job, kind, status: done | running | failed | queued, result }` or `{ idle }`.
 A provider job that is still running keeps the job `running` with a 20 s lease (the next call, or the webhook, finishes
 it). No balance / bad key puts the job back to `queued` with the reason. More than 40 steps → failed.
+- **Every job accepts** `"dry": true` (returns `result.estimates`: what each model in order would cost; nothing is
+  submitted, charged or stored), `"model": "<id>"` (exactly that model, no substitute; a model that is off fails the
+  job at once) and `"maxUsd"`. Image jobs also take `resolution` and `quality`; plates take `seed` and `replace: true`
+  (generate again over a stored plate).
+- **A job row tells the whole story** (no log access needed): `result.model`, `result.usd` (the estimate), `result.request_id`,
+  and `result.attempts` = every provider attempt of the job (`provider, model, status, code, detail` ≤ 200 chars, last
+  12); a failed job repeats the last attempts in `error`. Higgsfield "no balance" puts the job back to `queued`; a
+  gateway without credits does not.
 - `plate` / `plate-edit` / `mask`: the window (above).
 - `edition` {id, style, prompt, palette[≤6 hex], aspect, resolution 1K|2K, candidates 1–4, model?}: an original work →
   `art/<id>-c<n>.jpg` for each candidate, and c1 also as `art/<id>.jpg` (the catalog's `image`). The prompt adds the palette,
@@ -327,7 +346,8 @@ that fails gets `hint: "HIGGSFIELD_KEY should be id:secret"`. No values are ever
 
 ## Tests
 
-- `node tools/test-photo.mjs` — 136 offline checks (~60 s; incl. photo_config: default off, pilots, lookups while off,
+- `node tools/test-photo.mjs` — 164 offline checks (~70 s; estimates first, per-model bodies, model breakers, dry jobs,
+  named models, attempt logs; incl. photo_config: default off, pilots, lookups while off,
   read error, cache, path / cost / caps / ab overrides): validation, kill switch, key, miss → develop → hit, reject →
   unstable, fallbacks (404, 400 → no refs, 402 → breaker), limits, quota, in-flight dedupe, Higgsfield (upload, submit,
   poll, 403 → gateway, nsfw → gateway, 404 → hint, pending → poll, signed webhook), key discovery + diag, the job queue

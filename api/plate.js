@@ -21,8 +21,8 @@
 // Video loops (Veo 3.1 first = last frame) are specified in docs/PHOTOREAL.md; not generated here (see there).
 import { randomBytes } from 'node:crypto';
 import {
-  env, modelList, modelConfig, providersAvailable, costOf, clientIp, ipHash, send, sameOrigin, createLimiter, authToken,
-  GatewayError, isFatalGateway, generateImage, resumeImage, supa,
+  env, modelConfig, pickModels, bestSize, usableProviders, tryModels, dryRun, maxUsd, costOf, clientIp, ipHash, send, sameOrigin, createLimiter, authToken,
+  GatewayError, resumeImage, supa,
 } from './_photo.js';
 import { sniff, imageSize, decodePNG, downscale, encodeJPEG, encodeGrayPNG } from './_img.js';
 
@@ -53,6 +53,8 @@ export const PLATE_PROMPTS = {
   day: `A real photograph, not a render: the view straight out of a floor-to-ceiling window on the 40th floor of a residential tower in Dubai Marina, Dubai. In front: the marina water with moored yachts and the palm-lined promenade far below; around it, glass and stone residential towers of many different heights, shapes and colours — tapered, stepped and twisted crowns, balconies, rooftop plant — the nearest about 150 metres away; behind them the dense city fading into warm sandy haze, and a strip of the sea on the right toward the horizon. Clear midday sky, deep blue at the top paling to a soft haze at the horizon; the sun high to the upper right, outside the frame, lighting the right-facing facades. ${COMMON}`,
   sunset: `Edit this photograph. Keep every building exactly: its position, size, shape and silhouette; keep the water, the promenade, the horizon, the camera and the framing unchanged. Change only the time of day to golden-hour sunset: the sun low on the right near the horizon, just outside the right edge; warm amber light raking across the right-facing facades with long soft shadows; the sky glowing amber and peach near the horizon on the right, fading to soft blue at the top; the glass towers reflecting the sunset; slightly warmer haze. ${COMMON}`,
   evening: `Edit this photograph. Keep every building exactly: its position, size, shape and silhouette; keep the water, the promenade, the horizon, the camera and the framing unchanged. Change only the time of day to blue hour, about 30 minutes after sunset: a deep blue sky with a faint warm afterglow low on the right; many apartment windows lit, a natural mix of warm and cool interiors, some dark; street lights and the lit promenade, yachts with deck lights reflected in the marina water; no stars and no moon. ${COMMON}`,
+  // ≤ 800 characters: for draft models with a short prompt limit (z-image)
+  dayShort: 'A real photograph, not a render: the view straight out of a floor-to-ceiling window on the 40th floor of a tower in Dubai Marina. The marina water with yachts and the palm-lined promenade far below; glass and stone residential towers of many heights and shapes around it; the dense city fading into warm sandy haze, a strip of sea on the right. Clear midday sky, deep blue paling to haze at the horizon; the sun high to the upper right, outside the frame. Wide panorama, level camera, vertical lines vertical, the horizon exactly across the middle. No window frame, no glass reflections, no interior, no railing, no people, no text. Natural colours, crisp detail, real atmospheric haze.',
   mask: 'Edit this photograph. Replace the entire sky with a flat, pure green colour (#00FF00) everywhere the sky is visible, including between buildings. Keep every building, the water and everything else exactly as it is, with sharp edges. No other changes.',
 };
 
@@ -103,49 +105,56 @@ function answer(db, time, rows, { small = false } = {}) {
   };
 }
 
-/** Store a finished plate: full + 2K renditions, index rows, cost line. */
-async function finishPlate(db, { time, model, bytes, ms }) {
+/** Store a finished plate: full + 2K renditions, index rows, cost line. `usd`: the provider's estimate when known. */
+async function finishPlate(db, { time, model, bytes, ms, usd = NaN, requestId = null, size = '4K', aspect = '21:9' }) {
   const r = renditions(bytes);
   const rand = randomBytes(4).toString('hex');            // a new name per generation: CDNs never serve an old plate
   const pathFull = `plates/${PLATE_VERSION}/${time}-${rand}.jpg`;
   const path2k = `plates/${PLATE_VERSION}/${time}-2k-${rand}.jpg`;
   await db.put(pathFull, r.full.bytes, r.full.type);
   if (r.small !== r.full) await db.put(path2k, r.small.bytes, r.small.type);
-  const usd = costOf(model, '4K');
-  const base = { kind: 'plate', source: 'plate', status: 'ok', model: model.id, provider: model.provider, prompt_version: PLATE_VERSION, time_of_day: time, size: '4K', aspect: '21:9', ms, refs: 0, updated_at: new Date().toISOString() };
-  await db.upsertRow({ ...base, key: plateKey(time), path: pathFull, width: r.full.width, height: r.full.height, bytes: r.full.bytes.length, cost_usd: usd });
+  const hasEst = Number.isFinite(usd);
+  const cost = hasEst ? usd : costOf(model, size);
+  const base = { kind: 'plate', source: 'plate', status: 'ok', model: model.id, provider: model.provider, request_id: requestId, prompt_version: PLATE_VERSION, time_of_day: time, size, aspect, ms, refs: 0, updated_at: new Date().toISOString() };
+  await db.upsertRow({ ...base, key: plateKey(time), path: pathFull, width: r.full.width, height: r.full.height, bytes: r.full.bytes.length, cost_usd: cost });
   await db.upsertRow({ ...base, key: plateKey(time, '2k'), path: r.small !== r.full ? path2k : pathFull, width: r.small.width, height: r.small.height, bytes: r.small.bytes.length, cost_usd: 0 });
-  console.info(JSON.stringify({ ev: 'plate.gen', time, model: model.id, provider: model.provider, usd, est: !!model.estimate, ms, w: r.full.width, h: r.full.height, bytes: r.full.bytes.length }));
+  console.info(JSON.stringify({ ev: 'plate.gen', time, model: model.id, provider: model.provider, usd: cost, est: hasEst ? false : !!model.estimate, ms, w: r.full.width, h: r.full.height, bytes: r.full.bytes.length }));
 }
 
-/** Submit (and, when fast enough, finish) one plate; providers in PLATE_MODELS order. Returns { done } | { pending }. */
-async function generate({ db, auth, req, time, dayUrl, t0 }) {
-  const avail = providersAvailable(req);
-  const models = modelList('plate', avail);
-  if (!models.length) throw new GatewayError('unavailable', 'plate: no provider available');
-  const skip = new Set(); let last = null;
-  for (const model of models) {
-    if (skip.has(model.provider)) continue;
-    if (DEADLINE_MS - (Date.now() - t0) < 12_000) break;
-    const images = time === 'day' ? [] : [{ url: dayUrl, label: 'The photograph to edit:' }];
-    const t1 = Date.now();
-    try {
-      const out = env('PHOTO_PROVIDER') === 'stub'
-        ? { bytes: Buffer.from(encodeJPEG({ width: 64, height: 28, data: new Uint8Array(64 * 28 * 4).fill(200) }, 80)) }
-        : await generateImage({ auth, model, prompt: PLATE_PROMPTS[time], images, aspectRatio: '21:9', imageSize: '4K', timeoutMs: Math.min(50_000, DEADLINE_MS - (Date.now() - t0) - 3000), deadlineAt: t0 + DEADLINE_MS - 6000, idempotencyKey: `plate-${PLATE_VERSION}-${time}-${Math.floor(Date.now() / 600_000)}` });
-      if (out.pending) {
-        await db.upsertRow({ key: plateKey(time), path: null, kind: 'plate', source: 'plate', status: 'pending', model: model.id, provider: model.provider, request_id: out.pending.requestId, prompt_version: PLATE_VERSION, time_of_day: time, size: '4K', aspect: '21:9', updated_at: new Date().toISOString() });
-        return { pending: true };
-      }
-      await finishPlate(db, { time, model, bytes: out.bytes, ms: Date.now() - t1 });
-      return { done: true };
-    } catch (err) {
-      last = err;
-      console.warn(`[plate] ${time} ${model.id} failed: ${err?.message || err}`);
-      if (isFatalGateway(err)) skip.add(err.provider || model.provider);
-    }
+/** The models of a plate job and the call options for each (per-model size and aspect; the day plate is text-to-image). */
+function platePlan({ req, auth, time, dayUrl, params = {}, t0 }) {
+  const want = ['1K', '2K', '4K'].includes(params.resolution) ? params.resolution : '4K';
+  let models = pickModels('plate', usableProviders(req), params.model);
+  models = time === 'day' ? models.filter((m) => !m.editOnly) : models.filter((m) => !m.t2iOnly);
+  const images = time === 'day' ? [] : [{ url: dayUrl, label: 'The photograph to edit:' }];
+  const seed = Number.isInteger(params.seed) ? params.seed : 7;
+  const limit = Number.isFinite(Number(params.maxUsd)) && Number(params.maxUsd) > 0 ? Math.min(5, Number(params.maxUsd)) : maxUsd(false);
+  const makeOpts = (model, n) => (n > 0 ? null : {
+    auth, prompt: time === 'day' && model.maxPrompt && PLATE_PROMPTS.day.length > model.maxPrompt ? PLATE_PROMPTS.dayShort : PLATE_PROMPTS[time],
+    images, aspectRatio: '21:9', imageSize: bestSize(model, want), quality: typeof params.quality === 'string' ? params.quality : null,
+    timeoutMs: Math.max(5000, Math.min(50_000, DEADLINE_MS - (Date.now() - t0) - 3000)), deadlineAt: t0 + DEADLINE_MS - 6000,
+    idempotencyKey: `plate-${PLATE_VERSION}-${time}-${model.id.replace(/[^a-z0-9]/gi, '')}-${Math.floor(Date.now() / 600_000)}`.slice(0, 64), seed, maxCost: limit,
+  });
+  return { models, makeOpts, want };
+}
+
+/** Submit (and, when fast enough, finish) one plate. Returns { done, model, usd, requestId } | { pending, … }. */
+async function generate({ db, auth, req, time, dayUrl, t0, params = {}, trace = [] }) {
+  const { models, makeOpts, want } = platePlan({ req, auth, time, dayUrl, params, t0 });
+  if (!models.length) throw new GatewayError('unavailable', `plate: ${params.model ? `model ${params.model} is not available` : 'no model available'}`);
+  if (env('PHOTO_PROVIDER') === 'stub') {
+    await finishPlate(db, { time, model: models[0], bytes: Buffer.from(encodeJPEG({ width: 64, height: 28, data: new Uint8Array(64 * 28 * 4).fill(200) }, 80)), ms: 0 });
+    return { done: true, model: models[0].id };
   }
-  throw last || new GatewayError('gateway', 'plate: no model succeeded');
+  const t1 = Date.now();
+  const { model, out } = await tryModels(models, makeOpts, { trace, deadlineAt: t0 + DEADLINE_MS, minLeftMs: 12_000 });
+  const size = bestSize(model, want);
+  if (out.pending) {
+    await db.upsertRow({ key: plateKey(time), path: null, kind: 'plate', source: 'plate', status: 'pending', model: model.id, provider: model.provider, request_id: out.pending.requestId, prompt_version: PLATE_VERSION, time_of_day: time, size, aspect: '21:9', cost_usd: Number.isFinite(out.pending.estimate) ? out.pending.estimate : null, updated_at: new Date().toISOString() });
+    return { pending: true, model: model.id, usd: out.pending.estimate ?? null, requestId: out.pending.requestId };
+  }
+  await finishPlate(db, { time, model, bytes: out.bytes, ms: Date.now() - t1, usd: out.estimate, requestId: out.requestId || null, size });
+  return { done: true, model: model.id, usd: out.estimate ?? null, requestId: out.requestId || null };
 }
 
 /** A plate job submitted earlier (poll or webhook): finish it, or report it still running. */
@@ -162,22 +171,10 @@ export async function completePlate(db, row) {
     return { error: 'gateway' };
   }
   if (out.pending) return { pending: true };
-  await finishPlate(db, { time, model, bytes: out.bytes, ms: Date.now() - Date.parse(row.updated_at || Date.now()) });
+  await finishPlate(db, { time, model, bytes: out.bytes, ms: Date.now() - Date.parse(row.updated_at || Date.now()), usd: row.cost_usd == null ? NaN : Number(row.cost_usd), requestId: row.request_id, size: row.size || '4K' });
   return { done: true };
 }
 
-async function generateMask({ db, auth, dayUrl, model, t0 }) {
-  const t1 = Date.now();
-  const out = await generateImage({ auth, model, prompt: PLATE_PROMPTS.mask, images: [{ url: dayUrl, label: 'The photograph to edit:' }], aspectRatio: '21:9', imageSize: '2K', timeoutMs: Math.min(45_000, DEADLINE_MS - (Date.now() - t0) - 3000), deadlineAt: t0 + DEADLINE_MS - 5000 });
-  if (out.pending) throw new GatewayError('timeout', 'mask: still running (the next queue run retries)');
-  const m = skyMask(out.bytes);
-  if (!m) throw new GatewayError('empty', 'mask: model did not return a PNG');
-  const path = `plates/${PLATE_VERSION}/day-sky-mask-${randomBytes(4).toString('hex')}.png`;
-  await db.put(path, m.bytes, 'image/png');
-  const usd = costOf(model, '2K');
-  await db.upsertRow({ key: plateKey('day', 'mask'), path, kind: 'plate-mask', source: 'plate', status: 'ok', model: model.id, prompt_version: PLATE_VERSION, time_of_day: 'day', size: '2K', aspect: '21:9', width: m.width, height: m.height, bytes: m.bytes.length, ms: Date.now() - t1, cost_usd: usd, refs: 0, updated_at: new Date().toISOString() });
-  console.info(JSON.stringify({ ev: 'plate.mask', model: model.id, usd, ms: Date.now() - t1 }));
-}
 
 /** Hold the lock for `key` while running `fn`; null when someone else holds it. */
 async function withLock(db, key, fn) {
@@ -214,41 +211,65 @@ export default async function handler(req, res) {
  * Returns { done, result } | { pending } (the provider job is still running: the queue re-claims it later) |
  * throws (the job fails; nothing is cached).
  */
-export async function runPlateJob(db, job, { req, t0 = Date.now() } = {}) {
+/**
+ * One step of a queued plate job (kinds `plate` {time:'day'}, `plate-edit` {time:'sunset'|'evening'}, `mask`).
+ * Optional params: model (exactly this model, no substitute), resolution '1K'|'2K'|'4K' (default 4K → the best the
+ * model has), quality, seed, maxUsd, dry: true (only the estimates), replace: true (generate again over a stored one).
+ * Returns { done, result, cost } | { pending } (the provider job is still running: the queue re-claims it later) |
+ * throws (the job fails; nothing is cached).
+ */
+export async function runPlateJob(db, job, { req, t0 = Date.now(), trace = [] } = {}) {
+  const p = job.params || {};
   const auth = env('PHOTO_PROVIDER') === 'stub' ? { token: 'stub', kind: 'stub' } : authToken(req);
-  const avail = providersAvailable(req);
-  if (!avail.higgsfield && !avail.gateway && env('PHOTO_PROVIDER') !== 'stub') throw new GatewayError('unavailable', 'no provider configured');
   if (job.kind === 'mask') {
     const rows = await readRows(db, [plateKey('day'), plateKey('day', 'mask')]);
-    if (rows.has(plateKey('day', 'mask'))) return { done: true, result: { url: db.publicUrl(rows.get(plateKey('day', 'mask')).path) } };
+    if (rows.has(plateKey('day', 'mask')) && !p.replace && !p.dry) return { done: true, result: { url: db.publicUrl(rows.get(plateKey('day', 'mask')).path) }, cost: 0 };
     if (!rows.has(plateKey('day'))) throw new GatewayError('rejected', 'mask: the day plate is not stored yet (run the plate job first)');
-    const model = modelList('plate', avail).find((m) => m.provider === 'gateway') || modelList('plate', avail)[0];
-    await withLock(db, plateKey('day', 'mask'), () => generateMask({ db, auth, dayUrl: db.publicUrl(rows.get(plateKey('day')).path), model, t0 }));
-    const after = await readRows(db, [plateKey('day', 'mask')]);
-    const m = after.get(plateKey('day', 'mask'));
-    if (!m) throw new GatewayError('gateway', 'mask: not stored');
-    return { done: true, result: { url: db.publicUrl(m.path) }, cost: costOf(model, '2K') };
+    const dayUrl = db.publicUrl(rows.get(plateKey('day')).path);
+    const models = pickModels('plate', usableProviders(req), p.model).filter((m) => !m.t2iOnly);
+    const makeOpts = (model, n) => (n > 0 ? null : { auth, prompt: PLATE_PROMPTS.mask, images: [{ url: dayUrl, label: 'The photograph to edit:' }], aspectRatio: '21:9', imageSize: bestSize(model, '2K'), timeoutMs: Math.max(5000, Math.min(45_000, DEADLINE_MS - (Date.now() - t0) - 3000)), deadlineAt: t0 + DEADLINE_MS - 5000, maxCost: maxUsd(false) });
+    if (p.dry === true) return { done: true, result: { dry: true, estimates: await dryRun(models, makeOpts) }, cost: 0 };
+    const got = await withLock(db, plateKey('day', 'mask'), async () => {
+      const { model, out } = await tryModels(models, makeOpts, { trace, deadlineAt: t0 + DEADLINE_MS });
+      if (out.pending) throw new GatewayError('timeout', 'mask: still running (queue the job again)');
+      const m = skyMask(out.bytes);
+      if (!m) throw new GatewayError('empty', `mask: ${model.id} did not return a PNG`);
+      const path = `plates/${PLATE_VERSION}/day-sky-mask-${randomBytes(4).toString('hex')}.png`;
+      await db.put(path, m.bytes, 'image/png');
+      const usd = Number.isFinite(out.estimate) ? out.estimate : costOf(model, bestSize(model, '2K'));
+      await db.upsertRow({ key: plateKey('day', 'mask'), path, kind: 'plate-mask', source: 'plate', status: 'ok', model: model.id, provider: model.provider, request_id: out.requestId || null, prompt_version: PLATE_VERSION, time_of_day: 'day', size: bestSize(model, '2K'), aspect: '21:9', width: m.width, height: m.height, bytes: m.bytes.length, cost_usd: usd, refs: 0, updated_at: new Date().toISOString() });
+      console.info(JSON.stringify({ ev: 'plate.mask', model: model.id, usd }));
+      return { url: db.publicUrl(path), model: model.id, usd, request_id: out.requestId || null };
+    });
+    if (!got) return { pending: true, result: { locked: true } };
+    return { done: true, result: got, cost: got.usd };
   }
-  const time = job.kind === 'plate' ? 'day' : TIMES[String(job.params?.time || '')];
+  const time = job.kind === 'plate' ? 'day' : TIMES[String(p.time || '')];
   if (!time || (job.kind === 'plate-edit' && time === 'day')) throw new GatewayError('rejected', `bad params.time for ${job.kind}`);
   const all = await readRows(db, [plateKey(time), plateKey('day')], { pending: true });
   const cur = all.get(plateKey(time));
-  if (cur?.status === 'ok') return { done: true, result: { url: db.publicUrl(cur.path), time, model: cur.model }, cost: 0 };
+  const day = all.get(plateKey('day'));
+  const dayUrl = time === 'day' ? null : day?.status === 'ok' ? db.publicUrl(day.path) : null;
+  if (p.dry === true) {
+    const plan = platePlan({ req, auth, time, dayUrl: dayUrl || 'https://example.com/day-plate.jpg', params: p, t0 });
+    return { done: true, result: { dry: true, time, estimates: await dryRun(plan.models, plan.makeOpts), ...(time !== 'day' && !dayUrl ? { note: 'the day plate is not stored yet: estimated with a placeholder image URL' } : {}) }, cost: 0 };
+  }
+  const describe = (r) => ({ url: db.publicUrl(r.path), time, model: r.model, width: r.width, height: r.height, usd: r.cost_usd == null ? null : Number(r.cost_usd), request_id: r.request_id || null });
+  const mine = !!job.result?.request_id && cur?.request_id === job.result.request_id; // this job already produced it
+  if (cur?.status === 'ok' && (!p.replace || mine)) return { done: true, result: describe(cur), cost: mine ? Number(cur.cost_usd) || 0 : 0 };
   if (fresh(cur)) {
     const out = await completePlate(db, cur);
-    if (out.pending) return { pending: true, result: { request_id: cur.request_id, model: cur.model } };
-    if (out.error) throw new GatewayError('gateway', `${time}: the provider job failed`);
+    if (out.pending) return { pending: true, result: { request_id: cur.request_id, model: cur.model, estimate: cur.cost_usd == null ? null : Number(cur.cost_usd) } };
+    if (out.error) throw new GatewayError('gateway', `${time}: the provider job ${String(cur.request_id).slice(0, 8)} (${cur.model}) failed`);
   } else {
-    const day = all.get(plateKey('day'));
-    if (time !== 'day' && day?.status !== 'ok') throw new GatewayError('rejected', `${time}: the day plate is not stored yet (run the plate job first)`);
-    const dayUrl = time === 'day' ? null : db.publicUrl(day.path);
-    const got = await withLock(db, plateKey(time), () => generate({ db, auth, req, time, dayUrl, t0 }));
+    if (time !== 'day' && !dayUrl) throw new GatewayError('rejected', `${time}: the day plate is not stored yet (run the plate job first)`);
+    const got = await withLock(db, plateKey(time), () => generate({ db, auth, req, time, dayUrl, t0, params: p, trace }));
     if (!got) return { pending: true, result: { locked: true } };
-    if (got.pending) return { pending: true, result: { submitted: true } };
+    if (got.pending) return { pending: true, result: { submitted: true, model: got.model, estimate: got.usd, request_id: got.requestId } };
   }
   const done = (await readRows(db, [plateKey(time)])).get(plateKey(time));
   if (!done) throw new GatewayError('gateway', `${time}: not stored`);
-  return { done: true, result: { url: db.publicUrl(done.path), time, model: done.model, width: done.width, height: done.height }, cost: costOf(modelConfig(done.model), '4K') };
+  return { done: true, result: describe(done), cost: done.cost_usd == null ? null : Number(done.cost_usd) };
 }
 
 export const _test = { kelvinHex, renditions, skyMask, plateKey };

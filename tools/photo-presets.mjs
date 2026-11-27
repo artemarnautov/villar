@@ -26,9 +26,19 @@ const STYLES = read('site/data/styles.json').packs.map((p) => p.id);
 const styles = String(opt('styles', STYLES.join(','))).split(',').filter((s) => STYLES.includes(s));
 const candidates = Math.max(1, Math.min(4, Number(opt('candidates', 2))));
 
-// USD per output — estimates: Higgsfield publishes no per-model API price. After the first jobs, read the real charge
-// (balance delta), then set PHOTO_COST and update docs/ART.md §1.
-const PRICE = { t1: 0.067, t2: 0.101, proPlate4k: 0.24, pro2k: 0.134, mask: 0.134, loop: 0.67 };
+// USD per output: the provider's own /estimate answers for this account (27 Nov 2026, GET /api/photo?diag=1&probe=1).
+// Every job asks /estimate again before it submits and stores that number; `--dry` rows only ask.
+const PRICE = { grok1k: 0.07, grok2k: 0.07, qwen: 0.04, marketing: 0.452, zimage: 0.015, loopKling: 0.0683 * 8, loopWan: 0.0375 * 8 };
+// --dry: add "dry": true (the job returns the estimates of every model in order, nothing is submitted or charged)
+// --model <id>: name the model (exactly that one, no substitute), e.g. higgsfield:marketing_image
+// --resolution 1K|2K|4K · --quality low|medium|high · --max-usd <n> (a job refuses an estimate above 0.60 otherwise)
+const extra = {
+  ...(argv.includes('--dry') ? { dry: true } : {}),
+  ...(opt('model', null) ? { model: opt('model') } : {}),
+  ...(opt('resolution', null) ? { resolution: opt('resolution') } : {}),
+  ...(opt('quality', null) ? { quality: opt('quality') } : {}),
+  ...(opt('max-usd', null) ? { maxUsd: Number(opt('max-usd')) } : {}),
+};
 
 // ------------------------------------------------------------------------------------------------- editions (ART §5)
 // Medium, palette and composition only: no artist names, no look-alikes, no text. The palette comes from the pack.
@@ -72,17 +82,17 @@ function editionRows() {
     const r = read(`site/data/palette-${st}.json`).roles || {};
     // the 10 % accent and two neutrals (ART §5), plus the pack's wood
     const palette = [...(r.accent || []).slice(0, 2), ...(r.base || []).slice(0, 1), ...(r.secondary || []).slice(0, 1), ...(r.wood || []).slice(0, 1)].slice(0, 5);
-    (DIRECTION[st] || []).forEach(([wall, aspect, prompt], i) => rows.push({ kind: 'edition', params: { id: `${st}-${wall}-${i + 1}`, style: st, wall, prompt, palette, aspect, resolution: '2K', candidates } }));
+    (DIRECTION[st] || []).forEach(([wall, aspect, prompt], i) => rows.push({ kind: 'edition', params: { id: `${st}-${wall}-${i + 1}`, style: st, wall, prompt, palette, aspect, resolution: '2K', candidates, ...extra } }));
   }
   return rows;
 }
 const plateRows = () => [
-  { kind: 'plate', params: { time: 'day' } },
-  { kind: 'plate-edit', params: { time: 'sunset' } },
-  { kind: 'plate-edit', params: { time: 'evening' } },
-  { kind: 'mask', params: {} },
+  { kind: 'plate', params: { time: 'day', ...extra } },
+  { kind: 'plate-edit', params: { time: 'sunset', ...extra } },
+  { kind: 'plate-edit', params: { time: 'evening', ...extra } },
+  { kind: 'mask', params: { ...extra } },
 ];
-const frameRows = (kind) => String(opt('from', '')).split(',').filter((k) => /^[a-f0-9]{64}$/.test(k)).map((from) => ({ kind, params: { from } }));
+const frameRows = (kind) => String(opt('from', '')).split(',').filter((k) => /^[a-f0-9]{64}$/.test(k)).map((from) => ({ kind, params: { from, ...extra } }));
 const sqlStr = (s) => `'${String(s).replace(/'/g, "''")}'`;
 const toSql = (rows) => `insert into public.photo_jobs (kind, params) values\n${rows.map((r) => `  (${sqlStr(r.kind)}, ${sqlStr(JSON.stringify(r.params))}::jsonb)`).join(',\n')};`;
 
@@ -96,19 +106,20 @@ if (which) {
 
 const works = editionRows().length;
 const plan = [
-  ['Window plate: day (Pro 4K) + sunset + evening edits', 3, PRICE.proPlate4k],
-  ['Sky mask (Pro 2K)', 1, PRICE.mask],
-  ['Fidelity A/B on the 3 canonical frames (T1)', 15, PRICE.t1],
-  [`Art editions: ${works} works × ${candidates} candidates (NB 2.1, 2K)`, works * candidates, PRICE.t2],
-  ['Opening shots: 4 styles × day (hero, Pro 2K)', 4, PRICE.pro2k],
-  ['Preset photos: 4 styles × 4 views × 3 times (T2)', 48, PRICE.t2],
-  ['Window loops (8 s, first = last frame) × 3 — after the stills are approved', 3, PRICE.loop],
+  ['Window plate: day (Qwen Image 3 t2i, 2K 21:9) + sunset + evening edits', 3, PRICE.qwen],
+  ['Sky mask (Qwen edit)', 1, PRICE.qwen],
+  ['Plate at 4K, optional: --model higgsfield:marketing_image --resolution 4K (default quality; estimate first with --dry)', 1, PRICE.marketing],
+  ['Fidelity A/B on the 3 canonical frames (Grok 2.0 vs Qwen 3, 1K + 2K)', 12, (PRICE.grok2k + PRICE.qwen) / 2],
+  [`Art editions: ${works} works × ${candidates} candidates (Grok 2.0, 2K)`, works * candidates, PRICE.grok2k],
+  ['Opening shots: 4 styles × day (hero tier: Grok 2.0 until Nano Banana Pro is enabled)', 4, PRICE.grok2k],
+  ['Preset photos: 4 styles × 4 views × 3 times (Grok 2.0, 2K)', 48, PRICE.grok2k],
+  ['Window loops (8 s, first = last frame) × 3: Kling O3 std 720p (Wan 3.0 480p: $0.30 each)', 3, PRICE.loopKling],
 ];
 let total = 0;
-console.log('Live → Photo — planned paid generations (docs/ART.md §1). Prices are estimates until the first charges are read.\n');
+console.log('Live → Photo — planned paid generations (docs/ART.md §1) at the provider\'s /estimate prices for this account.\n');
 console.log('| Item | Count | Est. USD |\n|---|---|---|');
 for (const [label, n, each] of plan) { total += n * each; console.log(`| ${label} | ${n} | $${(n * each).toFixed(2)} |`); }
 console.log(`| **Planned** | | **$${total.toFixed(2)}** |`);
-console.log('\nAt gateway list prices (NB2 2K $0.101) the plan is above ART §1\'s ≈ $10; at the Higgsfield rate it may be lower — read the real charge after the first 3 jobs.');
+console.log('\nNot available to this account today: Nano Banana (nano-banana-pro answers 503 model_disabled; 2.1 is 404), Seedream, GPT Image, FLUX.');
 console.log('Caps until launch: 60 generations/day in total, 12 per IP (PHOTO_DAILY_CAP, PHOTO_DAILY_IP); queue jobs do not count against visitors.');
-console.log('Emit SQL: --sql plates | --sql editions | --sql hero --from <key> | --sql preset --from <key>');
+console.log('Emit SQL: --sql plates | --sql editions | --sql hero --from <key> | --sql preset --from <key>   [--dry] [--model <id>] [--resolution 4K] [--quality medium] [--max-usd 1]');

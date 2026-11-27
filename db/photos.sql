@@ -90,6 +90,8 @@ revoke all on public.photo_jobs from anon, authenticated;
 -- live config (photo-1b): the coordinator switches visitor generation on/off and fixes overrides from here.
 -- Rows: visitors → true|false (absent = false) · pilots → ["<session id>", …] · caps → {"perIp":12,"global":60} ·
 -- ab → "higgsfield:seedream_5_5:0.2" · cost → {"<model id>":{"2K":0.06}} · models → {"nano_banana_2_1":{"path":"…"}}.
+-- order → {"default":["higgsfield:grok_image_2",…],"hero":[…],"plate":[…]} · caps.maxUsd / caps.maxUsdVisitor →
+-- the most one call may cost by the provider's estimate (defaults 0.60 / 0.20).
 -- The functions read it with a 30 s cache; a read error means visitors off.
 create table if not exists public.photo_config (
   name       text primary key check (name ~ '^[a-z_]{2,40}$'),

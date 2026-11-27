@@ -24,18 +24,26 @@ export const GATEWAY_BASE = () => (env('AI_GATEWAY_BASE_URL') || 'https://ai-gat
 // ---------------------------------------------------------------------------------------------- models
 // Gemini image models accept these output aspect ratios; the client pads its frame to the nearest one.
 export const GEMINI_ASPECTS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'];
-// cost: USD per output image by size tier. Gateway: AI Gateway catalog, 27 Nov 2026. FLUX.2 and every Higgsfield
-// model: estimates (`estimate: true`) — Higgsfield bills its own prepaid balance and publishes no per-model API price
-// in its docs; set real numbers with env PHOTO_COST='{"higgsfield:nano_banana_2_1":{"2K":0.06}}'.
+// Higgsfield facts below come from the provider's free POST /estimate/{path} run with this account's key on
+// 27 Nov 2026 (GET /api/photo?diag=1&probe=1) and from docs.higgsfield.ai/docs/llms-full.txt (body schemas).
+// cost: USD per output by size tier — only a fallback: every Higgsfield call asks /estimate first and stores that.
+// Fields of a Higgsfield entry: path (edit) · t2i (text-to-image path) · images (body field for input URLs) ·
+// maxRefs (input images besides the frame) · sizes · aspects · seed · extra (fixed body fields) · quality ·
+// maxPrompt · explicit (never picked automatically: only when a job names it) · editOnly / t2iOnly.
+const QWEN_ASPECTS = ['1:1', '2:3', '3:2', '3:4', '4:3', '7:9', '9:7', '9:16', '16:9', '21:9'];
 export const MODELS = {
-  // --- Higgsfield (primary). Endpoint paths are NOT in the public docs index (docs.higgsfield.ai, 27 Nov 2026): the
-  // defaults follow the documented `{vendor}/{model}/{workflow}` pattern (e.g. alibaba/qwen-image-3/edit) and must be
-  // confirmed in console.higgsfield.ai → model → API. Override: HIGGSFIELD_MODELS='{"nano_banana_2_1":{"path":"…","t2i":"…","images":"image_urls"}}'.
-  'higgsfield:nano_banana_2_1': { provider: 'higgsfield', hf: 'nano_banana_2_1', label: 'Nano Banana 2.1 (Higgsfield)', path: 'google/nano-banana-2.1/edit', t2i: 'google/nano-banana-2.1/text-to-image', images: 'image_urls', maxRefs: 13, seed: true, sizes: ['1K', '2K', '4K'], aspects: ['auto', ...GEMINI_ASPECTS, '4:1', '1:4', '8:1', '1:8'], cost: { '1K': 0.067, '2K': 0.101, '4K': 0.151 }, estimate: true },
-  'higgsfield:nano_banana_pro': { provider: 'higgsfield', hf: 'nano_banana_pro', label: 'Nano Banana Pro (Higgsfield)', path: 'google/nano-banana-pro/edit', t2i: 'google/nano-banana-pro/text-to-image', images: 'image_urls', maxRefs: 13, seed: false, sizes: ['1K', '2K', '4K'], aspects: GEMINI_ASPECTS, cost: { '1K': 0.1344, '2K': 0.1344, '4K': 0.24 }, estimate: true },
-  'higgsfield:seedream_5_5': { provider: 'higgsfield', hf: 'seedream_5_5', label: 'Seedream 5.5 (Higgsfield)', path: 'bytedance/seedream-5.5/edit', t2i: 'bytedance/seedream-5.5/text-to-image', images: 'image_urls', maxRefs: 9, seed: false, sizes: ['1K', '2K', '4K'], aspects: ['auto', '1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9'], extra: { background: 'opaque' }, cost: { '1K': 0.035, '2K': 0.035, '4K': 0.06 }, estimate: true },
-  'higgsfield:gpt_image_2_6': { provider: 'higgsfield', hf: 'gpt_image_2_6', label: 'GPT Image 2.6 (Higgsfield)', path: 'openai/gpt-image-2.6/edit', t2i: 'openai/gpt-image-2.6/text-to-image', images: 'image_urls', maxRefs: 15, seed: false, sizes: ['1K', '2K'], aspects: ['auto', '1:1', '3:2', '2:3'], cost: { '1K': 0.08, '2K': 0.17 }, estimate: true },
-  // --- AI Gateway (fallback)
+  // --- Higgsfield (primary): endpoints that answered 200 for this account
+  'higgsfield:grok_image_2': { provider: 'higgsfield', hf: 'grok_image_2', label: 'Grok Imagine Image 2.0', path: 'xai/grok-imagine-image-2.0', t2i: 'xai/grok-imagine-image-2.0', images: 'image_urls', maxRefs: 9, seed: false, sizes: ['1K', '2K'], aspects: ['auto', '1:1', '1:2', '2:1', '3:2', '2:3', '4:3', '3:4', '16:9', '9:16'], quality: 'medium', cost: { '1K': 0.07, '2K': 0.1 }, estimate: true },
+  'higgsfield:qwen_image_3': { provider: 'higgsfield', hf: 'qwen_image_3', label: 'Qwen Image 3', path: 'alibaba/qwen-image-3/edit', t2i: 'alibaba/qwen-image-3/text-to-image', images: 'image_urls', maxRefs: 2, seed: true, sizes: ['1K', '2K'], aspects: QWEN_ASPECTS, extra: { prompt_extend: false, enable_thinking: false }, cost: { '1K': 0.04, '2K': 0.06 }, estimate: true },
+  'higgsfield:marketing_image': { provider: 'higgsfield', hf: 'marketing_image', label: 'Marketing Studio Image', path: 'marketing-studio/image', t2i: 'marketing-studio/image', images: 'image_urls', maxRefs: 15, seed: false, sizes: ['1K', '2K', '4K'], aspects: ['auto', '1:1', '3:2', '2:3', '4:3', '3:4', '16:9', '9:16', '21:9'], quality: 'high', extra: { enhance_prompt: false, moderation: 'auto' }, explicit: true, cost: { '1K': 0.3, '2K': 0.452, '4K': 0.9 }, estimate: true },
+  'higgsfield:z_image': { provider: 'higgsfield', hf: 'z_image', label: 'Z-Image Turbo (drafts)', path: '', t2i: 'z-image/turbo', images: 'image_urls', maxRefs: 0, seed: true, t2iOnly: true, maxPrompt: 800, sizes: ['1K', '2K'], aspects: QWEN_ASPECTS, extra: { prompt_extend: false }, explicit: true, cost: { '1K': 0.015, '2K': 0.03 }, estimate: true },
+  // --- Higgsfield: not available to this account today. nano-banana-pro exists but answers 503 model_disabled;
+  // the others are 404 (their paths are guesses after the confirmed `nano-banana-pro[/edit]` pattern). They stay
+  // listed so they work the day the account gets them: 503 / 423 / 404 → that model is skipped for 1 h.
+  'higgsfield:nano_banana_pro': { provider: 'higgsfield', hf: 'nano_banana_pro', label: 'Nano Banana Pro (Higgsfield)', path: 'nano-banana-pro/edit', t2i: 'nano-banana-pro', images: 'image_urls', maxRefs: 13, seed: false, sizes: ['1K', '2K', '4K'], aspects: GEMINI_ASPECTS, cost: { '1K': 0.1344, '2K': 0.1344, '4K': 0.24 }, estimate: true },
+  'higgsfield:nano_banana_2_1': { provider: 'higgsfield', hf: 'nano_banana_2_1', label: 'Nano Banana 2.1 (Higgsfield)', path: 'nano-banana-2.1/edit', t2i: 'nano-banana-2.1', images: 'image_urls', maxRefs: 13, seed: true, sizes: ['1K', '2K', '4K'], aspects: ['auto', ...GEMINI_ASPECTS], explicit: true, cost: { '1K': 0.067, '2K': 0.101, '4K': 0.151 }, estimate: true },
+  'higgsfield:seedream_5_5': { provider: 'higgsfield', hf: 'seedream_5_5', label: 'Seedream 5.5 (Higgsfield)', path: 'bytedance/seedream-5.5/edit', t2i: 'bytedance/seedream-5.5/text-to-image', images: 'image_urls', maxRefs: 9, seed: false, sizes: ['1K', '2K', '4K'], aspects: ['auto', '1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9'], extra: { background: 'opaque' }, explicit: true, cost: { '1K': 0.035, '2K': 0.035, '4K': 0.06 }, estimate: true },
+  // --- AI Gateway (fallback; needs billing on the Vercel team — today it answers 403 "free tier")
   'google/gemini-3.1-flash-image': { provider: 'gateway', label: 'Nano Banana 2', api: 'chat', maxRefs: 10, sizes: ['512', '1K', '2K', '4K'], cost: { 512: 0.045, '1K': 0.067, '2K': 0.101, '4K': 0.151 }, aspects: GEMINI_ASPECTS },
   'google/gemini-3.1-flash-image-preview': { provider: 'gateway', label: 'Nano Banana 2 (preview id)', api: 'chat', maxRefs: 10, sizes: ['512', '1K', '2K', '4K'], cost: { 512: 0.045, '1K': 0.067, '2K': 0.101, '4K': 0.151 }, aspects: GEMINI_ASPECTS },
   'google/gemini-3.1-flash-lite-image': { provider: 'gateway', label: 'Nano Banana 2 Lite', api: 'chat', maxRefs: 6, sizes: ['1K'], cost: { '1K': 0.034 }, aspects: GEMINI_ASPECTS },
@@ -43,12 +51,14 @@ export const MODELS = {
   'bfl/flux-2-pro': { provider: 'gateway', label: 'FLUX.2 [pro]', api: 'edits', maxRefs: 4, sizes: ['1K', '2K'], cost: { '1K': 0.045, '2K': 0.09 }, aspects: null, estimate: true },
   'bfl/flux-2-max': { provider: 'gateway', label: 'FLUX.2 [max]', api: 'edits', maxRefs: 4, sizes: ['1K', '2K'], cost: { '1K': 0.08, '2K': 0.16 }, aspects: null, estimate: true },
 };
+// Orders (override: photo_config row `order` = {"default":[…],"hero":[…],"plate":[…]}, then env PHOTO_MODELS / …).
 const DEFAULTS = {
-  default: ['higgsfield:nano_banana_2_1', 'google/gemini-3.1-flash-image', 'google/gemini-3.1-flash-image-preview'],
-  hero: ['higgsfield:nano_banana_pro', 'google/gemini-3-pro-image', 'higgsfield:nano_banana_2_1', 'google/gemini-3.1-flash-image'],
-  plate: ['higgsfield:nano_banana_pro', 'google/gemini-3-pro-image'],
+  default: ['higgsfield:grok_image_2', 'higgsfield:qwen_image_3', 'google/gemini-3.1-flash-image', 'google/gemini-3.1-flash-image-preview'],
+  hero: ['higgsfield:nano_banana_pro', 'higgsfield:grok_image_2', 'higgsfield:qwen_image_3', 'google/gemini-3-pro-image'],
+  plate: ['higgsfield:qwen_image_3', 'higgsfield:grok_image_2', 'google/gemini-3-pro-image'],
 };
 const ID_RE = /^(?:higgsfield:[a-z0-9_]{2,40}|[a-z0-9-]+\/[a-zA-Z0-9._:-]+)$/;
+export const isModelId = (x) => typeof x === 'string' && ID_RE.test(x);
 const parseList = (s) => s.split(',').map((x) => x.trim()).filter((x) => ID_RE.test(x));
 const jsonEnv = (k) => { try { const v = JSON.parse(env(k) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; } };
 
@@ -60,11 +70,13 @@ const jsonEnv = (k) => { try { const v = JSON.parse(env(k) || '{}'); return v &&
 //   ab        "higgsfield:seedream_5_5:0.2"          (fallback: PHOTO_AB)
 //   cost      { "<model id>": { "2K": 0.06 } }       (merged over PHOTO_COST)
 //   models    { "nano_banana_2_1": { "path": "…", "t2i": "…", "images": "image_urls" } }   (merged over HIGGSFIELD_MODELS)
+//   order     { "default": ["higgsfield:grok_image_2", …], "hero": […], "plate": […] }      (else env PHOTO_MODELS …)
+//   caps.maxUsd / caps.maxUsdVisitor   the most one call may cost by the provider's estimate (0.6 / 0.2)
 // Read with a 30 s in-memory cache. A read error (or no table yet) means visitors off and no pilots; the last good
 // overrides (caps, ab, cost, models) stay in use.
 const CONFIG_TTL_MS = 30_000;
 const SESSION_RE = /^[a-z0-9]{8,40}$/i;
-const cfg = { at: 0, ok: false, visitors: false, pilots: new Set(), caps: null, ab: null, cost: {}, models: {}, names: [] };
+const cfg = { at: 0, ok: false, visitors: false, pilots: new Set(), caps: null, ab: null, cost: {}, models: {}, order: {}, names: [] };
 const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : null);
 export async function loadConfig(db, { force = false } = {}) {
   if (!force && Date.now() - cfg.at < CONFIG_TTL_MS) return cfg;
@@ -78,11 +90,13 @@ export async function loadConfig(db, { force = false } = {}) {
     cfg.pilots = new Set((Array.isArray(m.get('pilots')) ? m.get('pilots') : []).filter((x) => typeof x === 'string' && SESSION_RE.test(x)).slice(0, 200));
     const caps = obj(m.get('caps'));
     const num = (v) => (Number.isFinite(Number(v)) && Number(v) >= 0 && Number(v) <= 100000 ? Math.floor(Number(v)) : null);
-    cfg.caps = caps ? { perIp: num(caps.perIp), global: num(caps.global) } : null;
+    const usd = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 && Number(v) <= 20 ? Number(v) : null);
+    cfg.caps = caps ? { perIp: num(caps.perIp), global: num(caps.global), maxUsd: usd(caps.maxUsd), maxUsdVisitor: usd(caps.maxUsdVisitor) } : null;
     cfg.ab = typeof m.get('ab') === 'string' ? m.get('ab').trim() : null;
     cfg.cost = obj(m.get('cost')) || {};
     cfg.models = obj(m.get('models')) || {};
-    cfg.names = ['caps', 'ab', 'cost', 'models'].filter((k) => m.has(k) && m.get(k) != null && (typeof m.get(k) !== 'object' || Object.keys(m.get(k)).length));
+    cfg.order = obj(m.get('order')) || {};
+    cfg.names = ['caps', 'ab', 'cost', 'models', 'order'].filter((k) => m.has(k) && m.get(k) != null && (typeof m.get(k) !== 'object' || Object.keys(m.get(k)).length));
   } catch (e) {
     cfg.ok = false; cfg.visitors = false; cfg.pilots = new Set();
     console.warn(`[photo] config read failed (visitors off): ${e?.status || e?.message || e}`);
@@ -97,19 +111,26 @@ export const dailyCaps = () => ({
   perIp: cfg.caps?.perIp ?? Number(env('PHOTO_DAILY_IP') || 12),      // ART §1: caps until launch
   global: cfg.caps?.global ?? Number(env('PHOTO_DAILY_CAP') || 60),
 });
-export function resetConfigForTests() { Object.assign(cfg, { at: 0, ok: false, visitors: false, pilots: new Set(), caps: null, ab: null, cost: {}, models: {}, names: [] }); }
+/** The most one call may cost by the provider's estimate: queue jobs 0.6 USD, visitor photos 0.2 USD by default. */
+export const maxUsd = (visitor = false) => (visitor ? cfg.caps?.maxUsdVisitor ?? (Number(env('PHOTO_MAX_USD_VISITOR')) || 0.2) : cfg.caps?.maxUsd ?? (Number(env('PHOTO_MAX_USD')) || 0.6));
+export function resetConfigForTests() { Object.assign(cfg, { at: 0, ok: false, visitors: false, pilots: new Set(), caps: null, ab: null, cost: {}, models: {}, order: {}, names: [] }); modelBreaker.clear(); }
 
-/** Config of one model id (known table + env overrides; unknown ids get a generic config of their provider). */
+/** Config of one model id (known table + env / photo_config overrides; unknown ids get a generic config). */
 export function modelConfig(id) {
   const base = MODELS[id] || (id.startsWith('higgsfield:')
-    ? { provider: 'higgsfield', hf: id.slice(11), label: id, path: '', images: 'image_urls', maxRefs: 9, sizes: ['1K', '2K'], aspects: ['auto', ...GEMINI_ASPECTS], cost: {}, estimate: true }
+    ? { provider: 'higgsfield', hf: id.slice(11), label: id, path: '', images: 'image_urls', maxRefs: 2, sizes: ['1K', '2K'], aspects: ['auto', ...GEMINI_ASPECTS], cost: {}, estimate: true }
     : { provider: 'gateway', label: id, api: /^bfl\//.test(id) ? 'edits' : 'chat', maxRefs: 4, sizes: ['1K', '2K'], cost: {}, aspects: GEMINI_ASPECTS, estimate: true });
   const m = { id, ...base };
   if (m.provider === 'higgsfield') {
     const o = { ...(jsonEnv('HIGGSFIELD_MODELS')[m.hf] || {}), ...(obj(cfg.models[m.hf]) || {}) }; // photo_config.models wins
-    if (typeof o.path === 'string' && /^[a-z0-9._/-]{3,120}$/.test(o.path)) m.path = o.path;
-    if (typeof o.t2i === 'string' && /^[a-z0-9._/-]{3,120}$/.test(o.t2i)) m.t2i = o.t2i;
+    const pathRe = /^[a-zA-Z0-9._/-]{3,120}$/;
+    if (typeof o.path === 'string' && pathRe.test(o.path)) m.path = o.path;
+    if (typeof o.t2i === 'string' && pathRe.test(o.t2i)) m.t2i = o.t2i;
     if (typeof o.images === 'string' && /^[a-z_]{3,40}$/.test(o.images)) m.images = o.images;
+    if (Number.isInteger(o.maxRefs) && o.maxRefs >= 0 && o.maxRefs <= 20) m.maxRefs = o.maxRefs;
+    if (Array.isArray(o.aspects)) m.aspects = o.aspects.filter((x) => typeof x === 'string' && /^(auto|\d{1,2}:\d{1,2})$/.test(x));
+    if (Array.isArray(o.sizes)) m.sizes = o.sizes.filter((x) => ['512', '1K', '2K', '4K'].includes(x));
+    if (typeof o.quality === 'string' && /^[a-z]{2,10}$/.test(o.quality)) m.quality = o.quality;
     if (o.extra && typeof o.extra === 'object') m.extra = { ...(m.extra || {}), ...o.extra };
   }
   const c = obj(cfg.cost[id]) || jsonEnv('PHOTO_COST')[id];
@@ -120,12 +141,51 @@ export function modelConfig(id) {
 /** Which providers can be called right now (credentials present). */
 export const providersAvailable = (req) => ({ higgsfield: !!hfAuth(), gateway: !!authToken(req) || env('PHOTO_PROVIDER') === 'stub' });
 
-/** Ordered model configs for a tier ('default' | 'hero' | 'plate'), only those whose provider is available. */
+// A model the provider reported as disabled / blocked / unknown (503, 423, 404) is skipped for an hour (per instance).
+const modelBreaker = new Map();
+const MODEL_BREAKER_MS = 3_600_000;
+export const tripModel = (id, why = '') => { modelBreaker.set(id, { until: Date.now() + MODEL_BREAKER_MS, why: String(why).slice(0, 60) }); };
+export const modelOff = (id) => { const b = modelBreaker.get(id); if (!b) return false; if (b.until < Date.now()) { modelBreaker.delete(id); return false; } return true; };
+export const modelBreakers = () => [...modelBreaker].filter(([id]) => modelOff(id)).map(([id, b]) => ({ id, why: b.why }));
+
+/**
+ * Ordered model configs for a tier ('default' | 'hero' | 'plate'). With `avail`: only models whose provider has
+ * credentials and that are not switched off by their breaker. Models marked `explicit` are never in an automatic
+ * list unless the order row / env names them; a job names one with params.model (see pickModels).
+ */
 export function modelList(tier = 'default', avail = null) {
+  const fromCfg = Array.isArray(cfg.order?.[tier]) ? cfg.order[tier].filter((x) => typeof x === 'string' && ID_RE.test(x)) : null;
   const raw = tier === 'hero' ? env('PHOTO_HERO_MODELS') : tier === 'plate' ? env('PLATE_MODELS') : env('PHOTO_MODELS');
-  const ids = raw ? parseList(raw) : DEFAULTS[tier] || DEFAULTS.default;
+  const ids = fromCfg?.length ? fromCfg : raw ? parseList(raw) : DEFAULTS[tier] || DEFAULTS.default;
   const list = ids.map(modelConfig);
-  return avail ? list.filter((m) => avail[m.provider]) : list;
+  return avail ? list.filter((m) => avail[m.provider] && !modelOff(m.id)) : list;
+}
+/** Models for a job: exactly params.model when it names one (no silent substitute), else the tier's list. */
+export function pickModels(tier, avail, named = null) {
+  if (typeof named === 'string' && ID_RE.test(named)) { const m = modelConfig(named); return avail[m.provider] ? [m] : []; }
+  return modelList(tier, avail);
+}
+/** The size tier a model will really produce for a wish ('1K' | '2K' | '4K'): the wish, else the largest below it. */
+export function bestSize(model, want = '2K') {
+  const rank = ['512', '1K', '2K', '4K'];
+  const have = (model.sizes || ['1K', '2K']).slice().sort((x, y) => rank.indexOf(x) - rank.indexOf(y));
+  if (have.includes(want)) return want;
+  const below = have.filter((x) => rank.indexOf(x) <= rank.indexOf(want));
+  return below.length ? below[below.length - 1] : have[0];
+}
+const ratio = (a) => { const m = /^(\d+):(\d+)$/.exec(a); return m ? Number(m[1]) / Number(m[2]) : null; };
+/**
+ * The aspect a model is asked for. Exact when it has it. Edits: otherwise 'auto' (follow the input) when offered.
+ * Text-to-image: the nearest ratio it offers. `exact` says whether the output will have the wanted shape.
+ */
+export function pickAspect(model, want, { edit = false } = {}) {
+  const list = model.aspects || [];
+  if (!want || !list.length) return { aspect: want || null, exact: true };
+  if (list.includes(want)) return { aspect: want, exact: true };
+  if (edit && list.includes('auto')) return { aspect: 'auto', exact: false };
+  const w = ratio(want);
+  const c = list.filter((x) => ratio(x)).sort((x, y) => Math.abs(Math.log(ratio(x) / w)) - Math.abs(Math.log(ratio(y) / w)))[0];
+  return { aspect: c || want, exact: false };
 }
 /** A/B: env PHOTO_AB="higgsfield:seedream_5_5:0.2" sends ~20 % of cache misses (stable per key) to that model first. */
 export function abModel(key) {
@@ -238,7 +298,9 @@ async function gatewayFetch(path, { auth, body, timeoutMs, model }) {
       const s = res.status;
       const code = s === 401 || s === 402 || s === 403 || /billing|credit|payment|insufficient/i.test(detail) ? 'unavailable'
         : s === 429 ? 'rate_limited' : s === 404 ? 'no_model' : s === 400 || s === 422 ? 'rejected' : 'gateway';
-      throw new GatewayError(code, `gateway HTTP ${s} (${auth.kind}, ${model}): ${detail}`, s, 'gateway');
+      const e = new GatewayError(code, `gateway HTTP ${s} (${auth.kind}, ${model}): ${detail}`, s, 'gateway');
+      e.detail = detail.replace(/\s+/g, ' ').slice(0, 200);
+      throw e;
     }
     return await res.json();
   } catch (err) {
@@ -288,7 +350,11 @@ export async function imageFromImages(data) {
  */
 export async function generateImage(opts) {
   if (opts.model.provider === 'higgsfield') return hfGenerate(opts);
-  return gatewayGenerate(opts);
+  // the gateway has no estimate call: its catalog price is the estimate
+  const estimate = costOf(opts.model, bestSize(opts.model, opts.imageSize || '2K'));
+  if (opts.dry) return { dry: true, estimate, path: opts.model.api === 'edits' ? '/images/edits' : '/chat/completions', listPrice: true };
+  if (Number.isFinite(opts.maxCost) && estimate > opts.maxCost) throw new GatewayError('too_expensive', `${opts.model.id}: list price $${estimate} is over the limit $${opts.maxCost}`, 0, 'gateway');
+  return gatewayGenerate({ ...opts, imageSize: bestSize(opts.model, opts.imageSize || '2K') });
 }
 
 async function gatewayGenerate({ auth, model, prompt, images = [], aspectRatio = null, imageSize = '2K', width = 0, height = 0, timeoutMs = 50000 }) {
@@ -382,12 +448,15 @@ async function hfFetch(path, { method = 'GET', body, headers = {}, timeoutMs = 1
     if (!r.ok) {
       const st = r.status;
       const detail = typeof json?.detail === 'string' ? json.detail : text.slice(0, 300);
-      const code = st === 401 || st === 403 ? 'unavailable' : st === 404 ? 'no_model' : st === 400 || st === 422 ? 'rejected'
-        : st === 429 ? 'busy' : 'gateway';
+      // 503 model_disabled / 423 model_blocked: this model is off for the account (the model breaker skips it for 1 h)
+      const code = st === 401 || st === 403 ? 'unavailable' : st === 404 ? 'no_model' : st === 503 || st === 423 ? 'model_off'
+        : st === 400 || st === 422 ? 'rejected' : st === 429 ? 'busy' : 'gateway';
       const hint = st === 404 && method === 'POST' && model
         ? ` — endpoint path unknown to Higgsfield: copy the model's API path from console.higgsfield.ai and upsert photo_config name 'models' = {"${String(model).replace(/^higgsfield:/, '')}":{"path":"<vendor>/<model>/<workflow>","t2i":"…"}} (live within 30 s), or set the same JSON in env HIGGSFIELD_MODELS`
         : st === 401 ? ` — check ${hfCredentials()?.source || 'HIGGSFIELD_KEY'} (expected id:secret)` : st === 403 ? ' — insufficient balance: top up at console.higgsfield.ai' : '';
-      throw new GatewayError(code, `Higgsfield HTTP ${st} ${method} ${path.split('?')[0]} (${model}): ${detail}${hint}`, st, 'higgsfield');
+      const e = new GatewayError(code, `Higgsfield HTTP ${st} ${method} ${path.split('?')[0]} (${model}): ${detail}${hint}`, st, 'higgsfield');
+      e.detail = String(detail).replace(/\s+/g, ' ').slice(0, 200);
+      throw e;
     }
     return json;
   } catch (err) {
@@ -431,32 +500,124 @@ export async function hfResult(st, model) {
   return null; // still queued / in progress
 }
 
-async function hfGenerate({ model, prompt, images = [], aspectRatio = null, imageSize = '2K', deadlineAt = Date.now() + 45000, idempotencyKey = null, webhook = null, seed = null }) {
-  const path = images.length ? model.path : model.t2i || model.path;
-  if (!path) throw new GatewayError('no_model', `Higgsfield ${model.id}: endpoint path unknown (set HIGGSFIELD_MODELS)`, 0, 'higgsfield');
-  // our inline frame → a Higgsfield input URL; the product photos are already public URLs
-  const urls = [];
-  for (const im of images.slice(0, (model.maxRefs ?? 9) + 1)) {
-    const b = dataUrlBytes(im.url);
-    urls.push(b ? await hfUpload(b, 'image/jpeg') : im.url);
+/** The request body of one Higgsfield image call, from the model's registry entry (exact field names and enums). */
+export function hfBody(model, { prompt, urls = [], aspectRatio = null, imageSize = '2K', seed = null, quality = null }) {
+  const edit = urls.length > 0;
+  const { aspect } = pickAspect(model, aspectRatio, { edit });
+  let text = String(prompt || '');
+  if (model.maxPrompt && text.length > model.maxPrompt) { // cut at a sentence end inside the limit
+    const cut = text.slice(0, model.maxPrompt); const dot = cut.lastIndexOf('. ');
+    text = dot > model.maxPrompt * 0.5 ? cut.slice(0, dot + 1) : cut;
   }
-  const aspects = model.aspects || [];
-  const aspect = aspectRatio && aspects.includes(aspectRatio) ? aspectRatio : aspects.includes('auto') ? 'auto' : aspectRatio;
-  const body = {
-    prompt,
-    ...(urls.length ? { [model.images || 'image_urls']: urls } : {}),
+  const q = quality || model.quality || null;
+  return {
+    prompt: text,
+    ...(edit ? { [model.images || 'image_urls']: urls } : {}),
     ...(aspect ? { aspect_ratio: aspect } : {}),
-    resolution: String(imageSize || '2K').toLowerCase(),
-    ...(model.seed && Number.isFinite(seed) ? { seed } : {}),
+    resolution: bestSize(model, imageSize || '2K').toLowerCase(),
+    ...(q ? { quality: q } : {}),
+    ...(model.seed && Number.isFinite(seed) ? { seed: Math.abs(Math.trunc(seed)) % 2147483647 } : {}),
     ...(model.extra || {}),
   };
+}
+/** The provider's own price for exactly this call (free): POST /estimate/{path} with the real body → USD. */
+export async function hfEstimate(path, body, model = '') {
+  const r = await hfFetch(`/estimate/${path}`, { method: 'POST', body, model, timeoutMs: 10000 });
+  const usd = Number(r?.usd);
+  if (!Number.isFinite(usd) || usd < 0) throw new GatewayError('gateway', `Higgsfield estimate for ${model}: no usd in the answer`, 0, 'higgsfield');
+  return usd;
+}
+
+/**
+ * One Higgsfield image call: estimate first (free) → refuse above `maxCost` → submit → poll until `deadlineAt`.
+ *   images: [{ url, publicUrl? }] — a public HTTPS URL is passed as is (publicUrl wins over an inline data: URL;
+ *   inline bytes without one are uploaded through /files/generate-upload-url).
+ *   dry: true → return { dry, estimate, path, body } without submitting (nothing is charged).
+ * Returns { bytes, requestId, estimate, path } | { pending: { requestId, estimate } } | { dry … }.
+ */
+async function hfGenerate({ model, prompt, images = [], aspectRatio = null, imageSize = '2K', deadlineAt = Date.now() + 45000, idempotencyKey = null, webhook = null, seed = null, quality = null, dry = false, maxCost = Infinity }) {
+  const edit = images.length > 0;
+  if (edit && model.t2iOnly) throw new GatewayError('rejected', `${model.id} is text-to-image only`, 0, 'higgsfield');
+  const path = edit ? model.path : model.t2i || model.path;
+  if (!path) throw new GatewayError('no_model', `Higgsfield ${model.id}: endpoint path unknown (photo_config 'models' / HIGGSFIELD_MODELS)`, 0, 'higgsfield');
+  const urls = [];
+  for (const im of images.slice(0, (model.maxRefs ?? 2) + 1)) {
+    if (im.publicUrl) { urls.push(im.publicUrl); continue; }
+    const b = dataUrlBytes(im.url);
+    urls.push(b ? (dry ? 'https://example.com/frame.jpg' : await hfUpload(b, 'image/jpeg')) : im.url);
+  }
+  const body = hfBody(model, { prompt, urls, aspectRatio, imageSize, seed, quality });
+  const estimate = await hfEstimate(path, body, model.id);
+  if (dry) return { dry: true, estimate, path, body: { ...body, prompt: `${body.prompt.slice(0, 60)}…` } };
+  if (estimate > maxCost) { const e = new GatewayError('too_expensive', `Higgsfield ${model.id}: estimate $${estimate} is over the limit $${maxCost} (photo_config caps.maxUsd, or the job's maxUsd)`, 0, 'higgsfield'); e.detail = `estimate ${estimate} > limit ${maxCost}`; throw e; }
   const q = webhook ? `?hf_webhook=${encodeURIComponent(webhook)}` : '';
   const sub = await hfFetch(`/${path}${q}`, { method: 'POST', body, model: model.id, timeoutMs: 20000, headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {} });
   const requestId = sub?.request_id;
   if (!requestId) throw new GatewayError('gateway', `Higgsfield ${model.id}: no request_id`, 0, 'higgsfield');
   const st = await hfWait(requestId, deadlineAt);
   const out = await hfResult(st, model);
-  return out ? { ...out, requestId } : { pending: { provider: 'higgsfield', requestId } };
+  return out ? { ...out, requestId, estimate, path } : { pending: { provider: 'higgsfield', requestId, estimate, path } };
+}
+
+// A provider that said "no balance / bad key" is skipped for 10 minutes (per instance).
+const providerBreaker = { higgsfield: 0, gateway: 0 };
+const PROVIDER_BREAKER_MS = 10 * 60_000;
+export const tripProvider = (pv) => { if (pv in providerBreaker) providerBreaker[pv] = Date.now() + PROVIDER_BREAKER_MS; };
+export const providerOff = (pv) => Date.now() < (providerBreaker[pv] || 0);
+export const resetBreakers = () => { providerBreaker.higgsfield = 0; providerBreaker.gateway = 0; modelBreaker.clear(); };
+/** Providers with credentials and no open breaker. */
+export const usableProviders = (req) => { const a = providersAvailable(req); return { higgsfield: a.higgsfield && !providerOff('higgsfield'), gateway: a.gateway && !providerOff('gateway') }; };
+
+/**
+ * Try `models` in order until one answers. `makeOpts(model, n, lastErr)` returns the generateImage options for the
+ * n-th try of that model (n = 0, 1 …) or null to move on. Every failure is appended to `trace` (attemptOf).
+ *   no balance / bad key (401, 403)        → the whole provider is skipped (breaker 10 min)
+ *   model disabled / blocked / unknown path → that model is skipped (breaker 1 h)
+ *   anything else                           → the next try of the model (if makeOpts offers one), else the next model
+ * Returns { model, out } (out: generateImage's { bytes … } | { pending }); throws the last error with `.trace`.
+ */
+export async function tryModels(models, makeOpts, { trace = [], minLeftMs = 8000, deadlineAt = Infinity } = {}) {
+  const skip = new Set();
+  let last = null;
+  for (const model of models) {
+    if (skip.has(model.provider) || modelOff(model.id)) continue;
+    for (let n = 0; n < 3; n++) {
+      if (deadlineAt - Date.now() < minLeftMs) { last = last || new GatewayError('timeout', 'no time left for another model'); break; }
+      const opts = makeOpts(model, n, last);
+      if (!opts) break;
+      try {
+        const out = await generateImage({ ...opts, model });
+        return { model, out, trace };
+      } catch (err) {
+        last = err;
+        trace.push(attemptOf(model, err));
+        console.warn(`[photo] ${model.id} failed (${err instanceof GatewayError ? err.code : 'error'}): ${err?.message || err}`);
+        if (isFatalGateway(err)) { const pv = err.provider || model.provider; skip.add(pv); if (err.code === 'unavailable') tripProvider(pv); break; }
+        if (err instanceof GatewayError && (err.code === 'model_off' || err.code === 'no_model')) { tripModel(model.id, `${err.status || ''} ${err.detail || ''}`); break; }
+        if (err instanceof GatewayError && err.code === 'too_expensive') break;
+      }
+    }
+  }
+  const e = last || new GatewayError('unavailable', 'no model available (no credentials, or every model is switched off)');
+  e.trace = trace;
+  throw e;
+}
+/** What each model would cost for this call, nothing submitted: [{ model, usd, path } | { model, error }]. */
+export async function dryRun(models, makeOpts) {
+  const out = [];
+  for (const model of models) {
+    const opts = makeOpts(model, 0, null);
+    if (!opts) continue;
+    try { const r = await generateImage({ ...opts, model, dry: true }); out.push({ model: model.id, usd: r.estimate, path: r.path, ...(r.listPrice ? { listPrice: true } : {}), ...(r.body ? { body: r.body } : {}) }); }
+    catch (err) { out.push({ model: model.id, error: attemptOf(model, err) }); if (err instanceof GatewayError && (err.code === 'model_off' || err.code === 'no_model')) tripModel(model.id, `${err.status || ''} ${err.detail || ''}`); }
+  }
+  return out;
+}
+
+/** One line of a job's attempt log (the coordinator cannot read the function logs): no secrets, ≤ 200 chars of detail. */
+export function attemptOf(model, err, extra = {}) {
+  const g = err instanceof GatewayError;
+  return { provider: model?.provider || (g && err.provider) || null, model: model?.id || null, status: g ? err.status || null : null, code: g ? err.code : 'error', detail: String((g && err.detail) || err?.message || err || '').replace(/\s+/g, ' ').slice(0, 200), ...extra };
 }
 
 /** Pick up a job submitted earlier: { bytes } when done, { pending } while running; throws when it failed. */
@@ -484,7 +645,7 @@ export function verifyWebhook(raw, headers, secret = env('HIGGSFIELD_WEBHOOK_SEC
 }
 
 // ---------------------------------------------------------------------------------------------- Supabase
-const ROW_FIELDS = 'key,path,kind,model,status,rejects,source,width,height,updated_at,provider,request_id,style,time_of_day,size,aspect,session,ip_hash,refs';
+const ROW_FIELDS = 'key,path,kind,model,status,rejects,source,width,height,updated_at,provider,request_id,style,time_of_day,size,aspect,session,ip_hash,refs,cost_usd';
 export function supa() {
   const url = (env('SUPABASE_URL') || SUPABASE_URL).replace(/\/$/, '');
   const key = env('SUPABASE_KEY');

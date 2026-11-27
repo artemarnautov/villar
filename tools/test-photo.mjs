@@ -36,7 +36,7 @@ const STATE = (over = {}) => ({ style: 'dark-walnut', time: 'day', selection: SE
 // ------------------------------------------------------------------------------------------- mocks
 const db = { rows: new Map(), objects: new Map(), quota: new Map(), locks: new Map(), rpc: [], puts: 0, jobs: [], jobSeq: 0, config: new Map([['visitors', true]]), configFail: false, configReads: 0 };
 const gw = { calls: [], mode: 'ok', bodies: [] };
-const hf = { calls: [], bodies: [], jobs: new Map(), mode: 'ok', uploads: 0 };
+const hf = { calls: [], bodies: [], estimates: [], jobs: new Map(), mode: 'ok', uploads: 0, price: { '/xai/grok-imagine-image-2.0': 0.07, '/alibaba/qwen-image-3/edit': 0.04, '/alibaba/qwen-image-3/text-to-image': 0.04, '/marketing-studio/image': 0.452, '/z-image/turbo': 0.015 } };
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, opts = {}) => {
   url = String(url);
@@ -46,6 +46,7 @@ globalThis.fetch = async (url, opts = {}) => {
     gw.calls.push(url.replace('https://ai-gateway.vercel.sh/v1', '')); gw.bodies.push(body);
     const mode = typeof gw.mode === 'function' ? gw.mode(body) : gw.mode;
     if (mode === '402') return json(402, { error: { message: 'Billing is not enabled for this team' } });
+    if (mode === '403') return json(403, { error: { message: 'Free tier users do not have access to this model' } });
     if (mode === '404') return json(404, { error: { message: 'model not found' } });
     if (mode === '400') return json(400, { error: { message: 'could not fetch image_url' } });
     if (mode === 'slow') await new Promise((r) => setTimeout(r, 120));
@@ -61,10 +62,15 @@ globalThis.fetch = async (url, opts = {}) => {
     hf.calls.push(`${method} ${p}`);
     if (p === '/files/generate-upload-url') return json(200, { public_url: `https://hf-cdn.test/in/${hf.calls.length}.jpg`, upload_url: `https://hf-upload.test/put/${hf.calls.length}`, content_type: 'image/jpeg', upload_headers: { 'Content-Type': 'image/jpeg', 'x-amz-tagging': 'retention=temporary' } });
     if (method === 'POST' && !p.startsWith('/requests/')) {
-      const body = JSON.parse(opts.body); hf.bodies.push({ path: p, body, idem: opts.headers['Idempotency-Key'], webhook: u.searchParams.get('hf_webhook') });
-      const mode = typeof hf.mode === 'function' ? hf.mode(p, body) : hf.mode;
+      const body = JSON.parse(opts.body);
+      const est = p.startsWith('/estimate/');
+      const path = est ? p.slice('/estimate'.length) : p;
+      const mode = typeof hf.mode === 'function' ? hf.mode(path, body) : hf.mode;
       if (mode === '403') return json(403, { detail: 'Insufficient balance' });
       if (mode === '404') return json(404, { detail: 'Model not found' });
+      if (mode === '503') return json(503, { detail: 'model_disabled' });
+      if (est) { hf.estimates.push({ path, body }); return json(200, { usd: String(hf.price[path] ?? 0.07) }); }
+      hf.bodies.push({ path: p, body, idem: opts.headers['Idempotency-Key'], webhook: u.searchParams.get('hf_webhook') });
       const id = randomUUID(); hf.jobs.set(id, { polls: 0, mode });
       return json(200, { status: 'queued', request_id: id, status_url: `https://api.higgsfield.ai/requests/${id}/status`, cancel_url: `https://api.higgsfield.ai/requests/${id}/cancel`, expires_after: 604800 });
     }
@@ -328,41 +334,65 @@ ok(dl === 1, 'diag: 10 per IP per hour');
 hf.calls = [];
 photoMod._test.resetBreaker();
 r = await call(photo, { method: 'GET' });
-ok(r.body.models[0] === 'higgsfield:nano_banana_2_1', `GET lists Higgsfield first (${r.body.models.join(', ')})`);
-hf.calls = []; hf.bodies = []; gw.calls = [];
+ok(r.body.models[0] === 'higgsfield:grok_image_2' && r.body.models[1] === 'higgsfield:qwen_image_3', `GET lists the models this account has first (${r.body.models.join(', ')})`);
+ok(Array.isArray(r.body.aspects) && r.body.aspects.includes('2:1') && !r.body.aspects.includes('auto') && !r.body.aspects.includes('21:9'), `GET gives the first model's exact aspects (${r.body.aspects})`);
+hf.calls = []; hf.bodies = []; hf.estimates = []; gw.calls = []; logs.length = 0;
 const SH = STATE({ pose: 'c:1,2,3;d:0,0,1;f:58;s:0,0;a:1.85;m:0' });
 let tH = Date.now();
 r = await call(photo, { body: { v: 1, op: 'develop', session: 'sessHIGGSFLD', state: SH, items, frame: FRAME } });
 const hfMs = Date.now() - tH;
-ok(r.body.url && r.body.model === 'higgsfield:nano_banana_2_1' && gw.calls.length === 0, `stored from Higgsfield, gateway untouched (${JSON.stringify(r.body).slice(0, 140)})`);
+ok(r.body.url && r.body.model === 'higgsfield:grok_image_2' && gw.calls.length === 0, `stored from Higgsfield, gateway untouched (${JSON.stringify(r.body).slice(0, 140)})`);
+ok(!('usd' in r.body) && !('request_id' in r.body), 'the visitor response carries no cost or provider id');
 const hb = hf.bodies[0];
-ok(hb && hb.path === '/google/nano-banana-2.1/edit', `endpoint path ${hb?.path}`);
-ok(hb && hb.body.image_urls[0].startsWith('https://hf-cdn.test/in/') && hf.uploads === 1, 'frame uploaded via presigned URL, then passed first in image_urls');
+ok(hb && hb.path === '/xai/grok-imagine-image-2.0', `endpoint path ${hb?.path}`);
+ok(hf.estimates.length === 1 && hf.estimates[0].path === hb.path && JSON.stringify(hf.estimates[0].body) === JSON.stringify(hb.body) && hf.calls.findIndex((c) => c.includes('/estimate/')) < hf.calls.findIndex((c) => c === `POST ${hb.path}`), 'estimate first, with the same body as the submit');
+ok(hb && /\/storage\/v1\/object\/public\/photos\/frames\/[a-f0-9]{64}\.jpg$/.test(hb.body.image_urls[0]) && hf.uploads === 0, 'the frame is passed as its public Storage URL (no second upload)');
 ok(hb && hb.body.image_urls.length === 3 && /^https:\/\//.test(hb.body.image_urls[1]), 'reference photos follow the frame');
-ok(hb && hb.body.aspect_ratio === '16:9' && hb.body.resolution === '2k' && Number.isInteger(hb.body.seed), 'aspect_ratio / resolution / seed');
+ok(hb && hb.body.aspect_ratio === '16:9' && hb.body.resolution === '2k' && hb.body.quality === 'medium' && !('seed' in hb.body), `grok body: aspect_ratio / resolution 2k / quality, no seed (${JSON.stringify({ ...hb.body, prompt: '…', image_urls: hb.body.image_urls.length })})`);
 ok(hb && /Image 2 — the sofa/.test(hb.body.prompt) && !/homecentre|amplience/i.test(hb.body.prompt), 'captions inline in the prompt, no supplier');
 ok(hb && /^[a-f0-9]{32}-0$/.test(hb.idem) && hb.webhook === null, 'Idempotency-Key sent; no webhook without a secret');
-ok(db.rows.get(r.body.key)?.provider === 'higgsfield' && db.rows.get(r.body.key)?.request_id, 'row records provider + request id');
+ok(db.rows.get(r.body.key)?.provider === 'higgsfield' && db.rows.get(r.body.key)?.request_id && db.rows.get(r.body.key)?.cost_usd === 0.07, 'row records provider, request id and the estimate as cost_usd');
+ok(JSON.parse(logs.find((l) => l.includes('"ev":"photo.gen"'))).est === false, 'cost line: est:false (the provider estimate)');
 ok(hf.calls.filter((c) => c.includes('/status')).length >= 2, 'polled the status until completed');
 
 section('Higgsfield: no balance (403) → AI Gateway in the same request');
-hf.mode = '403'; hf.calls = []; gw.calls = [];
+hf.mode = '403'; hf.calls = []; gw.calls = []; hf.bodies = [];
 r = await call(photo, { body: { v: 1, op: 'develop', state: STATE({ pose: 'c:1,2,4;d:0,0,1;f:58;s:0,0;a:1.85;m:0' }), items, frame: FRAME } });
-ok(r.body.url && r.body.model === 'google/gemini-3.1-flash-image' && gw.calls.length === 1, `fell back to the gateway (${r.body.model})`);
+ok(r.body.url && r.body.model === 'google/gemini-3.1-flash-image' && gw.calls.length === 1 && hf.bodies.length === 0, `fell back to the gateway, nothing submitted to Higgsfield (${r.body.model})`);
 r = await call(photo, { method: 'GET' });
-ok(!r.body.models.includes('higgsfield:nano_banana_2_1') && r.body.generate, 'Higgsfield breaker open, gateway still generating');
+ok(!r.body.models.some((m) => m.startsWith('higgsfield:')) && r.body.generate, 'Higgsfield breaker open, gateway still generating');
 photoMod._test.resetBreaker(); hf.mode = 'ok';
 
-section('Higgsfield: unknown endpoint path → clear hint, gateway answers');
-hf.mode = (p) => (p.includes('nano-banana-2.1') ? '404' : 'ok'); gw.calls = []; logs.length = 0;
+section('Higgsfield: unknown path (404) / disabled model (503) → next model, 1 h breaker per model, clear hint');
+hf.mode = (p) => (p.includes('grok') ? '404' : 'ok'); gw.calls = []; hf.bodies = []; logs.length = 0;
 r = await call(photo, { body: { v: 1, op: 'develop', state: STATE({ pose: 'c:1,2,9;d:0,0,1;f:58;s:0,0;a:1.85;m:0' }), items, frame: FRAME } });
-ok(r.body.model === 'google/gemini-3.1-flash-image' && logs.some((l) => l.includes('HIGGSFIELD_MODELS') && l.includes('nano_banana_2_1')), 'a 404 logs the HIGGSFIELD_MODELS override and falls back');
-hf.mode = 'ok';
+ok(r.body.model === 'higgsfield:qwen_image_3' && gw.calls.length === 0 && logs.some((l) => l.includes("photo_config name 'models'") && l.includes('grok_image_2')), `a 404 names the override and the next Higgsfield model answers (${r.body.model})`);
+const qb = hf.bodies[0];
+ok(qb && qb.path === '/alibaba/qwen-image-3/edit' && qb.body.image_urls.length === 3 && qb.body.prompt_extend === false && qb.body.enable_thinking === false && Number.isInteger(qb.body.seed) && qb.body.resolution === '2k' && !('quality' in qb.body), `qwen body: frame + 2 refs, no prompt rewriting, seed (${JSON.stringify({ ...qb.body, prompt: '…', image_urls: qb.body.image_urls.length })})`);
+r = await call(photo, { method: 'GET' });
+ok(r.body.models[0] === 'higgsfield:qwen_image_3' && !r.body.models.includes('higgsfield:grok_image_2') && r.body.aspects.includes('21:9'), 'the 404 model is off (breaker); status now gives qwen and its aspects');
+r = await call(photo, { method: 'GET', body: { diag: '1' }, ip: '10.4.9.1' });
+ok(r.body.breakers.models.some((b) => b.id === 'higgsfield:grok_image_2') && r.body.breakers.higgsfield === false, 'diag lists the model breaker; the provider stays on');
+hf.mode = 'ok'; hf.estimates = [];
+r = await call(photo, { body: { v: 1, op: 'develop', state: STATE({ pose: 'c:1,2,10;d:0,0,1;f:58;s:0,0;a:1.85;m:0' }), items, frame: FRAME } });
+ok(r.body.model === 'higgsfield:qwen_image_3' && !hf.estimates.some((e) => e.path.includes('grok')), 'while its breaker is open the model is not even estimated');
+photoMod._test.resetBreaker();
+
+section('Higgsfield: estimate over the limit / a shape the model cannot return → next model, nothing wasted');
+hf.price['/xai/grok-imagine-image-2.0'] = 0.5; hf.bodies = [];
+r = await call(photo, { body: { v: 1, op: 'develop', state: STATE({ pose: 'c:1,2,11;d:0,0,1;f:58;s:0,0;a:1.85;m:0' }), items, frame: FRAME } });
+ok(r.body.model === 'higgsfield:qwen_image_3' && hf.bodies.length === 1 && !hf.bodies[0].path.includes('grok'), 'grok estimate $0.50 > the visitor limit $0.20 → not submitted; qwen answers');
+hf.price['/xai/grok-imagine-image-2.0'] = 0.07; hf.bodies = []; hf.estimates = [];
+r = await call(photo, { body: { v: 1, op: 'develop', state: STATE({ aspect: '21:9', pose: 'c:1,2,12;d:0,0,1;f:58;s:0,0;a:2.33;m:0' }), items, frame: FRAME } });
+ok(r.body.model === 'higgsfield:qwen_image_3' && hf.estimates.every((e) => !e.path.includes('grok')) && hf.bodies[0].body.aspect_ratio === '21:9', 'a 21:9 frame skips grok (no 21:9) and goes to qwen with 21:9');
+hf.bodies = []; gw.calls = [];
+r = await call(photo, { body: { v: 1, op: 'develop', state: STATE({ aspect: '4:5', pose: 'c:1,2,13;d:0,0,1;f:58;s:0,0;a:0.8;m:0' }), items, frame: FRAME } });
+ok(r.body.model === 'google/gemini-3.1-flash-image' && hf.bodies.length === 0, '4:5: neither Higgsfield model has it → the gateway model that does');
 
 section('Higgsfield: moderation (nsfw) → next model');
 hf.mode = 'nsfw'; gw.calls = [];
 r = await call(photo, { body: { v: 1, op: 'develop', state: STATE({ pose: 'c:1,2,5;d:0,0,1;f:58;s:0,0;a:1.85;m:0' }), items, frame: FRAME } });
-ok(r.body.url && r.body.model === 'google/gemini-3.1-flash-image', 'nsfw → gateway model');
+ok(r.body.url && r.body.model === 'google/gemini-3.1-flash-image', 'nsfw on both Higgsfield models → gateway model');
 hf.mode = 'ok';
 
 section('Higgsfield: slow job → pending → poll');
@@ -479,7 +509,7 @@ db.rows.clear(); db.locks.clear(); hf.bodies = []; hf.mode = 'slow';
 const jp = addJob('plate', { time: 'day' });
 const outs = await Promise.all([runQ(), runQ(), runQ()]);
 ok(hf.bodies.length === 1 && outs.filter((o) => o.body.idle).length === 2 && job(jp).status === 'running', `3 concurrent runs → 1 claim, 1 submit (${outs.map((o) => o.body.status || (o.body.idle ? 'idle' : '?')).join(',')})`);
-ok(hf.bodies[0].path === '/google/nano-banana-pro/text-to-image' && hf.bodies[0].body.resolution === '4k' && hf.bodies[0].body.aspect_ratio === '21:9', 'Higgsfield day plate: text-to-image, 4k, 21:9');
+ok(hf.bodies[0].path === '/alibaba/qwen-image-3/text-to-image' && hf.bodies[0].body.resolution === '2k' && hf.bodies[0].body.aspect_ratio === '21:9' && !hf.bodies[0].body.image_urls && job(jp).result?.model === 'higgsfield:qwen_image_3' && job(jp).result?.estimate === 0.04 && job(jp).result?.request_id, `Higgsfield day plate: qwen text-to-image, 2k (its best), 21:9; the running job records model, estimate, request id (${JSON.stringify(job(jp).result)})`);
 ok(db.rows.get('plate:v1:day')?.status === 'pending' && !db.rows.get('plate:v1:day')?.path, 'pending row has no plate path');
 r = await call(plate, { method: 'GET', body: { time: 'day' } });
 ok(r.body.pending, 'GET while running → pending');
@@ -504,7 +534,65 @@ ok(job(jp3).status === 'queued' && /balance/.test(job(jp3).error || ''), `no bal
 process.env.AI_GATEWAY_API_KEY = 'test-key'; hf.mode = 'ok';
 delete process.env.PHOTO_DEADLINE_MS; delete process.env.HIGGSFIELD_KEY;
 
+section('jobs: dry run, explicit model, cost limit, every attempt recorded');
+process.env.HIGGSFIELD_KEY = 'kid:ksec'; photoMod._test.resetBreaker();
+db.rows.clear(); db.locks.clear(); hf.bodies = []; hf.estimates = []; hf.mode = 'ok'; gw.mode = 'ok'; gw.calls = [];
+for (const j of db.jobs) if (j.status === 'queued' || j.status === 'running') j.status = 'failed';   // leftovers of earlier sections
+const jdry = addJob('plate', { time: 'day', dry: true });
+r = await runQ();
+const dry = job(jdry).result;
+ok(job(jdry).status === 'done' && dry?.dry === true && hf.bodies.length === 0 && gw.calls.length === 0 && !db.rows.has('plate:v1:day'), `dry plate job: done, nothing submitted, nothing stored (${JSON.stringify(dry).slice(0, 300)})`);
+ok(dry.estimates[0].model === 'higgsfield:qwen_image_3' && dry.estimates[0].usd === 0.04 && dry.estimates[0].path === 'alibaba/qwen-image-3/text-to-image' && dry.estimates[1].model === 'higgsfield:grok_image_2' && dry.estimates[1].body.aspect_ratio === '2:1' && dry.estimates[2].listPrice === true && dry.estimates[2].usd === 0.24, 'dry: one estimate per model in order (qwen t2i, grok at its nearest shape 2:1, gateway list price)');
+const jmk = addJob('plate', { time: 'day', model: 'higgsfield:marketing_image', resolution: '4K', quality: 'medium' });
+r = await runQ();
+const mb = hf.bodies.at(-1);
+ok(job(jmk).status === 'done' && mb.path === '/marketing-studio/image' && mb.body.quality === 'medium' && mb.body.resolution === '4k' && mb.body.aspect_ratio === '21:9' && mb.body.enhance_prompt === false && !mb.body.image_urls, `explicit model: marketing_image with explicit quality / resolution (${JSON.stringify({ ...(mb?.body || {}), prompt: '…' })} ${job(jmk).error || ''})`);
+ok(job(jmk).result.model === 'higgsfield:marketing_image' && job(jmk).result.usd === 0.452 && job(jmk).result.request_id && job(jmk).cost === 0.452 && db.rows.get('plate:v1:day').cost_usd === 0.452, `result records model, estimate, request id; cost = the estimate (${JSON.stringify({ usd: job(jmk).result.usd, cost: job(jmk).cost })})`);
+const jz = addJob('plate', { time: 'day', model: 'higgsfield:z_image', replace: true });
+r = await runQ();
+ok(job(jz).status === 'done' && hf.bodies.at(-1).path === '/z-image/turbo' && hf.bodies.at(-1).body.prompt.length <= 800 && db.rows.get('plate:v1:day').model === 'higgsfield:z_image', `replace: true regenerates with the named draft model; prompt within its 800 chars (${hf.bodies.at(-1).body.prompt.length})`);
+db.rows.clear(); hf.bodies = []; hf.price['/marketing-studio/image'] = 0.9;
+const jexp = addJob('plate', { time: 'day', model: 'higgsfield:marketing_image' });
+r = await runQ();
+ok(job(jexp).status === 'failed' && hf.bodies.length === 0 && /over the limit/.test(job(jexp).error) && job(jexp).result.attempts[0].code === 'too_expensive' && !db.rows.has('plate:v1:day'), `estimate $0.90 over the $0.60 limit → failed before submitting (${job(jexp).error?.slice(0, 120)})`);
+const jexp2 = addJob('plate', { time: 'day', model: 'higgsfield:marketing_image', maxUsd: 1 });
+r = await runQ();
+ok(job(jexp2).status === 'done' && job(jexp2).cost === 0.9, 'the same job with maxUsd: 1 runs');
+hf.price['/marketing-studio/image'] = 0.452;
+// the production failure of 27 Nov: Higgsfield models off / unknown, gateway without credits
+db.rows.clear(); hf.bodies = []; photoMod._test.resetBreaker();
+hf.mode = (p) => (p.includes('qwen') ? '503' : p.includes('grok') ? '404' : 'ok'); gw.mode = '403';
+const jf = addJob('plate', { time: 'day' });
+r = await runQ();
+const at = job(jf).result?.attempts || [];
+ok(job(jf).status === 'failed' && at.length === 3 && at[0].model === 'higgsfield:qwen_image_3' && at[0].status === 503 && at[0].code === 'model_off' && at[1].status === 404 && at[2].provider === 'gateway' && at[2].status === 403 && /Free tier/.test(at[2].detail), `every attempt is in result.attempts (${JSON.stringify(at.map((x) => [x.model, x.status, x.code]))})`);
+ok(/model_disabled/.test(job(jf).error) && /Free tier/.test(job(jf).error) && job(jf).error.length <= 2000 && r.body.attempts?.length === 3, `the job's error lists them too (${job(jf).error.slice(0, 200)})`);
+ok(job(jf).status !== 'queued', 'a gateway without credits does not requeue the job (only Higgsfield "no balance" does)');
+r = await call(photo, { method: 'GET', body: { diag: '1' }, ip: '10.4.9.2' });
+ok(['higgsfield:qwen_image_3', 'higgsfield:grok_image_2'].every((id) => r.body.breakers.models.some((b) => b.id === id)) && r.body.breakers.gateway === true, 'diag: both model breakers (1 h) and the gateway breaker');
+photoMod._test.resetBreaker(); gw.mode = 'ok';
+
+section('jobs: hero from a stored frame — 503 on Nano Banana Pro → next model; dry');
+hf.mode = (p) => (p.includes('nano-banana-pro') ? '503' : 'ok'); hf.bodies = []; hf.estimates = [];
+const jhd = addJob('hero', { from: fromKey, dry: true });
+r = await runQ();
+ok(job(jhd).status === 'done' && job(jhd).result.dry && hf.bodies.length === 0 && job(jhd).result.estimates[0].error?.status === 503 && job(jhd).result.estimates[1].usd === 0.07, `hero dry: Pro reports 503, grok $0.07 (${JSON.stringify(job(jhd).result.estimates.map((e) => [e.model, e.usd ?? e.error?.status]))})`);
+photoMod._test.resetBreaker();
+const jh2 = addJob('hero', { from: fromKey });
+r = await runQ();
+const hh = hf.bodies.at(-1);
+ok(job(jh2).status === 'done' && job(jh2).result.model === 'higgsfield:grok_image_2' && hh.path === '/xai/grok-imagine-image-2.0' && hh.body.image_urls[0].endsWith(`/frames/${fromKey}.jpg`) && job(jh2).result.usd === 0.07 && job(jh2).result.request_id, `hero: nano_banana_pro 503 → grok, frame by its Storage URL (${JSON.stringify(job(jh2).result).slice(0, 200)} ${job(jh2).error || ''})`);
+ok(job(jh2).result.attempts?.[0]?.model === 'higgsfield:nano_banana_pro' && job(jh2).result.attempts[0].status === 503, `the failed first attempt stays in the done job's result (${JSON.stringify(job(jh2).result.attempts)})`);
+const nbpCalls = () => hf.calls.filter((c) => c.includes('nano-banana-pro')).length;
+const nbp = nbpCalls();
+const jh3 = addJob('hero', { from: fromKey, model: 'higgsfield:nano_banana_pro' });
+r = await runQ();
+ok(job(jh3).status === 'failed' && nbpCalls() === nbp && nbp > 0, 'a job naming a model that is off fails at once (no substitute, no call while its breaker is open)');
+photoMod._test.resetBreaker(); hf.mode = 'ok';
+delete process.env.HIGGSFIELD_KEY;
+
 section('diag: jobs');
+addJob('loop', {});   // one job waiting
 r = await call(photo, { method: 'GET', body: { diag: '1' }, ip: '10.5.5.5' });
 ok(r.body.jobs && r.body.jobs.queued === 1 && r.body.jobs.lastError && r.body.caps.perIp === 12 && r.body.caps.global === 60, `diag.jobs + caps (${JSON.stringify(r.body.jobs).slice(0, 160)})`);
 
@@ -555,15 +643,20 @@ db.configReads = 0;
 for (let i = 0; i < 4; i++) await call(photo, { body: { v: 1, op: 'lookup', state: SC } });
 ok(db.configReads === 1, `config is cached (1 read for 4 requests, got ${db.configReads})`);
 
-section('photo_config: overrides (models path, cost, caps, ab)');
+section('photo_config: overrides (models path, order, cost, caps, ab)');
 process.env.HIGGSFIELD_KEY = 'kid:ksec'; photoMod._test.resetBreaker();
-setConfig([['visitors', true], ['models', { nano_banana_2_1: { path: 'google/nb-21/image-edit', images: 'input_images' } }], ['cost', { 'higgsfield:nano_banana_2_1': { '2K': 0.06 } }], ['caps', { perIp: 3, global: 9 }]]);
-hf.bodies = []; hf.mode = 'ok'; logs.length = 0;
+setConfig([['visitors', true], ['models', { grok_image_2: { path: 'xai/grok-next/edit', images: 'input_images' } }], ['cost', { 'google/gemini-3.1-flash-image': { '2K': 0.09 } }], ['caps', { perIp: 3, global: 9, maxUsdVisitor: 0.05 }]]);
+hf.bodies = []; hf.mode = 'ok'; logs.length = 0; hf.price['/xai/grok-next/edit'] = 0.03;
 r = await call(photo, { body: { v: 1, op: 'develop', session: 'someVisitor01', state: STATE({ pose: 'c:4,4,6;d:0,0,1;f:58;s:0,0;a:1.85;m:0' }), items, frame: FRAME } });
-ok(r.body.url && hf.bodies[0]?.path === '/google/nb-21/image-edit' && Array.isArray(hf.bodies[0].body.input_images) && !hf.bodies[0].body.image_urls, `config path + field override used (${hf.bodies[0]?.path})`);
-ok(db.rows.get(r.body.key)?.cost_usd === 0.06 && JSON.parse(logs.find((l) => l.includes('"ev":"photo.gen"'))).est === false, 'config cost override in the row and the log (est:false)');
+ok(r.body.url && hf.bodies[0]?.path === '/xai/grok-next/edit' && Array.isArray(hf.bodies[0].body.input_images) && !hf.bodies[0].body.image_urls, `config path + field override used (${hf.bodies[0]?.path})`);
+ok(db.rows.get(r.body.key)?.cost_usd === 0.03, 'the estimate of the overridden path is the cost');
 r = await call(photo, { method: 'GET', body: { diag: '1' }, ip: '10.4.4.2' });
 ok(r.body.caps.perIp === 3 && r.body.caps.global === 9 && r.body.visitors === true && ['caps', 'cost', 'models'].every((k) => r.body.overrides.includes(k)), `diag: caps + override names (${r.body.overrides})`);
+setConfig([['visitors', true], ['order', { default: ['google/gemini-3.1-flash-image', 'higgsfield:qwen_image_3'] }], ['cost', { 'google/gemini-3.1-flash-image': { '2K': 0.09 } }]]);
+gw.calls = []; hf.bodies = []; logs.length = 0;
+r = await call(photo, { body: { v: 1, op: 'develop', session: 'someVisitor01', state: STATE({ pose: 'c:4,4,8;d:0,0,1;f:58;s:0,0;a:1.85;m:0' }), items, frame: FRAME } });
+ok(r.body.model === 'google/gemini-3.1-flash-image' && hf.bodies.length === 0, 'config order: the gateway model first');
+ok(db.rows.get(r.body.key)?.cost_usd === 0.09 && JSON.parse(logs.find((l) => l.includes('"ev":"photo.gen"'))).est === false, 'config cost override for a model without an estimate call (est:false)');
 setConfig([['visitors', true], ['ab', 'google/gemini-3.1-flash-image:1']]);
 gw.calls = []; hf.bodies = [];
 r = await call(photo, { body: { v: 1, op: 'develop', session: 'someVisitor01', state: STATE({ pose: 'c:4,4,7;d:0,0,1;f:58;s:0,0;a:1.85;m:0' }), items, frame: FRAME } });
