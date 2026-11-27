@@ -28,7 +28,11 @@ const smooth = (t) => t * t * (3 - 2 * t);
  * Sphere patch round the origin facing +Z: azimuth (0.5 − u) · hfov for u = −0.4 … 1.4 (image left = +X = left when
  * looking out), elevation v · vfov from the nadir to the zenith. uv = (u, v): v = 0 is the horizon.
  */
-function skyPatch(hfov, vfov) {
+// Art direction, not physics: from inside the room the glass shows only the lowest ~10° of sky, which in a real
+// plate is haze. So the picture starts SKY_DROP degrees below the horizon and its rows are eased (SKY_EASE < 1)
+// to bring the clouds down into the window; close to the glass, looking up, it still ends at the plate's top.
+const SKY_DROP = 12, SKY_EASE = 0.6;
+function skyPatch(hfov, vfov, fit = false) {
   const nu = 72, nv = 48, u0 = -0.4, u1 = 1.4, v0 = -90 / vfov, v1 = 90 / vfov;
   const pos = [], uv = [], idx = [];
   for (let j = 0; j <= nv; j++) {
@@ -38,7 +42,9 @@ function skyPatch(hfov, vfov) {
     for (let i = 0; i <= nu; i++) {
       const u = u0 + (u1 - u0) * (i / nu), az = (0.5 - u) * hfov * Math.PI / 180;
       pos.push(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az));
-      uv.push(u, clamp(v, v0, v1));
+      let w = clamp(v, v0, v1);
+      if (fit) { const t = (w * vfov + SKY_DROP) / (vfov + SKY_DROP); w = t > 0 && t < 1 ? Math.pow(t, SKY_EASE) : t; }
+      uv.push(u, w);
     }
   }
   for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
@@ -177,7 +183,7 @@ export function createPlate({ center, eyeY = 1.45, quality = 'high', enabled = t
     if (key === geomKey) return;
     geomKey = key;
     if (meshes.sky) { meshes.sky.geometry.dispose(); group.remove(meshes.sky); }
-    mk('sky', skyPatch(hfov, vfov), -30).visible = false;
+    mk('sky', skyPatch(hfov, vfov, true), -30).visible = false;
   }
 
   const plates = new Map(); // time → { state, meta, tex, colours, gain, timer, tries }
