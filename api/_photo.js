@@ -759,8 +759,8 @@ export const TIME_WORDS = {
   evening: 'blue-hour evening: lamps and downlights on, warm 2700 K pools of light, the city lit outside',
 };
 export const WINDOW_WORDS = {
-  morning: 'a real photograph of Dubai Marina towers in clear morning light, pale blue sky, natural haze',
-  day: 'a real photograph of Dubai Marina towers under a clear blue midday sky with natural haze toward the horizon',
-  golden: 'a real photograph of Dubai Marina towers at sunset, the sky glowing amber to soft blue, warm light on the glass',
-  evening: 'a real photograph of Dubai Marina at blue hour, a deep blue sky, thousands of lit windows and city lights',
+  morning: 'a real photograph of a modern city seen from a high floor in clear morning light, pale blue sky, natural haze',
+  day: 'a real photograph of a modern city seen from a high floor under a clear blue midday sky with natural haze toward the horizon',
+  golden: 'a real photograph of a modern city seen from a high floor at sunset, the sky glowing amber to soft blue, warm light on the buildings',
+  evening: 'a real photograph of a modern city seen from a high floor at blue hour, a deep blue sky, lit windows and street lights',
 };

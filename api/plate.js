@@ -1,6 +1,6 @@
 // GET /api/plate?time=day|sunset|evening[&w=2048] — the photographic window backplate (read-only). Owner: photo.
 //
-// One real-looking, wide (21:9) view from a high floor in Dubai Marina per time of day, cached in Supabase Storage
+// One real-looking, wide (21:9) neutral view from a high floor over an anonymous modern city per time of day, cached in Supabase Storage
 // (bucket `photos`, plates/v1/…). This endpoint NEVER generates (docs/ART.md: nothing is generated without a place in
 // the product, and no visitor triggers a 4K job): plates come from the admin queue (public.photo_jobs, kinds
 // `plate` · `plate-edit` · `mask`, run by /api/photo?run=1 → runPlateJob below). The day plate is Nano Banana Pro
@@ -26,7 +26,7 @@ import {
 } from './_photo.js';
 import { sniff, imageSize, decodePNG, downscale, encodeJPEG, encodeGrayPNG } from './_img.js';
 
-export const PLATE_VERSION = 'v1';
+export const PLATE_VERSION = 'v2'; // v2: a neutral, anonymous city view (no named district, no landmark)
 const DEADLINE_MS = 55_000;
 const LOCK_TTL_S = 120;
 const PENDING_STALE_MS = 20 * 60_000;
@@ -50,12 +50,12 @@ export function kelvinHex(K) {
 
 const COMMON = 'Wide 21:9 panorama, about 100 degrees horizontal field of view, a level camera at standing eye height: vertical lines stay vertical and the horizon lies exactly across the middle of the image. No window frame, mullions, glass reflections, interior, balcony railing or people in the foreground. Natural colours as a professional architectural photographer would capture them, crisp detail into the distance, real atmospheric haze growing with distance. No text, no watermark.';
 export const PLATE_PROMPTS = {
-  day: `A real photograph, not a render: the view straight out of a floor-to-ceiling window on the 40th floor of a residential tower in Dubai Marina, Dubai. In front: the marina water with moored yachts and the palm-lined promenade far below; around it, glass and stone residential towers of many different heights, shapes and colours — tapered, stepped and twisted crowns, balconies, rooftop plant — the nearest about 150 metres away; behind them the dense city fading into warm sandy haze, and a strip of the sea on the right toward the horizon. Clear midday sky, deep blue at the top paling to a soft haze at the horizon; the sun high to the upper right, outside the frame, lighting the right-facing facades. ${COMMON}`,
-  sunset: `Edit this photograph. Keep every building exactly: its position, size, shape and silhouette; keep the water, the promenade, the horizon, the camera and the framing unchanged. Change only the time of day to golden-hour sunset: the sun low on the right near the horizon, just outside the right edge; warm amber light raking across the right-facing facades with long soft shadows; the sky glowing amber and peach near the horizon on the right, fading to soft blue at the top; the glass towers reflecting the sunset; slightly warmer haze. ${COMMON}`,
-  evening: `Edit this photograph. Keep every building exactly: its position, size, shape and silhouette; keep the water, the promenade, the horizon, the camera and the framing unchanged. Change only the time of day to blue hour, about 30 minutes after sunset: a deep blue sky with a faint warm afterglow low on the right; many apartment windows lit, a natural mix of warm and cool interiors, some dark; street lights and the lit promenade, yachts with deck lights reflected in the marina water; no stars and no moon. ${COMMON}`,
+  day: `A real photograph, not a render: the open view from a high floor, about the 25th, of a residential building in a modern Gulf city on a clear day. A neutral, anonymous view: no recognisable landmark, no famous or distinctive tower, no sea, no marina, no river, no desert dunes. Far below and stretching to the horizon lie quiet residential districts: low sand-coloured villas and mid-rise apartment blocks among green trees, small parks and palm-lined avenues. In the far distance a loose scatter of ordinary modern glass towers of different heights, small, softened by warm haze, none of them remarkable. The sky is the subject: deep clear blue at the top paling to a soft warm haze at the horizon, with a few thin high cirrus clouds; the sun high to the upper right, outside the frame, lighting the right-facing walls. ${COMMON}`,
+  sunset: `Edit this photograph. Keep every building, tree and street exactly: its position, size, shape and silhouette; keep the horizon, the camera and the framing unchanged. Change only the time of day to golden-hour sunset: the sun low on the right near the horizon, just outside the right edge; warm amber light raking across the right-facing walls with long soft shadows; the sky glowing amber and peach near the horizon on the right, fading to soft blue at the top, the thin clouds lit pink-gold from below; slightly warmer haze. ${COMMON}`,
+  evening: `Edit this photograph. Keep every building, tree and street exactly: its position, size, shape and silhouette; keep the horizon, the camera and the framing unchanged. Change only the time of day to blue hour, about 30 minutes after sunset: a deep blue sky with a faint warm afterglow low on the right; windows lit across the districts, a natural mix of warm and cool interiors, many dark; street lights along the avenues, a few car lights; the distant towers with scattered lit floors; no stars and no moon. ${COMMON}`,
   // ≤ 800 characters: for draft models with a short prompt limit (z-image)
-  dayShort: 'A real photograph, not a render: the view straight out of a floor-to-ceiling window on the 40th floor of a tower in Dubai Marina. The marina water with yachts and the palm-lined promenade far below; glass and stone residential towers of many heights and shapes around it; the dense city fading into warm sandy haze, a strip of sea on the right. Clear midday sky, deep blue paling to haze at the horizon; the sun high to the upper right, outside the frame. Wide panorama, level camera, vertical lines vertical, the horizon exactly across the middle. No window frame, no glass reflections, no interior, no railing, no people, no text. Natural colours, crisp detail, real atmospheric haze.',
-  mask: 'Edit this photograph. Replace the entire sky with a flat, pure green colour (#00FF00) everywhere the sky is visible, including between buildings. Keep every building, the water and everything else exactly as it is, with sharp edges. No other changes.',
+  dayShort: 'A real photograph, not a render: the open view from about the 25th floor of a residential building in a modern Gulf city on a clear day. Anonymous view: no landmark, no famous tower, no sea, no marina. Far below, quiet districts of low sand-coloured villas and mid-rise blocks among green trees and palm-lined avenues; in the far distance a few ordinary glass towers softened by warm haze. The sky is the subject: deep blue paling to warm haze at the horizon, thin high cirrus; the sun high to the upper right, outside the frame. Wide panorama, level camera, vertical lines vertical, the horizon exactly across the middle. No window frame, no glass reflections, no interior, no railing, no people, no text. Natural colours, crisp detail, real atmospheric haze.',
+  mask: 'Edit this photograph. Replace the entire sky with a flat, pure green colour (#00FF00) everywhere the sky is visible, including between buildings. Keep every building, tree and everything else exactly as it is, with sharp edges. No other changes.',
 };
 
 const plateKey = (time, kind = '') => `plate:${PLATE_VERSION}:${time}${kind ? `:${kind}` : ''}`;
@@ -283,9 +283,9 @@ export const LOOP_MODELS = {
   wan_3: { path: 'alibaba/wan-3.0/image-to-video', body: (url, prompt, o) => ({ prompt, image_url: url, end_image_url: url, duration: Math.max(2, Math.min(30, o.duration)), resolution: ['480p', '720p', '1080p'].includes(o.resolution) ? o.resolution : '720p', aspect_ratio: 'adaptive', generate_audio: false, enable_thinking: false }) },
 };
 const LOOP_PROMPT = {
-  day: 'The same view, alive and almost still: thin high clouds drift slowly, the marina water shimmers, a few distant boats and cars move.',
-  sunset: 'The same view at sunset, alive and almost still: the warm light breathes slightly, thin clouds drift slowly, the water shimmers, a few distant boats move.',
-  evening: 'The same view at blue hour, alive and almost still: a few windows switch on or off, tiny car lights move along the roads, reflections shimmer on the water.',
+  day: 'The same view, alive and almost still: thin high clouds drift slowly, leaves stir, a few distant cars move.',
+  sunset: 'The same view at sunset, alive and almost still: the warm light breathes slightly, thin clouds drift slowly, leaves stir, a few distant cars move.',
+  evening: 'The same view at blue hour, alive and almost still: a few windows switch on or off, tiny car lights move along the avenues.',
 };
 const LOOP_RULES = 'Locked-off camera on a tripod: no camera movement, no zoom, no pan. Every building keeps its exact position, shape and silhouette. Subtle, slow motion only. Seamless loop: the last frame is identical to the first frame.';
 const MAX_VIDEO = 40 * 1024 * 1024;
