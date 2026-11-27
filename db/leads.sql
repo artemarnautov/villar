@@ -166,3 +166,9 @@ create trigger leads_notify_telegram after insert on public.leads
 -- real lead, so it is gone; submit_lead is otherwise as in migration 3 (per-phone cap, consistent items and
 -- totals), and service_role may call it too. Planned: revoke EXECUTE from anon/authenticated once the API uses
 -- a secret key (SUPABASE_KEY = sb_secret_… in Vercel env).
+
+-- ---------------------------------------------------------------------------------------------------------
+-- Migration 5 (applied 27.11, R4-02 fix): only the server submits leads. The API uses a secret key
+-- (SUPABASE_KEY = sb_secret_… in Vercel env → service_role); the public key can no longer call submit_lead.
+revoke execute on function public.submit_lead(jsonb) from anon, authenticated, public;
+grant execute on function public.submit_lead(jsonb) to service_role;
