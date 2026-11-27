@@ -167,6 +167,9 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
     setStyle(styleId, { anchor, fresh = false } = {}) {
       const pv = store.previewStyle(styleId, anchor, { fresh });
       if (!pv) { console.warn(`[store] unknown style ${styleId}`); return false; }
+      // A fresh (curated) landing also clears that style's pins — they belonged to picks that are gone (R4-11).
+      // snapshot()/restore() carry pins, so Undo still brings them back.
+      if (fresh && pinsOf[styleId]?.size) pinsOf[styleId].clear();
       return applyStyle(styleId, pv.selection, { anchor: anchor || null });
     },
 
