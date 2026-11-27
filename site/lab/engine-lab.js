@@ -2,11 +2,22 @@
 import { loadData } from '/js/core/data.js';
 import { createStore } from '/js/core/store.js';
 import { createVillar } from '/js/engine/index.js';
+import { MEDIA_BASE } from '/js/ui/config.js';
 
 const q = new URLSearchParams(location.search);
 if (q.has('clean')) document.body.classList.add('clean');
 const data = await loadData();
 const store = createStore(data);
+// twins (eng-8): the Storage base, and a lab manifest from the URL to exercise the production path
+//   ?twinManifest=<itemId>&glb=<storage key>&fit=stretch&yaw=0#look=<base64url JSON>
+const twinManifest = (() => {
+  const id = q.get('twinManifest');
+  if (!id || !q.get('glb')) return null;
+  let look = null;
+  const m = location.hash.match(/look=([^&]+)/);
+  if (m) { try { look = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/'))))); } catch { look = null; } }
+  return { [id]: { glb: q.get('glb'), v: 1, fit: q.get('fit') || 'stretch', yaw: Number(q.get('yaw')) || 0, ...(look ? { look } : {}) } };
+})();
 window.__villarStore = store; // lab/QA only
 const villar = await createVillar({
   container: document.getElementById('stage'), store, ...data,
@@ -20,6 +31,8 @@ const villar = await createVillar({
   ...(q.get('prewarm') ? { prewarm: q.get('prewarm') } : {}),
   gi: q.get('gi') !== '0',
   autoExposure: q.get('ae') !== '0',
+  twinsBase: MEDIA_BASE,
+  ...(twinManifest ? { twinsManifest: twinManifest } : {}),
 });
 
 const bar = document.getElementById('bar');

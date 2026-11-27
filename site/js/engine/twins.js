@@ -28,7 +28,9 @@
 //       "check": "xyz",             which extents must match the catalogue (pendants: "xz")
 //       "tol": 0.03,                tolerance of that check (≤ 0.06)
 //       "fit": "exact",             "exact": after the check the remaining ≤ tol difference is scaled away per axis,
-//                                   so the footprint equals the catalogue's; "uniform": keep the uniform scale
+//                                   so the footprint equals the catalogue's; "uniform": keep the uniform scale;
+//                                   "stretch" (engine, eng-8): like "exact" with a tolerance up to ±20 % — multiview
+//                                   reconstructions get the depth wrong by ~10 % (Tripo armchair pilot: D −12 %)
 //       "radial": false,            no meaningful front (plants, round lamps): the turntable may skip the dial
 //       "off": true                 listed but not used (failed QA)
 //   } }
@@ -175,7 +177,7 @@ export function createTwins({
     return {
       arch, target: { x: W, y: H, z: D }, check,
       origin: ['bottom', 'top', 'back'].includes(e.origin) ? e.origin : base.origin || 'bottom',
-      tol: Math.min(0.06, Math.max(0.001, Number(e.tol) || 0.03)),
+      tol: Math.min(e.fit === 'stretch' ? 0.2 : 0.06, Math.max(0.001, Number(e.tol) || (e.fit === 'stretch' ? 0.15 : 0.03))),
       exact: e.fit !== 'uniform',
       yaw: Number(e.yaw) || 0, up: e.up === 'z' ? 'z' : 'y',
       roughMin: Number.isFinite(Number(e.roughMin)) && e.roughMin !== null && e.roughMin !== undefined ? Math.min(1, Math.max(0, Number(e.roughMin))) : UPHOLSTERED.has(arch) ? 0.35 : 0.04,

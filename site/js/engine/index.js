@@ -26,6 +26,7 @@ import { patchReflectionChunks } from './reflections.js';
 import { createFader } from './fade.js';
 import { createThumbnailer } from './thumbs.js';
 import { buildProxy, createFallbackMaterials } from './proxies.js';
+import { installLook, applyLook, previewMask, albedoAt, normaliseLook } from './twin-look.js';
 
 const VIEWS = ['eye', 'living', 'bed', 'dining', 'window', 'top'];
 const TONE = { neutral: THREE.NeutralToneMapping, agx: THREE.AgXToneMapping, 'agx-punchy': THREE.CustomToneMapping, aces: THREE.ACESFilmicToneMapping };
@@ -108,6 +109,8 @@ export async function createVillar({
   media = null,
   // digital twins (docs/TWINS.md): `twinsBase` = public media base URL; the manifest decides which items have one
   twinsBase = null,
+  // lab / tests: a twins manifest object instead of site/data/twins.json (the shipped manifest stays reviewed)
+  twinsManifest = null,
   // window plates (PHOTOREAL.md): 'auto' = on except on a bare local static server (no /api there: no 404s);
   // true / false; `plateSource(time)` → plate JSON for stubs and tests. URL ?plate=on|off overrides.
   plates: platesOpt = 'auto', plateSource = null, plateGain = 1,
@@ -275,11 +278,17 @@ export async function createVillar({
   if (disposed) return null;
   // (awaits stay up here: below, callbacks registered on materials / the city may fire between awaits)
   let twins = null;
-  if (twinsBase) {
-    try { const m = await import('./twins.js'); twins = m.createTwins({ THREE, renderer, baseUrl: twinsBase, quality: Q }); }
+  // twin lab (eng-8): /?twinlab=<slotId> or /lab/engine.html?twinlab=<slotId> — twin vs procedural in the room
+  const twinLabSlot = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('twinlab') : null;
+  if (twinsBase || twinsManifest || twinLabSlot) {
+    // 45 s: a 7–8 MB GLB on a phone connection (the 15 s default timed out); loads start after the first good frame
+    try { const m = await import('./twins.js'); twins = m.createTwins({ THREE, renderer, baseUrl: twinsBase || '', quality: Q, timeout: 45000, ...(twinsManifest ? { manifest: twinsManifest } : {}) }); }
     catch (e) { console.debug('[villar] twins unavailable', e?.message || e); twins = null; }
     if (disposed) return null;
   }
+  const labLooks = new Map(); // itemId → look (twin lab only)
+  let openTwinGate = null;
+  const twinGateP = new Promise((r) => { openTwinGate = r; });
   const artApproved = new Set();
   if (media?.approved) {
     const take = (v) => { for (const k of (v instanceof Set ? [...v] : Array.isArray(v) ? v : [])) artApproved.add(k); };
@@ -333,7 +342,19 @@ export async function createVillar({
   function lampsOn(on, k = 1) { materials.setLampsOn?.(on, k); twins?.setLampsOn?.(on, k); }
   /** Approved edition image → its URL (else null: the builder draws the motif on the same canvas + frame). */
   const artImage = (item) => (item?.image && artApproved.has(item.image) && typeof media?.url === 'function' ? media.url(item.image) : null);
-  const furnisher = createFurnisher({ layout, store, materials, buildItem, releaseItem: mods.releaseItem, quality: Q, maxLampShadows: post.settings.lampShadows, artImage, twins, onTwin: (rec, adopt) => { onTwin(rec, adopt).catch((e) => console.debug('[villar] twin', e?.message || e)); } });
+  const furnisher = createFurnisher({ layout, store, materials, buildItem, releaseItem: mods.releaseItem, quality: Q, maxLampShadows: post.settings.lampShadows, artImage, twins, onTwin: (rec, adopt) => { onTwin(rec, adopt).catch((e) => console.debug('[villar] twin', e?.message || e)); },
+    // the manifest's per-twin look (albedo rules, roughness, seam fix); the lab's live look wins while it is open
+    twinGate: () => twinGateP,
+    twinPrepare: (twin, item) => prepareTwin(twin, item) });
+  /** The manifest's per-twin look (albedo rules, roughness, seam fix); the lab's live look wins while it is open. */
+  async function prepareTwin(twin, item) {
+    const look = labLooks.get(item.id) ?? twins?.entry(item.id)?.look;
+    if (!look) return null;
+    const r = await applyLook(twin, look, { keepOriginal: !!twinLabSlot });
+    // a corrected albedo is a new texture: upload it now, not in the dissolve's first frame
+    twin.traverse((o) => { if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m?.map) { try { renderer.initTexture(m.map); } catch { /* first draw */ } } });
+    return r;
+  }
   scene.add(furnisher.root);
   furnisher.placeAll();
   furnisher.assignLampShadows();
@@ -393,9 +414,11 @@ export async function createVillar({
     root.traverse((o) => {
       if (!o.isMesh || o.userData.noAO) return;
       const list = Array.isArray(o.material) ? o.material : [o.material];
-      for (const m of list) attachSSAO(m);
+      for (const m of list) decorateMaterial(m);
     });
   }
+  /** Per material: a twin's look pass (if it carries one), then indirect-only SSAO. The fader's clones too. */
+  function decorateMaterial(m) { installLook(m); attachSSAO(m); }
   function refreshNoAO() {
     const list = [];
     scene.traverse((o) => { if (o.userData.noAO && o.isMesh) list.push(o); });
@@ -403,7 +426,7 @@ export async function createVillar({
   }
   decorate(arch.group); decorate(furnisher.root);
   refreshNoAO();
-  const fader = createFader({ renderer, scene, camera, target: () => post.rt, decorate: attachSSAO, onShadow: () => { renderer.shadowMap.needsUpdate = true; invalidate(2); } });
+  const fader = createFader({ renderer, scene, camera, target: () => post.rt, decorate: decorateMaterial, onShadow: () => { renderer.shadowMap.needsUpdate = true; invalidate(2); } });
   const thumbs = createThumbnailer({ renderer, materials, buildItem, releaseItem: mods.releaseItem, quality: Q, software: /swiftshader|llvmpipe|software/i.test(String(gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info')?.UNMASKED_RENDERER_WEBGL ?? 0x1F01))), shouldWait: () => controls.moving || fader.active || controls.isDragging() || budget.dragging, prepare: (g) => ensureScans([g]) });
 
   // ---------------------------------------------------------------- state & helpers
@@ -2023,7 +2046,7 @@ export async function createVillar({
     try {
       decorate(rec.twin); hideForCutaway(rec); refreshNoAO(); interaction.refresh(); sceneVersion++; holdTextures(); invalidate(3);
       await fader.swap({ inn: [rec.twin], out: [shell], ms: 350, settle: false }); // TWINS §2.5
-    } finally { budget.inflight.delete(id); shell.removeFromParent(); shell.visible = true; if (budget.pending.size && !budget.timer) budget.timer = setTimeout(pumpBudget, 0); }
+    } finally { budget.inflight.delete(id); shell.removeFromParent(); shell.visible = true; rec.shell = twinLabSlot ? shell : null; if (budget.pending.size && !budget.timer) budget.timer = setTimeout(pumpBudget, 0); }
     if (disposed) return;
     sceneVersion++;
     if (highlighted === id) post.setSelection(furnisher.meshesOf(id));
@@ -2032,6 +2055,109 @@ export async function createVillar({
     scheduleLocal([furnisher.boxOf(id)]); // probes near the item re-bake (new albedo), blended in
     queueWarm([rec.group]); invalidate(3);
   }
+  // ---------------------------------------------------------------- twin lab (eng-8; debug only, nothing by default)
+  // Load a candidate twin into a slot from a Storage key / URL / local file with lab-chosen yaw, fit and look; flip
+  // twin ↔ procedural in place (same camera, same turntable angle); a procedural copy beside it; live look edits.
+  const twinLab = {
+    get twins() { return twins; },
+    /** (Re)load a twin into `slotId`. src: Storage key, URL, File / Blob / ArrayBuffer. Resolves the QA report or { error }. */
+    async load(slotId, { src = null, entry = {}, look = undefined } = {}) {
+      if (!twins) return { error: 'twins off' };
+      const rec = furnisher.placed.get(slotId);
+      if (!rec) return { error: `no slot ${slotId}` };
+      await twins.ready;
+      twinLab.unload(slotId);
+      if (look !== undefined) { if (look) labLooks.set(rec.item.id, look); else labLooks.delete(rec.item.id); }
+      const key = typeof src === 'string' && !/^(https?:|blob:|data:|\/)/.test(src) ? src : null;
+      const source = key ? (twinsBase || '') + key : src;
+      const t0 = performance.now();
+      const twin = await twins.load(rec.item, { src: source, entry: { glb: key || 'lab/local.glb', ...entry }, force: !!entry.force });
+      if (!twin) return { error: twins.lastError(rec.item.id) || { reason: 'unknown' } };
+      await prepareTwin(twin, rec.item);
+      const adopt = furnisher.twinAdopter(slotId, twin);
+      await onTwin(rec, adopt);
+      return { ms: Math.round(performance.now() - t0), report: twin.userData.twin, look: twin.userData.twinLookReport || null };
+    },
+    /** Back to the procedural model (the slot's own). */
+    unload(slotId) {
+      const rec = furnisher.placed.get(slotId);
+      if (!rec?.twin) return false;
+      const t = rec.twin;
+      if (rec.shell) twins.restore(rec.group, t, rec.shell); else t.removeFromParent();
+      twins.release(t); rec.twin = null; rec.shell = null;
+      rec.group.traverse((o) => { if (o.isMesh) o.visible = true; });
+      refreshNoAO(); interaction.refresh(); sceneVersion++; renderer.shadowMap.needsUpdate = true; invalidate(3);
+      return true;
+    },
+    /** A/B in place: 'twin' | 'procedural' (same group, same turn angle, same camera). */
+    flip(slotId, show = null) {
+      const rec = furnisher.placed.get(slotId);
+      if (!rec?.twin || !rec.shell) return null;
+      const want = show || (rec.twin.visible ? 'procedural' : 'twin');
+      rec.twin.visible = want === 'twin';
+      if (want === 'procedural') { rec.group.add(rec.shell); rec.shell.visible = true; } else rec.shell.removeFromParent();
+      interaction.refresh(); sceneVersion++; renderer.shadowMap.needsUpdate = true;
+      scheduleLocal([furnisher.boxOf(slotId)], 200);
+      invalidate(3);
+      return want;
+    },
+    showing(slotId) { const rec = furnisher.placed.get(slotId); return !rec?.twin ? 'procedural' : rec.twin.visible ? 'twin' : 'procedural'; },
+    /** Live look edit (manifest `look` block). Resolves the look report (seam statistics). */
+    look(slotId, look) {
+      const rec = furnisher.placed.get(slotId);
+      if (!rec?.twin) return null;
+      if (look) labLooks.set(rec.item.id, look); else labLooks.delete(rec.item.id);
+      return applyLook(rec.twin, look || null, { keepOriginal: true }).then((r) => { decorate(rec.twin); sceneVersion++; invalidate(3); return r; });
+    },
+    normalise: normaliseLook,
+    preview(slotId, i = -1) { const rec = furnisher.placed.get(slotId); if (rec?.twin) { previewMask(rec.twin, i); invalidate(2); } },
+    /** The twin's raw albedo under a canvas point (client px) — the colour-key picker. */
+    pick(slotId, x, y) {
+      const rec = furnisher.placed.get(slotId);
+      if (!rec?.twin) return null;
+      const r = canvas.getBoundingClientRect();
+      const rc = new THREE.Raycaster();
+      rc.setFromCamera(new THREE.Vector2(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1), camera);
+      const hit = rc.intersectObject(rec.twin, true).find((h) => h.object.isMesh && h.uv);
+      if (!hit) return null;
+      const h0 = rec.twin.userData.bounds, local = rec.twin.worldToLocal(hit.point.clone());
+      return { hex: albedoAt(hit.object, hit.uv), h: h0 ? +((local.y - h0.min[1]) / (h0.max[1] - h0.min[1])).toFixed(3) : null, uv: [+hit.uv.x.toFixed(4), +hit.uv.y.toFixed(4)] };
+    },
+    /** The procedural model of the slot's item beside it (a visual copy, not a slot), or off. */
+    beside(slotId, on = true) {
+      const old = twinLab._beside;
+      if (old) { old.removeFromParent(); try { mods.releaseItem ? mods.releaseItem(old) : null; } catch { /* ignore */ } twinLab._beside = null; }
+      if (!on) { renderer.shadowMap.needsUpdate = true; sceneVersion++; invalidate(3); return null; }
+      const rec = furnisher.placed.get(slotId);
+      if (!rec) return null;
+      let g;
+      try { g = buildItem(rec.item, { materials, quality: Q }); } catch { g = null; }
+      if (!g) return null;
+      g.name = 'twin-lab-beside';
+      g.traverse((o) => { if (o.isMesh) { o.castShadow = !o.userData.noCastShadow; o.receiveShadow = true; } });
+      const W = (rec.item.dims?.w || 80) / 100, D = (rec.item.dims?.d || 80) / 100, q = rec.group.quaternion;
+      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(q), front = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+      const base = rec.group.position;
+      const cand = [right.clone().multiplyScalar(W + 0.3), right.clone().multiplyScalar(-(W + 0.3)), front.clone().multiplyScalar(D + 0.35),
+        front.clone().multiplyScalar(D + 0.35).add(right.clone().multiplyScalar(0.6)), front.clone().multiplyScalar(D + 0.35).add(right.clone().multiplyScalar(-0.6))];
+      const cols = furnisher.colliders().filter((c) => c.kind !== slotId);
+      const r0 = Math.hypot(W, D) / 2;
+      const score = (p) => {
+        let s = 0;
+        const m = Math.min(p.x - r0, S.x - r0 - p.x, p.z - r0, S.z - r0 - p.z); if (m < 0) s += 10 - m * 10;
+        for (const c of cols) { const d = Math.hypot(p.x - c.cx, p.z - c.cz) - (r0 + Math.hypot(c.hw, c.hd)) * 0.75; if (d < 0) s += -d * 4; }
+        return s;
+      };
+      const best = cand.map((o) => base.clone().add(o)).sort((a, b) => score(a) - score(b))[0];
+      g.position.set(best.x, 0, best.z); g.quaternion.copy(q);
+      furnisher.root.add(g); decorate(g);
+      twinLab._beside = g;
+      renderer.shadowMap.needsUpdate = true; sceneVersion++; invalidate(3);
+      return best.toArray().map((v) => +v.toFixed(2));
+    },
+    report(slotId) { const rec = furnisher.placed.get(slotId); return rec?.twin ? { twin: rec.twin.userData.twin, look: rec.twin.userData.twinLookReport || null, showing: twinLab.showing(slotId) } : null; },
+    _beside: null,
+  };
   const unsubStore = store?.on ? store.on('change', onStoreChange) : () => {};
   const unsubPlan = store?.on ? store.on('plan', onPlan) : () => {};
   const unsubPins = store?.on ? store.on('pins', () => { if (ready) idle(primeBudget); }) : () => {};
@@ -2615,6 +2741,7 @@ export async function createVillar({
     idle(() => prewarm().then(() => idle(() => { primeBudget(); prebuildPacks(); })));
     loadProgress(1, 'ready');
     stamp('ready');
+    idle(() => openTwinGate?.()); // twins (visible items first: the procedural models are on screen meanwhile)
     loadTimes.giBakeMs = Math.round(perf.bakeMs || 0); loadTimes.gi = giState.converged ? 'baked' : 'ambient'; loadTimes.quality = Q;
     // breakdown: fetch+parse of the engine modules → scene built + first compile → textures (scans) → GI → ready
     loadTimes.breakdown = { modules: (loadTimes.modules ?? 0) - loadTimes.start, build: (loadTimes.scene ?? 0) - (loadTimes.modules ?? 0), textures: (loadTimes.textures ?? loadTimes.ready) - (loadTimes.scene ?? 0), giAndRest: loadTimes.ready - (loadTimes.textures ?? loadTimes.ready) };
@@ -2624,6 +2751,7 @@ export async function createVillar({
     if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (plate.drift(0.25)) invalidate(1);
     }, 250);
+    if (twinLabSlot) import('./twin-lab.js').then((m) => m.createTwinLab({ villar: api, slotId: twinLabSlot, container })).catch((e) => console.warn('[villar] twin lab', e));
     // opening shot: the slow push-in toward the window light; `rest` follows its end, so the photo develops then
     if (openingPlanned && controls.view === 'eye' && controls.mode === 'walk') {
       openingPlanned = false;
@@ -2766,7 +2894,7 @@ export async function createVillar({
     dispose,
     // debug / lab helpers (not part of the product contract)
     debug: {
-      renderer, scene, camera, lighting, post, arch, furnisher, plate, skyline, turnBlob, loadTimes, busyReasons, get loop() { return { raf, inFrame, framesToRender, keepAlive, contextLost, restoring, last: Math.round(last) }; }, get lapse() { return lapse ? { k: +lapse.k.toFixed(2), switched: lapse.switched, to: lapse.to } : null; }, get time() { return currentTime; }, controls, materials, probes, fader, thumbs,
+      renderer, scene, camera, lighting, post, arch, furnisher, plate, skyline, turnBlob, loadTimes, busyReasons, twin: twinLab, get loop() { return { raf, inFrame, framesToRender, keepAlive, contextLost, restoring, last: Math.round(last) }; }, get lapse() { return lapse ? { k: +lapse.k.toFixed(2), switched: lapse.switched, to: lapse.to } : null; }, get time() { return currentTime; }, controls, materials, probes, fader, thumbs,
       relight: () => bakeFresh(), rebakeAll, refreshEnvironment, applyPackArchitecture,
       get fps() { return perf.fps; }, get bakeMs() { return perf.bakeMs; }, get dpr() { return dpr; }, get quality() { return Q; },
       get worstFrame() { return perf.worst; }, resetWorst() { perf.worst = 0; },

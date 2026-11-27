@@ -529,3 +529,39 @@ adds planar uvs and a global non-finite guard now, but anisotropic parts should 
 without userData, other cloners would still warn.
 
 For twins: `connect-src 'self'` in the CSP will block `fetch()` of GLBs from Storage once the manifest is not empty.
+
+## Engine status: eng-8 (28 Nov) — twins: production path, look pass, lab
+
+**Production path (nothing on until site/data/twins.json lists an item).** `furnish.js` asks `twins.load(item)` only
+after the engine's first good frame (it raced the GI bake and timed out), applies the entry's `look` (below), then
+dissolves procedural → twin in the slot group (350 ms). The twin gets the room's probes / SSAO / shadows, the ID
+pass, the turntable (its `userData.pivot / front / bounds`) and a local GI re-bake. Load timeout 45 s (engine
+option; 7–8 MB on a phone). Any failure (404, HTTP, corrupt, compressed, too heavy, dims outside the tolerance,
+timeout) leaves the procedural model, logged with `console.debug` only.
+
+**For the twins owner — one change in `twins.js` (2 lines, rulesFor):** `fit: "stretch"` = `"exact"` with a
+tolerance up to ±20 % (default ±15 %). Multiview reconstructions get the depth wrong: the Tripo armchair pilot is
+D −11.8 % against the catalogue, which `exact` (±6 % max) rejects.
+
+**Manifest `look` block (engine, `site/js/engine/twin-look.js`):**
+```json
+"look": {
+  "rules": [{ "key": "#a3612f", "tol": 0, "rough": [0.52, 1], "to": "#5e4230", "amount": 1 }],
+  "rough": { "mul": 1, "min": 0.35, "max": 1 },
+  "spec": 0.6,
+  "seam": { "mode": "mirror", "axis": "x", "at": 0.5, "res": 0.03, "rough": [0, 0.52] }
+}
+```
+- `rules` (≤ 3): masked recolour in the shader — hue moves by `to − key`, saturation and value scale by `to / key`
+  (texture detail kept). Masks multiply: colour key (`tol` > 0), height band (`band`, 0 = floor … 1 = top),
+  roughness-map range (`rough`) — use the latter when wood and leather are the same orange but differ in roughness.
+- `rough` / `spec`: roughness override; dielectric specular (the material becomes MeshPhysical).
+- `seam`: fixes a view-projection seam in the albedo TEXTURE (time-sliced, ≤ 8 ms slices): `mirror` matches each
+  surface point with its mirror image across the symmetry plane (a lighter half of the seat comes down, the darker
+  half up, only where they differ); `level` levels low-frequency blotches toward the mean (`radius` m). Optional
+  masks `band` / `rough` / `key`+`tol`; `max` caps the gain (±25 %).
+
+**Twin lab:** `/?twinlab=armchair&glb=<storage key>&fit=stretch` (also `/lab/engine.html?twinlab=…`; /lab is
+redirected in production): load from Storage or a local file, yaw / fit / up, twin ↔ procedural in place (same
+camera and turn angle), procedural copy beside it, live look editing with a colour picker and mask preview; it
+writes the manifest entry (copy button) and keeps the state in the URL. `villar.debug.twin` is the API behind it.

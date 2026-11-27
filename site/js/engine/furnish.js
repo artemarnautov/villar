@@ -17,7 +17,7 @@ export const LAMP_CANDELA = 2.2;
 const FLAME_PAD = { centerpiece: 3, nightstand_decor: 1, decor_set: 1 };
 const FLAT = new Set(['rug', 'runner']);
 
-export function createFurnisher({ layout, store, materials, buildItem, releaseItem = null, quality = 'high', maxLampShadows = 2, artImage = null, twins = null, onTwin = null }) {
+export function createFurnisher({ layout, store, materials, buildItem, releaseItem = null, quality = 'high', maxLampShadows = 2, artImage = null, twins = null, onTwin = null, twinPrepare = null, twinGate = null }) {
   const root = new THREE.Group();
   root.name = 'furniture';
   const slots = layout.slots;
@@ -285,19 +285,27 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
     group.traverse((o) => { if (o.isMesh && o.userData.noCastShadow) o.castShadow = false; });
     ensureBVH(group);
     const rec = { slot, item, group, lights, baseScaleY: group.scale.y, host: hostOf(slot.id), twin: null, gone: false };
-    if (twins?.has(item.id)) twins.load(item).then((twin) => {          // docs/TWINS.md §2.5: the procedural model shows at once
+    // twins load after the engine's first good frame (twinGate): during the load they raced the GI bake and the
+    // texture uploads for the main thread and timed out (eng-8); the procedural model shows meanwhile
+    if (twins?.has(item.id)) Promise.resolve(twinGate ? twinGate() : null).then(() => (rec.gone ? null : twins.load(item))).then(async (twin) => {          // docs/TWINS.md §2.5: the procedural model shows at once
       if (!twin) return;                                                 // 404 / bad dims / timeout: it simply stays
-      const adopt = () => {                                              // → the procedural holder, or null when the rec is gone
-        if (rec.gone || rec.twin) { twins.release(twin); return null; }
-        ensureBVH(twin); rec.twin = twin;
-        return twins.adopt(group, twin);                                 // same slot group; slotId / slotType on its meshes (ID pass, picking)
-      };
+      // the manifest's look pass (engine; the seam fix is time-sliced) before the twin is shown
+      try { await twinPrepare?.(twin, item); } catch (e) { console.debug('[villar] twin look', e?.message || e); }
+      const adopt = adopterFor(rec, twin);
       if (onTwin && placed.get(slot.id) === rec) onTwin(rec, adopt);     // on screen: the engine dissolves and re-lights
       else adopt()?.removeFromParent();                                  // cached / prebuilt: nothing to animate
     });
     return rec;
   }
 
+  /** adopt() for a loaded twin: the manifest's look pass (engine), then into the rec's slot group. */
+  function adopterFor(rec, twin) {
+    return () => {                                                         // → the procedural holder, or null when the rec is gone
+      if (rec.gone || rec.twin) { twins.release(twin); return null; }
+      ensureBVH(twin); rec.twin = twin;
+      return twins.adopt(rec.group, twin);                                 // same slot group; slotId / slotType on its meshes (ID pass, picking)
+    };
+  }
   /** Position a rec in its slot (attach slots follow their parent's current anchors). */
   function place(rec) {
     const { slot, group } = rec;
@@ -559,6 +567,8 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
     boxOf: (id) => { const g = placed.get(id)?.group; return g ? new THREE.Box3().setFromObject(g) : null; }, lampLights, meshesOf, info,
     /** Body box for framing: the modeler's / twin's `userData.bounds` (no cords, no stray leaves), else the hull. */
     fitBox: (id) => { const g = placed.get(id)?.group; return g ? fitBounds(g) : null; },
+    /** Lab: adopt() for a twin loaded outside the manifest path (a local file, another yaw / fit). */
+    twinAdopter: (id, twin) => { const rec = placed.get(id); return rec ? adopterFor(rec, twin) : null; },
     groupOf: (id) => placed.get(id)?.group || null,
     slotsOfType: (type) => slots.filter((s) => s.type === type),
     dispose() {
