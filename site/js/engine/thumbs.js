@@ -17,7 +17,9 @@ export function createThumbnailer({ renderer, materials, buildItem, releaseItem 
   // thumbnails never compete with a camera flight or a dissolve: one per idle slice, when the scene is quiet (T7)
   const quiet = () => new Promise((resolve) => {
     const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 3000 }) : setTimeout(fn, 50));
-    const check = () => (shouldWait() ? setTimeout(() => idle(check), 120) : resolve());
+    // …but never starved: after 2.5 s of waiting (a long turntable session, a slow or throttled tab) it goes ahead
+    const t0 = performance.now();
+    const check = () => (shouldWait() && performance.now() - t0 < 2500 ? setTimeout(() => idle(check), 120) : resolve());
     idle(check);
   });
   const cache = new Map();

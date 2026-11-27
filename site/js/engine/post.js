@@ -387,7 +387,13 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
       // optional dolly back along the view axis for the item layer only (turntable clearance)
       const dolly = stage.mode === 'stage' ? (stage.dolly || 0) : 0;
       if (dolly > 0) { camera.getWorldDirection(_stageDir); _stagePos.copy(camera.position); camera.position.addScaledVector(_stageDir, -dolly); camera.updateMatrixWorld(); }
+      // On the stage the screen-space AO does not belong to the item layer: it was computed for the room with
+      // the item at home, the real camera and whatever stood in front of it (a coffee table), so its pattern
+      // printed that furniture over the turned item ("the table reads through the sofa")
+      const aoWas = SSAO.villarSSAOIntensity.value;
+      if (stage.mode === 'stage') SSAO.villarSSAOIntensity.value = 0;
       try { r.render(scene, camera); } finally {
+        SSAO.villarSSAOIntensity.value = aoWas;
         if (dolly > 0) { camera.position.copy(_stagePos); camera.updateMatrixWorld(); }
         r.autoClear = ac; scene.background = bg; if (stage.blob) stage.blob.visible = false;
       }

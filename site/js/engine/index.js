@@ -510,6 +510,7 @@ export async function createVillar({
     const item = slotId ? furnisher.info(slotId)?.item : null;
     ae.spot = slotId && ae.enabled ? { slotId, Y: clamp(linY(item?.colorHex || '#b8b0a4'), 0.04, 0.8) } : null;
     if (!ae.spot) ae.target = 0;
+    applyWhiteBalance();
     post.meter.material.uniforms.useRect.value = ae.spot ? 1 : 0;
     invalidate(2);
   }
@@ -518,9 +519,9 @@ export async function createVillar({
     if (!Number.isFinite(ae.ev) || Math.abs(ae.ev) > 4) ae.ev = 0;
     if (!(dt > 0)) return false;
     const d = ae.target - ae.ev;
-    if (Math.abs(d) < 0.03) { if (ae.ev !== ae.target) { ae.ev = ae.target; applyExposure(); } return false; }
+    if (Math.abs(d) < 0.03) { if (ae.ev !== ae.target) { ae.ev = ae.target; applyExposure(); if (!ae.spot) applyWhiteBalance(); } return false; }
     ae.ev += d * (1 - Math.exp(-Math.min(dt, 1) / (mqReduced?.matches || softwareGL ? 0.02 : 0.3)));
-    applyExposure();
+    applyExposure(); if (!ae.spot) applyWhiteBalance();
     return true;
   }
   function applyExposure() {
@@ -541,6 +542,9 @@ export async function createVillar({
     const wbOf = (t, out) => whiteBalanceGain(TOD[t].wb, cutaway ? 0.4 : (WB_STRENGTH[t] ?? 0.8), out, cutaway ? 1 : (WB_TINT[t] ?? 1));
     if (lapse) { wbOf(lapse.from, wbGain); const g2 = wbOf(lapse.to, new THREE.Vector3()); wbGain.lerp(g2, lapse.k); }
     else wbOf(currentTime, wbGain);
+    // the lifted view from the window (no sun in frame) leans warm like Entry instead of cool grey
+    const warm = !ae.spot && !cutaway ? clamp(ae.ev / 0.8, 0, 1) : 0;
+    if (warm > 0) { wbGain.x *= 1 + 0.07 * warm; wbGain.z *= 1 - 0.09 * warm; }
     post.setWhiteBalance(wbGain);
   }
 
@@ -1172,10 +1176,10 @@ export async function createVillar({
     const c = document.createElement('canvas'); c.width = c.height = 64;
     const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
     // full strength out to the footprint's edge (the quad is 1.5× the footprint), then a soft 15 % falloff
-    gr.addColorStop(0, '#fff'); gr.addColorStop(0.62, '#fff'); gr.addColorStop(0.74, '#f4f4f4'); gr.addColorStop(0.86, '#b8b8b8'); gr.addColorStop(0.95, '#404040'); gr.addColorStop(1, '#000');
+    gr.addColorStop(0, '#fff'); gr.addColorStop(0.68, '#fff'); gr.addColorStop(0.8, '#c8c8c8'); gr.addColorStop(0.9, '#6a6a6a'); gr.addColorStop(0.97, '#1c1c1c'); gr.addColorStop(1, '#000');
     g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.NoColorSpace;
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: 0x000000, roughness: 1, metalness: 0, envMapIntensity: 0, specularIntensity: 0, alphaMap: t, transparent: true, opacity: 0, depthWrite: false }) /* specularIntensity 0: the 4 % dielectric reflection of a black Standard surface, × the focus exposure, filled the shadow back in with grey — that was why it never showed */);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: 0x000000, roughness: 1, metalness: 0, envMapIntensity: 0, specularIntensity: 0, emissive: 0xffffff, emissiveIntensity: 1, alphaMap: t, transparent: true, opacity: 0, depthWrite: false }) /* specularIntensity 0: the 4 % dielectric reflection of a black Standard surface, × the focus exposure, filled the shadow back in with grey — that was why it never showed */);
     m.visible = false; m.renderOrder = -1; m.name = 'turntable-shadow'; m.userData.noPick = true; m.userData.noCapture = true;
     scene.add(m);
     return m;
@@ -1353,7 +1357,54 @@ export async function createVillar({
     stageFit = { key, d };
     return d;
   }
+  // ---- nothing stands between the camera and the focused item (FOCUS §1): furniture in the line of sight
+  // (the coffee table in front of the sofa, seen from the window) dissolves on focus and returns on exit
+  const occl = { key: '', ids: new Set() };
+  const _or = new THREE.Ray(), _oh = new THREE.Vector3(), _od = new THREE.Vector3();
+  const OCCL_SKIP = new Set(['rug', 'runner', 'curtains', 'wall_art', 'mirror']);
+  function occludersOf(slotId) {
+    const root = turnRootOf(slotId), fam = new Set(famOf(root));
+    const box = furnisher.fitBox(slotId) || furnisher.boxOf(slotId);
+    const out = new Set();
+    if (!box || box.isEmpty()) return out;
+    const sz = box.getSize(new THREE.Vector3()), pts = [box.getCenter(new THREE.Vector3())];
+    for (const fx of [0.1, 0.3, 0.5, 0.7, 0.9]) for (const fz of [0.1, 0.9]) for (const fy of [0.03, 0.25, 0.6]) pts.push(new THREE.Vector3(box.min.x + sz.x * fx, box.min.y + sz.y * fy, box.min.z + sz.z * fz));
+    for (const [id, rec] of furnisher.placed) {
+      if (fam.has(id) || OCCL_SKIP.has(rec.slot.type) || rec.slot.attach || rec.slot.mount === 'ceiling') continue;
+      const b = furnisher.boxOf(id);
+      if (!b || b.isEmpty() || b.max.y - b.min.y < 0.1 || b.intersectsBox(box) && b.containsBox(box)) continue;
+      let hits = 0;
+      for (const p of pts) {
+        const len = _od.subVectors(p, camera.position).length();
+        _or.set(camera.position, _od.divideScalar(len));
+        if (b.containsPoint(p)) continue;
+        if (_or.intersectBox(b, _oh) && _oh.distanceTo(camera.position) < len - 0.05) hits++;
+      }
+      if (hits >= 2) for (const f of famOf(id)) out.add(f);
+    }
+    return out;
+  }
+  function setOccluders(next) {
+    const back = [...occl.ids].filter((id) => !next.has(id)).map((id) => furnisher.placed.get(id)?.group).filter(Boolean);
+    const gone = [...next].filter((id) => !occl.ids.has(id)).map((id) => furnisher.placed.get(id)?.group).filter((g) => g && g.visible);
+    occl.ids = next;
+    if (!back.length && !gone.length) return;
+    for (const g of back) g.visible = true;
+    fader.swap({ inn: back, out: gone, ms: 220, settle: false }).then(() => { renderer.shadowMap.needsUpdate = true; invalidate(2); });
+    renderer.shadowMap.needsUpdate = true; sceneVersion++; invalidate(2);
+  }
+  function stepOccluders() {
+    if (!focusedSlot || cutaway) { if (occl.ids.size) { occl.key = ''; setOccluders(new Set()); } return; }
+    if (controls.moving || fader.active || budgetBusy() || styleWave) return; // once the camera has landed
+    const p = camera.position, key = `${focusedSlot}|${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}|${sceneVersion - (occl.bump || 0)}`;
+    if (key === occl.key) return;
+    const v0 = sceneVersion;
+    setOccluders(occludersOf(focusedSlot));
+    occl.bump = (occl.bump || 0) + (sceneVersion - v0);
+    occl.key = `${focusedSlot}|${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}|${sceneVersion - occl.bump}`;
+  }
   function stepInspect(dt) {
+    stepOccluders();
     let moving = false;
     const want = focusedSlot && !cutaway && !photo.active ? 1 : 0;
     if (Math.abs(insp.spot - want) > 1e-3) { insp.spot += (want - insp.spot) * (1 - Math.exp(-dt * 7)); moving = true; } else insp.spot = want;
@@ -1382,7 +1433,13 @@ export async function createVillar({
       const dim = 1 + (DIM_SPOT + (DIM_STAGE - DIM_SPOT) * k - 1) * amount;
       // 0.97: the floor behind is HDR (sunlit × the focus boost, often > 4.0); at 0.55–0.9 it still tone-mapped to white
       // (measured: at 0.97 only a faint grey veil — the backdrop is ~25× white after exposure; 0.994 leaves 0.6 %)
-      turnBlob.material.opacity = 0.94 * k;
+      // the shadow is a TONE, not a multiplier: the floor behind is HDR and anything from a shaded corner to a sun
+      // patch 25× white, so "let 6 % through" was black in one place and invisible in the next. It blends toward
+      // a fixed dark display value (≈ 9 % linear, or a third of the frame's average when that is darker: evening)
+      turnBlob.material.opacity = 0.9 * k;
+      { const E = Math.max(1e-3, renderer.toneMappingExposure), avg = Number.isFinite(ae.lastLog) ? Math.exp(ae.lastLog) * E : 0.5;
+        const D = Math.min(0.09, 0.33 * avg); // (÷ the camera's white-balance gain: at evening the gain is ×1.9 on blue and tinted the shadow blue)
+        turnBlob.material.emissive.setRGB(D / E * 1.0 / Math.max(0.2, wbGain.x), D / E * 0.93 / Math.max(0.2, wbGain.y), D / E * 0.86 / Math.max(0.2, wbGain.z)); }
       if (Math.abs(k - stageK) > 0.01 || (k === 0) !== (stageK === 0)) { stageK = k; applyExposure(); }
       if (insp.blobHome) {
         _q.setFromAxisAngle(UP, insp.angle * DEG);
