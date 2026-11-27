@@ -1168,10 +1168,11 @@ export async function createVillar({
   const turnBlob = (() => {
     const c = document.createElement('canvas'); c.width = c.height = 64;
     const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    gr.addColorStop(0, '#fff'); gr.addColorStop(0.62, '#f0f0f0'); gr.addColorStop(0.8, '#8a8a8a'); gr.addColorStop(0.92, '#2a2a2a'); gr.addColorStop(1, '#000');
+    // full strength out to the footprint's edge (the quad is 1.5× the footprint), then a soft 15 % falloff
+    gr.addColorStop(0, '#fff'); gr.addColorStop(0.62, '#fff'); gr.addColorStop(0.74, '#f4f4f4'); gr.addColorStop(0.86, '#b8b8b8'); gr.addColorStop(0.95, '#404040'); gr.addColorStop(1, '#000');
     g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.NoColorSpace;
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 1, metalness: 0, envMapIntensity: 0, alphaMap: t, transparent: true, opacity: 0, depthWrite: false }));
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: 0x000000, roughness: 1, metalness: 0, envMapIntensity: 0, specularIntensity: 0, alphaMap: t, transparent: true, opacity: 0, depthWrite: false }) /* specularIntensity 0: the 4 % dielectric reflection of a black Standard surface, × the focus exposure, filled the shadow back in with grey — that was why it never showed */);
     m.visible = false; m.renderOrder = -1; m.name = 'turntable-shadow'; m.userData.noPick = true; m.userData.noCapture = true;
     scene.add(m);
     return m;
@@ -1210,10 +1211,11 @@ export async function createVillar({
     const fw = lb ? (lb.max[0] - lb.min[0]) * root.scale.x : sz.x, fd = lb ? (lb.max[2] - lb.min[2]) * root.scale.z : sz.z;
     insp.blobYaw = lb ? root.rotation.y : 0;
     insp.blobHome = b.getCenter(new THREE.Vector3()); insp.blobHome.y = Math.max(0.004, b.min.y + 0.004);
-    turnBlob.scale.set(Math.max(0.3, fw) * 1.5, 1, Math.max(0.3, fd) * 1.7);
+    turnBlob.scale.set(Math.max(0.3, fw) * 1.3, 1, Math.max(0.3, fd) * 1.45);
     turnBlob.position.copy(insp.blobHome);
     // the radius the family sweeps round the pivot (a hosted item's host swings wide): the stage keeps clear of it
     const fb = new THREE.Box3(); for (const h of insp.homes) fb.expandByObject(h.g);
+    insp.fitY = fb.isEmpty() ? null : [fb.min.y, fb.max.y];
     insp.turnR = fb.isEmpty() ? 0 : Math.max(...[[fb.min.x, fb.min.z], [fb.min.x, fb.max.z], [fb.max.x, fb.min.z], [fb.max.x, fb.max.z]].map(([x, z]) => Math.hypot(x - insp.pivot.x, z - insp.pivot.z)));
     insp.hideKey = '';
   }
@@ -1318,6 +1320,36 @@ export async function createVillar({
     insp.hideKey = key; insp.hide = list;
     return list;
   }
+  /**
+   * How far back the item layer must be drawn so the family fits the free stage at ANY turn angle: its swept
+   * cylinder (radius turnR round the pivot, the family's height) inside the free rect with a 5 % margin.
+   */
+  const _sv = new THREE.Vector3(), _sd = new THREE.Vector3();
+  let stageFit = { key: '', d: 0 };
+  function stageFitDolly() {
+    const R = insp.turnR || 0;
+    if (!R || !insp.fitY) return 0;
+    const { w, h } = cssSize();
+    const key = [camera.position.x, camera.position.y, camera.position.z, camera.quaternion.x, camera.quaternion.y, camera.fov, w, h, insets.right, insets.bottom, R, insp.slotId].map((v) => (typeof v === 'number' ? v.toFixed(3) : v)).join('|');
+    if (stageFit.key === key) return stageFit.d;
+    const m = 0.05, x1 = 1 - 2 * insets.right / Math.max(1, w) - m, y0 = -1 + 2 * insets.bottom / Math.max(1, h) + m;
+    camera.getWorldDirection(_sd);
+    const home = camera.position.clone();
+    const fits = (d) => {
+      camera.position.copy(home).addScaledVector(_sd, -d); camera.updateMatrixWorld();
+      for (let i = 0; i < 16; i++) for (const y of insp.fitY) {
+        const a = (i / 16) * Math.PI * 2;
+        _sv.set(insp.pivot.x + Math.cos(a) * R, y, insp.pivot.z + Math.sin(a) * R).project(camera);
+        if (_sv.z > 1 || _sv.x < -1 + m || _sv.x > x1 || _sv.y < y0 || _sv.y > 1 - m) return false;
+      }
+      return true;
+    };
+    let d = 0;
+    if (!fits(0)) { let lo = 0, hi = 6; if (fits(hi)) { for (let i = 0; i < 12; i++) { const mid = (lo + hi) / 2; if (fits(mid)) hi = mid; else lo = mid; } d = hi; } else d = hi; }
+    camera.position.copy(home); camera.updateMatrixWorld();
+    stageFit = { key, d };
+    return d;
+  }
   function stepInspect(dt) {
     let moving = false;
     const want = focusedSlot && !cutaway && !photo.active ? 1 : 0;
@@ -1345,7 +1377,9 @@ export async function createVillar({
     const amount = Math.max(insp.spot, away ? 1 : 0);
     if (amount > 0.002 && insp.homes.length) {
       const dim = 1 + (DIM_SPOT + (DIM_STAGE - DIM_SPOT) * k - 1) * amount;
-      turnBlob.material.opacity = 0.9 * k;
+      // 0.97: the floor behind is HDR (sunlit × the focus boost, often > 4.0); at 0.55–0.9 it still tone-mapped to white
+      // (measured: at 0.97 only a faint grey veil — the backdrop is ~25× white after exposure; 0.994 leaves 0.6 %)
+      turnBlob.material.opacity = 0.94 * k;
       if (Math.abs(k - stageK) > 0.01 || (k === 0) !== (stageK === 0)) { stageK = k; applyExposure(); }
       if (insp.blobHome) {
         _q.setFromAxisAngle(UP, insp.angle * DEG);
@@ -1355,7 +1389,7 @@ export async function createVillar({
       // never clip: while the family is turned, the item layer is drawn from further back when its sweep would
       // reach the camera (the room behind is a soft backdrop by then, so no wall is in the way)
       const camD = Math.hypot(camera.position.x - insp.pivot.x, camera.position.z - insp.pivot.z);
-      const dolly = Math.max(0, (insp.turnR || 0) + 0.35 - camD) * k;
+      const dolly = Math.max(Math.max(0, (insp.turnR || 0) + 0.35 - camD), stageFitDolly()) * k;
       post.setStage({ mode: away ? 'stage' : 'spot', items: insp.homes.map((h) => h.g), hideInItemPass: stageHideList(), blob: k > 0.01 ? turnBlob : null, dim, blur: amount * (0.45 + 0.55 * k), dolly });
     } else { post.setStage(null); if (stageK !== 0) { stageK = 0; applyExposure(); } }
     // event for the UI dial
