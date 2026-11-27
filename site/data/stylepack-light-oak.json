@@ -41,8 +41,8 @@
    "default": "rug-elsin-200x290",
    "options": [
     "rug-elsin-200x290",
-    "rug-heaton-200x290",
     "rug-dione-200x290",
+    "rug-heaton-200x290",
     "rug-pulara-160x230"
    ]
   },
@@ -88,15 +88,16 @@
   "bedding": {
    "default": "bedding-white-oat",
    "options": [
-    "bedding-sage-oat",
-    "bedding-white-oat-olive",
     "bedding-white-oat",
+    "bedding-white-oat-olive",
+    "bedding-sage-oat",
     "bedding-white-sateen-oat"
    ]
   },
   "nightstand": {
-   "default": "nightstand-forren",
+   "default": "nightstand-grant",
    "options": [
+    "nightstand-grant",
     "nightstand-forren"
    ]
   },
@@ -129,37 +130,44 @@
    ]
   },
   "art_sofa": {
-   "default": "art-zuri-80",
+   "default": "art-ed-lo-still-shore",
    "options": [
-    "art-zuri-80"
+    "art-ed-lo-still-shore",
+    "art-ed-lo-line-1",
+    "art-seren-triptych"
    ]
   },
   "art_bed": {
-   "default": "art-ember-90x60",
+   "default": "art-ed-lo-morning-mist",
    "options": [
-    "art-ember-90x60"
+    "art-ed-lo-morning-mist",
+    "art-ed-lo-line-2",
+    "art-zuri-80"
    ]
   },
   "art_dining": {
-   "default": "art-nyla-50x70",
+   "default": "art-ed-lo-winter-light",
    "options": [
-    "art-nyla-50x70"
+    "art-ed-lo-winter-light",
+    "art-ed-lo-line-3",
+    "art-nyla-50x70",
+    "art-ember-90x60"
    ]
   },
   "plant": {
    "default": "plant-olive-charcoal",
    "options": [
     "plant-olive-charcoal",
-    "plant-olive-themis",
     "plant-olive-urbano",
+    "plant-olive-themis",
     "plant-olive-180"
    ]
   },
   "curtains": {
    "default": "curtains-sullivan-layered",
    "options": [
-    "curtains-sullivan-sheer",
-    "curtains-sullivan-layered"
+    "curtains-sullivan-layered",
+    "curtains-sullivan-sheer"
    ]
   },
   "tableware": {
@@ -185,11 +193,12 @@
    ]
   },
   "throw": {
-   "default": "throw-thorn-oat",
+   "default": "throw-vayu-sage",
    "options": [
     "throw-vayu-sage",
-    "throw-thorn-oat",
     "throw-norham-olive",
+    "throw-fallon-taupe",
+    "throw-thorn-oat",
     "throw-boras-oat"
    ]
   },
@@ -231,6 +240,147 @@
    ]
   }
  },
+ "picks": {
+  "sofa": [
+   "sofa-rockwell-3",
+   "sofa-anders-3"
+  ],
+  "cushions": [
+   "cushions-kyedae-sage",
+   "cushions-linen-olive"
+  ],
+  "coffee_table": [
+   "coffee-echo"
+  ],
+  "rug": [
+   "rug-elsin-200x290",
+   "rug-dione-200x290"
+  ],
+  "tv_unit": [
+   "tv-echo"
+  ],
+  "side_table": [
+   "side-pavia"
+  ],
+  "armchair": [
+   "armchair-natura"
+  ],
+  "floor_lamp": [
+   "floorlamp-diamant"
+  ],
+  "bed": [
+   "bed-grant-160"
+  ],
+  "mattress": [
+   "mattress-rejuvenate-160",
+   "mattress-bliss-gel-160"
+  ],
+  "bedding": [
+   "bedding-white-oat",
+   "bedding-white-oat-olive",
+   "bedding-sage-oat"
+  ],
+  "nightstand": [
+   "nightstand-grant"
+  ],
+  "table_lamp": [
+   "tablelamp-laodica",
+   "tablelamp-crosby"
+  ],
+  "dining_table": [
+   "dining-keira-100"
+  ],
+  "dining_chair": [
+   "chair-emily",
+   "chair-sven"
+  ],
+  "pendant_lamp": [
+   "pendant-berit",
+   "pendant-cosme"
+  ],
+  "art_sofa": [
+   "art-ed-lo-still-shore",
+   "art-ed-lo-line-1",
+   "art-seren-triptych"
+  ],
+  "art_bed": [
+   "art-ed-lo-morning-mist",
+   "art-ed-lo-line-2",
+   "art-zuri-80"
+  ],
+  "art_dining": [
+   "art-ed-lo-winter-light",
+   "art-ed-lo-line-3",
+   "art-nyla-50x70"
+  ],
+  "plant": [
+   "plant-olive-charcoal",
+   "plant-olive-urbano"
+  ],
+  "curtains": [
+   "curtains-sullivan-layered",
+   "curtains-sullivan-sheer"
+  ],
+  "tableware": [
+   "tableware-lillian-smoke",
+   "tableware-mia-smoke-wood"
+  ],
+  "centerpiece": [
+   "centerpiece-maya-eucalyptus",
+   "centerpiece-sable-eucalyptus"
+  ],
+  "kitchen_decor": [
+   "kitchen-white-basic",
+   "kitchen-black-basic"
+  ],
+  "throw": [
+   "throw-vayu-sage",
+   "throw-norham-olive",
+   "throw-fallon-taupe"
+  ],
+  "nightstand_decor": [
+   "nsdecor-travertine-candle",
+   "nsdecor-bud-vase-tealight"
+  ],
+  "runner": [
+   "runner-zen-bianca",
+   "runner-zen-alba"
+  ],
+  "mirror": [
+   "mirror-artemis-round-black",
+   "mirror-mackenzie-arch"
+  ],
+  "decor_coffee": [
+   "decor-stoneware-low",
+   "decor-tray-candles"
+  ],
+  "decor_tv": [
+   "decor-cream-ceramic",
+   "decor-travertine-cream"
+  ]
+ },
+ "avoid": [
+  [
+   "rug-pulara-160x230",
+   "sofa-rockwell-3"
+  ],
+  [
+   "rug-pulara-160x230",
+   "sofa-anders-3"
+  ],
+  [
+   "throw-thorn-oat",
+   "sofa-rockwell-3"
+  ],
+  [
+   "throw-boras-oat",
+   "sofa-rockwell-3"
+  ],
+  [
+   "nightstand-forren",
+   "bed-grant-160"
+  ]
+ ],
  "rules": [
   "60/30/10: оболочка (стены, потолок, пол, фасады) ≈60%; лён, рисовая бумага и светлый дуб мебели ≈30%; грибной тауп, шалфей, уголь, стоунвер и чёрный металл ≤10%.",
   "Дерево мебели — светлый дуб/ясень #D2BA94 (ΔE ≤ 8): на ступень светлее пола, не медовый и не рыжий (h ≥ 74°, C* ≤ 26), не серо-белёный. Орех и средне-тёмные породы не используются.",
@@ -251,23 +401,20 @@
   "sofa-rockwell-3": {
    "cushions": "cushions-kyedae-sage",
    "throw": "throw-vayu-sage",
-   "rug": "rug-elsin-200x290",
    "coffee_table": "coffee-echo",
    "side_table": "side-pavia"
   },
   "bed-cloud-160": {
    "bedding": "bedding-sage-oat",
-   "nightstand": "nightstand-forren",
+   "nightstand": "nightstand-grant",
    "table_lamp": "tablelamp-laodica",
-   "nightstand_decor": "nsdecor-travertine-candle",
-   "art_bed": "art-ember-90x60"
+   "nightstand_decor": "nsdecor-travertine-candle"
   },
   "dining-keira-100": {
    "dining_chair": "chair-emily",
    "pendant_lamp": "pendant-berit",
    "tableware": "tableware-lillian-smoke",
-   "centerpiece": "centerpiece-maya-eucalyptus",
-   "art_dining": "art-nyla-50x70"
+   "centerpiece": "centerpiece-maya-eucalyptus"
   },
   "rug-heaton-200x290": {
    "sofa": "sofa-rockwell-3",
@@ -279,7 +426,6 @@
    "dining_chair": "chair-emily"
   },
   "throw-thorn-oat": {
-   "sofa": "sofa-rockwell-3",
    "cushions": "cushions-linen-oat"
   },
   "runner-zen-bianca": {
@@ -290,11 +436,10 @@
    "pendant_lamp": "pendant-berit"
   },
   "bed-grant-160": {
-   "bedding": "bedding-sage-oat",
-   "nightstand": "nightstand-forren",
+   "bedding": "bedding-white-oat",
+   "nightstand": "nightstand-grant",
    "table_lamp": "tablelamp-laodica",
-   "nightstand_decor": "nsdecor-travertine-candle",
-   "art_bed": "art-ember-90x60"
+   "nightstand_decor": "nsdecor-travertine-candle"
   },
   "rug-elsin-200x290": {
    "sofa": "sofa-rockwell-3",

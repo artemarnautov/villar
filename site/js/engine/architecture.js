@@ -5,6 +5,7 @@
 // is built for the dollhouse view. Owner: engine.
 import * as THREE from 'three';
 import { Batcher, boxGeometry, cylinderY, cylinderBetween } from './geo.js';
+import { sinkParts } from './furniture/fixtures.js';
 
 const WOOD_SPECIES = ['oak-light', 'oak-natural', 'walnut-dark', 'walnut-medium', 'teak', 'ash-black'];
 
@@ -25,6 +26,7 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
   const wallMaterial = (finish, color) => (finish === 'limewash'
     ? materials.get('plaster-wall', { color: color || '#EDE7DE', mottle: 1.4 })
     : materials.get('paint', { color: color || '#EDE7DE' }));
+  const sinkMats = new Map();
   const M = {
     wall: own(wallMaterial(wallFinish, A.walls).clone()),      // own: wall colour / finish follow the style
     ceiling: materials.get('paint', { color: A.ceiling || '#F5F2EC' }),
@@ -382,14 +384,29 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     K(wt, 0, D + 0.02, wy0, wy1, sz1, base.zTo);
     K(wt, 0, sd0, wy0, wy1, sz0, sz1);
     K(wt, sd1, D + 0.02, wy0, wy1, sz0, sz1);
-    // undermount basin (brushed steel)
-    const by0 = wy0 - 0.2;
-    K(M.steel, sd0, sd1, by0, by0 + 0.008, sz0, sz1);
-    K(M.steel, sd0, sd0 + 0.008, by0, wy0, sz0, sz1);
-    K(M.steel, sd1 - 0.008, sd1, by0, wy0, sz0, sz1);
-    K(M.steel, sd0, sd1, by0, wy0, sz0, sz0 + 0.008);
-    K(M.steel, sd0, sd1, by0, wy0, sz1 - 0.008, sz1);
-    if (by0 + 0.01 < cut) B.add(M.sinkDark, cylinderY(X - (sd0 + sd1) / 2, sinkZ, by0 + 0.008, 0.003, 0.035));
+    // inset basin with a rolled rim on the worktop, drafted walls, floor falling to a slotted drain (modeler's
+    // sinkParts; it was a flat black box). Its steel looks up its indirect light 0.3 m higher: the probes at
+    // the basin are buried in the counter (same cause as the bed-base blotch)
+    if (wy1 - 0.17 < cut) {
+      const sx = X - (sd0 + sd1) / 2;
+      for (const part of sinkParts({ w: sd1 - sd0, l: sz1 - sz0 })) {
+        const key = part.key + '|' + JSON.stringify(part.opts || {});
+        if (!sinkMats.has(key)) {
+          const mm = own(materials.get(part.key, part.opts || {}).clone());
+          mm.defines = { ...(mm.defines || {}), VILLAR_PROBE_LIFT: '0.3' };
+          sinkMats.set(key, mm);
+        }
+        const g = part.geometry.clone().translate(sx, wy1, sinkZ);
+        // brushed (anisotropic) steel needs a uv tangent frame: without uv the IBL bent normal is normalize(0) = NaN,
+        // which the room capture spread to every material (the black canvas of 27 Nov). Planar uv, never degenerate
+        if (!g.attributes.uv) {
+          const P = g.attributes.position, uv = new Float32Array(P.count * 2);
+          for (let i = 0; i < P.count; i++) { const x = P.getX(i), y = P.getY(i), z = P.getZ(i); uv[i * 2] = x + 0.5 * z; uv[i * 2 + 1] = y + 0.7 * z; }
+          g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+        }
+        B.add(sinkMats.get(key), g, { cast: !!part.cast });
+      }
+    }
     // faucet (matte black), behind the basin
     if (wy1 + 0.33 < cut) {
       const fx = X - 0.055, fzz = sinkZ;
@@ -603,6 +620,7 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
         const m2 = new THREE.Mesh(o.geometry, mat);
         m2.position.copy(o.position); m2.quaternion.copy(o.quaternion); m2.scale.copy(o.scale);
         m2.castShadow = o.castShadow; m2.receiveShadow = o.receiveShadow; m2.renderOrder = o.renderOrder;
+        m2.customDepthMaterial = o.customDepthMaterial; m2.customDistanceMaterial = o.customDistanceMaterial;
         m2.userData = { ...o.userData, wallKey: true, wallOld: false }; m2.name = o.name;
         o.userData.wallOld = true;
         o.parent.add(m2);
@@ -633,6 +651,7 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
           const m2 = new THREE.Mesh(o.geometry, mat);
           m2.position.copy(o.position); m2.quaternion.copy(o.quaternion); m2.scale.copy(o.scale);
           m2.castShadow = o.castShadow; m2.receiveShadow = o.receiveShadow; m2.renderOrder = o.renderOrder;
+          m2.customDepthMaterial = o.customDepthMaterial; m2.customDistanceMaterial = o.customDistanceMaterial;
           m2.userData = { ...o.userData, doorKey: key, doorOld: false }; m2.name = o.name;
           o.userData.doorOld = true;
           o.parent.add(m2);

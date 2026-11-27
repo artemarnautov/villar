@@ -12,6 +12,8 @@
 // nothing is rendered, priced or ordered there. The curated default room has no nulls.
 // Pins: keys the customer chose by hand (reason 'user' | 'ai') are pinned per style; the budget planner
 // (core/budget.js) plans around them and never changes them. See docs/BUDGET.md.
+// Guests (docs/FOCUS.md §3): any pack's option for the same key is a valid pick in the active pack ("one piece
+// from another style"); `guestStyle(x)` names its style. A guest stays only while pinned (style landing, reload).
 //
 // Events:
 //   'change' { key, slotType, slots: [slotIds], itemId|null, prev|null, reason }   (one per changed key)
@@ -46,6 +48,27 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
   };
   const slotsForKeyIn = (pack, key) => layout.slots.filter((s) => keyOfSlotIn(pack, s) === key);
 
+  // FOCUS guest (docs/FOCUS.md §3 «Из других стилей»): an item that ANY pack offers for the same key (the same
+  // placements) is a valid pick for that key in every pack, so the customer can take one piece from another style
+  // without switching the room. Nothing else changes: options() stays the pack's own list.
+  const offeredBy = (pid, key, itemId) => !!packs[pid]?.slots?.[key]?.options?.includes(itemId);
+  const guestOk = (pid, key, itemId) => {
+    const s = slotsForKeyIn(packs[pid], key)[0];
+    return !!s && packIds.some((q) => q !== pid && offeredBy(q, keyOfSlotIn(packs[q], s), itemId));
+  };
+  const validFor = (pid, key, itemId) => {
+    if (!packs[pid]?.slots?.[key]) return false;
+    if (itemId === null) return true;
+    return byId.has(itemId) && (offeredBy(pid, key, itemId) || guestOk(pid, key, itemId));
+  };
+  /** Guest items stay only while pinned (a style landing or a reload drops unpinned ones to the designer pick). */
+  const dropUnpinnedGuests = (pid, selection) => {
+    for (const [k, id] of Object.entries(selection)) {
+      if (id != null && !offeredBy(pid, k, id) && !pinsOf[pid]?.has(k)) selection[k] = defaultsOf[pid][k] ?? null;
+    }
+    return selection;
+  };
+
   for (const id of packIds) {
     const sel = {}; const defs = {};
     for (const [key, cfg] of Object.entries(packs[id].slots || {})) {
@@ -66,13 +89,14 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
         const ps = packs[pid]?.slots; if (!ps) continue;
         for (const [key, itemId] of Object.entries(s)) {
           if (itemId === null && saved.v >= 3 && ps[key]) selections[pid][key] = null;
-          else if (ps[key]?.options?.includes(itemId) && byId.has(itemId)) selections[pid][key] = itemId;
+          else if (itemId !== null && validFor(pid, key, itemId)) selections[pid][key] = itemId; // FOCUS guest
         }
       }
       for (const [pid, keys] of Object.entries(saved?.pins || {})) {
         if (!pinsOf[pid] || !Array.isArray(keys)) continue;
         for (const k of keys) if (packs[pid].slots?.[k]) pinsOf[pid].add(k);
       }
+      for (const pid of packIds) dropUnpinnedGuests(pid, selections[pid]); // FOCUS guest
     } catch { /* ignore */ }
   }
   const save = () => {
@@ -80,7 +104,6 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
     const pins = Object.fromEntries(Object.entries(pinsOf).map(([pid, set]) => [pid, [...set]]));
     try { localStorage.setItem(storageKey, JSON.stringify({ v: 3, style: active, selections, pins })); } catch { /* ignore */ }
   };
-  const validFor = (pid, key, itemId) => itemId === null ? !!packs[pid].slots?.[key] : !!(packs[pid].slots?.[key]?.options?.includes(itemId) && byId.has(itemId));
 
   // One failing listener must never stop the others (e.g. the 3D rebuild after a UI error).
   const emit = (evt, payload) => (listeners.get(evt) || []).forEach((fn) => {
@@ -148,7 +171,7 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
       // A style switch lands on that pack's set as the customer last left it (its curated defaults if never
       // touched — designer-correct), plus the anchor and its pairings. Going away and back never loses picks.
       // `fresh` = the curated set only (the AI's predictions in ai/core.js assume it, so its totals stay exact).
-      const next = fresh ? { ...defaultsOf[styleId] } : { ...defaultsOf[styleId], ...selections[styleId] };
+      const next = fresh ? { ...defaultsOf[styleId] } : dropUnpinnedGuests(styleId, { ...defaultsOf[styleId], ...selections[styleId] });
       let anchorKey = null;
       if (anchor?.itemId) {
         anchorKey = keyIn(target, anchor.slotId || anchor.key || store.item(anchor.itemId)?.type);
@@ -170,7 +193,7 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
       if (selection && packs[styleId]) {
         const next = { ...defaultsOf[styleId], ...selections[styleId] };
         for (const [k, id] of Object.entries(selection)) if (validFor(styleId, k, id)) next[k] = id;
-        return applyStyle(styleId, next, { anchor: null });
+        return applyStyle(styleId, dropUnpinnedGuests(styleId, next), { anchor: null });
       }
       const pv = store.previewStyle(styleId, anchor, { fresh });
       if (!pv) { console.warn(`[store] unknown style ${styleId}`); return false; }
@@ -219,6 +242,18 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
     options(x) {
       const cfg = pack().slots?.[keyOf(x)];
       return cfg ? cfg.options.map((id) => byId.get(id)).filter(Boolean) : [];
+    },
+
+    /**
+     * FOCUS guest: the style a piece comes from when it is not one of the active style's own options
+     * (`itemId` defaults to the current pick for x). null for the active style's own items and empty slots.
+     */
+    guestStyle(x, itemId) {
+      const key = keyOf(x);
+      const id = itemId === undefined ? sel()[key] : itemId;
+      if (id == null || offeredBy(active, key, id)) return null;
+      const s = slotsForKeyIn(pack(), key)[0];
+      return (s && packIds.find((q) => q !== active && offeredBy(q, keyOfSlotIn(packs[q], s), id))) || null;
     },
 
     /** Choose an item for a key (itemId null = remove it from the room). 'user'/'ai' picks are pinned. */

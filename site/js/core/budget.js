@@ -32,12 +32,29 @@ export function buildLadder({ pack, items, layout, spec, pinned = {} }) {
   const FURN = new Set(spec.furniture || []);
   const FUNC = new Map((spec.functional || []).map((f) => [f.id, f]));
   const matches = (it, m) => re(m).test(String(it?.[m.field] || ''));
-  const pins = Object.fromEntries(Object.entries(pinned || {}).filter(([k, v]) => has(k) && (v === null || P[k].options.includes(v))));
+  // FOCUS guest: a pinned piece taken from another style for this key (same slot type) is kept like any pin; its
+  // requires/deps still apply, and when this pack's pairings can't speak for it, the guest wins (partners move).
+  const typeOfKey = (k) => layout.slots.find((s) => keyOf(s) === k)?.type;
+  const pinOk = (k, v) => v === null || P[k].options.includes(v) || (byId.has(v) && byId.get(v).type === typeOfKey(k));
+  const pins = Object.fromEntries(Object.entries(pinned || {}).filter(([k, v]) => has(k) && pinOk(k, v)));
 
   const curated = (k) => byId.get(P[k].default) || opts(k)[0];
   const opts = (k) => P[k].options.map((id) => byId.get(id)).filter(Boolean)
     .sort((a, b) => a.price - b.price || (b.id === P[k].default) - (a.id === P[k].default));
   const cheapest = (k) => opts(k)[0];
+  // curator (docs/ART.md §4–5): the pack's `picks` (signature first), its `avoid` pairs, and Villar Editions.
+  // - below the designer's room an edition never enters: its key starts at the first non-edition pick (else the
+  //   cheapest non-edition option) and moves to the edition in the "→ designer" steps, so art raises the room;
+  // - the premium end takes the priciest *pick* when the pack lists picks for the key (not just the priciest option);
+  // - the ladder never chooses a piece that forms an `avoid` pair with something already in the room.
+  const PICKS = pack.picks || {};
+  const AVOID = Array.isArray(pack.avoid) ? pack.avoid : [];
+  const clashes = (k, it) => !!it && AVOID.some((pr) => Array.isArray(pr) && (pr[0] === it.id || pr[1] === it.id)
+    && Object.entries(sel).some(([k2, x]) => k2 !== k && x && x.id === (pr[0] === it.id ? pr[1] : pr[0])));
+  const starter = (k) => {
+    const c = curated(k); if (!c?.edition) return c;
+    return (PICKS[k] || []).map((id) => byId.get(id)).find((i) => i && !i.edition && P[k].options.includes(i.id)) || opts(k).find((i) => !i.edition) || c;
+  };
 
   // Keys that can't appear because something they require is pinned empty (transitively).
   const blocked = new Set(Object.entries(pins).filter(([, v]) => v === null).map(([k]) => k));
@@ -90,11 +107,11 @@ export function buildLadder({ pack, items, layout, spec, pinned = {} }) {
     return null;
   };
   // Options that don't fight a pinned furniture item's pairing (the customer's pick wins).
-  const okOpts = (k) => { const o = opts(k); const f = o.filter((i) => !pinConflict(k, i)); return f.length ? f : o; };
+  const okOpts = (k) => { const o = opts(k); const f = o.filter((i) => !pinConflict(k, i)); const g = f.filter((i) => !clashes(k, i)); return g.length ? g : f.length ? f : o; }; // curator: no `avoid` pairs
   const entry = (k, tier) => {
     const paired = pairFor(k); if (paired && !pinConflict(k, paired)) return paired;
     if (tier === 0) return okOpts(k)[0];
-    if (!FURN.has(k)) return curated(k);
+    if (!FURN.has(k)) return starter(k); // curator: editions enter at the designer's room, not before
     const o = okOpts(k);
     if (k === 'rug' && spec.entry?.rug) {
       const c = o[0]; const r = o.find((i) => (i.dims?.w || 0) >= spec.entry.rug.preferWidthCmAtLeast);
@@ -165,7 +182,9 @@ export function buildLadder({ pack, items, layout, spec, pinned = {} }) {
   };
   for (const k of spec.premiumOrder || []) {
     if (!has(k) || !sel[k] || fixed(k)) continue;
-    const m = opts(k).filter((i) => i.price > sel[k].price).sort((a, b) => b.price - a.price).find((c) => !conflicts(k, c));
+    const pk = Array.isArray(PICKS[k]) && PICKS[k].length ? PICKS[k] : null; // curator: premium = the best designer pick
+    const m = opts(k).filter((i) => i.price > sel[k].price && (!pk || pk.includes(i.id)))
+      .sort((a, b) => b.price - a.price || (pk ? pk.indexOf(a.id) - pk.indexOf(b.id) : 0)).find((c) => !conflicts(k, c) && !clashes(k, c));
     if (m) commit(`${k} → premium`, 'prem', 6, withCompanions(k, m));
   }
 

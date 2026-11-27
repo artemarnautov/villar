@@ -17,7 +17,7 @@ export const LAMP_CANDELA = 2.2;
 const FLAME_PAD = { centerpiece: 3, nightstand_decor: 1, decor_set: 1 };
 const FLAT = new Set(['rug', 'runner']);
 
-export function createFurnisher({ layout, store, materials, buildItem, releaseItem = null, quality = 'high', maxLampShadows = 2 }) {
+export function createFurnisher({ layout, store, materials, buildItem, releaseItem = null, quality = 'high', maxLampShadows = 2, artImage = null }) {
   const root = new THREE.Group();
   root.name = 'furniture';
   const slots = layout.slots;
@@ -35,13 +35,21 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
     return out;
   }
   /** Slots sorted so parents come before attached children. */
+  /** Slots whose placed item decides where this one goes: align target, and wall art's `hang` references. */
+  function placeDeps(s) {
+    if (!s) return [];
+    const h = s.hang, out = [];
+    if (s.align?.to) out.push(s.align.to);
+    if (h) { if (h.over) out.push(h.over); if (h.centreOn) out.push(h.centreOn); if (h.clear?.slot) out.push(h.clear.slot); }
+    return out;
+  }
   function ordered(ids) {
     const set = new Set(ids), out = [], done = new Set();
     const visit = (id) => {
       if (done.has(id)) return; done.add(id);
       const s = byId.get(id);
       if (s?.attach && set.has(s.attach.slot)) visit(s.attach.slot);
-      if (s?.align && set.has(s.align.to)) visit(s.align.to);
+      for (const d of placeDeps(s)) if (set.has(d)) visit(d);
       out.push(id);
     };
     ids.forEach(visit);
@@ -248,6 +256,13 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
     // items that lay themselves out inside their dims (kitchen decor) get the slot's free space
     let it = item;
     if (slot.type === 'kitchen_decor' && slot.max && item.dims) it = { ...item, dims: { ...item.dims, w: Math.min(item.dims.w, slot.max.w * 100), d: Math.min(item.dims.d, slot.max.d * 100) } };
+    // Villar Editions: the catalogue's Storage key becomes params.image only once the file is known to exist
+    if (it.edition || it.image) {
+      const url = artImage ? artImage(it) : null;
+      const params = { ...(it.model?.params || {}), edition: !!it.edition };
+      if (url) params.image = url; else delete params.image;
+      it = { ...it, model: { ...(it.model || {}), params } };
+    }
     let group;
     try { group = buildItem(it, ctx); }
     catch (e) { console.error(`[villar] failed to build ${item.id} for slot ${slot.id}`, e); return null; }
@@ -297,6 +312,7 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
       if (group.userData.mount === 'leaning') group.position.y = 0; // leaning mirror: stands on the floor
       align(rec);
       clampToRoom(rec);
+      if (slot.hang && slot.mount === 'wall' && group.userData.mount !== 'leaning') hang(rec);
     }
     // nothing may poke through the ceiling: curtains (and any too-tall floor item) are clamped
     // to the room height; ceiling-mounted items hang from the mount point and are left alone
@@ -332,6 +348,57 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
     const gap = a.gap ?? 0.45;
     if (Math.abs(f.x) >= Math.abs(f.z)) rec.group.position.x += f.x < 0 ? (bt.min.x - gap) - bs.max.x : (bt.max.x + gap) - bs.min.x;
     else rec.group.position.z += f.z < 0 ? (bt.min.z - gap) - bs.max.z : (bt.max.z + gap) - bs.min.z;
+  }
+  /** World bounds of a placed group's body: the modeler's `userData.bounds` (no cords), else the mesh hull. */
+  function fitBounds(group) {
+    group.updateMatrixWorld(true);
+    const b = group.userData.bounds;
+    if (!b) return boundsOf(group);
+    const out = new THREE.Box3(), v = new THREE.Vector3();
+    for (let i = 0; i < 8; i++) out.expandByPoint(v.set(i & 1 ? b.max[0] : b.min[0], i & 2 ? b.max[1] : b.min[1], i & 4 ? b.max[2] : b.min[2]).applyMatrix4(group.matrixWorld));
+    return out;
+  }
+  /**
+   * Wall art by rule (curator, ART §5): bottom edge `gap` above the item it hangs over (sofa back, headboard),
+   * else centred at `centre`; at least `clear.gap` above a `clear` item; top edge ≥ 0.30 m under the ceiling
+   * (the gap may shrink to `gapMin`); centred on `centreOn` along the wall, kept inside `wall.from…to ± margin`.
+   */
+  function hang(rec) {
+    const { slot, group } = rec, h = slot.hang;
+    const b = group.userData.bounds;
+    const sy = group.scale.y;
+    const H = b ? (b.max[1] - b.min[1]) * sy : (() => { const bb = boundsOf(group); return bb.max.y - bb.min.y; })();
+    const W = b ? (b.max[0] - b.min[0]) * group.scale.x : null;
+    const midLocal = b ? (b.min[1] + b.max[1]) / 2 * sy : (() => { const bb = boundsOf(group); return (bb.min.y + bb.max.y) / 2 - group.position.y; })();
+    const topOf = (id) => { const r = id && placed.get(id); return r ? fitBounds(r.group).max.y : null; };
+    const overTop = topOf(h.over);
+    let y = overTop != null ? overTop + (h.gap ?? 0.2) + H / 2 : (h.centre ?? slot.pos[1]);
+    if (h.clear) { const t = topOf(h.clear.slot); if (t != null) y = Math.max(y, t + (h.clear.gap ?? 0.18) + H / 2); }
+    // along the wall: east / west walls run along z, the partition along x
+    const alongZ = Math.abs(Math.sin((slot.rotY || 0) * DEG)) > 0.5;
+    const c = h.centreOn && placed.get(h.centreOn);
+    if (c) { const cb = fitBounds(c.group); if (alongZ) group.position.z = (cb.min.z + cb.max.z) / 2; else group.position.x = (cb.min.x + cb.max.x) / 2; }
+    if (h.wall) {
+      const half = (W ?? 0) / 2, m = h.wall.margin ?? 0.25, lo = h.wall.from + m + half, hi = h.wall.to - m - half;
+      const k = alongZ ? 'z' : 'x';
+      if (lo <= hi) group.position[k] = clamp(group.position[k], lo, hi); else group.position[k] = (h.wall.from + h.wall.to) / 2;
+    }
+    // ceiling at that spot (the bulkhead over entry / kitchen is lower)
+    const bh = layout.bulkhead, px = group.position.x, pz = group.position.z;
+    const ceil = bh && px >= bh.x0 && px <= bh.x1 && pz >= bh.z0 && pz <= bh.z1 ? bh.y : (layout.size?.ceiling || 2.85);
+    const yMax = ceil - 0.3 - H / 2;
+    if (y > yMax) {
+      const floorY = overTop != null ? overTop + (h.gapMin ?? 0.15) + H / 2 : -Infinity;
+      if (yMax >= floorY) y = yMax;
+      else { y = floorY; console.info(`[villar] ${rec.item.id} does not fit above ${h.over}`); }
+    }
+    group.position.y = y - midLocal;
+    if (W && h.over && h.span) {
+      const ob = placed.get(h.over) && fitBounds(placed.get(h.over).group);
+      const ow = ob ? (alongZ ? ob.max.z - ob.min.z : ob.max.x - ob.min.x) : 0;
+      if (ow > 0 && (W / ow < h.span[0] - 0.03 || W / ow > h.span[1] + 0.03)) console.debug(`[villar] ${rec.item.id} spans ${(W / ow * 100).toFixed(0)} % of ${h.over} (rule ${h.span.map((v) => Math.round(v * 100)).join('–')} %)`);
+    }
+    rec.hungAt = y;
   }
   /** Floor items never go through walls or into the curtain stack (real model bounds). */
   function clampToRoom(rec) {
@@ -409,7 +476,7 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
   /** Slots aligned to any of `ids` (not rebuilt, only moved) with their attached children. */
   function dependents(ids) {
     const set = new Set(ids);
-    const dep = slots.filter((q) => q.align && set.has(q.align.to) && !set.has(q.id)).map((q) => q.id);
+    const dep = slots.filter((q) => !set.has(q.id) && placeDeps(q).some((d) => set.has(d))).map((q) => q.id);
     return ordered([...dep, ...descendants(dep)]).filter((id) => !set.has(id));
   }
   /** Re-place slots in their (new) context; returns moves [{ group, from, to }] for tweening. */

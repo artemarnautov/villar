@@ -399,3 +399,58 @@ Mediterranean now shares only the mattress with DW's defaults. The Arch blue cus
 | pendant / floor lamp | `body: 'rattan'` or `'paper'`; `shadeMaterial: 'rattan'\|'paper'`. Diamant (`stem/shade: 'column'`, `base/shadeMaterial: 'paper'`) needs the paper-cord column, Ø 0.2 × 1.4 m, glowing at night |
 | rug | `material: 'flat-weave'`, `pattern: 'pinstripe'` (Elsin) |
 | wall_art | `relief: true` (Macaire, Erato) |
+
+### 9.7 Curation round 2 — four gaps closed by sourcing (27.11.2026, curator)
+
+Same method and price rule as §1–§2. Listings were read as search results (`/search?q=…`, the same
+`__NEXT_DATA__` payload as the category pages) in the built-in browser: nightstands (one query), throws and cushions
+(the first result page of five queries each, about 150 unique rows per type), wall art (588 unique rows from 8 result
+pages), TV units (336 unique rows of 400), armchairs (4 pages). Product pages were read for dimensions and material;
+stock was confirmed on the rendered page ("Add To Basket", no "Out of Stock") for all six pieces used. Colours are
+the median of a patch on the lit face of the listing photo, checked in CIELAB. Full records, with the candidates
+checked and not used, are in `homecentre-raw.json` (`round2` + the new `products` / `catalogItems`).
+
+| Gap | Found | Size, cm | Colour (photo) | Regular → public, AED | Catalogue id |
+| --- | --- | --- | --- | --- | --- |
+| LO nightstand | Grant Nightstand: fluted pale oak, 2 soft-close drawers; same collection and shoot as the Grant bed | 45 × 40 × 51 | lit faces `#E4CCB7` vs bed `#E2CDBE`, ΔE 3.4–4.6; catalogued with the bed's `#D6C2A2` | 349 → 419 | `nightstand-grant` |
+| GL cushions | set of 3: Aelia linen ivory + Zoe Laurent linen oat (both already used) + **Zane Braun** linen taupe, flanged | 50 × 50 each | taupe `#A39480` (L* 62) | 219 + 339 + 299 = 857 → 1,028 | `cushions-linen-oat-taupe` |
+| GL throw | **Verona** throw, mocha, tonal fringe (polyester) | 130 × 170 | `#7B6354` (L* 44, C* 14, h 59) | 89 → 107 | `throw-verona-mocha` |
+| GL throw, alternate (also LO) | **Fallon** chenille throw, taupe | 130 × 170 | `#9E9389` (L* 62, C* 7) | 89 → 107 | `throw-fallon-taupe` |
+| LO sofa-wall art | **Seren** unframed canvas set, 3 × 40 × 50: white meadow grasses on sage | 130 × 50 hung with 5 cm gaps | `#859C8C`–`#8FA290` | 199 → 239 | `art-seren-triptych` |
+| MED TV unit | **Truman** TV unit: warm honey oak, two cane doors, open shelf, block legs | 180 × 45 × 61 | `#BE9367` (ΔE 6.4 from W6 `#B99A72`, 3.4 from Forren) | 849 → 1,019 | `tv-truman` |
+
+Changes to the packs:
+- **Light Oak:** Grant nightstand is the default (Forren stays an option, recorded as clashing with the Grant bed);
+  Seren is the sofa-wall piece below «Как в журнале» (Zuri 80 stays an option); Fallon taupe is a third throw pick.
+- **Cashmere:** the taupe set and the mocha throw are the defaults; the two oat throws are recorded as clashing with
+  both ivory sofas (ΔL* < 10); the plain oat sets stay in "all options".
+- **Mediterranean:** Truman replaces Echo (pale oak, ΔE 16 from the bed and the coffee table), which is no longer
+  offered in this pack; Windsor stays the default.
+
+Exceptions and limits, please read:
+- **Grant nightstand** was out of stock on 26.11 and in stock on 27.11: thin stock, recheck before launch.
+- **Verona and Fallon are polyester.** The Cashmere rule lists knit, bouclé and waffle cotton. No such throw exists
+  in taupe or mocha (the waffle one is rust, the cotton ones are patterned or oat). Colour is exact; material is the
+  exception.
+- **Seren's sage is cooler than the pack swatch** (h 145–153 against 114). It is the only landscape block of
+  120–140 cm under 420 AED regular that is not gold, floral-colour, figurative or calligraphy. The one right subject
+  (Karin: ink strokes on white, black frame, titled 120 × 80) is portrait by its product page: 80 wide, 120 high.
+- **Truman is 61 cm high** (band 45–60, slot max 65) and has cane doors: with it Mediterranean keeps a woven TV unit
+  at every level. A non-woven warm-wood unit of the right tone exists only at 200 cm (Loan), over the 190 cm slot.
+- **Not found:** a real mocha cushion in a natural fabric (the Aelia "Mocha" and "Braun" are outdoor acrylic); a
+  quiet neutral abstract, landscape, 120–140 cm, under 500 AED public for Light Oak.
+
+### 9.8 Round 3 (27 Nov): product galleries for the digital twins
+
+- Every gallery image of the 184 products that make up catalogue items was opened in the built-in browser (the
+  site still refuses plain HTTP clients) and classified by eye: 910 photos. Gallery images follow the lead image's
+  file name with the counter `_01` … `_09`; they are contiguous for every product.
+- `homecentre-raw.json`: `products[].images` and `imageViews`; `catalogItems[].photos` and `photoViews` (components
+  in the order of `tools/build-photo-refs.mjs`, dearest line first). `tools/twins.json` `refs` are 1-based positions
+  in `photos`.
+- View words: front, three-quarter, side, back, top-down, detail, material close-up, styled room (product partly
+  hidden), drawing with front and side elevations, group shot with other products, infographic with text.
+- Lead image is gallery image 2 for pids 165937013, 163717249, 165629487.
+- pid 167535199 (Emily chair): the stored image link was dead; the gallery now sits on the second image host under a
+  different date stamp. Corrected.
+- Contradictions between the listing-derived catalogue data and the photos: `docs/reviews/curation-3.md` §3.

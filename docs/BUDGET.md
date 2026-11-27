@@ -16,7 +16,8 @@
 - **Named levels** are milestones of the ladder for the active style, not fixed AED (site/data/budget.json):
   step 0 «Минимум / Minimum» · «Самое нужное / Essentials» (end of tier 1) · «Удобно жить / Comfortable» (tier 2) ·
   «Всё для жизни / Move-in ready» (tier 3) · «Полностью обставлено / Fully furnished» (every slot filled) ·
-  «Как в журнале / Magazine-ready» (= the curated designer room) · «Без компромиссов / No compromises» (premium end).
+  «Как в журнале / Magazine-ready» (= the curated designer room, with Villar Editions on the three walls) ·
+  «Без компромиссов / No compromises» (the designer's best pick in every place).
   Steps between the minimum and Essentials are «Основа / Basics». Tick marks on the track; the current level
   name shows next to the number.
 - **Dependencies always hold.** A pinned or added piece brings what it needs (lamps → nightstands, tableware →
@@ -46,6 +47,11 @@
   - `requires` — dependencies;
   - `heroes` — upgrade order;
   - `levels` — RU/EN names + milestone.
+- Style packs add (docs/ART.md §4, `docs/reviews/curation-1.md`):
+  - `picks: { key: [signature, alt1, alt2] }` — at most three per place; the signature is the pack default;
+  - `avoid: [[idA, idB], …]` — pairs that clash in one room.
+- Catalogue: `edition: true` marks a Villar Edition (docs/ART.md §5). `styles.json` `editions: false` removes them
+  from every pack (`withoutEditions` in `core/data.js`, also applied to the server index).
 
 ## Store API (coordinator, `site/js/core/store.js`)
 - `store.applyPlan(selection, { reason: 'budget' })` sets many keys at once (nulls allowed). It emits
@@ -71,6 +77,40 @@
   - the ladder passes exactly through the curated default room;
   - above it, upgrade heroes to pricier options one step at a time, up to the premium room;
   - pairings are applied within the same step.
+- Curation rules (27 Nov, marked `curator` in the code):
+  - **Tier 3 order:** pendant, cushions, throw, sofa art, mirror, side table (the lamp over the table comes before
+    the picture);
+  - **Editions enter at the designer room.** A key whose curated item is an edition enters at the pack's first
+    non-edition pick; the last designer steps hang the editions (sofa wall, bed wall, dining wall);
+  - **Premium = the best pick.** Where the pack lists `picks` for a key, the premium step takes the priciest pick
+    (ties: the earlier pick), not the priciest option;
+  - **No clashing pair.** No entering, upgraded or premium piece may form an `avoid` pair with a piece in the room.
+
+### Level totals, AED (27 Nov, after curation rounds 1–3; `tools/test-ai.mjs` checks the shape, not the numbers)
+
+| Level | Dark Walnut | Light Oak | Cashmere | Mediterranean |
+|---|---|---|---|---|
+| Minimum | 7,852 | 7,180 | 9,688 | 6,832 |
+| Самое нужное / Essentials | 13,330 | 11,938 | 14,890 | 12,994 |
+| Удобно жить / Comfortable | 16,354 | 14,662 | 18,334 | 15,802 |
+| Всё для жизни / Move-in ready | 19,597 | 16,735 | 21,025 | 18,973 |
+| Полностью обставлено / Fully furnished | 26,237 | 20,968 | 28,544 | 23,847 |
+| Как в журнале / Magazine-ready | 37,520 | 22,793 | 33,849 | 32,286 |
+| Без компромиссов / No compromises | 41,689 | 25,396 | 35,634 | 33,680 |
+| Steps on the ladder | 46 | 39 | 38 | 37 |
+
+- Before curation: Magazine 36,243 / 21,280 / 32,216 / 29,965; No compromises 41,451 / 25,391 / 34,148 / 33,991.
+- Round 2 (sourced pieces, `docs/reviews/curation-2.md`) moved: Light Oak Move-in and Fully furnished −60 (the
+  130 cm triptych costs less than the 80 cm canvas); Cashmere +36 from Move-in up (taupe cushion set +96, mocha
+  throw −60) and −371 at the top (the plain four-cushion set is no longer a pick); Mediterranean +252 from the
+  Minimum to Fully furnished (the warm-oak TV unit replaces the pale-oak one), Magazine unchanged.
+- Round 3 (product photos, `docs/reviews/curation-3.md`) moved: Mediterranean Magazine and No compromises −240 (the
+  Natura armchair is the signature; the cane one stays an option); Light Oak Fully furnished −156 and Cashmere
+  Fully furnished +144 (the Ember canvas is portrait, 60 × 90, so it left the bed walls for the dining walls; the
+  80 cm square canvas is the simpler piece over the bed).
+- Art at Magazine: 2,570 (Dark Walnut, Mediterranean) or 2,470 (Light Oak, Cashmere).
+- With `editions: false` the simpler pieces stay on the walls: Magazine 35,907 / 21,016 / 32,372 / 30,985,
+  No compromises 39,676 / 23,519 / 33,657 / 31,979.
 
 ## Engine
 - A `'change'` with `itemId: null` dissolves the model out and frees the slot. A slot that goes from null to an item

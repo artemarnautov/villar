@@ -27,8 +27,8 @@
    "default": "cushions-linen-olive-rust",
    "options": [
     "cushions-linen-olive-rust",
-    "cushions-linen-clay",
     "cushions-oat-velvet-olive",
+    "cushions-linen-clay",
     "cushions-linen-olive",
     "cushions-linen-oat",
     "cushions-oat-ivory-4"
@@ -38,8 +38,8 @@
    "default": "coffee-moxie",
    "options": [
     "coffee-moxie",
-    "coffee-selric",
-    "coffee-arras"
+    "coffee-arras",
+    "coffee-selric"
    ]
   },
   "rug": {
@@ -104,9 +104,9 @@
    "default": "bedding-white-oat-clay",
    "options": [
     "bedding-white-oat-clay",
-    "bedding-white-oat-olive",
-    "bedding-oat-rust",
     "bedding-white-oat",
+    "bedding-oat-rust",
+    "bedding-white-oat-olive",
     "bedding-white-sateen-oat"
    ]
   },
@@ -114,17 +114,17 @@
    "default": "nightstand-suri",
    "options": [
     "nightstand-suri",
-    "nightstand-nazario",
-    "nightstand-verve"
+    "nightstand-verve",
+    "nightstand-nazario"
    ]
   },
   "table_lamp": {
    "default": "tablelamp-crosby",
    "options": [
     "tablelamp-crosby",
+    "tablelamp-dania",
     "tablelamp-tolima",
-    "tablelamp-frosty",
-    "tablelamp-dania"
+    "tablelamp-frosty"
    ]
   },
   "dining_table": {
@@ -138,8 +138,8 @@
    "default": "chair-linden",
    "options": [
     "chair-linden",
-    "chair-stanton",
-    "chair-wishbone"
+    "chair-wishbone",
+    "chair-stanton"
    ]
   },
   "pendant_lamp": {
@@ -153,36 +153,42 @@
    ]
   },
   "art_sofa": {
-   "default": "art-madar-aziza-100",
+   "default": "art-ed-dw-umber-1",
    "options": [
-    "art-madar-aziza-100",
+    "art-ed-dw-umber-1",
+    "art-ed-dw-ink-field",
     "art-najla-120x80",
+    "art-madar-aziza-100",
     "art-madar-hiba-100"
    ]
   },
   "art_bed": {
-   "default": "art-ember-90x60",
+   "default": "art-ed-dw-umber-2",
    "options": [
-    "art-ember-90x60",
+    "art-ed-dw-umber-2",
+    "art-ed-dw-warm-shadow",
     "art-olina-120x60"
    ]
   },
   "art_dining": {
-   "default": "art-aquarelle-53x80",
+   "default": "art-ed-dw-rust-stroke",
    "options": [
+    "art-ed-dw-rust-stroke",
+    "art-ed-dw-ink-3",
     "art-aquarelle-53x80",
     "art-sylvan-60x90",
     "art-vaseo-53x80",
     "art-nyla-50x70",
-    "art-zuri-80"
+    "art-zuri-80",
+    "art-ember-90x60"
    ]
   },
   "plant": {
    "default": "plant-olive-themis",
    "options": [
     "plant-olive-themis",
-    "plant-olive-urbano",
-    "plant-olive-180"
+    "plant-olive-180",
+    "plant-olive-urbano"
    ]
   },
   "curtains": {
@@ -197,18 +203,18 @@
    "default": "tableware-mia-amber",
    "options": [
     "tableware-mia-amber",
-    "tableware-stoneage-olive",
-    "tableware-lillian-smoke",
+    "tableware-lillian-amber-brass",
     "tableware-mia-smoke-wood",
-    "tableware-lillian-amber-brass"
+    "tableware-stoneage-olive",
+    "tableware-lillian-smoke"
    ]
   },
   "centerpiece": {
    "default": "centerpiece-sable-eucalyptus",
    "options": [
     "centerpiece-sable-eucalyptus",
-    "centerpiece-candles-travertine",
-    "centerpiece-maya-eucalyptus"
+    "centerpiece-maya-eucalyptus",
+    "centerpiece-candles-travertine"
    ]
   },
   "kitchen_decor": {
@@ -233,8 +239,8 @@
    "default": "nsdecor-dara-box",
    "options": [
     "nsdecor-dara-box",
-    "nsdecor-travertine-candle",
     "nsdecor-walnut-vase",
+    "nsdecor-travertine-candle",
     "nsdecor-bud-vase-tealight"
    ]
   },
@@ -242,8 +248,8 @@
    "default": "runner-zen-bianca",
    "options": [
     "runner-zen-bianca",
-    "runner-marco-sandy",
     "runner-zen-alba",
+    "runner-marco-sandy",
     "runner-kaela"
    ]
   },
@@ -251,8 +257,8 @@
    "default": "mirror-sora-eda",
    "options": [
     "mirror-sora-eda",
-    "mirror-agnek-80",
     "mirror-artemis-arch-60",
+    "mirror-agnek-80",
     "mirror-artemis-arch-80"
    ]
   },
@@ -268,13 +274,224 @@
    "default": "decor-sand-travertine-walnut",
    "options": [
     "decor-sand-travertine-walnut",
-    "decor-terracotta",
     "decor-white-ceramic",
     "decor-cream-ceramic",
+    "decor-terracotta",
     "decor-travertine-cream"
    ]
   }
  },
+ "picks": {
+  "sofa": [
+   "sofa-lansbury-3",
+   "sofa-brighton-3",
+   "sofa-daventry-3"
+  ],
+  "cushions": [
+   "cushions-linen-olive-rust",
+   "cushions-oat-velvet-olive",
+   "cushions-linen-clay"
+  ],
+  "coffee_table": [
+   "coffee-moxie",
+   "coffee-arras"
+  ],
+  "rug": [
+   "rug-heaton-200x290",
+   "rug-dione-200x290"
+  ],
+  "tv_unit": [
+   "tv-jasper",
+   "tv-hege",
+   "tv-espresso"
+  ],
+  "side_table": [
+   "side-herald"
+  ],
+  "armchair": [
+   "armchair-luna-leather",
+   "armchair-clyde-leather",
+   "armchair-luna-fabric"
+  ],
+  "floor_lamp": [
+   "floorlamp-sable",
+   "floorlamp-austen"
+  ],
+  "bed": [
+   "bed-cloud-160",
+   "bed-maison-160"
+  ],
+  "mattress": [
+   "mattress-rejuvenate-160",
+   "mattress-bliss-gel-160"
+  ],
+  "bedding": [
+   "bedding-white-oat-clay",
+   "bedding-white-oat",
+   "bedding-oat-rust"
+  ],
+  "nightstand": [
+   "nightstand-suri",
+   "nightstand-verve",
+   "nightstand-nazario"
+  ],
+  "table_lamp": [
+   "tablelamp-crosby",
+   "tablelamp-dania"
+  ],
+  "dining_table": [
+   "dining-kentana-100",
+   "dining-square-80"
+  ],
+  "dining_chair": [
+   "chair-linden",
+   "chair-wishbone",
+   "chair-stanton"
+  ],
+  "pendant_lamp": [
+   "pendant-cosme",
+   "pendant-dexter",
+   "pendant-tobin"
+  ],
+  "art_sofa": [
+   "art-ed-dw-umber-1",
+   "art-ed-dw-ink-field",
+   "art-najla-120x80"
+  ],
+  "art_bed": [
+   "art-ed-dw-umber-2",
+   "art-ed-dw-warm-shadow",
+   "art-olina-120x60"
+  ],
+  "art_dining": [
+   "art-ed-dw-rust-stroke",
+   "art-ed-dw-ink-3",
+   "art-aquarelle-53x80"
+  ],
+  "plant": [
+   "plant-olive-themis",
+   "plant-olive-180",
+   "plant-olive-urbano"
+  ],
+  "curtains": [
+   "curtains-sullivan-layered",
+   "curtains-sullivan-sheer"
+  ],
+  "tableware": [
+   "tableware-mia-amber",
+   "tableware-lillian-amber-brass",
+   "tableware-mia-smoke-wood"
+  ],
+  "centerpiece": [
+   "centerpiece-sable-eucalyptus",
+   "centerpiece-maya-eucalyptus",
+   "centerpiece-candles-travertine"
+  ],
+  "kitchen_decor": [
+   "kitchen-laimai-dark",
+   "kitchen-walnut-black",
+   "kitchen-white-travertine"
+  ],
+  "throw": [
+   "throw-olivia-terracotta",
+   "throw-norham-olive",
+   "throw-vayu-sage"
+  ],
+  "nightstand_decor": [
+   "nsdecor-dara-box",
+   "nsdecor-walnut-vase",
+   "nsdecor-travertine-candle"
+  ],
+  "runner": [
+   "runner-zen-bianca",
+   "runner-zen-alba"
+  ],
+  "mirror": [
+   "mirror-sora-eda",
+   "mirror-artemis-arch-60",
+   "mirror-agnek-80"
+  ],
+  "decor_coffee": [
+   "decor-walnut-low",
+   "decor-tray-candles",
+   "decor-terracotta-low"
+  ],
+  "decor_tv": [
+   "decor-sand-travertine-walnut",
+   "decor-white-ceramic",
+   "decor-cream-ceramic"
+  ]
+ },
+ "avoid": [
+  [
+   "sofa-daventry-3",
+   "armchair-pebble"
+  ],
+  [
+   "side-herald",
+   "coffee-selric"
+  ],
+  [
+   "side-moxie",
+   "coffee-moxie"
+  ],
+  [
+   "side-moxie",
+   "coffee-arras"
+  ],
+  [
+   "side-tom",
+   "coffee-moxie"
+  ],
+  [
+   "side-tom",
+   "coffee-arras"
+  ],
+  [
+   "side-arras",
+   "coffee-moxie"
+  ],
+  [
+   "side-arras",
+   "coffee-arras"
+  ],
+  [
+   "mirror-artemis-arch-80",
+   "floorlamp-sable"
+  ],
+  [
+   "mirror-artemis-arch-80",
+   "floorlamp-austen"
+  ],
+  [
+   "mirror-artemis-arch-80",
+   "tv-jasper"
+  ],
+  [
+   "rug-pulara-160x230",
+   "sofa-lansbury-3"
+  ],
+  [
+   "rug-pulara-160x230",
+   "sofa-brighton-3"
+  ],
+  [
+   "tablelamp-tolima",
+   "nightstand-suri"
+  ],
+  [
+   "tablelamp-tolima",
+   "nightstand-verve"
+  ],
+  [
+   "throw-thorn-oat",
+   "sofa-lansbury-3"
+  ],
+  [
+   "throw-boras-oat",
+   "sofa-lansbury-3"
+  ]
+ ],
  "rules": [
   "Дерево мебели — только тёмный орех (#3F2C21–#6B4B35, ΔE ≤ 10 от #553C2C); второй тон — светлый дуб пола.",
   "Рыжие и красные породы, венге и белёное дерево не используются.",

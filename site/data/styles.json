@@ -1,5 +1,6 @@
 {
   "default": "dark-walnut",
+  "editions": true,
   "packs": [
     {
       "id": "dark-walnut",

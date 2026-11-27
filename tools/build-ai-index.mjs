@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildAiIndex } from '../site/js/ai/core.js';
+import { withoutEditions } from '../site/js/core/data.js'; // editions flag (ART §5)
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = resolve(ROOT, 'site/data');
@@ -22,7 +23,8 @@ const layout = read('layout-studio.json');
 const catalog = read('catalog.json');
 let budget = null;
 try { budget = read('budget.json'); } catch { /* optional: no budget planning without it */ }
-const index = buildAiIndex({ catalog, layout, packs, styles, budget });
+// editions flag: with `editions: false` in styles.json the server index offers no Villar Edition either
+const index = buildAiIndex({ catalog, layout, packs: styles.editions === false ? withoutEditions(packs, catalog) : packs, styles, budget });
 
 // Public-safety guard: nothing supplier-ish may reach the function bundle either.
 const text = JSON.stringify(index);

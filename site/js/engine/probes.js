@@ -46,6 +46,15 @@ let patched = false;
 export function patchProbeChunks() {
   if (patched) return; patched = true;
   const C = THREE.ShaderChunk;
+  // 0. one non-finite pixel (a degenerate tangent frame, an overflowing emitter) must never reach the room
+  //    capture: the PMREM spreads it to every material, then the probes, then the whole frame (black canvas,
+  //    27 Nov). Exponent-bit test: survives fast-math compilers that fold isnan() away
+  const OUT = 'gl_FragColor = vec4( outgoingLight, diffuseColor.a );';
+  if (C.opaque_fragment.includes(OUT) && !C.opaque_fragment.includes('villarFinite')) {
+    C.opaque_fragment = C.opaque_fragment.replace(OUT, `bvec3 villarFinite = lessThan( floatBitsToUint( outgoingLight ) & 0x7f800000u, uvec3( 0x7f800000u ) );
+if ( ! all( villarFinite ) ) outgoingLight = vec3( 0.0 );
+${OUT}`);
+  }
   // 1. inside a probe grid the PMREM environment only provides reflections (no double diffuse)
   const from = 'iblIrradiance += getIBLIrradiance( geometryNormal );';
   if (C.lights_fragment_maps.includes(from)) {
@@ -105,6 +114,9 @@ vec3 getLightProbeGridIrradiance( highp sampler3D probesSH, vec3 probesMin, vec3
 	ivec3 res = ivec3( probesResolution + 0.5 );
 	vec3 spacing = ( probesMax - probesMin ) / probesResolution;
 	vec3 p = worldPos + worldNormal * spacing * 0.45;
+	#ifdef VILLAR_PROBE_LIFT
+		p.y += VILLAR_PROBE_LIFT; // surfaces below a counter top (sink basin) read the light above it
+	#endif
 	vec3 g = clamp( ( p - probesMin ) / spacing - 0.5, vec3( 0.0 ), vec3( res - 1 ) );
 	ivec3 base = min( ivec3( floor( g ) ), max( res - 2, ivec3( 0 ) ) );
 	vec3 f = clamp( g - vec3( base ), 0.0, 1.0 );

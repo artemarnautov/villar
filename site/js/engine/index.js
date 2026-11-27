@@ -15,12 +15,13 @@ import { createEmitter, clamp, whiteBalanceGain, DEG } from './util.js';
 import { buildArchitecture } from './architecture.js';
 import { createLighting, TOD, TIMES } from './lighting.js';
 import { createSkyline, SKY_PRESETS } from './sky.js';
+import { createPlate } from './plate.js';
 import { createPost, QUALITY, attachSSAO, setContactMap } from './post.js';
 import { createCameraController } from './camera.js';
 import { createInteraction, ensureBVH } from './interaction.js';
 import { createFurnisher } from './furnish.js';
 import { createPhoto } from './photo.js';
-import { createProbeVolume } from './probes.js';
+import { createProbeVolume, patchProbeChunks } from './probes.js';
 import { patchReflectionChunks } from './reflections.js';
 import { createFader } from './fade.js';
 import { createThumbnailer } from './thumbs.js';
@@ -102,8 +103,24 @@ export async function createVillar({
   container, store, layout, catalog, stylepack, palette = null, palettes = null,
   quality = 'high', forceQuality = false, timeOfDay = 'day', view = 'eye', adaptive = true, toneMapping = DEFAULT_TONE, gi = true, autoExposure = true,
   autoFocus = true, onProgress = null, prewarm: prewarmOpt = 'auto', refine: refineOpt = 'auto', budget: budgetSpec = null,
+  // Villar Editions (curator §2): `media.url(key)` → public URL of a Storage key; `media.approved` = keys whose file
+  // exists (Set | array | promise | () => promise). Nothing is requested for a key that is not approved: no 404s.
+  media = null,
+  // window plates (PHOTOREAL.md): 'auto' = on except on a bare local static server (no /api there: no 404s);
+  // true / false; `plateSource(time)` → plate JSON for stubs and tests. URL ?plate=on|off overrides.
+  plates: platesOpt = false, plateSource = null,
+  // opening shot (ART §3): 'auto' = once per session on the Entry view, never under prefers-reduced-motion
+  opening = false,
+  // time of day as a 1.2 s time-lapse instead of a cut; ART §2 grade (S-curve, split tone, grain, day halation)
+  timelapse = false, grade = false,
+  // Focus v2 §2 (spotlight stage + turntable); off = the item stays put and a drag orbits the camera as before
+  inspect = false,
 } = {}) {
   if (!container) throw new Error('createVillar: container is required');
+  patchProbeChunks(); // before any program compiles (incl. the non-finite pixel guard)
+  // staged features: option, overridable per URL (?timelapse=on|off&grade=…&opening=…&plate=…) for the harness
+  const urlFlag = (name, def) => { const v = typeof location !== 'undefined' ? new URLSearchParams(location.search).get(name) : null; return v === 'on' || v === '1' ? true : v === 'off' || v === '0' ? false : def; };
+  const FEATURE = { timelapse: urlFlag('timelapse', !!timelapse), grade: urlFlag('grade', !!grade), inspect: urlFlag('inspect', !!inspect) };
   layout = layout || store?.state?.layout;
   stylepack = store?.style?.() || stylepack || store?.state?.stylepack;
   // the active pack's architecture (walls, door finish …): palette block, pack block on top
@@ -260,16 +277,38 @@ export async function createVillar({
   scene.add(skyline.group);
   // a facade photo landed: redraw (the path tracer's snapshot is stale too)
   skyline.onTextures = () => { if (disposed) return; sceneVersion++; invalidate(2); };
+  const plateParam = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('plate') : null;
+  const platesOn = plateParam === 'on' || plateParam === '1' ? true : plateParam === 'off' || plateParam === '0' ? false
+    : platesOpt === 'auto' ? !!plateSource || (typeof location !== 'undefined' && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) : !!platesOpt;
+  const plate = createPlate({
+    center: new THREE.Vector3(S.x / 2, 0, S.z), eyeY: 1.42, quality: Q, enabled: platesOn, source: plateSource,
+    onChange: (e) => {
+      if (disposed) return;
+      if (e.type === 'ready' && plateTOD(e.time).includes(currentTime)) plateLanded = true;
+      invalidate(e.type === 'frame' ? 1 : 2);
+    },
+  });
+  scene.add(plate.group);
+  let plateLanded = false, plateBaked = null;
   // scanned maps replaced procedural ones on live materials: same (R4-09)
   const unsubMaterials = materials.onChange ? materials.onChange(() => { if (disposed) return; sceneVersion++; invalidate(2); }) : () => {};
   const lighting = createLighting({ renderer, scene, arch, layout, quality: Q });
   // parallax-corrected room reflections (box = apartment incl. the window wall)
   patchReflectionChunks({ min: [-0.02, -0.02, -0.02], max: [S.x + 0.02, S.ceiling + 0.02, S.z + 0.25], probe: lighting.capturePoint.toArray() });
   const post = createPost({ renderer, scene, camera, quality: Q, aoBox: new THREE.Box3(new THREE.Vector3(-0.3, -0.1, -0.3), new THREE.Vector3(S.x + 0.3, S.ceiling + 0.3, S.z + 2)) });
+  if (!FEATURE.grade) post.setGrade({ curve: 0, split: 0, grain: 0 });
   // Programs are keyed on the render target's tone mapping / colour space: compile with the HDR target
   // bound, exactly as the beauty pass renders, or every pre-compiled program is the wrong variant.
   const withHDR = (fn) => { const prev = renderer.getRenderTarget(); renderer.setRenderTarget(post.rt); try { return fn(); } finally { renderer.setRenderTarget(prev); } };
-  const furnisher = createFurnisher({ layout, store, materials, buildItem, releaseItem: mods.releaseItem, quality: Q, maxLampShadows: post.settings.lampShadows });
+  const artApproved = new Set();
+  if (media?.approved) {
+    const take = (v) => { for (const k of (v instanceof Set ? [...v] : Array.isArray(v) ? v : [])) artApproved.add(k); };
+    const a = typeof media.approved === 'function' ? media.approved() : media.approved;
+    if (a && typeof a.then === 'function') a.then(take).catch(() => {}); else take(a);
+  }
+  /** Approved edition image → its URL (else null: the builder draws the motif on the same canvas + frame). */
+  const artImage = (item) => (item?.image && artApproved.has(item.image) && typeof media?.url === 'function' ? media.url(item.image) : null);
+  const furnisher = createFurnisher({ layout, store, materials, buildItem, releaseItem: mods.releaseItem, quality: Q, maxLampShadows: post.settings.lampShadows, artImage });
   scene.add(furnisher.root);
   furnisher.placeAll();
   furnisher.assignLampShadows();
@@ -345,6 +384,7 @@ export async function createVillar({
   // ---------------------------------------------------------------- state & helpers
   let framesToRender = 3;
   let currentTime = TOD[timeOfDay] ? timeOfDay : 'day';
+  let lapse = null; // time-lapse between two times of day (see startLapse)
   let exposureOverride = null;
   let highlighted = null;
   let focusedSlot = null;
@@ -461,7 +501,8 @@ export async function createVillar({
     const base = BASE_EXPOSURE[tone] ?? 1;
     // dollhouse: open to the sun and sky, brighter than the interior → its own exposure
     // daylight dollhouse 0.17 (R3-03: the interior exposure went up 2.3 → 3.0, the open model must not follow)
-    const v = exposureOverride ?? base * TOD[currentTime].exposure * (cutaway ? (TOD[currentTime].lamps ? 0.8 : 0.17) : Math.pow(2, ae.ev));
+    const todExp = lapse ? Math.exp(Math.log(TOD[lapse.from].exposure) + (Math.log(TOD[lapse.to].exposure) - Math.log(TOD[lapse.from].exposure)) * lapse.k) : TOD[currentTime].exposure;
+    const v = exposureOverride ?? base * todExp * (cutaway ? (TOD[currentTime].lamps ? 0.8 : 0.17) : Math.pow(2, ae.ev));
     renderer.toneMappingExposure = Number.isFinite(v) ? v : base * TOD[currentTime].exposure;
     // dodge deep interior shadows (corridor, kitchen) by up to ~0.9 EV; off in the dollhouse and at night
     // night: a gentler dodge keeps dark wood legible (walnut ≥ 45, R3-01) without flattening the lamp pools
@@ -471,7 +512,9 @@ export async function createVillar({
     post.setShoulder(ae.spot && !cutaway ? clamp(ae.ev / 0.4, 0, 1) : 0);
   }
   function applyWhiteBalance() {
-    whiteBalanceGain(TOD[currentTime].wb, cutaway ? 0.4 : (WB_STRENGTH[currentTime] ?? 0.8), wbGain, cutaway ? 1 : (WB_TINT[currentTime] ?? 1));
+    const wbOf = (t, out) => whiteBalanceGain(TOD[t].wb, cutaway ? 0.4 : (WB_STRENGTH[t] ?? 0.8), out, cutaway ? 1 : (WB_TINT[t] ?? 1));
+    if (lapse) { wbOf(lapse.from, wbGain); const g2 = wbOf(lapse.to, new THREE.Vector3()); wbGain.lerp(g2, lapse.k); }
+    else wbOf(currentTime, wbGain);
     post.setWhiteBalance(wbGain);
   }
 
@@ -517,10 +560,12 @@ export async function createVillar({
   }
   function applyBackdrop() {
     if (cutaway) updateBackdrop();
-    skyline.group.visible = !cutaway;
+    syncCity();
     scene.background = cutaway ? topBackdrop : lighting.skyTexture;
     groundShadow.mesh.visible = cutaway;
-    post.setBloom(TOD[currentTime].lamps, cutaway ? 0.1 : 0.22);
+    // night: lamp bloom; day: a trace of warm halation round the window light only (ART §2)
+    if (TOD[currentTime].lamps) post.setBloom(true, cutaway ? 0.1 : 0.22);
+    else post.setBloom(FEATURE.grade && !cutaway, 0.03, 0.9);
   }
   function hideForCutaway(rec) {
     if (cutaway && (CUTAWAY_HIDE.has(rec.slot.type) || rec.slot.mount === 'wall')) { rec.group.visible = false; cutHidden.add(rec.group); }
@@ -541,11 +586,16 @@ export async function createVillar({
     sceneVersion++;
     invalidate();
   }
+  /** Engine times of day a plate time stands for (morning → day, golden → sunset). */
+  function plateTOD(t) { return t === 'day' ? ['morning', 'day'] : t === 'sunset' ? ['golden'] : t === 'evening' ? ['evening'] : []; }
+  /** The procedural city shows wherever the plate does not cover the window yet (and in the dollhouse never). */
+  function syncCity() { skyline.group.visible = !cutaway && plate.coverage < 1; plate.group.visible = !cutaway && plate.coverage > 0; }
   /** Run fn with the full (non-cutaway) apartment, real sky and interior GI — for light captures. */
   function withFullScene(fn) {
     const was = cutaway;
     if (was) {
-      arch.setCutaway(false); skyline.group.visible = true; scene.background = lighting.skyTexture; groundShadow.mesh.visible = false;
+      arch.setCutaway(false); scene.background = lighting.skyTexture; groundShadow.mesh.visible = false;
+      cutaway = false; syncCity(); cutaway = true;
       for (const g of cutHidden) g.visible = true;
     }
     const prevTex = probes.grid.texture;
@@ -603,7 +653,8 @@ export async function createVillar({
     const env = scene.environment;
     const was = cutaway;
     if (was) {
-      arch.setCutaway(false); skyline.group.visible = true; scene.background = lighting.skyTexture;
+      arch.setCutaway(false); scene.background = lighting.skyTexture;
+      cutaway = false; syncCity(); cutaway = true;
       for (const g of cutHidden) g.visible = true;
     }
     return () => {
@@ -861,7 +912,13 @@ export async function createVillar({
       invalidate();
     },
   });
-  controls.onClick = (e) => { if (photo.active || photo.busy || pendingPhoto) return; interaction.click(e); };
+  controls.onClick = (e) => {
+    if (photo.active || photo.busy || pendingPhoto) return;
+    const t = performance.now();
+    if (focusedSlot && e.pointerType === 'touch' && t - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 24) { lastTap.t = 0; inspectReset(); return; }
+    lastTap = { t, x: e.clientX, y: e.clientY };
+    interaction.click(e);
+  };
   controls.onInteract = () => { refineInput(false); if (photo.active || photo.busy || pendingPhoto) stopPhoto(); invalidate(); };
 
   // ---------------------------------------------------------------- focus (game-like)
@@ -1026,7 +1083,10 @@ export async function createVillar({
     if (photo.active || photo.busy || pendingPhoto) stopPhoto();
     if (cutaway) setCutaway(false);
     const same = focusedSlot === slotId && controls.focused;
+    if (!focusedSlot) inspectOrder();                  // the room as it was on screen when focus was entered (§4)
+    if (insp.slotId && insp.slotId !== slotId) inspectRelease();
     focusedSlot = slotId;
+    inspectBind(slotId);
     frameSlot(slotId, { refit: same });
     highlightSlot(slotId);
     setSpot(slotId);
@@ -1046,6 +1106,7 @@ export async function createVillar({
     if (!focusedSlot && !controls.focused) return false;
     refineInput(true);
     focusedSlot = null;
+    inspectRelease();
     controls.unfocus();
     highlightSlot(null);
     setSpot(null);
@@ -1053,6 +1114,228 @@ export async function createVillar({
     invalidate(2);
     return true;
   }
+  // ---------------------------------------------------------------- focus v2: spotlight + turntable (FOCUS.md §1–2)
+  // Spotlight: while focused, the room renders −0.3 EV with a soft depth of field (post stage pass); the item keeps its
+  // light and catalogue colour. Turntable: a horizontal drag turns the item (+ what sits on it) about its own vertical
+  // axis through its footprint centre; release → inertia from the last 80 ms, friction (velocity halves every 120 ms),
+  // a critically damped settle on the nearest 45° rest angle (≤ 4° overshoot), an 8 ms vibrate tick. Away from home
+  // the room dims to −0.7 EV and the item is drawn over it with the depth cleared (never clips), on a soft contact
+  // shadow. Leaving or swapping springs it home in 400 ms.
+  const REST_DEG = 45, DIM_SPOT = Math.pow(2, -0.3), DIM_STAGE = Math.pow(2, -0.7);
+  const UP = new THREE.Vector3(0, 1, 0);
+  const insp = { slotId: null, ids: [], homes: [], pivot: new THREE.Vector3(), angle: 0, vel: 0, target: 0, w: 14.5, coast: false,
+    dragging: false, samples: [], ticked: true, spot: 0, last: '', returning: null, order: null, hideKey: '', hide: [], homeWaits: [] };
+  const turnBlob = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, '#fff'); gr.addColorStop(0.55, '#888'); gr.addColorStop(1, '#000');
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.NoColorSpace;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 1, metalness: 0, envMapIntensity: 0, alphaMap: t, transparent: true, opacity: 0, depthWrite: false }));
+    m.visible = false; m.renderOrder = -1; m.name = 'turntable-shadow'; m.userData.noPick = true; m.userData.noCapture = true;
+    scene.add(m);
+    return m;
+  })();
+  const _q = new THREE.Quaternion();
+  function famOf(slotId) { return [slotId, ...descendantsOf(slotId)].filter((id) => furnisher.placed.has(id)); }
+  /** A hosted item (cushions, throw, bedding, decor, tableware) never turns alone: it turns with what it rests on. */
+  function turnRootOf(slotId) {
+    let id = slotId;
+    for (let i = 0; i < 8; i++) {
+      const s = layout.slots.find((q) => q.id === id);
+      const host = s?.attach?.slot;
+      if (!host || !furnisher.placed.has(host)) break;
+      id = host;
+    }
+    return id;
+  }
+  /** Record the focused family's home transforms and turn pivot (item at its home angle). */
+  function inspectBind(slotId) {
+    insp.slotId = slotId; insp.angle = 0; insp.vel = 0; insp.target = 0; insp.coast = false; insp.dragging = false;
+    if (!FEATURE.inspect) { insp.ids = []; insp.homes = []; return; }
+    const rootId = turnRootOf(slotId);
+    insp.rootId = rootId;
+    insp.ids = famOf(rootId);
+    insp.homes = insp.ids.map((id) => { const g = furnisher.placed.get(id).group; return { g, pos: g.position.clone(), quat: g.quaternion.clone() }; });
+    const root = furnisher.placed.get(rootId)?.group, b = furnisher.boxOf(rootId);
+    if (!root || !b || b.isEmpty()) { insp.homes = []; return; }
+    const pv = root.userData.pivot; // modeler (round 5): footprint centre in the group's local space
+    if (pv) insp.pivot.copy(Array.isArray(pv) ? new THREE.Vector3(...pv) : pv).applyMatrix4(root.matrixWorld);
+    else b.getCenter(insp.pivot);
+    insp.pivot.y = b.min.y;
+    // hosted item: the pair turns about the item's own vertical axis (it stays framed; its host swings round it)
+    if (rootId !== slotId) { const ib = furnisher.boxOf(slotId); if (ib && !ib.isEmpty()) { const c = ib.getCenter(new THREE.Vector3()); insp.pivot.x = c.x; insp.pivot.z = c.z; } }
+    const sz = b.getSize(new THREE.Vector3()), r = Math.max(0.25, Math.max(sz.x, sz.z) * 0.62);
+    turnBlob.position.set(insp.pivot.x, Math.max(0.003, b.min.y + 0.003), insp.pivot.z);
+    turnBlob.scale.set(r * 2, 1, r * 2);
+    insp.hideKey = '';
+  }
+  function applyTurn(rec = insp) {
+    _q.setFromAxisAngle(UP, rec.angle * DEG);
+    for (const h of rec.homes) {
+      h.g.position.copy(h.pos).sub(rec.pivot).applyQuaternion(_q).add(rec.pivot);
+      h.g.quaternion.copy(_q).multiply(h.quat);
+      h.g.updateMatrixWorld(true);
+    }
+  }
+  const nearestHome = (a) => Math.round(a / 360) * 360;
+  /** The focused family leaves the stage: it springs home (400 ms) on its own while the next one binds. */
+  function inspectRelease() {
+    if (insp.slotId && insp.homes.length && Math.abs(insp.angle - nearestHome(insp.angle)) > 0.05) {
+      if (insp.returning) { insp.returning.angle = nearestHome(insp.returning.angle); applyTurn(insp.returning); }
+      insp.returning = { homes: insp.homes, pivot: insp.pivot.clone(), angle: insp.angle, vel: insp.coast ? insp.vel : insp.vel, target: nearestHome(insp.angle) };
+    }
+    insp.slotId = null; insp.homes = []; insp.ids = []; insp.angle = 0; insp.vel = 0; insp.dragging = false;
+  }
+  const atHome = () => Math.abs(insp.angle - nearestHome(insp.angle)) < 0.05 && !insp.dragging && Math.abs(insp.vel) < 1;
+  /** Spring the focused item home (400 ms); resolves when it is there (swaps wait for it). */
+  function inspectHome() {
+    if (!insp.homes.length || atHome()) return Promise.resolve();
+    insp.coast = false; insp.dragging = false; insp.target = nearestHome(insp.angle); insp.w = 14.5;
+    invalidate(2);
+    return new Promise((res) => { insp.homeWaits.push(res); setTimeout(res, 600); });
+  }
+  function inspectReset() {
+    if (!focusedSlot) return false;
+    controls.resetFocusView?.();
+    inspectHome();
+    return true;
+  }
+  function turnTo(target, w = 14) { insp.coast = false; insp.target = target; insp.w = w; insp.ticked = false; invalidate(2); }
+  controls.onTurn = (dx, pointerType, viewW) => {
+    if (!focusedSlot || !insp.homes.length || photo.active) return false;
+    if (!insp.dragging) { insp.dragging = true; insp.coast = false; insp.samples.length = 0; insp.vel = 0; insp.ticked = false; }
+    const gain = pointerType === 'touch' ? 300 / Math.max(1, viewW) : 360 / (1.2 * Math.max(1, viewW));
+    insp.angle += dx * gain;
+    const t = performance.now();
+    insp.samples.push([t, insp.angle]);
+    while (insp.samples.length > 2 && t - insp.samples[0][0] > 80) insp.samples.shift();
+    applyTurn();
+    invalidate(2);
+    return true;
+  };
+  controls.onTurnEnd = () => {
+    if (!insp.dragging) return;
+    insp.dragging = false;
+    const S2 = insp.samples, now = performance.now();
+    let v = 0;
+    if (S2.length >= 2 && now - S2[S2.length - 1][0] < 80) { const [t0, a0] = S2[0], [t1, a1] = S2[S2.length - 1]; if (t1 - t0 > 4) v = (a1 - a0) / ((t1 - t0) / 1000); }
+    insp.vel = clamp(v, -1440, 1440);
+    if (Math.abs(insp.vel) < 30) turnTo(Math.round(insp.angle / REST_DEG) * REST_DEG, 5.8 / 0.3); // slow release: ≤ 300 ms
+    else { insp.coast = true; insp.ticked = false; }
+    invalidate(2);
+  };
+  controls.onFocusKey = (key, code) => {
+    if (!focusedSlot) return false;
+    const base = Math.round((insp.coast ? insp.angle : insp.target) / REST_DEG) * REST_DEG;
+    if (key === 'ArrowLeft') { turnTo(base - REST_DEG); return true; }
+    if (key === 'ArrowRight') { turnTo(base + REST_DEG); return true; }
+    if (key === 'ArrowUp') { controls.focusTiltZoom(5 * DEG); return true; }
+    if (key === 'ArrowDown') { controls.focusTiltZoom(-5 * DEG); return true; }
+    if (key === '+' || key === '=') { controls.focusTiltZoom(0, 0.9); return true; }
+    if (key === '-' || key === '_') { controls.focusTiltZoom(0, 1.1); return true; }
+    if (key === '0') { inspectReset(); return true; }
+    if (key === '[') { focusNext(-1); return true; }
+    if (key === ']') { focusNext(1); return true; }
+    return false;
+  };
+  // critically damped step of an angle toward its target; true while moving
+  function stepTurn(rec, dt) {
+    if (rec.dragging) return true;
+    if (rec.coast) {
+      rec.vel *= Math.pow(0.5, dt / 0.12);
+      rec.angle += rec.vel * dt;
+      if (Math.abs(rec.vel) < 90) { rec.coast = false; rec.target = Math.round((rec.angle + rec.vel * 0.173) / REST_DEG) * REST_DEG; rec.w = 14; }
+      return true;
+    }
+    if (rec.angle === rec.target && rec.vel === 0) return false;
+    const w = rec.w || 14.5, a = Math.exp(-w * dt), e = rec.angle - rec.target, tmp = (rec.vel + w * e) * dt;
+    rec.vel = (rec.vel - w * tmp) * a; rec.angle = rec.target + (e + tmp) * a;
+    if (Math.abs(rec.angle - rec.target) < 0.05 && Math.abs(rec.vel) < 2) {
+      rec.angle = rec.target; rec.vel = 0;
+      if (rec === insp && !insp.ticked) { insp.ticked = true; try { navigator.vibrate?.(8); } catch { /* not allowed */ } }
+      return false;
+    }
+    return true;
+  }
+  /** Meshes hidden while the item layer is drawn (everything but the family; lights stay → same programs). */
+  function stageHideList() {
+    const key = sceneVersion + '|' + insp.ids.join(',');
+    if (insp.hideKey === key) return insp.hide;
+    const fam = new Set(insp.homes.map((h) => h.g));
+    const list = [arch.group, skyline.group, plate.group, marker.mesh, groundShadow.mesh];
+    for (const g of furnisher.root.children) {
+      if (fam.has(g)) continue;
+      g.traverse((o) => { if (o.isMesh || o.isLine || o.isPoints) list.push(o); });
+    }
+    insp.hideKey = key; insp.hide = list;
+    return list;
+  }
+  function stepInspect(dt) {
+    let moving = false;
+    const want = focusedSlot && !cutaway && !photo.active ? 1 : 0;
+    if (Math.abs(insp.spot - want) > 1e-3) { insp.spot += (want - insp.spot) * (1 - Math.exp(-dt * 7)); moving = true; } else insp.spot = want;
+    if (insp.returning) {
+      const r = insp.returning;
+      r.w = 14.5;
+      if (!stepTurn(r, dt)) { r.angle = r.target; applyTurn(r); insp.returning = null; } else applyTurn(r);
+      moving = true;
+    }
+    if (insp.homes.length) {
+      const was = insp.angle;
+      const turning = stepTurn(insp, dt);
+      if (turning || was !== insp.angle) applyTurn();
+      moving = moving || turning;
+      if (!turning && atHome()) {
+        if (insp.angle !== 0) { insp.angle = insp.target = 0; applyTurn(); }
+        if (insp.homeWaits.length) for (const res of insp.homeWaits.splice(0)) res();
+      }
+    }
+    // stage / spotlight
+    const a = ((((insp.angle % 360) + 540) % 360) - 180);
+    const away = insp.homes.length > 0 && Math.abs(a) > 1.5;
+    const k = smooth01((Math.abs(a) - 1.5) / 18.5);
+    const amount = Math.max(insp.spot, away ? 1 : 0);
+    if (amount > 0.002 && insp.homes.length) {
+      const dim = 1 + (DIM_SPOT + (DIM_STAGE - DIM_SPOT) * k - 1) * amount;
+      turnBlob.material.opacity = 0.55 * k;
+      post.setStage({ mode: away ? 'stage' : 'spot', items: insp.homes.map((h) => h.g), hideInItemPass: stageHideList(), blob: k > 0.01 ? turnBlob : null, dim, blur: amount * (0.45 + 0.55 * k) });
+    } else post.setStage(null);
+    // event for the UI dial
+    const atRest = !insp.dragging && !insp.coast && insp.vel === 0;
+    const sig = `${insp.slotId}|${a.toFixed(1)}|${atRest}`;
+    if (insp.slotId && sig !== insp.last) { insp.last = sig; events.emit('inspect', { slotId: insp.slotId, angle: +a.toFixed(1), atRest, home: Math.abs(a) < 0.5 }); }
+    return moving;
+  }
+  const smooth01 = (x) => { const t = clamp(x, 0, 1); return t * t * (3 - 2 * t); };
+  /** Walk order (§4): left → right as on screen when focus was entered, then round the room; wraps. */
+  function inspectOrder() {
+    const f = camera.getWorldDirection(new THREE.Vector3()); f.y = 0; f.normalize();
+    const half = Math.atan(Math.tan((camera.fov * DEG) / 2) * camera.aspect);
+    const cam = camera.position, list = [];
+    for (const [id] of furnisher.placed) {
+      const b = furnisher.boxOf(id);
+      if (!b || b.isEmpty()) continue;
+      const c = b.getCenter(new THREE.Vector3()).sub(cam); c.y = 0;
+      let az = Math.atan2(f.x * c.z - f.z * c.x, f.x * c.x + f.z * c.z); // > 0 → to the right
+      if (az < -half) az += Math.PI * 2;                                   // off-screen left → after the right side
+      list.push([id, az, b.min.y]);
+    }
+    list.sort((p, q) => p[1] - q[1] || p[2] - q[2]);
+    insp.order = list.map((x) => x[0]);
+  }
+  function focusNext(dir = 1) {
+    if (!insp.order || !insp.order.length) inspectOrder();
+    const order = insp.order.filter((id) => furnisher.placed.has(id));
+    if (!order.length) return null;
+    const i = order.indexOf(focusedSlot);
+    const next = order[((i < 0 ? (dir > 0 ? -1 : 0) : i) + (dir > 0 ? 1 : -1) + order.length) % order.length];
+    focus(next);
+    events.emit('select', furnisher.info(next) ? { ...furnisher.info(next) } : null);
+    return next;
+  }
+  let lastTap = { t: 0, x: 0, y: 0 };
+  canvas.addEventListener('dblclick', () => { if (focusedSlot) inspectReset(); });
   function setInsets({ bottom = insets.bottom, right = insets.right } = {}) {
     const b = Math.max(0, +bottom || 0), r = Math.max(0, +right || 0);
     const changed = Math.abs(b - insets.bottom) > 2 || Math.abs(r - insets.right) > 2;
@@ -1101,7 +1384,11 @@ export async function createVillar({
       set(lighting.sunDisc, 'visible', sunOn);
       const restoreArch = arch.preparePhoto();
       const restoreSky = skyline.preparePhoto();
+      // the tracer keeps the HDR sky + procedural city (the plate is a raster layer)
+      const restorePlate = plate.preparePhoto();
+      const cityVis = skyline.group.visible; skyline.group.visible = !cutaway;
       const restore = () => {
+        skyline.group.visible = cityVis; restorePlate();
         restoreSky(); restoreArch();
         for (let i = saved.length - 1; i >= 0; i--) { const [o, k, v] = saved[i]; o[k] = v; }
       };
@@ -1434,6 +1721,7 @@ export async function createVillar({
       if (!ids.length) return;
     }
     const fam = new Set(ids.flatMap((id) => [id, ...descendantsOf(id)]));
+    if (insp.ids.some((id) => fam.has(id))) await inspectHome(); // swapping springs the item home (400 ms) first
     for (const f of fam) budget.inflight.add(f);
     try { await swapRun(ids, ms); } finally {
       for (const f of fam) budget.inflight.delete(f);
@@ -1443,6 +1731,7 @@ export async function createVillar({
   async function swapRun(ids, ms) {
     const oldBoxes = ids.map((id) => furnisher.boxOf(id)).filter(Boolean);
     const { ids: all, outgoing, incoming } = furnisher.rebuildSlots(ids, { keepOld: true });
+    if (focusedSlot && furnisher.placed.has(focusedSlot) && (all.includes(focusedSlot) || insp.ids.some((id) => all.includes(id)) || all.some((id) => famOf(focusedSlot).includes(id)))) inspectBind(focusedSlot);
     for (const rec of incoming) { decorate(rec.group); hideForCutaway(rec); }
     furnisher.assignLampShadows();
     lighting.setLampLights(furnisher.lampLights());
@@ -1601,10 +1890,14 @@ export async function createVillar({
     probes.setChroma(GI_CHROMA[tod] ?? 0.5, camWhite);
     probes.setTail(GI_TAIL[tod] ?? 0.35);
     probes.setGain(GI_GAIN[tod] ?? 1);
+    lighting.setPlateTint(tod, plate.colours(tod));
     lighting.setTimeOfDay(tod);
     const env = lighting.skyEnvFor(tod);
     // the city's aerial-perspective haze takes the photographic sky's horizon colour (same level as before)
     skyline.setTimeOfDay(tod, { ...SKY_PRESETS[tod], hazeTint: lighting.hazeTint(tod) }, env);
+    // window plate (if approved for this time): crossfades in over the city; its colours tint the window fill
+    lighting.setPlateTint(tod, plate.colours(tod));
+    plate.setTimeOfDay(tod);
     arch.setSkyEnv(env);
     materials.setLampsOn?.(TOD[tod].lamps, 1);
     applyExposure();
@@ -1613,6 +1906,17 @@ export async function createVillar({
   }
   let todGen = 0;
   /** A photographic sky landed after its time of day was applied with the procedural stand-in. */
+  /** A plate finished fading in / out: the window light changed — new room capture and GI (once per plate + time). */
+  function plateSettled() {
+    if (disposed) return;
+    const key = `${currentTime}|${plate.shown || 'city'}`;
+    if (plateBaked === key) return;
+    plateBaked = key;
+    sceneVersion++;
+    refreshEnvironment(1);
+    if (texturesSettled && ready) rebakeAll(300);
+    invalidate(3);
+  }
   function skyLanded(tod) {
     if (disposed || tod !== currentTime || appliedSky === lighting.skyFor(tod)) return;
     applyTimeOfDay(tod);
@@ -1638,6 +1942,12 @@ export async function createVillar({
     if (photo.active || photo.busy || pendingPhoto) stopPhoto();
     const my = ++todGen;
     const go = () => {
+      if (my !== todGen || disposed) return;
+      // a visible change of time is a 1.2 s time-lapse (ART §3), not a cut: the switch happens at its midpoint
+      if (FEATURE.timelapse && tod !== currentTime && ready && !cutaway && !REDUCED_MOTION() && !lapse) { startLapse(currentTime, tod, apply); return; }
+      apply();
+    };
+    const apply = () => {
       if (my !== todGen || disposed) return;
       const changed = tod !== currentTime;
       currentTime = tod;
@@ -1669,6 +1979,72 @@ export async function createVillar({
       try { p = withHDR(() => renderer.compileAsync(scene, camera)); } catch { p = null; } finally { lighting.useLightSet(lighting.evening); }
       Promise.race([p || Promise.resolve(), new Promise((r) => setTimeout(r, 2500))]).then(go, go);
     } else go();
+  }
+
+  // ---------------------------------------------------------------- time-lapse (ART §3)
+  // 0 → ½: the sun sweeps toward the new time (or the lamps go out one by one), exposure and white balance glide;
+  // ½: the light set, sky, GI switch (GI crossfades); ½ → 1: the sun settles (or the lamps come up one by one).
+  // The window plate crossfades across the whole 1.2 s.
+  const LAPSE_MS = 1200;
+  const REDUCED_MOTION = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function lampGroups() {
+    // per placed lamp (its 3 lights + flames), ordered by distance from the camera: near first
+    const cam = camera.position, out = [];
+    for (const rec of furnisher.placed.values()) if (rec.lights?.length) {
+      rec.group.getWorldPosition(_lp);
+      out.push({ d: _lp.distanceTo(cam), lights: rec.lights.map((l) => [l, l.userData.baseIntensity ?? l.intensity]) });
+    }
+    return out.sort((a, b) => a.d - b.d);
+  }
+  const _lp = new THREE.Vector3();
+  function startLapse(from, to, apply) {
+    lapse = { from, to, t0: performance.now(), k: 0, switched: false, apply, groups: null, fixed: null };
+    plate.setTimeOfDay(to, { ms: LAPSE_MS });
+    if (TOD[from].lamps) lapse.groups = lampGroups();
+    invalidate(1);
+  }
+  function stepLapse(now) {
+    if (!lapse) return false;
+    const L = lapse, t = clamp((now - L.t0) / LAPSE_MS, 0, 1), e = t * t * (3 - 2 * t);
+    L.k = e;
+    const ramp = (groups, a, b, on, k) => {
+      const n = groups.length;
+      groups.forEach((g, i) => {
+        const s0 = a + (b - a) * (n > 1 ? i / (n - 1) : 0) * 0.75, f = clamp((k - s0) / ((b - a) * 0.25 + 1e-6), 0, 1);
+        const w = on ? f * f * (3 - 2 * f) : 1 - f * f * (3 - 2 * f);
+        for (const [l, I] of g.lights) l.intensity = I * w;
+      });
+    };
+    if (!L.switched && t >= 0.5) {
+      L.switched = true;
+      L.apply();
+      if (TOD[L.to].lamps) {
+        L.groups = lampGroups();
+        L.fixed = [...lighting.downlights, ...lighting.strip].map((l) => [l, l.intensity]);
+      } else L.groups = null;
+    }
+    if (!L.switched) {
+      if (!TOD[L.from].lamps) lighting.sunBlend(L.from, L.to, t / 0.5 * 0.5);
+      else if (L.groups) { ramp(L.groups, 0, 0.45, false, t); materials.setLampsOn?.(true, 1 - clamp(t / 0.45, 0, 1)); }
+    } else {
+      if (!TOD[L.to].lamps) lighting.sunBlend(L.from, L.to, t);
+      else {
+        if (L.groups) ramp(L.groups, 0.5, 0.95, true, t);
+        const f = clamp((t - 0.5) / 0.2, 0, 1);
+        for (const [l, I] of L.fixed || []) l.intensity = I * f;
+        materials.setLampsOn?.(true, clamp((t - 0.5) / 0.45, 0, 1));
+      }
+    }
+    applyExposure(); applyWhiteBalance();
+    renderer.shadowMap.needsUpdate = true;
+    if (t >= 1) {
+      lapse = null;
+      lighting.setTimeOfDay(currentTime);   // exact end state (sun, lamps, downlights)
+      materials.setLampsOn?.(TOD[currentTime].lamps, 1);
+      applyExposure(); applyWhiteBalance();
+      renderer.shadowMap.needsUpdate = true;
+    }
+    return true;
   }
 
   // ---------------------------------------------------------------- sizing + adaptive DPR
@@ -1770,6 +2146,10 @@ export async function createVillar({
       }
     }
     if (stepGlides(now)) invalidate(1);
+    if (stepInspect(dt)) invalidate(1);
+    if (stepLapse(now)) invalidate(1);
+    if (plate.animating) { plate.step(dt); syncCity(); invalidate(1); if (!plate.animating) plateSettled(); }
+    else if (plateLanded) { plateLanded = false; if (plate.state(currentTime) === 'ready') { applyTimeOfDay(currentTime); invalidate(2); } }
     if (probes.update(now)) invalidate(1);
     if (stepExposure(dt)) invalidate(1);
     if (moving) invalidate(2);
@@ -1940,6 +2320,13 @@ export async function createVillar({
     // after the room: the active pack's slider ladder (all its options), then the other packs' defaults
     idle(() => prewarm().then(() => idle(() => { primeBudget(); prebuildPacks(); })));
     loadProgress(1, 'ready');
+    // opening shot: the slow push-in toward the window light; `rest` follows its end, so the photo develops then
+    if (openingPlanned && controls.view === 'eye' && controls.mode === 'walk') {
+      openingPlanned = false;
+      try { sessionStorage.setItem('villar.opening', '1'); } catch { /* private mode */ }
+      controls.intro('eye', { seconds: 3.5, onDone: (played) => events.emit('opening', { done: true, played }) });
+      events.emit('opening', { done: false });
+    }
     window.villar = api;
     window.__villarReady = true;
     // photo mode is offered on 'high' with a hardware GPU (software GL freezes for tens of seconds)
@@ -2003,6 +2390,11 @@ export async function createVillar({
     get photoActive() { return photo.active; },
     highlight(slotId) { highlightSlot(slotId); },
     focus, unfocus, setInsets,
+    /** Focus v2 §4: next / previous item in the walk order (left → right as on screen at entry, wraps). */
+    focusNext,
+    /** Focus v2 §2: the focused item back to its home angle, tilt and zoom to the framing. */
+    inspectReset,
+    get inspect() { return insp.slotId ? { slotId: insp.slotId, angle: +((((insp.angle % 360) + 540) % 360) - 180).toFixed(1), atRest: !insp.dragging && !insp.coast && insp.vel === 0 } : null; },
     /** Budget slider held (true) / released (false): defers thumbnails, bakes and camera input meanwhile. */
     setDragging,
     /** Accessible name of the canvas (follows the UI language, PT-05). */
@@ -2031,7 +2423,7 @@ export async function createVillar({
     dispose,
     // debug / lab helpers (not part of the product contract)
     debug: {
-      renderer, scene, camera, lighting, post, arch, furnisher, controls, materials, probes, fader, thumbs,
+      renderer, scene, camera, lighting, post, arch, furnisher, plate, skyline, controls, materials, probes, fader, thumbs,
       relight: () => bakeFresh(), rebakeAll, refreshEnvironment, applyPackArchitecture,
       get fps() { return perf.fps; }, get bakeMs() { return perf.bakeMs; }, get dpr() { return dpr; }, get quality() { return Q; },
       get worstFrame() { return perf.worst; }, resetWorst() { perf.worst = 0; },
@@ -2092,6 +2484,7 @@ export async function createVillar({
     arch.dispose();
     probes.dispose();
     skyline.dispose();
+    plate.dispose();
     lighting.dispose();
     post.dispose();
     marker.mesh.geometry.dispose(); marker.mat.dispose();
@@ -2109,9 +2502,10 @@ export async function createVillar({
   // busy: anything that changes the next frame on its own — the client develops a photo only from a stable frame.
   function isBusy() {
     return !!(controls.moving || controls.isDragging() || controls.mode === 'transition' || fader.active || styleWave
-      || pendingChanges.size || budgetBusy() || probes.baking || giState.inflightLocal || giState.inflightFresh
+      || pendingChanges.size || budgetBusy() || plate.animating || !!lapse || probes.baking || giState.inflightLocal || giState.inflightFresh
       || wallAnim || glides.length || Math.abs(ae.target - ae.ev) > 0.03 || !ready || contextLost || restoring
-      || (materials.pending && materials.pending() > 0) || photo.busy);
+      || (materials.pending && materials.pending() > 0) || photo.busy
+      || insp.dragging || insp.coast || insp.vel !== 0 || insp.angle !== insp.target || !!insp.returning || Math.abs(insp.spot - (focusedSlot && !cutaway ? 1 : 0)) > 0.01);
   }
   const rest = { busy: true, since: 0, emitted: false };
   const REST_DELAY = 400;
@@ -2142,8 +2536,11 @@ export async function createVillar({
     const fov = +q(cam.fov, 0.5).toFixed(1);
     const e = cam.projectionMatrix.elements;
     const shift = [+q(e[8], 0.01).toFixed(2), +q(e[9], 0.01).toFixed(2)];
-    const key = `p${pos.join(',')}|y${yaw}|x${pitch}|f${fov}|s${shift.join(',')}`;
-    return { position: pos, target, yaw, pitch, fov, shift, key };
+    // one canonical key for every consumer: + stage aspect, dollhouse cut, and the focused item's turntable angle
+    const aspect = +cam.aspect.toFixed(2), cut = cutaway ? 1 : 0;
+    const turn = insp.slotId ? `${insp.slotId}:${Math.round(((((insp.angle % 360) + 540) % 360) - 180))}` : '';
+    const key = `p${pos.join(',')}|y${yaw}|x${pitch}|f${fov}|s${shift.join(',')}|a${aspect}|m${cut}` + (turn ? `|o${turn}` : '');
+    return { position: pos, target, yaw, pitch, fov, shift, aspect, cut, turn: turn || null, key };
   }
 
   /** Wait until nothing is moving (≤ timeout); then finish any fade that is still running. */
@@ -2196,17 +2593,103 @@ export async function createVillar({
       renderer.toneMapping = tm; renderer.setClearColor(cc, ca); renderer.setRenderTarget(prevRT);
       rt.dispose();
     }
-    const count = new Map();
+    const count = new Map(), box = new Map();
     for (let i = 0; i < W * H; i++) {
       const id = (px[i * 4] << 8) | px[i * 4 + 1];
-      if (id && Math.abs(px[i * 4 + 2] - 128) < 3) count.set(id, (count.get(id) || 0) + 1);
+      if (!id || Math.abs(px[i * 4 + 2] - 128) >= 3) continue;
+      count.set(id, (count.get(id) || 0) + 1);
+      const x = i % W, y = H - 1 - Math.floor(i / W); // image rows top-down (targets are bottom-up)
+      const b = box.get(id);
+      if (!b) box.set(id, [x, y, x, y]);
+      else { if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (x > b[2]) b[2] = x; if (y > b[3]) b[3] = y; }
     }
     const items = [];
+    const r4 = (v) => +v.toFixed(4);
     for (const [i, n] of count) {
       const slot = slots[i - 1], rec = furnisher.placed.get(slot);
-      if (rec) items.push({ id: rec.item.id, slot, type: rec.slot.type, area: +(n / (W * H)).toFixed(4) });
+      const b = box.get(i);
+      // bbox: the visible pixels' rect, normalised [x, y, w, h], origin top-left (as photo/engine.js reads it)
+      if (rec) items.push({ id: rec.item.id, slot, type: rec.slot.type, area: r4(n / (W * H)), bbox: [r4(b[0] / W), r4(b[1] / H), r4((b[2] - b[0] + 1) / W), r4((b[3] - b[1] + 1) / H)] });
     }
     return items.sort((a, b) => b.area - a.area);
+  }
+  /**
+   * Linear depth of the capture frame for the "living photo" parallax (ART §3): one depth-only pass (glass and
+   * the dissolve-free scene; sky = far), 8-bit inverse depth (white = near), PNG, ≤ 512 px wide.
+   * Returns { blob, width, height, near, far, encoding: 'inverse' } — metres = 1 / (v/255 · (1/near − 1/far) + 1/far).
+   */
+  let depthMat = null;
+  function depthPass(w, h) {
+    const W = Math.max(32, Math.min(512, w)), H = Math.max(18, Math.round(W * h / w));
+    const type = renderer.extensions.has('EXT_color_buffer_float') ? THREE.FloatType : THREE.HalfFloatType;
+    const rt = new THREE.WebGLRenderTarget(W, H, { type, depthBuffer: true });
+    if (!depthMat) depthMat = new THREE.MeshDepthMaterial({ depthPacking: THREE.BasicDepthPacking });
+    const saved = [];
+    scene.traverse((o) => {
+      if (!o.isMesh && !o.isPoints && !o.isLine) return;
+      if (o.userData?.glass || o.userData?.noCapture || o.userData?.plate || !o.isMesh) { if (o.visible) { o.visible = false; saved.push([o, null]); } return; }
+      saved.push([o, o.material]); o.material = depthMat;
+    });
+    const bg = scene.background, env = scene.environment, auto = renderer.shadowMap.autoUpdate, need = renderer.shadowMap.needsUpdate;
+    scene.background = null; scene.environment = null;
+    renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = false;
+    const prevRT = renderer.getRenderTarget(), tm = renderer.toneMapping, cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha();
+    const buf = type === THREE.FloatType ? new Float32Array(W * H * 4) : new Uint16Array(W * H * 4);
+    try {
+      renderer.toneMapping = THREE.NoToneMapping;
+      renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 1); renderer.clear();
+      renderer.render(scene, camera);
+      renderer.readRenderTargetPixels(rt, 0, 0, W, H, buf);
+    } finally {
+      for (const [o, m] of saved) { if (m) o.material = m; else o.visible = true; }
+      scene.background = bg; scene.environment = env;
+      renderer.shadowMap.autoUpdate = auto; renderer.shadowMap.needsUpdate = need;
+      renderer.toneMapping = tm; renderer.setClearColor(cc, ca); renderer.setRenderTarget(prevRT);
+      rt.dispose();
+    }
+    // BasicDepthPacking writes 1 − gl_FragCoord.z; clip z = A·z_view + B → metres d = B / (ndc + A)
+    const A = camera.projectionMatrix.elements[10], B = camera.projectionMatrix.elements[14];
+    const SKY = 40; // beyond the apartment = "far" (the window view)
+    const dist = new Float32Array(W * H), hist = [];
+    for (let i = 0; i < W * H; i++) {
+      const v = type === THREE.FloatType ? buf[i * 4] : THREE.DataUtils.fromHalfFloat(buf[i * 4]);
+      const fz = 1 - v, ndc = 2 * fz - 1;
+      const d = v > 0 ? B / (ndc + A) : Infinity;
+      dist[i] = Number.isFinite(d) && d > 0 ? d : Infinity;
+      if (dist[i] < SKY) hist.push(dist[i]);
+    }
+    hist.sort((a, b) => a - b);
+    const pct = (q) => (hist.length ? hist[Math.min(hist.length - 1, Math.floor(q * hist.length))] : 1);
+    const near = Math.max(0.05, pct(0.01)), far = Math.max(near + 0.1, Math.min(SKY, pct(0.995) * 1.05));
+    const iN = 1 / near, iF = 1 / far;
+    const img = new ImageData(W, H), d8 = img.data;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const z = dist[(H - 1 - y) * W + x];
+      const t = Number.isFinite(z) ? Math.max(0, Math.min(1, (1 / Math.max(z, near) - iF) / (iN - iF))) : 0;
+      const o = (y * W + x) * 4, v8 = Math.round(t * 255);
+      d8[o] = d8[o + 1] = d8[o + 2] = v8; d8[o + 3] = 255;
+    }
+    return { img, width: W, height: H, near: +near.toFixed(3), far: +far.toFixed(3), encoding: 'inverse' };
+  }
+  async function encodePNG(img) {
+    if (typeof OffscreenCanvas !== 'undefined') { const oc = new OffscreenCanvas(img.width, img.height); oc.getContext('2d').putImageData(img, 0, 0); return oc.convertToBlob({ type: 'image/png' }); }
+    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; c.getContext('2d').putImageData(img, 0, 0);
+    return new Promise((r) => c.toBlob(r, 'image/png'));
+  }
+  let H2B = null; // half float → 0…255 (sRGB already applied by the output pass)
+  async function encodeJPEG(px, W, H, quality) {
+    if (!H2B) { H2B = new Uint8Array(65536); for (let i = 0; i < 65536; i++) { const v = THREE.DataUtils.fromHalfFloat(i); H2B[i] = Number.isFinite(v) ? Math.max(0, Math.min(255, Math.round(v * 255))) : 255; } }
+    const img = new ImageData(W, H), d = img.data;
+    for (let y = 0; y < H; y++) {
+      const src = (H - 1 - y) * W * 4, dst = y * W * 4; // render targets are bottom-up
+      for (let i = 0; i < W * 4; i += 4) { d[dst + i] = H2B[px[src + i]]; d[dst + i + 1] = H2B[px[src + i + 1]]; d[dst + i + 2] = H2B[px[src + i + 2]]; d[dst + i + 3] = 255; }
+    }
+    if (typeof OffscreenCanvas !== 'undefined') {
+      const oc = new OffscreenCanvas(W, H); oc.getContext('2d').putImageData(img, 0, 0);
+      return oc.convertToBlob({ type: 'image/jpeg', quality });
+    }
+    const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').putImageData(img, 0, 0);
+    return new Promise((res) => c.toBlob(res, 'image/jpeg', quality));
   }
   let capturing = null;
   /**
@@ -2214,10 +2697,13 @@ export async function createVillar({
    * the best quality of this device), with the quantized pose and the placed items ranked by pixel area.
    * Waits (≤ 3 s) for a stable frame. The visible canvas never shows the capture-size frame.
    */
-  function capture({ width = 1536, height = null, quality = 0.92, wait = true, timeout = 8000 } = {}) {
-    if (capturing) return capturing;
+  function capture({ width = 1536, height = null, quality = 0.92, wait = true, timeout = 4000, depth = false } = {}) {
     if (contextLost || restoring || disposed) return Promise.reject(new Error('WebGL context unavailable'));
+    // one capture at a time, each with ITS OWN size: a second caller queues behind the one in flight (it used to
+    // be handed the first caller's promise — and so the first caller's width)
+    const prev = capturing;
     const job = (async () => {
+      if (prev) await prev.catch(() => {});
       if (wait) await settle(timeout);
       if (disposed || contextLost) throw new Error('WebGL context unavailable');
       refineInput(true); // raster (the opt-in tracer's still is not part of the contract)
@@ -2228,30 +2714,35 @@ export async function createVillar({
       // the capture frame: same pose, same horizontal lens, same lens shift; HUD-free
       const keep = { sel: post.outline.selectedObjects, marker: marker.mesh.visible, pr: renderer.getPixelRatio() };
       post.setSelection([]); marker.mesh.visible = false;
-      let blob = null, items = [];
+      let blob = null, items = [], depthOut = null, px = null;
+      const db = renderer.getDrawingBufferSize(new THREE.Vector2());
       try {
-        renderer.setPixelRatio(1); renderer.setSize(W, H, false);
+        // everything happens in render targets at the capture size: the visible canvas is never resized,
+        // cleared or drawn, so it keeps showing the last frame (no black flash)
         post.setSize(W, H); controls.resize(W, H);
-        renderer.shadowMap.needsUpdate = true;
-        post.render(0.016);
-        const blobP = new Promise((res) => {
-          if (canvas.toBlob) canvas.toBlob((b) => res(b), 'image/jpeg', quality);
-          else { const url = canvas.toDataURL('image/jpeg', quality); fetch(url).then((r) => r.blob()).then(res, () => res(null)); }
-        });
+        const out = post.renderOffscreen(0.016);
+        px = new Uint16Array(W * H * 4);
+        renderer.readRenderTargetPixels(out, 0, 0, W, H, px);
         items = itemPass(W, H);
-        blob = await blobP; // the bitmap was copied at the toBlob call
+        if (depth) depthOut = depthPass(W, H);
       } finally {
-        resize(true);                       // back to the stage size (also restores lens and insets)
+        post.setSize(db.x, db.y);
+        const { w: cw2, h: ch2 } = cssSize(); controls.resize(cw2, ch2); controls.setInsets(insets);
         post.setSelection(keep.sel); if (keep.sel.length) post.setSelectionStrength(haloK);
         marker.mesh.visible = keep.marker;
-        post.render(0.016);                 // the visible frame again, in the same task as the capture
         invalidate(2);
       }
+      // encoding runs after the live view is restored (the frame loop may draw meanwhile)
+      blob = await encodeJPEG(px, W, H, quality);
+      if (depthOut) { const { img, ...meta } = depthOut; depthOut = { blob: await encodePNG(img), ...meta }; }
       if (!blob) throw new Error('capture failed');
-      return { blob, width: W, height: H, pose, items, time: currentTime, style: store?.styleId?.() ?? null, version: sceneVersion };
+      const res = { blob, width: W, height: H, pose, items, time: currentTime, style: store?.styleId?.() ?? null, version: sceneVersion };
+      if (depthOut) res.depth = depthOut;
+      return res;
     })();
-    capturing = job.finally(() => { capturing = null; });
-    return capturing;
+    const mine = job.finally(() => { if (capturing === mine) capturing = null; });
+    capturing = mine;
+    return mine;
   }
 
   // ---------------------------------------------------------------- go
@@ -2261,6 +2752,10 @@ export async function createVillar({
   lighting.loadSky(currentTime).then(() => skyLanded(currentTime));
   resize(true);
   controls.setView(VIEWS.includes(view) ? view : 'eye', { instant: true });
+  const openingParam = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('opening') : null;
+  const sessionSeen = (() => { try { return sessionStorage.getItem('villar.opening') === '1'; } catch { return false; } })();
+  let openingPlanned = openingParam === 'on' || (openingParam !== 'off' && opening !== false && controls.view === 'eye' && (opening === true || !sessionSeen));
+  if (openingPlanned) openingPlanned = controls.introPlace('eye');
   if (controls.view === 'top' || controls.mode === 'orbit') setCutaway(true);
   applyTimeOfDay(currentTime);
   giInterior();

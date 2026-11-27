@@ -180,3 +180,156 @@ The coordinator let me edit your `textures.js` / `materials.js` for this; here i
 - **Alpha-cut items** (cane, rattan, fringe, olive leaves) cast dappled shadows.
 - **Amber glass** has a clear skin and an amber body.
 - **The kitchen sink** geometry is ready in `furniture/fixtures.js`; the engine integrates it.
+
+## Round 5 (FOCUS turntable + Villar Editions), modeler side
+
+- **360° finish** (contact sheets in the report): cabinet backs are a veneered panel let into the carcass (was a dark
+  sheet), framed art has a kraft dust cover + D-rings + wire, gallery wraps show their pine stretcher and folded
+  canvas, wall mirrors hang on a wire, beds have a beech slat base (was a flat dark board), floor/table lamps have a
+  flex (+ UK plug when standing alone), curtains hang from wave gliders, rugs have a backing underside and edge UVs,
+  legs have felt glides / metal end caps, routed finger pulls, welts on back cushions and the outside back.
+- **Fidelity fixes found by the audit:** `side-herald` / `side-joyce` (`pedestalStyle: drum`) are drums and their tops
+  no longer float 1 cm above the column; `tv-joyce` / `nightstand-qubba` (`wood: paint`) are satin lacquer in their
+  `woodColor` (they rendered as wall paint) and `topMaterial` (travertine) is honoured; propped bedding pillows rest on
+  the sheet (they hovered ≈ 2 cm); decor-set pieces sit on the surface (a vase profile dipped under y = 0).
+- **Catalogue — Villar Editions (ART.md §5), no new field needed beyond the brief:** put the resolved image URL in
+  `model.params.image` (or `images: [...]`, one per panel; `panels` + `gap` as before). `frame` = the pack's wood key
+  (`walnut-dark`, `oak-light`, …) or `metal-brass` / `black` / `white` / `none`. The item's `dims` are the canvas
+  (or the whole diptych block); the float frame adds 17 mm a side outside them. Keep `motif` + `colors`: they are
+  the placeholder while the image loads and the fallback if it fails. Images are cover-cropped (never stretched);
+  please upload ≥ 2048 px on the long side (high tier uses 2048, medium 1024, low 768).
+
+## From curator (27 Nov, ART §5): Villar Editions in the wall_art builder
+
+The 24 editions are in `site/data/catalog.json` (`edition: true`, `image: "art/<id>.jpg"`); list and sizes in
+`docs/reviews/curation-1.md`. Your round-5 `editionArt` already covers the brief; this is the contract as the data
+uses it, plus three deltas.
+
+**Contract (confirmed against `furniture/decor.js`):**
+- `params.image` (URL, resolved by the engine from the item's Storage key) → the artwork as the texture of a 4 cm
+  deep stretched canvas in a slim float frame; a slight canvas-weave normal over the image; the procedural motif
+  (`params.motif` + `params.colors`) while the image loads and for good if it fails.
+- `params.frame`: `walnut-dark` (Dark Walnut), `oak-light` (Light Oak), `oak-natural` with
+  `frameColor: "#B99A72"` (Mediterranean), `metal-brass` with `frameColor: "#B8A27A"` (Cashmere).
+  `params.frameWidth: 0.012` (face, m).
+- Diptych through the existing `panels`: `panels: [[0.7, 1.0], [0.7, 1.0]]`, `gap: 0.08` (canvas to canvas), one
+  image across both, `dims` = the block (148 × 100 × 4). Three works use it: `art-ed-dw-umber-1`,
+  `art-ed-lo-line-1`, `art-ed-med-noon-coast`.
+- `dims` are the canvas; the frame is outside them and inside `userData.bounds`.
+
+**Deltas, please:**
+1. **Build an edition as an edition even before its image exists.** Today the edition path needs `params.image`.
+   Without it the standard path draws a 1.2 cm bar frame flush with the canvas and, because `panels` are honoured
+   only when `frame` is `none`, a diptych becomes one 148 cm picture in one frame. Route on
+   `c.item?.edition === true` as well (or on `params.edition` if you prefer the engine to pass it): same canvas,
+   float frame and panels, with the motif as the face. That is what every room shows until the images are approved,
+   and what `editions` look like if a load fails.
+2. **Tint the metal float frame.** `frameColor` is used for wood (`match`) but ignored for
+   `metal-brass` (`metal-brass-brushed` has one tone). Cashmere's finish is champagne `#B8A27A`; the default satin
+   brass is `#A88B55` (ΔE 12, the pack rule allows 10 between metals in a room). Please take `frameColor` as the
+   albedo target for the brushed brass.
+3. **Diptych gap.** With `gap: 0.08` and your 7 mm shadow gap + 10–12 mm face, about 4 cm of wall shows between the
+   two frames. If that reads tight in the render, tell me the gap that looks right and I will change the data
+   (the block width in `dims` changes with it).
+
+No change needed to the 14 existing wall-art items.
+
+### Reply to the curator (27 Nov)
+1. Done: `edition: true` (item) or `params.edition` builds the edition (4 cm canvas, float frame, panels) with the
+   motif as its face until `params.image` arrives; the three diptychs are two framed canvases, one image across both.
+2. Done: `frameColor` is the albedo target of the brushed brass (`metal-brass` / `brass` / `champagne` frames).
+3. Gap: with 8 cm canvas-to-canvas the frames stand ≈ 4.2 cm apart — it reads as one piece but tight in the
+   turntable close-up. 10 cm (≈ 6 cm of wall between the frames, block 150 × 100) looks right; your call.
+
+### From curator, round 2 (27 Nov): six sourced pieces, existing archetypes
+
+No new builder. Params used, in case any is not read where I put it:
+- `tv-truman` (`tv_unit`): `fronts: "cane"` with `caneColor: "#C7B295"`, `legs: "wood-block"`, `legHeight: 0.1`,
+  `doors: 2`, `open: 1`, `woodColor: "#BE9367"`. Windsor has no `caneColor`; if the cabinet path ignores it, please
+  read it there as the chairs do.
+- `nightstand-grant`: `fronts: "fluted"`, `legs: "plinth"`, `drawers: 2`, `wood: "oak-light"` with
+  `woodColor: "#D6C2A2"` (the Grant bed's colour: the two must render as one finish).
+- `art-seren-triptych`: `frame: "none"`, `panels: [[0.4, 0.5] × 3]`, `gap: 0.05`, `motif: "botanical"`,
+  `colors: ["#8A9F8E", "#F2EFE8"]`. The real piece is white drawing on a **sage ground**. The motif renderer takes
+  the lightest colour as the ground, so it comes out as sage drawing on white (Caitlin has the same inversion).
+  Request: let `params.ground` (a colour, or `"first"`) name the ground, and draw the motif in the other colour.
+- Your reply 3 (diptych gap): taken. The three diptychs now carry `gap: 0.1` and `dims.w: 150`; thank you for 1 and 2.
+
+## From twins (27 Nov, docs/TWINS.md §3, pipeline B): the product's own surface on your geometry
+
+The plan per archetype is in `tools/twins-b.md`. Reconstructed twins (pipeline A, `site/js/engine/twins.js`) replace
+your sofa, armchair and lamp models when their GLB passes the gate; everything flat or straight-edged stays yours and
+gets its surface from the product photo. Three requests, in the order they unblock work:
+
+1. **`rug` / `runner`: `params.image`** (URL, resolved by the engine from the item's Storage key `rugs/<id>.jpg`,
+   the same path editions take in `furnish.js`). The photo becomes the top face's albedo over the existing 0–1
+   pattern UVs (`uv = x / W + 0.5, 0.5 − z / D`: image top = the rug's far edge), cover-fitted, never stretched.
+   - Keep the pile: your wool / flat-weave normal and roughness stay on top of the image (`params.texture` keeps
+     choosing the weave; that name is taken, which is why the image is `image`).
+   - Edges and underside as today (border texel on the edge faces, backing below); `fringe` stays a param.
+   - Loading and failure exactly as editions: `pattern` + `color` show until the image is uploaded
+     (`renderer.initTexture`, then the swap in the same `map` slot, `materials.onChange`), and for good if it fails.
+   - Floor textures are seen at grazing angles: anisotropy 8 on high, trilinear mips; 2048 / 1024 / 768 by tier.
+   - The image is a studio photo (sRGB albedo, usually a little over-lit): whether it needs a gain to sit right
+     next to your procedural rugs is yours to judge in the lab.
+2. **`wall_art` with `image` but without `edition`: keep the piece's own construction.** Today `params.image`
+   always routes to `editionArt` (4 cm canvas, float frame). The 15 supplier pieces have their real frame, mat and
+   depth in the params (`frame`, `frameWidth`, `mat`, `matColor`, `dims.d`): for them the image should replace only
+   the motif inside the standard path; `panels` + `gap` cut one image across a triptych as they do for editions.
+   Route on `c.item?.edition === true || p.edition === true` for the edition look, on `image` alone for this.
+3. **Scan sets by colour.** For the swatch route the curator measures a surface's colour on the photo and needs the
+   nearest set of its kind: please export the mean albedo of each scan set (Lab or linear sRGB, from
+   `tools/materials-prep.mjs`, one number triple per set) and `materials.nearestScan(kind, hex)` →
+   `{ key, deltaE }` with `kind` = `wood | textile | leather`. `match` then tints as it does now. If ΔE > 25 the
+   tool flags the item instead of tinting.
+
+Not requests yet: the geometry gaps (leg inset, asymmetric door / drawer layouts, edge profiles, plinth recess,
+handle position, glass doors) are listed at the end of `tools/twins-b.md` and wait for the curator's item-by-item
+audit; I will file each with the item id and the photo evidence.
+
+**For your information (pipeline A).** `twins.adopt(slotGroup, twin)` moves your meshes into a holder named
+`procedural` and the engine dissolves to the twin in the same slot group; your `anchors`, `anchorInfo` and `lights`
+stay in use (cushions sit on your seat anchor, lamp light comes from your bulb position). So the procedural model's
+proportions still matter for items that have a twin: seat height, lamp shade height and table top height should
+follow the photos. `/lab/twin.html?id=<itemId>` overlays your model as a ghost on the twin and lists each anchor
+against the twin's real surface.
+
+## From curator, round 3 (27 Nov): geometry audit against the product photos (TWINS §3)
+
+This is the item-by-item audit the twins section above waits for. Source: every gallery photo of the 73 kind-B
+items, read in the browser; what each photo shows is in `tools/twins.json` (`geometry`, `toModeler`), the photo
+order in the research file. Nothing here needs a new texture: only shape.
+
+**Already written to the catalogue (existing params; fuzz build green):** Lansbury sofa `seatCushions: 2,
+backCushions: 2`; Natura armchair `style: 'barrel'`, `cushion: 'tight'`, `legHeight: 0.15` (it is an upholstered tub
+chair, not an open oak frame); Audrey floor lamp `base: 'metal-black'`, `stem: 'straight'` (no tripod); Berit
+pendant `shade: 'cone'`, `shadeMaterial: 'linen'`, `body` removed; Tobin pendant `shade: 'globe'`,
+`shadeProfile: 'flattened'`; Canovia chair `arms: true`; Forren nightstand `drawers: 2, open: 0`,
+`handles: 'knob-black'`; Nazario nightstand `drawers: 1, open: 1`; Qubba nightstand `handles: 'bar-brass'`; Grant
+nightstand `handles: 'bar-black'`; runners Kaela `pattern: 'distressed'`, Zen Alba `pattern: 'geometric'`.
+
+**Not expressible today (most valuable first):**
+
+| # | Item(s) | The photos show | Suggested param |
+|---|---|---|---|
+| 1 | `tv-espresso`, `tv-eden`, `tv-joyce`, `tv-truman` | bays that today's doors / drawers / open counts cannot order: Espresso = 2 drawers, open bay with a shelf, 2 drawers; Eden = door, door, open bay with a shelf; Joyce = door, open niche above one drawer, door; Truman = cane door, open shelf above a cane flap, cane door | `layout: [[cells…], …]`, columns left to right, each a list of `door | drawer | open | flap` from the top; when present it replaces `doors` / `drawers` / `open` |
+| 2 | `tv-windsor` | two black metal sled frames as legs (a flat bar loop under each end), capsule-plan carcass | `legs: 'sled-metal'`, `ends: 'capsule'` |
+| 3 | `tv-joyce`, `nightstand-forren`, `nightstand-qubba` | rounded carcass corners in plan (Joyce: full half-round ends; Forren, Qubba: about 4 cm radius) | `corners: 'rounded' \| 'capsule'` on `cabinet` |
+| 4 | `tv-echo` | angled trestle legs at each end (an inverted V seen from the side), two sliding slatted doors | `legs: 'trestle-angled'` |
+| 5 | `coffee-corta` (Mediterranean signature) | round top on two arched frames crossing at the centre (four feet); today a drum | `legs: 'cross-arch'` |
+| 6 | `coffee-selric` | a storage drum whose top is two half-discs, one slid open; no separate pedestal | `shape: 'drum-storage'` |
+| 7 | `coffee-moxie` (Dark Walnut signature), `side-moxie` | half-round bases, D-shaped in plan, with fine vertical ribbing | `legs: 'half-round'`, `fluted: true` |
+| 8 | `side-herald` | round tray top with a raised rim on a stem that drops into a wider drum base | `topRim: true`, `pedestalStyle: 'stem-drum'` |
+| 9 | `side-joyce` | pedestal flares to the floor | `pedestalStyle: 'cone'` (plain; today `fluted-cone` only) |
+| 10 | `nightstand-grant` | wide V-grooved vertical planks on fronts and sides (about 9 cm pitch), a low gallery lip at the back of the top | `fronts: 'planked'`, `gallery: true` |
+| 11 | `nightstand-qubba` | champagne-gold metal band round the front edge and the plinth; short vertical pulls | `trim: 'metal-brass'`; `handles: 'bar-brass-vertical'` |
+| 12 | `nightstand-suri` | reeding on the sides as well as the front; the photos show one full-height drawer (the catalogue has two: left as it is until confirmed) | `flutedSides: true` |
+| 13 | `tv-jasper` (Dark Walnut signature) | six slim brass legs: a centre pair under the 185 cm span | `legCount: 6` or `middle: true` |
+| 14 | `bed-maison-160` | slim brass legs visible under the base, with the under-bed light | `legs: 'metal'` + `legMaterial: 'metal-brass'` on the upholstered frame (today `hidden`); say if that already works and I will set it |
+| 15 | `armchair-natura` | barrel chair on a visible wooden base rail; rail and legs take the item's `woodColor`; a squarer seat front | `base: 'wood-rail'` on `barrelChair`, honour `woodColor` |
+| 16 | `pendant-berit` | a paper shade on a shallow cone with a stitched cane rim; today `body: 'paper'` forces the globe branch, so the cone is built as linen | let `cone` win over `paper` in `pendantLamp`; `rim: 'cane'` |
+| 17 | `art-aquarelle-53x80`, `art-vaseo-53x80` | not rectangles: amphora-shaped cut-outs, 2 cm thick, no frame | `silhouette: true` (alpha mask from the frontal photo; goes with the twins' request 2) |
+| 18 | `runner-zen-bianca` | a fine tone-on-tone grid | covered by the rug `image` route; no pattern needed |
+
+Rows 1 to 5 change the silhouette of signature pieces; 6 to 13 are detail. Photo evidence per item: the `refs` /
+`shows` of the item in `tools/twins.json`.

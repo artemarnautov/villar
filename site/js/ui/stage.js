@@ -42,7 +42,7 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
   let quality = 'high';
   // T7: thumbnails are rendered one per idle frame, and not while the camera is flying to an object.
   const thumbCache = new Map();   // itemId → Promise<url|null>
-  let thumbQueue = [], thumbBusy = false, thumbHoldUntil = 0, thumbTimer = 0, thumbSeq = 0;
+  let thumbQueue = [], thumbBusy = false, thumbHoldUntil = 0, thumbTimer = 0, thumbSeq = 0, dragHold = false;
   // D3-10: tiles on screen go first, in the order they became visible; the rest keep their place behind them.
   const nextThumb = () => {
     let at = -1, best = Infinity;
@@ -373,8 +373,11 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
   syncChip();
 
   // ---------- Engine ----------
+  // Extra engine events the UI listens to (FOCUS: 'inspect', 'rest', 'focus'), kept across engine re-mounts.
+  const engineSubs = [];
   function bind(v, gen) {
     const on = (evt, fn) => { try { v.on?.(evt, (p) => { if (gen === generation) fn(p); }); } catch (e) { warn(`on(${evt}) failed`, e); } };
+    for (const [evt, fn] of engineSubs) on(evt, fn);
     on('progress', onProgress);
     on('photo', (p) => onPhoto(p));
     on('hover', (p) => {
@@ -555,6 +558,7 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
     syncStyle() { syncChip(); syncPoster(); },
     /** The budget slider is held: the engine keeps the camera still and defers thumbnails and bakes. */
     setDragging(on) {
+      dragHold = !!on;
       if (on) { hideHint(); thumbHoldUntil = Math.max(thumbHoldUntil, performance.now() + 60_000); }
       else { thumbHoldUntil = performance.now() + 400; pumpThumbs(); }
       call('setDragging', !!on);
@@ -565,6 +569,44 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
       busyChip.hidden = false;
       requestAnimationFrame(() => busyChip.classList.add('is-visible'));
       return () => { busyChip.classList.remove('is-visible'); setTimeout(() => { if (!busyChip.classList.contains('is-visible')) busyChip.hidden = true; }, 320); };
+    },
+    /** Subscribe to an engine event now and after every (re)mount; unknown events simply never fire. */
+    onEngine(evt, fn) {
+      engineSubs.push([evt, fn]);
+      if (villar && mode === '3d') { const gen = generation; try { villar.on?.(evt, (p) => { if (gen === generation) fn(p); }); } catch (e) { warn(`on(${evt}) failed`, e); } }
+    },
+    /**
+     * Where placed items are relative to the current camera, for the walk order (FOCUS §4):
+     * { [slotId]: { x, y (NDC −1…1), angle (rad, + = right of the view axis), visible } }.
+     * Uses the engine's `project(slotIds)` once it exists; until then its camera + object boxes (QA handles).
+     */
+    project(slotIds) {
+      if (mode !== '3d' || !villar) return null;
+      if (typeof villar.project === 'function') { try { return villar.project(slotIds) || null; } catch (e) { warn('engine.project failed', e); } }
+      const cam = villar.debug?.camera, fur = villar.debug?.furnisher;
+      if (!cam || typeof fur?.boxOf !== 'function') return null;
+      const out = {};
+      try {
+        cam.updateMatrixWorld?.();
+        for (const id of slotIds) {
+          const b = fur.boxOf(id);
+          if (!b || b.isEmpty?.()) continue;
+          const c = b.min.clone().add(b.max).multiplyScalar(0.5);
+          const local = c.clone().applyMatrix4(cam.matrixWorldInverse);   // camera space: x right, −z forward
+          const ndc = c.clone().project(cam);
+          const front = local.z < 0;
+          out[id] = { x: ndc.x, y: ndc.y, angle: Math.atan2(local.x, -local.z), visible: front && Math.abs(ndc.x) <= 1 && Math.abs(ndc.y) <= 1 };
+        }
+      } catch (e) { warn('project fallback failed', e); return null; }
+      return out;
+    },
+    /** The engine's own walk (FOCUS §4), once it ships: returns the next slot id, or undefined (UI order). */
+    focusNext(dir) { return mode === '3d' && typeof villar?.focusNext === 'function' ? call('focusNext', dir) : undefined; },
+    /** Build what the card's tiles would swap in, in idle time (visible tiles first). Feature-detected. */
+    prefetch(slotId, itemIds = []) {
+      if (mode !== '3d') return;
+      if (typeof villar?.prefetch === 'function') call('prefetch', itemIds, { slotId });
+      else call('prebuild', slotId);
     },
     /** Product thumbnails rendered by the engine (feature-detected; cached per item; queued — T7). */
     thumbs: {
@@ -580,6 +622,8 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
       bump(id) { const j = thumbQueue.find((x) => x.id === id && !x.prio); if (j) j.prio = ++thumbSeq; },
       /** Hold rendering (e.g. for the duration of a camera flight). */
       hold(ms) { thumbHoldUntil = Math.max(thumbHoldUntil, performance.now() + ms); },
+      /** The camera has landed ('rest'): render the queued tiles now instead of waiting out the hold. */
+      release() { if (dragHold) return; thumbHoldUntil = 0; clearTimeout(thumbTimer); thumbTimer = 0; pumpThumbs(); },
     },
     cancelPhoto,
   };

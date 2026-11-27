@@ -121,17 +121,25 @@ async function boot() {
     onBack: () => hud.close(),
   });
 
+  // Focus card (docs/FOCUS.md): engine-side pieces (turntable, 'inspect', focusNext, project) are feature-detected.
   hud = createHud({
-    el: $('#hud'), shell: $('.studio-shell'), stage: stageEl, store, palettes, thumbs: stage.thumbs,
+    el: $('#hud'), shell: $('.studio-shell'), stage: stageEl, scene: stage,
+    store, palettes, thumbs: stage.thumbs, spec: data.budget || null, announce, editions: data.editions !== false,
+    level: () => { try { return slider?.position()?.level?.id || null; } catch { return null; } },
+    // «Подстроить комнату под этот стиль»: the card offers its own Undo, so no stage toast.
     onStyleSwitch: (id, opts) => switchStyle(id, opts),
-    onOpen: (cur, { same }) => {
+    onOpen: (cur, { same, wasOpen, engineFlies }) => {
       card.hide();
       budget?.setSheetOpen(true);
       pushLayer('hud');
-      // Phones: bring the whole stage under the nav so the object stays visible above the panel.
-      if (!same && isCompact()) scrollToEl(stageEl, { pad: 8 });
-      // Fly to the object once the HUD has its size (it frames the object in the uncovered part).
-      if (!same) requestAnimationFrame(() => requestAnimationFrame(() => { if (hud.isOpen) stage.focus(cur.slotId, hud.insets()); }));
+      // Phones: bring the whole stage under the nav so the object stays visible above the sheet.
+      if (!wasOpen && isCompact()) scrollToEl(stageEl, { pad: 8 });
+      // Fly to the object once the card has its size (it frames the object in the uncovered part). Walking or
+      // tapping another item while focused glides straight there (the engine retargets from where it is).
+      if (!same) requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (hud.current?.slotId !== cur.slotId) return;
+        if (engineFlies) stage.setInsets(hud.insets()); else stage.focus(cur.slotId, hud.insets());
+      }));
     },
     onResize: (insets) => { if (hud.isOpen) stage.setInsets(insets); },
     onClose: () => { stage.unfocus(); budget?.setSheetOpen(false); popLayer('hud'); card.quiet(600); },
@@ -156,7 +164,7 @@ async function boot() {
   // frame later, and offers a quiet «Вернуть» that restores the exact previous state (style and every pick).
   const toast = createToast({ host: stageEl.querySelector('.stage-ui') });
   let switching = false;
-  function switchStyle(id, { anchor } = {}) {
+  function switchStyle(id, { anchor, quiet = false } = {}) {
     if (switching || !store.style(id) || id === store.styleId()) return;
     switching = true;
     const prev = store.snapshot();
@@ -173,6 +181,7 @@ async function boot() {
       try { store.setStyle(id, kept ? { selection: kept.selection } : anchor ? { anchor } : {}); } finally { switching = false; }
       const done = () => {
         hideBusy();
+        if (quiet) return; // the focus card offers its own «Вернуть»
         const msg = kept
           ? t('toast.styleBudget', { style: packName(store.style(id)), level: kept.label, total: aed(store.total()) })
           : t('toast.style', { style: quoted(packName(store.style(id))) });

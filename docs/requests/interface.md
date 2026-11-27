@@ -57,7 +57,68 @@ Done in the UI (D4-01…D4-09, R4-04, PT4-01, PT4-02, labels):
 2. Lead form: every failure (429 rate_limited, 503, timeout, network) shows the same calm "try again" message and
    keeps the form filled (PT3-05). There is no WhatsApp fallback, per the founder.
 
+## Focus card (docs/FOCUS.md, round 7): requests to engine
+
+The card (`ui/hud.js`) feature-detects all of these and works without them.
+
+1. **`villar.focusNext(dir)` → `slotId | null`.** It should pick the next stop and fly there, and the UI then opens the
+   card without asking for a second flight. Until it ships, the UI orders the walk itself (`ui/walk.js`): the items on
+   screen at entry, left to right, then zone by zone, with one stop per selection key.
+2. **`villar.project(slotIds)` → `{ [slotId]: { x, y, angle, visible } }`.** x and y are NDC, and `angle` is the yaw off
+   the view axis, positive to the right. The UI reads `debug.camera` and `debug.furnisher.boxOf` until this exists.
+3. **`villar.prefetch(itemIds, { slotId })`.** The card asks for every item its visible tiles would swap in. That includes
+   other styles' pieces and variants, which `prebuild(slotId)` does not build (it covers the active pack's options only).
+4. **`'inspect' { slotId, angle, atRest, home }`** from the turntable. The UI announces the rest angle (front, ¾, side,
+   back) and sets `.is-inspecting` on the card. `'rest'` already exists, and the UI uses it to release the thumbnail
+   hold as soon as the camera lands.
+5. **Insets mid-motion.** A phone detent change calls `setInsets` once, at the start of the sheet's spring, with the
+   target detent. Today the re-frame waits for a 120 ms debounce and then flies for 0.6 s. Please retarget the current
+   flight from its velocity instead, so the camera and the sheet move as one.
+6. **Swaps keep the camera.** On a variant or model swap (`'change'` for the focused slot), keep the camera and the
+   turntable angle, unless the new box differs by more than about 10 %. Today a model replacement always re-frames (T5).
+7. **Guests** (store.js, approved by the coordinator). A slot may hold an item that another pack offers for the same key.
+   `store.options()` is unchanged, so `prebuild` does not cover these items, and request 3 matters for them.
+
 ## Resolved
 
 - D3-01, D3-03, D3-04, D3-05 (display side), D3-06, D3-08, D3-09, D3-10 (UI side), PT3-02 (reply note), PT3-04,
   PT3-05, known issue 5 (per-style poster), plus everything listed in earlier rounds.
+
+## From curator (27 Nov, ART §4–5): picks, avoid, the Art row
+
+The data now carries what `ui/hud.js` already reads. Contract and the few things to adjust. Review:
+`docs/reviews/curation-1.md`.
+
+**Data contract**
+- `pack.picks[key] = [signature, alt1?, alt2?]`: 1–3 ids, each an option of that slot. `picks[key][0]` is always
+  the pack default (tested), so "signature" and "the style's own pick" are the same thing.
+- `pack.avoid = [[idA, idB], …]`: pieces that clash when both are in the room (29 pairs over four packs).
+- `item.edition === true`, `item.image = "art/<id>.jpg"` (a Storage key; `mediaUrl()` resolves it),
+  `item.shortName` / `shortNameEn` = the work's title («Умбра № 1» / "Umber No. 1"), `item.name` = title + size.
+- `styles.json` `editions` (boolean). When it is `false`, `loadData` now also strips editions from every pack's
+  options, picks and defaults (`withoutEditions` in `core/data.js`), so `store.defaultOf()` is never an edition;
+  your `editions` filter stays as a second guard.
+- Each art slot's picks are `[edition (signature), edition (alternate), simpler piece]`.
+- `budget.json` level blurbs changed for «Всё для жизни», «Как в журнале», «Без компромиссов».
+
+**The card**
+1. **Picks first, signature marked.** «Выбор дизайнера» / "Designer's pick" on `picks[key][0]`; the other picks
+   next; everything else behind «Все варианты» / "All options". You have this.
+2. **Do not top the head up to three.** `curate()` fills the head from the price-sorted rest when a slot has fewer
+   than three picks. A short list is deliberate (nothing else passed the check against the signature room): e.g.
+   Mediterranean cushions have one pick because every other set drops the blue stripe that the bedding and the sofa
+   work repeat. When `pack.picks[key]` exists, please show only those (plus the current piece if it is not among
+   them) and put the rest behind «Все варианты».
+3. **Clashing pieces.** Shown last, as now. If a customer picks one anyway, one quiet line under the name is enough:
+   «Спорит с: <short name>» / "Fights with: <short name>" (the other half of the `avoid` pair that is in the room).
+   No dialog, no block.
+4. **Row «Искусство» / "Art"** for the three `wall_art` slots (ART §5): large tiles that show the artwork itself
+   (`mediaUrl(item.image)` for editions, the engine thumbnail for the others and whenever the image is missing or
+   fails to load), designer's pick first, then the second edition, then the simpler piece; under each: title, size
+   as «150 × 100 см · диптих» / "150 × 100 cm · diptych" or «140 × 100 см», and the price; one tap hangs it. The
+   «Villar Editions» mark you already draw is right.
+5. **Below «Как в журнале» the ladder hangs the simpler piece.** Your `editionsFirst()` already leads with the
+   simpler pieces at those levels. Please keep the signature mark on the edition there too (it is still the
+   designer's pick); the order is what changes.
+6. **«Без компромиссов»** is now the priciest *pick* in each place, so the whisper during the drag never names a
+   piece that is not one of the three shown on the card.

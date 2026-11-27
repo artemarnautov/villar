@@ -57,6 +57,29 @@
     landscape stage, so `object-fit: cover` on the poster matches the live framing.
   - Thumbnails render only while the camera and dissolves are idle, one per idle slice (T7) — request them freely.
   - The focus halo fades out ~1.2 s after a flight lands; the canvas focus ring shows only for keyboard focus.
+- Focus v2 (docs/FOCUS.md §1–2, §4), engine side:
+  - **Flights** are critically damped springs of 550–700 ms, scaled by distance. A new `focus()` mid-flight keeps
+    the current velocity, item → item glides without zooming out, and `unfocus()` returns to the view you came from.
+  - **Framing:** the item fills ~55 % of the free height or 60 % of the free width, centred in the free area
+    (lens shift), from the ¾ beauty angle (27.5° off its front) at 17.5° elevation (eye level for tall items).
+    It falls back to other angles, heights or closer when something is in the way.
+    `villar.debug.controls.state.focusInfo` reports the chosen pose.
+  - **Spotlight:** while focused, the room renders −0.3 EV with a soft blur; the item keeps its light and colour.
+  - **Turntable:** a horizontal drag on the stage turns the focused item (and what sits on it) about its footprint
+    centre. Gain: 1.2 stage widths = 360° (mouse), 1 width = 300° (touch).
+    - Release: inertia from the last 80 ms, velocity halves every 120 ms, then a critically damped settle on the
+      nearest 45° rest angle, plus an 8 ms vibrate tick.
+    - Away from home, the room dims to −0.7 EV and the item is drawn over it with a contact shadow, so it never clips.
+  - **Tilt and zoom:** vertical drag tilts 5–45° and wheel/pinch zooms 0.7–1.6×, both rubber-banded at 0.35 and
+    sprung back on release.
+  - **Reset:** double-click or double-tap on the stage, or `villar.inspectReset()`.
+  - **Leaving and swaps:** leaving, or swapping the focused item, springs it home in 400 ms (the swap waits for that).
+  - **Keys** (canvas focused, item focused): ←/→ rest angles, ↑/↓ tilt, +/− zoom, 0 reset, [ ] previous/next
+    item, Esc leaves.
+  - **Walk order:** `villar.focusNext(±1)` steps left → right as the items were on screen when focus was entered,
+    then continues round the room and wraps. It also emits `select` like a click.
+  - **Events and state:** `inspect { slotId, angle (−180…180, 0 = home), atRest, home }` fires while the angle
+    changes; `villar.inspect` returns the same snapshot.
 - Round 4 (tech review):
   - **R4-05:** each slot group has at most one dissolve. A later wish (another style click, a slider step,
     Reset/Undo) waits for that dissolve and then rebuilds from the store's current selection. Every `applyPlan`
@@ -233,3 +256,236 @@
      the duvet hang stops 6 cm above the deck.
    - The disc in `crops/gl-golden-bedbase.png` sits mid-rail, away from any seam. It is the probe lookup inside the
      closed bed volume (rails + deck + mattress), as diagnosed.
+
+## From modeler (round 5): pivot/front for the FOCUS turntable
+
+Every built item (`buildItem`, `buildItemCached` clones, worker re-assembly via `prebuildItems` / `buildItemAsync`)
+now carries, on the root group's `userData`, all in the item's **local** frame (metres, before your slot transform):
+
+| field | type | meaning |
+|---|---|---|
+| `pivot` | `[x, y, z]` | The turntable axis point: **x, z** = centre of the item's visual footprint (x/z centre of its body bbox), **y** = bottom of that bbox (the floor / support contact). Rotate about the vertical line through it. For floor items fitted by `buildItem` this is `[0, 0, 0]`; it differs for wall items (`wall_art`, wall `mirror`: z = half the depth, y = the bottom edge — the origin is the back-face centre), pendants (y = the lowest point of the shade, origin = ceiling mount), asymmetric shapes (organic mirrors). |
+| `front` | `[x, y, z]` | Unit vector the item faces, its 0° rest angle. `[0, 0, 1]` (+Z) for every archetype today, as per the build conventions. The ¾ beauty angle is 25–30° off this vector. |
+| `bounds` | `{ min: [x,y,z], max: [x,y,z] }` | The local body bbox the pivot is taken from — use it for the 55 % / 60 % framing instead of `Box3.setFromObject` (see the cords below). |
+| `radial` | `bool` | `true` when the item has no meaningful front (round tables with w = d, plants, pendants, table / floor lamps except swing-arm, centrepieces). Optional: you may skip the rest-angle dial or the "back" snap for these. |
+
+Suggested use: `turn.position.copy(pivotWorld); item.position.sub(pivotLocal)` — i.e. put the item in a holder at the
+pivot and spin the holder. A turned item never changes its `pivot` / `front` (they are per-prototype constants;
+cache clones get their own array copies, safe to mutate).
+
+**Lamp cords (new, 360° backs).** Floor and table lamps now have a flex leaving the base at the back. These meshes are
+tagged `mesh.userData.cord = true` and `mesh.userData.noFit = true`; `bounds`, `pivot` and the dims fit ignore them.
+- Floor lamps: the flex lies on the floor and ends in a UK plug in a rear corner of the footprint (it may overhang
+  the footprint by ≤ 4 cm on the slim column lamp). In the studio's corner slot that is against the walls, so
+  `clampToRoom` is unaffected; if you ever see a lamp pushed off a wall, exclude `userData.noFit` meshes from
+  `boundsOf()` (or use `userData.bounds`).
+- Table lamps on a host (`ctx.host` = the nightstand's `anchorInfo.top`, as you already pass): the flex runs to the
+  host's back edge and drops ≈ 7 cm over it (y < 0, below the anchor). Without a host it ends in a plug on the
+  surface. On the turntable you may hide cords with `mesh.visible = !mesh.userData.cord` if the drop reads wrong
+  against the invisible stage — your call.
+
+**Other round-5 geometry the turntable will show (no engine change needed):** finished cabinet backs (veneered panel
+let into the carcass), kraft dust covers + D-rings + wire on framed art and wall mirrors (behind the back plane,
+z ≤ 0 — inside the wall once hung), pine stretchers on gallery-wrapped canvases, rug backing + edge UVs, felt glides /
+metal end caps under legs, routed finger pulls, welts on back cushions and round the outside back of sofas.
+
+**Villar Editions wall art (ART.md §5).** `buildItem` renders a real artwork when `item.model.params.image` (or
+`images: [...]`) holds a URL — please resolve the catalogue's Storage key (`item.image`, e.g. `art/<id>.jpg`) with your
+base-URL constant into `model.params.image` before building (or tell me the constant and I resolve it here).
+- The image loads with `crossOrigin = 'anonymous'`, decodes via `createImageBitmap`, is uploaded with
+  `renderer.initTexture` and only then replaces the motif placeholder in the same `map` slot (no shader change, no
+  blank frame). `materials.onChange` fires on the swap (rebake GI / thumbnails as for scans); `materials.pending()` /
+  `ready()` include image loads (≤ 20 s, then the motif stays).
+- CSP: the Storage origin must be in `img-src` (an `<img>` load, not `fetch`). A failed load keeps the motif.
+- Geometry: 4 cm canvas + float frame, origin = centre of the back plane as before; the frame lies 17 mm outside
+  `dims` on each side (`userData.bounds` has the real size), hanging hardware sits at z ≤ 0.
+
+**T8 prebuild slices.** `prebuildItems` now learns the first-time `materials.get` cost per material key and starts a
+creation only when it fits what is left of the slice (unknown keys are assumed expensive); creations no longer stack
+in one slice. `materials.get` itself got cheaper: procedural stand-ins of scanned furniture materials are generated at
+half resolution while scans are on, the paper-cord bundle is shared across colours, and artwork canvases are
+allocated in idle periods of their own (≤ 10 s, the ground colour shows meanwhile). Lab, 182 items, fresh library:
+slowest first-time `materials.get` 21.5 → 7.6 ms (0 over 8 ms); prebuild `maxSlice` 17.6 → 12.4 ms, slices over
+8 ms 13/23 → 6/29. The remaining spikes look like GC pauses (a trivial `plant-stem` once measured 29 ms). If you
+want the last ones gone, run `prebuildItems` only while `!controls.moving` (as you do) — nothing in the slice is
+above 7.6 ms of real work now. `prebuildStats()` is unchanged.
+
+**Mesh rule (27 Nov, NaN tangents):** the Builder now gives every part real uvs (box projection instead of zeros) and
+repairs zero-area uv triangles (flat lathe caps, pole fans) with a per-triangle box projection, so no furniture mesh
+with a normal map / anisotropy / clearcoat normal has degenerate uvs. `node tools/fuzz-furniture.mjs` (new) checks it
+for every archetype × junk params × 3 tiers and all catalogue items — 0 failures.
+
+## From curator (27 Nov, ART §5): art hanging, edition images, rug tuck
+
+Data is in place; nothing below needs a catalogue change. Review: `docs/reviews/curation-1.md`.
+
+### 1. Hang wall art by rule, not at a fixed height (P1)
+
+Today `place()` puts `wall_art` at `slot.pos` whatever the canvas height or the furniture below. With the old
+60 cm pieces and the new 90–100 cm editions on the same slot, one of them is always wrong: at the old y = 1.60 a
+90 cm canvas touches the 114 cm headboard; at the new fallback y a 60 cm piece floats 30 cm too high.
+
+The three art slots in `site/data/layout-studio.json` now carry the rule:
+
+```json
+"hang": { "over": "sofa", "gap": 0.2, "gapMin": 0.15, "gapMax": 0.25, "centre": 1.45, "centreOn": "sofa",
+          "span": [0.6667, 0.75], "wall": { "from": 3.4, "to": 8.8, "margin": 0.25 } }
+```
+
+Please compute, after the `over` slot's item is placed (and again when it or the art changes):
+
+- `H`, `W` = the art's real visual size: `group.userData.bounds` (includes the float frame; a diptych is one block).
+- **Height.** If `hang.over` names a slot that holds an item: `top` = world max y of that item's bounds (sofa back,
+  headboard) and `y_centre = top + hang.gap + H / 2`. If the slot is empty or `over` is absent:
+  `y_centre = hang.centre` (1.45 m).
+- **`hang.clear`** (dining wall: `{ "slot": "dining_table", "gap": 0.18 }`): keep the bottom edge at least `gap`
+  above that item's top: `y_centre = max(y_centre, top(clear.slot) + clear.gap + H / 2)`.
+- **Ceiling.** Keep the top edge ≥ 0.30 m under the ceiling at that spot (the bulkhead is 2.55 m). If that pushes the
+  piece down, the gap may shrink to `gapMin` and no further; below that, leave it and log
+  `[villar] <id> does not fit above <over>`.
+- **Along the wall.** Centre the block on `hang.centreOn`'s placed bounds (the sofa is clamped to the wall and
+  aligned, so its real centre can differ from `slot.pos`), then clamp so the block stays inside
+  `hang.wall.from + margin … hang.wall.to − margin` (metres along the wall's axis: z for the east and west walls,
+  x for the bathroom partition).
+- `slot.pos` y stays as the fallback and is tuned for the signature rooms (sofa 1.56, bed 1.74, dining 1.45).
+- `hang.span` is informational (the data already satisfies it; `tools/test-ai.mjs` checks it). A
+  `console.debug` when `W / width(over)` is outside `span ± 0.03` would help the reviewers.
+
+Expected results, for a check in the harness (centre y, m): Dark Walnut Magazine: sofa wall 0.86 + 0.20 + 0.517 =
+1.58 (canvas 100 + frame), bed wall 1.14 + 0.18 + 0.467 = 1.79, dining 1.45. Dark Walnut Fully furnished: Najla
+120 × 80 over the 82 cm Daventry back = 1.42; Olina 120 × 60 over the 114 cm headboard = 1.62.
+
+### 2. Edition images: resolve the Storage key (as the modeler asked in "From modeler (round 5)")
+
+- Catalogue editions carry `edition: true` and `image: "art/<id>.jpg"` at item level (a Storage key, not a URL).
+  Before building, set `model.params.image = MEDIA_BASE + item.image` (the constant is in `site/js/ui/config.js`;
+  the server uses `db.publicUrl`). `params.frame`, `frameColor`, `frameWidth` (0.012), `motif`, `colors` and, for the
+  three diptychs, `panels: [[0.7, 1.0], [0.7, 1.0]]` + `gap: 0.08` are already in the data.
+- **Only once the file exists.** Until the art director approves a candidate, a request for `art/<id>.jpg` is a 404
+  on every room load (three per style). Either probe once per session and cache the miss, or read a small manifest
+  of approved ids (the photo engineer can write `art/index.json` when a job is approved). A failed load must not
+  log an error to the console.
+- Pass `edition` through to the builder as well (see `docs/requests/modeler.md`, "From curator" 1): an edition
+  without an image should still get the canvas and float frame, with the motif as its face.
+- `editions: false` in `styles.json`: `loadData` already removes editions from the packs (`withoutEditions`), so
+  the engine never sees one. Nothing to do.
+
+### 3. Rug tuck (P2, optional)
+
+`rug` is placed at `slot.pos` (x = 2.95). A 200 cm-deep rug then runs 19–34 cm under the sofa front (good), but the
+160 × 230 rug ends 4–12 cm under it: the sofa's front legs stand on the floor. I have recorded those pairs in the
+packs' `avoid` and moved Mediterranean to a 200 × 290 rug. If you add
+`"align": { "to": "sofa", "under": 0.22 }` semantics for flat items (the rug's sofa-side edge sits 22 cm behind the
+sofa's front edge, real bounds), the small rug becomes usable again and I will remove those `avoid` pairs.
+
+## From twins (27 Nov, docs/TWINS.md): show the real product when its twin exists
+
+`site/js/engine/twins.js` (new, mine; no engine file touched) loads the GLB reconstruction of a catalogue item and
+hands back an `Object3D` normalised exactly like a procedural item: catalogue dims, floor at y = 0, pivot at the
+footprint centre, front +Z, `userData.pivot / front / bounds / radial`, shadows on, materials lit by the room
+(`MeshStandardMaterial`, so SSAO via `decorate()`, the probe chunks and the box reflections apply as they are).
+Proved in the lab (`/lab/twin.html`, "Dissolve test" runs the code below with the real `createFader`).
+
+```js
+const twins = createTwins({ THREE, renderer, baseUrl: MEDIA_BASE, quality: Q });   // MEDIA_BASE: site/js/ui/config.js (pass it in beside `media`)
+twins.has(itemId)              // sync; false until the manifest (site/data/twins.json, {} today) is in, and after a failed load
+twins.load(item)               // Promise<Object3D | null>, never rejects; cache + in-flight dedupe; one instance per call
+twins.adopt(slotGroup, twin)   // twin into the SAME slot group → returns the `procedural` holder to fade out
+twins.release(twin)            // hand an instance back (refcount; the model is freed with the last one, LRU 6 / 4 / 2)
+twins.unload(itemId)           // abort an in-flight load, drop the cached model
+twins.setLampsOn(on, k)        // shade glow of lamp twins: call it wherever materials.setLampsOn is called
+twins.dispose()
+```
+
+### 1. `furnish.js`: 10 lines (procedural first, twin when it resolves)
+
+`createFurnisher({ …, twins = null, onTwin = null })`. In `make()`, replace the final
+`return { slot, item, group, lights, baseScaleY: group.scale.y, host: hostOf(slot.id) };` with:
+
+```js
+    const rec = { slot, item, group, lights, baseScaleY: group.scale.y, host: hostOf(slot.id), twin: null, gone: false };
+    if (twins?.has(item.id)) twins.load(item).then((twin) => {          // docs/TWINS.md §2.5: the procedural model shows at once
+      if (!twin) return;                                                 // 404 / bad dims / timeout: it simply stays
+      const adopt = () => {                                              // → the procedural holder, or null when the rec is gone
+        if (rec.gone || rec.twin) { twins.release(twin); return null; }
+        ensureBVH(twin); rec.twin = twin;
+        return twins.adopt(group, twin);                                 // same slot group; slotId / slotType on its meshes (ID pass, picking)
+      };
+      if (onTwin && placed.get(slot.id) === rec) onTwin(rec, adopt);     // on screen: the engine dissolves and re-lights (2)
+      else adopt()?.removeFromParent();                                  // cached / prebuilt: nothing to animate
+    });
+    return rec;
+```
+
+and in `disposeRec(rec)`, as its first line (the twin is not in the modeler's cache, `releaseItem` would leak it):
+
+```js
+    rec.gone = true; if (rec.twin) { twins.release(rec.twin); rec.twin = null; }
+```
+
+Nothing else in `furnish.js` changes: the slot group, its transform, lights, anchors, `place()`, `hang()`, the rec
+cache and `retire()` work on the group as before. `adopt()` moves the procedural meshes into one child group named
+`procedural` (lights and light targets stay on the slot group), adds the twin beside it, copies the twin's
+`bounds / pivot / front / radial / triangles` onto the slot group (`fitBounds`, the turntable and the framing read
+them) and sets `castShadow / receiveShadow`. After the dissolve the holder is detached, so `boxOf`, `meshesOf`,
+picking and the ID pass see the twin only.
+
+### 2. `index.js`: the dissolve and what to invalidate (pass as `onTwin` to `createFurnisher`)
+
+```js
+  async function onTwin(rec, adopt) {
+    const id = rec.slot.id;
+    // never two runs on one group (R4-05): wait for a swap / wave on this slot family to end
+    while (!disposed && (familyBusy(id) || styleWave)) await new Promise((r) => setTimeout(r, 120));
+    if (disposed) return;
+    const shell = adopt();
+    if (!shell) return;
+    if (furnisher.placed.get(id) !== rec) { shell.removeFromParent(); return; }   // swapped away meanwhile: it is in the cache
+    budget.inflight.add(id);
+    try {
+      decorate(rec.twin); hideForCutaway(rec); refreshNoAO(); interaction.refresh(); sceneVersion++; invalidate(3);
+      await fader.swap({ inn: [rec.twin], out: [shell], ms: 350, settle: false });   // TWINS §2.5: 350 ms
+    } finally { budget.inflight.delete(id); shell.removeFromParent(); shell.visible = true; }
+    if (disposed) return;
+    if (highlighted === id) post.setSelection(furnisher.meshesOf(id));
+    if (focusedSlot === id) refocus();
+    renderer.shadowMap.needsUpdate = true; queueContact();
+    scheduleLocal([furnisher.boxOf(id)]);          // probes near the item re-bake (the albedo changed), blends in
+    queueWarm([rec.group]); invalidate(3);
+  }
+```
+
+- **ID pass / capture:** `itemPass` keys on `mesh.userData.slotId`; `adopt()` sets it (and `slotType`, `itemId`) on
+  every twin mesh, so `capture().items` and their bboxes follow the twin with no change.
+- **GI:** same footprint, new albedo → the local re-bake above is enough; `giExact` keys on `sceneSig()`, which should
+  now include `rec.twin ? 't' : 'p'` per slot (a room lit with the procedural sofa is not the room with its twin).
+- **`sceneVersion++`** so Live → Photo does not show a photo developed from the procedural frame.
+- **Lamps:** `twins.setLampsOn(on, k)` beside each `materials.setLampsOn?.(on, k)` (5 call sites). A lamp twin whose
+  manifest entry has `glow: [from, to]` (fractions of the height) gets that band as a separate, non-shadow-casting
+  mesh (`material.userData.glow`, name `twin:shade`), so your own-lamp shadow rule keeps working.
+- **Load order ("visible items first"):** `twins.js` runs two loads at a time in call order. `placeAll()` asks in
+  slot order; if you want the view's items first, call `make()` for them first or tell me and I add a priority.
+- **Thumbnails** (`thumbs.js`) still render the procedural model. With `twins` passed in it could render
+  `await twins.load(item)` instead (release it after the shot); say if you want a helper.
+- **Path tracer / photo capture:** nothing special; the twin is ordinary meshes with `MeshStandardMaterial`.
+- **Fader pool:** `createFader` keeps its alpha-hash clones per source material for the page's life. A twin that is
+  unloaded leaves up to one clone per material behind (JS objects only, the textures are disposed). A
+  `fader.forget(materials)` would close that; not urgent.
+- **Context loss:** the twin's textures keep their `ImageBitmap`s, so three re-uploads them after a restore.
+
+### 3. Failure is silent by construction
+
+`load()` resolves `null` and logs one `console.debug` for: not in the manifest, `off`, manifest dims that no longer
+match the catalogue (no download), 404, any HTTP error, 15 s timeout, a file that is not a GLB, Draco / meshopt /
+KTX2, external URIs, rigged models, more faces or bytes than the tier allows (120k / 80k / 45k; 48 / 32 / 20 MB),
+and proportions off by more than ±3 % after the uniform scale. A final failure is remembered for the session
+(`has()` turns false: no second request); a timeout or network error may be retried after 2 minutes.
+
+### 4. Open, engine side
+
+- **Anchors.** The slot group keeps the procedural `anchors / anchorInfo` (seat, top, deck). A twin's seat can sit a
+  centimetre or two off; the QA page lists each anchor against the twin's real surface. If the pilot shows cushions
+  or lamps floating, I add `anchors` to the manifest and `adopt()` rewrites them: you would then `relocate()` the
+  slot's descendants after `onTwin`.
+- **Beds and sofas.** A reconstructed bed must be the frame and headboard only (mattress, bedding are their own
+  slots), a sofa without scatter cushions and throws. The turnaround prompt removes them; the QA gate checks it.

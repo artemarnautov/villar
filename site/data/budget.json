@@ -1,6 +1,6 @@
 {
  "version": 1,
- "source": "research/budget-tiers.md, 2026-11-27",
+ "source": "research/budget-tiers.md, 2026-11-27; curated 27 Nov (docs/reviews/curation-1.md): lamp before art in tier 3, editions and designer picks",
  "keys": "Stylepack selection keys, resolved the way store.keyOfSlotIn does it (slot id, else group, else slot type). Paired slots share one key: nightstand (x2), table_lamp (x2), dining_chair (x2).",
  "tiers": {
   "bed": 0,
@@ -57,10 +57,10 @@
    "tableware"
   ],
   "3": [
-   "cushions",
-   "art_sofa",
-   "throw",
    "pendant_lamp",
+   "cushions",
+   "throw",
+   "art_sofa",
    "mirror",
    "side_table"
   ],
@@ -161,12 +161,13 @@
  "entry": {
   "tier0": "cheapest",
   "furniture": "cheapest, unless a furniture item already in the room has a pairing for this key: then the paired item",
-  "details": "curated",
+  "details": "curated; a Villar Edition (catalogue `edition: true`) never enters below the designer room: its key starts at the pack's first non-edition pick and moves to the edition in the designer steps",
   "tieBreak": "equal prices: the curated item first",
   "rug": {
    "preferWidthCmAtLeast": 290,
    "ifPriceAtMost": 1.25
-  }
+  },
+  "avoid": "no entering or upgraded piece may form one of the pack's `avoid` pairs with a piece already in the room"
  },
  "functional": [
   {
@@ -231,11 +232,11 @@
   "scope": "furniture keys only (both sides in `furniture`); pairings on textiles and accessories are ignored by the slider because the curated room itself breaks some of them",
   "onAdd": "forward only: the entering item follows the items already in the room, never the reverse",
   "onHeroUpgrade": "the hero's furniture companions that are already in the room move to its paired items in the same step",
-  "onPremium": "skip any premium option that would break a furniture pairing or force a companion to a cheaper item; try the next priciest option"
+  "onPremium": "when the pack lists `picks` for a key, premium takes the priciest pick (ties: the earlier pick), not the priciest option; skip any that would break a furniture pairing, force a companion to a cheaper item or form an `avoid` pair; try the next"
  },
  "rule": {
-  "en": "Complete first, then better. Add slots in ladder order and never upgrade while a slot of the current or a lower tier is empty. The only exception is the blackout curtain layer, taken right after Essentials. Once all 33 slots are filled, upgrade heroes to the designer's pick, hero-first, with their companions in the same step. This lands exactly on the designer room. Above it, go to premium options: heroes first, then details.",
-  "ru": "Сначала — всё, потом — лучше. Добавляем места по порядку лестницы и не улучшаем вещи, пока в текущем или более раннем уровне есть пустое место. Единственное исключение — блэкаут-слой штор сразу после «Самого нужного». Когда заполнены все 33 места, меняем главные вещи на выбор дизайнера, начиная с дивана, вместе с их парами — так лестница приходит точно в комнату дизайнера. Дальше — премиальные варианты: сначала главные вещи, потом детали."
+  "en": "Complete first, then better. Add slots in ladder order and never upgrade while a slot of the current or a lower tier is empty. The only exception is the blackout curtain layer, taken right after Essentials. Once all 33 slots are filled, upgrade heroes to the designer's pick, hero-first, with their companions in the same step, then hang the Villar Editions: sofa wall, bed wall, dining wall. This lands exactly on the designer room. Above it, go to the best designer picks: heroes first, then details.",
+  "ru": "Сначала — всё, потом — лучше. Добавляем места по порядку лестницы и не улучшаем вещи, пока в текущем или более раннем уровне есть пустое место. Единственное исключение — блэкаут-слой штор сразу после «Самого нужного». Когда заполнены все 33 места, меняем главные вещи на выбор дизайнера, начиная с дивана, вместе с их парами, затем вешаем работы Villar Editions — над диваном, над кроватью, у стола. Так лестница приходит точно в комнату дизайнера. Дальше — лучший выбор дизайнера в каждом месте: сначала главные вещи, потом детали."
  },
  "levels": [
   {
@@ -259,8 +260,8 @@
    "name": "Всё для жизни",
    "nameEn": "Move-in ready",
    "milestone": "endOfTier:3",
-   "blurb": "Всё для жизни и уюта: шторы, ковёр, свет, текстиль, картина. Можно заезжать с чемоданом.",
-   "blurbEn": "Everything to live in and feel at home: curtains, rug, lights, textiles, art. Move in with a suitcase."
+   "blurb": "Всё для жизни и уюта: свет над столом, текстиль, картина над диваном, зеркало. Можно заезжать с чемоданом.",
+   "blurbEn": "Everything to live in and feel at home: a light over the table, textiles, a picture over the sofa, a mirror. Move in with a suitcase."
   },
   {
    "id": "complete",
@@ -275,16 +276,16 @@
    "name": "Как в журнале",
    "nameEn": "Magazine-ready",
    "milestone": "designer",
-   "blurb": "Ровно комната дизайнера: стайлинг, растение, кресло, материалы как на фото.",
-   "blurbEn": "Exactly the designer's room: styling, plant, armchair, materials as in the photos."
+   "blurb": "Ровно комната дизайнера: главные вещи как на фото и работы Villar Editions на трёх стенах.",
+   "blurbEn": "Exactly the designer's room: the main pieces as in the photos, and Villar Editions on three walls."
   },
   {
    "id": "no-compromise",
    "name": "Без компромиссов",
    "nameEn": "No compromises",
    "milestone": "premium",
-   "blurb": "Лучшие варианты в каждом месте.",
-   "blurbEn": "The best option in every place."
+   "blurb": "Лучший выбор дизайнера в каждом месте и большая работа над диваном.",
+   "blurbEn": "The designer's best pick in every place, and the large work over the sofa."
   }
  ],
  "minimum": {

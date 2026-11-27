@@ -272,6 +272,47 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
     state.mode = 'transition';
   }
 
+  /**
+   * Opening shot (ART §3): from `back` m behind the view's pose, a slow push-in to it on the house spring over
+   * `seconds`. Any input stops it from its current velocity (a short coast, then the user's camera). Returns false
+   * (and lands instantly) under prefers-reduced-motion.
+   */
+  function introFrom(to, back, rise) {
+    const dir = dirFromYawPitch(to.yaw, 0, new THREE.Vector3());
+    return { mode: 'walk', pos: resolve(to.pos.clone().addScaledVector(dir, -back).add(new THREE.Vector3(0, rise, 0))), yaw: to.yaw, pitch: to.pitch - 1.5 * DEG };
+  }
+  /** Put the camera on the opening shot's first frame (while loading), so the push-in starts without a jump. */
+  function introPlace(name = 'eye', { back = 0.75, rise = -0.05 } = {}) {
+    const to = poseForView(name);
+    if (reduced || to.mode !== 'walk') return false;
+    state.view = name; state.transition = null; commitPose(introFrom(to, back, rise));
+    return true;
+  }
+  function intro(name = 'eye', { back = 0.75, rise = -0.05, seconds = 3.5, onDone = null } = {}) {
+    const to = poseForView(name);
+    state.view = name; state.returnPose = null;
+    if (reduced || to.mode !== 'walk') { flyTo(to, { instant: true }); onDone?.(false); return false; }
+    commitPose(introFrom(to, back, rise));
+    flyTo(to, { duration: seconds, onDone: () => { onChange({ view: name, mode: 'walk' }); onDone?.(true); } });
+    const tr = state.transition;
+    if (tr) { tr.intro = true; tr.lift = 0; }
+    return true;
+  }
+  /** Stop the opening shot where it is, easing out of its current velocity (≈ 0.45 s). */
+  function cancelIntro() {
+    const tr = state.transition;
+    if (!tr || !tr.intro || tr.kind !== 'spring') return false;
+    tr.intro = false;
+    const w = 5.8 / 0.45;
+    tr.w = w;
+    tr.toPos.copy(tr.pos).addScaledVector(tr.vPos, 1 / w);
+    tr.toYaw = tr.yaw + tr.vYaw / w; tr.toPitch = tr.pitch + tr.vPitch / w;
+    tr.span = Math.max(1e-3, tr.pos.distanceTo(tr.toPos));
+    tr.pose = { mode: 'walk', pos: resolve(tr.toPos.clone()), yaw: tr.toYaw, pitch: tr.toPitch };
+    tr.toPos.copy(tr.pose.pos);
+    api.onIntroCancel?.();
+    return true;
+  }
   function setView(name, { instant = false } = {}) {
     const pose = poseForView(name);
     state.view = name;
@@ -379,6 +420,29 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
     flyTo(back || poseForView(state.view || 'eye'), { instant, duration: 0.9, onDone: () => onChange({ view: state.view, mode: state.mode }) });
     return true;
   }
+  // focus v2 §2: tilt 5–45° and zoom 0.7–1.6× of the framing distance, rubber-banded (resistance 0.35) and
+  // sprung back on release; a horizontal drag turns the ITEM (engine turntable), not the camera
+  const TILT = [5 * DEG, 45 * DEG], ZOOM = [0.7, 1.6], RUBBER = 0.35;
+  const band = (x, lo, hi) => (x < lo ? lo - (lo - x) * RUBBER : x > hi ? hi + (x - hi) * RUBBER : x);
+  const tiltOf = (fo) => [Math.min(TILT[0], fo.pitch0 ?? TILT[0]), Math.max(TILT[1], fo.pitch0 ?? TILT[1])]; // ceiling items look up
+  const unband = (x, lo, hi) => (x < lo ? lo - (lo - x) / RUBBER : x > hi ? hi + (x - hi) / RUBBER : x);
+  /** Tilt / zoom step in focus mode (raw = pre-rubber values are tracked so the band feels continuous). */
+  function focusTiltZoom(dpitch, dmul = 1) {
+    const fo = state.focus;
+    if (!fo) return false;
+    const prev = { pitch: fo.pitch, dist: fo.dist };
+    const [lo, hi] = tiltOf(fo);
+    const rawP = unband(fo.pitch, lo, hi) + dpitch;
+    fo.pitch = band(rawP, lo, hi);
+    const z = fo.dist / fo.dist0;
+    const rawZ = unband(z, ZOOM[0], ZOOM[1]) * dmul;
+    fo.dist = fo.dist0 * band(rawZ, ZOOM[0], ZOOM[1]);
+    const p = focusPos(fo);
+    if (!freeSpot(p, 0.12) || !fo.clear(p, fo.center)) { Object.assign(fo, prev); return false; }
+    fo.banded = true;
+    applyFocusCamera();
+    return true;
+  }
   /** Orbit step in focus mode; rejected if the new viewpoint would be blocked. */
   function focusOrbit(dyaw, dpitch, ddist = 0) {
     const fo = state.focus;
@@ -394,6 +458,7 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
 
   // ---------------------------------------------------------------- input
   const pointers = new Map();
+  let wheelAt = 0;
   let drag = null, pinchDist = 0, lastMoveTime = 0, moved = false, downAt = 0;
   let engaged = false;   // the user has interacted with the stage (wheel/keys allowed)
   const isFocused = () => document.activeElement === dom;
@@ -401,6 +466,7 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
 
   function onPointerDown(e) {
     if (!state.enabled) return;
+    cancelIntro();
     engaged = true;
     if (!isFocused()) dom.focus?.({ preventScroll: true });
     dom.setPointerCapture?.(e.pointerId);
@@ -427,7 +493,7 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
       const delta = d - pinchDist; pinchDist = d;
       if (state.mode === 'orbit') { state.orbit.radius = clamp(state.orbit.radius - delta * 0.03, 5, 22); orbitDirty = true; }
       else if (state.mode === 'walk') { state.dolly += delta * 0.006; free(); }
-      else if (state.mode === 'focus') focusOrbit(0, 0, -delta * 0.004);
+      else if (state.mode === 'focus') focusTiltZoom(0, 1 - delta * 0.004);
       api.onInteract?.();
       return;
     }
@@ -452,9 +518,14 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
       applyOrbitCamera();
     } else if (state.mode === 'focus') {
       const fo = state.focus;
-      const dyaw = -dx * 0.0055, dpitch = dy * 0.004;
-      if (focusOrbit(dyaw, dpitch)) { fo.yawVel = dyaw / dt * 0.6 + fo.yawVel * 0.4; fo.pitchVel = dpitch / dt * 0.6 + fo.pitchVel * 0.4; }
-      else fo.yawVel = fo.pitchVel = 0;
+      // mostly-horizontal motion turns the item (engine turntable); vertical tilts the camera
+      const turned = api.onTurn ? api.onTurn(dx, e.pointerType || 'mouse', viewW) : false;
+      if (!turned) {
+        const dyaw = -dx * 0.0055;
+        if (focusOrbit(dyaw, 0)) fo.yawVel = dyaw / dt * 0.6 + fo.yawVel * 0.4;
+      }
+      if (dy) focusTiltZoom(dy * 0.004);
+      fo.pitchVel = 0;
     }
     dom.style.cursor = 'grabbing';
     api.onInteract?.();
@@ -469,6 +540,7 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
         state.yawVel = state.pitchVel = 0; state.orbit.thetaVel = state.orbit.phiVel = 0;
         if (state.focus) state.focus.yawVel = state.focus.pitchVel = 0;
       }
+      if (state.mode === 'focus' && moved) api.onTurnEnd?.();
       drag = null;
       dom.style.cursor = '';
       if (isClick) api.onClick?.(e);
@@ -477,19 +549,26 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
   function onPointerLeave() { if (!isFocused()) engaged = false; }
   function onWheel(e) {
     if (!state.enabled) return;
+    cancelIntro();
     // never hijack page scroll: zoom only once the stage is engaged (clicked/focused) or with ⌃/⌘ (pinch)
     if (!(engaged || isFocused() || e.ctrlKey || e.metaKey)) return;
     e.preventDefault();
     const d = clamp(e.deltaY * (e.deltaMode === 1 ? 16 : 1), -120, 120);
     if (state.mode === 'orbit') { state.orbit.radius = clamp(state.orbit.radius * (1 + d * 0.0012), 5, 22); orbitDirty = true; }
     else if (state.mode === 'walk') { state.dolly += -d * 0.004; free(); }
-    else if (state.mode === 'focus') focusOrbit(0, 0, d * 0.002);
+    else if (state.mode === 'focus') { focusTiltZoom(0, 1 + d * 0.0015); wheelAt = performance.now(); }
     api.onInteract?.();
   }
   const KEYMAP = { KeyW: 'f', ArrowUp: 'f', KeyS: 'b', ArrowDown: 'b', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r', ShiftLeft: 'fast', ShiftRight: 'fast' };
   function onKeyDown(e) {
     if (!state.enabled || !isFocused()) return;   // keys only when the stage canvas has focus
+    cancelIntro();
     if (e.code === 'Escape') { if (api.onEscape?.()) e.preventDefault(); return; }
+    if (state.mode === 'focus' || (state.transition && state.transition.pose.mode === 'focus')) {
+      // ←/→ rest angles, ↑/↓ tilt, +/− zoom, 0 reset, [ ] previous / next item (engine)
+      if (api.onFocusKey?.(e.key, e.code)) { e.preventDefault(); api.onInteract?.(); }
+      return;
+    }
     const k = KEYMAP[e.code];
     if (!k) return;
     if (state.mode !== 'walk') return;
@@ -532,7 +611,7 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
     if (state.transition && state.transition.kind === 'spring') {
       const tr = state.transition;
       // exact critically damped step (stable for any dt)
-      const h = Math.min(rawDt, 0.05), w = tr.w, a = Math.exp(-w * h);
+      const h = Math.min(rawDt, 0.12), w = tr.w, a = Math.exp(-w * h);
       const step = (x, v, g) => { const e = x - g, tmp = (v + w * e) * h; return [g + (e + tmp) * a, (v - w * tmp) * a]; };
       for (const c of ['x', 'y', 'z']) { const [x, v] = step(tr.pos[c], tr.vPos[c], tr.toPos[c]); tr.pos[c] = x; tr.vPos[c] = v; }
       [tr.yaw, tr.vYaw] = step(tr.yaw, tr.vYaw, tr.toYaw);
@@ -627,6 +706,19 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
         const damp = Math.exp(-dt * 5.5); fo.yawVel *= damp; fo.pitchVel *= damp;
         active = true;
       }
+      // rubber band: back inside the limits (critically damped, ~250 ms) once the finger / wheel lets go
+      if (fo.banded && !drag && pointers.size === 0 && performance.now() - wheelAt > 120) {
+        const [lo, hi] = tiltOf(fo);
+        const pT = clamp(fo.pitch, lo, hi), zT = fo.dist0 * clamp(fo.dist / fo.dist0, ZOOM[0], ZOOM[1]);
+        if (Math.abs(pT - fo.pitch) < 1e-4 && Math.abs(zT - fo.dist) < 1e-4) fo.banded = false;
+        else {
+          const k = 1 - Math.exp(-dt * 16);
+          fo.pitch += (pT - fo.pitch) * k; fo.dist += (zT - fo.dist) * k;
+          if (Math.abs(pT - fo.pitch) < 2e-4) fo.pitch = pT;
+          if (Math.abs(zT - fo.dist) < 1e-3) fo.dist = zT;
+          applyFocusCamera(); active = true;
+        }
+      }
     } else if (state.mode === 'orbit') {
       const o = state.orbit;
       if (state.look) {
@@ -675,7 +767,9 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
   }
 
   Object.defineProperties(api, Object.getOwnPropertyDescriptors({
-    state, update, setView, walkTo, focusOn, unfocus, resize, resolve, freeSpot,
+    state, update, setView, intro, introPlace, cancelIntro, get introActive() { return !!state.transition?.intro; }, walkTo, focusOn, unfocus, resize, resolve, freeSpot, focusTiltZoom,
+    /** Back to the framing pose's tilt / zoom (inspect reset). */
+    resetFocusView() { const fo = state.focus; if (!fo) return; fo.pitch = fo.pitch0 ?? fo.pitch; fo.dist = fo.dist0; fo.banded = false; applyFocusCamera(); },
     get mode() { return state.transition ? 'transition' : state.mode; },
     get targetMode() { return state.transition ? state.transition.pose.mode : state.mode; },
     get view() { return state.view; },

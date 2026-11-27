@@ -144,10 +144,13 @@ export function createOrderModal({ el, store, palettes, onOpen, onClose }) {
       h('span', { class: 'lead-sum-count' }, t('order.count', { n, items: itemsWord(n) })));
     sumNote.textContent = t('order.totalNote');
     sumTotal.textContent = aed(store.total());
-    lines.replaceChildren(...store.lines().map(({ item, qty, sum }) =>
-      h('li', null,
-        h('span', null, nameOf(item), qty > 1 ? h('span', { class: 'q' }, ` ×${NBSP}${qty}`) : null),
-        h('span', { class: 's' }, aed(sum)))));
+    lines.replaceChildren(...store.lines().map(({ item, qty, sum, key }) => {
+      const gs = store.guestStyle?.(key, item.id); // FOCUS guest: say which style the piece comes from
+      return h('li', null,
+        h('span', null, nameOf(item), qty > 1 ? h('span', { class: 'q' }, ` ×${NBSP}${qty}`) : null,
+          gs ? h('small', { class: 'line-from' }, ` · ${t('guest.from', { style: quoted(packName(store.style(gs))) })}`) : null),
+        h('span', { class: 's' }, aed(sum)));
+    }));
   }
 
   // ---------- validation (mirrors /api/lead) ----------

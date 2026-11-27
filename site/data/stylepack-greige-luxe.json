@@ -23,8 +23,9 @@
    ]
   },
   "cushions": {
-   "default": "cushions-linen-oat",
+   "default": "cushions-linen-oat-taupe",
    "options": [
+    "cushions-linen-oat-taupe",
     "cushions-linen-oat",
     "cushions-oat-ivory-4"
    ]
@@ -99,11 +100,11 @@
    ]
   },
   "table_lamp": {
-   "default": "tablelamp-crosby",
+   "default": "tablelamp-dania",
    "options": [
+    "tablelamp-dania",
     "tablelamp-crosby",
-    "tablelamp-tolima",
-    "tablelamp-dania"
+    "tablelamp-tolima"
    ]
   },
   "dining_table": {
@@ -126,21 +127,27 @@
    ]
   },
   "art_sofa": {
-   "default": "art-olina-120x60",
+   "default": "art-ed-gl-travertine-1",
    "options": [
+    "art-ed-gl-travertine-1",
+    "art-ed-gl-champagne-field",
     "art-olina-120x60"
    ]
   },
   "art_bed": {
-   "default": "art-ember-90x60",
+   "default": "art-ed-gl-hush",
    "options": [
-    "art-ember-90x60"
+    "art-ed-gl-hush",
+    "art-ed-gl-stone-light",
+    "art-zuri-80"
    ]
   },
   "art_dining": {
-   "default": "art-zuri-80",
+   "default": "art-ed-gl-mocha-2",
    "options": [
-    "art-zuri-80",
+    "art-ed-gl-mocha-2",
+    "art-ed-gl-layers",
+    "art-ember-90x60",
     "art-nyla-50x70"
    ]
   },
@@ -148,23 +155,23 @@
    "default": "plant-olive-themis",
    "options": [
     "plant-olive-themis",
-    "plant-olive-urbano",
-    "plant-olive-180"
+    "plant-olive-180",
+    "plant-olive-urbano"
    ]
   },
   "curtains": {
    "default": "curtains-sullivan-layered",
    "options": [
-    "curtains-sullivan-sheer",
-    "curtains-sullivan-layered"
+    "curtains-sullivan-layered",
+    "curtains-sullivan-sheer"
    ]
   },
   "tableware": {
    "default": "tableware-mia-amber",
    "options": [
     "tableware-mia-amber",
-    "tableware-lillian-smoke",
-    "tableware-lillian-amber-brass"
+    "tableware-lillian-amber-brass",
+    "tableware-lillian-smoke"
    ]
   },
   "centerpiece": {
@@ -183,8 +190,10 @@
    ]
   },
   "throw": {
-   "default": "throw-thorn-oat",
+   "default": "throw-verona-mocha",
    "options": [
+    "throw-verona-mocha",
+    "throw-fallon-taupe",
     "throw-thorn-oat",
     "throw-boras-oat"
    ]
@@ -227,6 +236,155 @@
    ]
   }
  },
+ "picks": {
+  "sofa": [
+   "sofa-pebble-3",
+   "sofa-daventry-3"
+  ],
+  "cushions": [
+   "cushions-linen-oat-taupe"
+  ],
+  "coffee_table": [
+   "coffee-arkas"
+  ],
+  "rug": [
+   "rug-heaton-200x290",
+   "rug-dione-200x290"
+  ],
+  "tv_unit": [
+   "tv-joyce"
+  ],
+  "side_table": [
+   "side-joyce"
+  ],
+  "armchair": [
+   "armchair-oti",
+   "armchair-mons",
+   "armchair-emma"
+  ],
+  "floor_lamp": [
+   "floorlamp-sable",
+   "floorlamp-austen"
+  ],
+  "bed": [
+   "bed-maison-160",
+   "bed-cloud-160"
+  ],
+  "mattress": [
+   "mattress-rejuvenate-160",
+   "mattress-bliss-gel-160"
+  ],
+  "bedding": [
+   "bedding-white-oat",
+   "bedding-white-sateen-oat"
+  ],
+  "nightstand": [
+   "nightstand-qubba"
+  ],
+  "table_lamp": [
+   "tablelamp-dania",
+   "tablelamp-crosby"
+  ],
+  "dining_table": [
+   "dining-malta-90"
+  ],
+  "dining_chair": [
+   "chair-salalah"
+  ],
+  "pendant_lamp": [
+   "pendant-cosme",
+   "pendant-dexter"
+  ],
+  "art_sofa": [
+   "art-ed-gl-travertine-1",
+   "art-ed-gl-champagne-field",
+   "art-olina-120x60"
+  ],
+  "art_bed": [
+   "art-ed-gl-hush",
+   "art-ed-gl-stone-light",
+   "art-zuri-80"
+  ],
+  "art_dining": [
+   "art-ed-gl-mocha-2",
+   "art-ed-gl-layers",
+   "art-ember-90x60"
+  ],
+  "plant": [
+   "plant-olive-themis",
+   "plant-olive-180",
+   "plant-olive-urbano"
+  ],
+  "curtains": [
+   "curtains-sullivan-layered",
+   "curtains-sullivan-sheer"
+  ],
+  "tableware": [
+   "tableware-mia-amber",
+   "tableware-lillian-amber-brass",
+   "tableware-lillian-smoke"
+  ],
+  "centerpiece": [
+   "centerpiece-candles-travertine",
+   "centerpiece-sable-eucalyptus",
+   "centerpiece-maya-eucalyptus"
+  ],
+  "kitchen_decor": [
+   "kitchen-white-basic",
+   "kitchen-white-travertine"
+  ],
+  "throw": [
+   "throw-verona-mocha",
+   "throw-fallon-taupe"
+  ],
+  "nightstand_decor": [
+   "nsdecor-dara-box",
+   "nsdecor-travertine-candle",
+   "nsdecor-bud-vase-tealight"
+  ],
+  "runner": [
+   "runner-zen-bianca",
+   "runner-zen-alba"
+  ],
+  "mirror": [
+   "mirror-artemis-arch-60",
+   "mirror-agnek-80"
+  ],
+  "decor_coffee": [
+   "decor-tray-candles",
+   "decor-stoneware-low"
+  ],
+  "decor_tv": [
+   "decor-cream-ceramic",
+   "decor-travertine-cream"
+  ]
+ },
+ "avoid": [
+  [
+   "coffee-joyce",
+   "side-joyce"
+  ],
+  [
+   "coffee-arkas",
+   "side-pavia"
+  ],
+  [
+   "throw-thorn-oat",
+   "sofa-pebble-3"
+  ],
+  [
+   "throw-boras-oat",
+   "sofa-pebble-3"
+  ],
+  [
+   "throw-thorn-oat",
+   "sofa-daventry-3"
+  ],
+  [
+   "throw-boras-oat",
+   "sofa-daventry-3"
+  ]
+ ],
  "rules": [
   "60/30/10: оболочка ≈60%; слоновая кость, грейж, травертин и мрамор ≈30%; тауп, мокко, копчёный дуб и шампань-латунь ≤10%.",
   "Тон в тон: все крупные предметы — в тёплом диапазоне h 65–95°, C* ≤ 15 (камень ≤ 18), L* ≥ 60. Цвет создают ступени светлоты и фактура, а не оттенки.",
@@ -245,8 +403,8 @@
  "pairings": {
   "sofa-pebble-3": {
    "armchair": "armchair-oti",
-   "cushions": "cushions-linen-oat",
-   "throw": "throw-thorn-oat",
+   "cushions": "cushions-linen-oat-taupe",
+   "throw": "throw-verona-mocha",
    "rug": "rug-heaton-200x290",
    "coffee_table": "coffee-arkas",
    "side_table": "side-joyce"
@@ -266,14 +424,13 @@
   "bed-maison-160": {
    "bedding": "bedding-white-oat",
    "nightstand": "nightstand-qubba",
-   "table_lamp": "tablelamp-crosby",
-   "nightstand_decor": "nsdecor-dara-box",
-   "art_bed": "art-ember-90x60"
+   "table_lamp": "tablelamp-dania",
+   "nightstand_decor": "nsdecor-dara-box"
   },
   "bed-cloud-160": {
    "bedding": "bedding-white-oat",
    "nightstand": "nightstand-qubba",
-   "table_lamp": "tablelamp-crosby"
+   "table_lamp": "tablelamp-dania"
   },
   "floorlamp-sable": {
    "armchair": "armchair-oti",
@@ -289,8 +446,7 @@
    "dining_chair": "chair-salalah",
    "pendant_lamp": "pendant-cosme",
    "tableware": "tableware-mia-amber",
-   "centerpiece": "centerpiece-candles-travertine",
-   "art_dining": "art-zuri-80"
+   "centerpiece": "centerpiece-candles-travertine"
   }
  },
  "nameEn": "Cashmere",

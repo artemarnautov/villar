@@ -155,13 +155,17 @@ export function createBudget({ el, store, stage, onOrder, onLine, announce, slid
       const sub = ls.reduce((a, l) => a + l.sum, 0);
       const rows = ls.map(({ item, qty, sum, slotId, key }) => {
         const isPinned = pinned.has(key);
+        // FOCUS guest: a piece taken from another style says where it comes from.
+        const guestId = store.guestStyle?.(key, item.id) || null;
+        const from = guestId ? t('guest.from', { style: quoted(packNameOf(store.style(guestId))) }) : '';
         const b = h('button', {
           type: 'button', class: 'line-btn', 'data-opens-sheet': '', 'data-slot': slotId,
-          'aria-label': t('budget.lineAria', { name: `${nameOf(item)}${qty > 1 ? ` ×${qty}` : ''}`, sum: aed(sum) }) + (isPinned ? `. ${t('budget.pinned')}` : ''),
+          'aria-label': t('budget.lineAria', { name: `${nameOf(item)}${qty > 1 ? ` ×${qty}` : ''}`, sum: aed(sum) }) + (from ? `, ${from}` : '') + (isPinned ? `. ${t('budget.pinned')}` : ''),
         },
           dot(item),
           h('span', { class: 'line-name' }, nameOf(item),
-            isPinned ? h('span', { class: 'line-pin', title: t('budget.pinned'), 'aria-hidden': 'true', html: icon('pin') }) : null),
+            isPinned ? h('span', { class: 'line-pin', title: t('budget.pinned'), 'aria-hidden': 'true', html: icon('pin') }) : null,
+            from ? h('small', { class: 'line-from', 'aria-hidden': 'true' }, from) : null),
           h('span', { class: 'line-qty' }, qty > 1 ? `×${NBSP}${qty}` : ''),
           h('span', { class: 'line-sum' }, aed(sum)));
         b.addEventListener('click', () => onLine?.(slotId, b));
@@ -237,7 +241,8 @@ export function createBudget({ el, store, stage, onOrder, onLine, announce, slid
     else if (d !== 0) {
       flashDelta(d);
       clearTimeout(pendingAnnounce);
-      pendingAnnounce = setTimeout(() => announce?.(t('budget.announce', { total: aed(next), sign: t(d > 0 ? 'budget.plus' : 'budget.minus'), delta: aed(Math.abs(d)) })), 150);
+      // the focus card announces its own swaps with the new total (FOCUS §3), so the bar stays quiet meanwhile
+      if (!hudOn) pendingAnnounce = setTimeout(() => announce?.(t('budget.announce', { total: aed(next), sign: t(d > 0 ? 'budget.plus' : 'budget.minus'), delta: aed(Math.abs(d)) })), 150);
     }
     renderMeta();
     renderLines();

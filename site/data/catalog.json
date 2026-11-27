@@ -42,7 +42,9 @@
      "woodColor": "#5E4230",
      "cushion": "loose",
      "backHeight": "mid",
-     "seatHeight": 0.45
+     "seatHeight": 0.45,
+     "seatCushions": 2,
+     "backCushions": 2
     }
    }
   },
@@ -93,6 +95,7 @@
   {
    "id": "armchair-luna-leather",
    "type": "armchair",
+   "family": "armchair:luna",
    "name": "Кресло Luna, натуральная кожа",
    "nameEn": "Luna armchair, genuine leather",
    "price": 2999,
@@ -175,6 +178,7 @@
   {
    "id": "armchair-luna-fabric",
    "type": "armchair",
+   "family": "armchair:luna",
    "name": "Кресло Luna, ткань",
    "nameEn": "Luna armchair, fabric",
    "price": 1799,
@@ -976,7 +980,7 @@
     "archetype": "nightstand",
     "params": {
      "doors": 0,
-     "drawers": 2,
+     "drawers": 1,
      "open": 1,
      "legs": "plinth",
      "wood": "walnut-dark",
@@ -1561,9 +1565,10 @@
     "archetype": "pendant_lamp",
     "params": {
      "body": "rattan",
-     "shade": "dome",
+     "shade": "globe",
      "shadeColor": "#C2A77D",
-     "drop": 0.91
+     "drop": 0.91,
+     "shadeProfile": "flattened"
     }
    }
   },
@@ -1782,7 +1787,8 @@
    "colorEn": "Beige",
    "colorHex": "#CDBFA9",
    "tags": [
-    "dark-walnut"
+    "dark-walnut",
+    "mediterranean"
    ],
    "model": {
     "archetype": "rug",
@@ -1798,6 +1804,7 @@
   {
    "id": "curtains-sullivan-layered",
    "type": "curtains",
+   "family": "curtains:sullivan",
    "name": "Шторы Sullivan: вуаль + блэкаут, 8 полотен",
    "nameEn": "Sullivan curtains: sheer + blackout, 8 panels",
    "price": 1075,
@@ -1849,6 +1856,7 @@
   {
    "id": "curtains-sullivan-sheer",
    "type": "curtains",
+   "family": "curtains:sullivan",
    "name": "Шторы Sullivan, вуаль, 4 полотна",
    "nameEn": "Sullivan sheer curtains, 4 panels",
    "price": 478,
@@ -2013,9 +2021,9 @@
     "Ink-painted MDF",
     "Unframed"
    ],
-   "color": "Шалфей / терракота",
-   "colorEn": "Sage / terracotta",
-   "colorHex": "#9A9C7E",
+   "color": "Глина / терракота",
+   "colorEn": "Clay / terracotta",
+   "colorHex": "#A6856D",
    "tags": [
     "dark-walnut",
     "mediterranean"
@@ -2027,7 +2035,7 @@
      "motif": "abstract-shapes",
      "relief": true,
      "colors": [
-      "#9A9C7E",
+      "#A6856D",
       "#B5674A"
      ]
     }
@@ -2075,13 +2083,13 @@
   {
    "id": "art-ember-90x60",
    "type": "wall_art",
-   "name": "Картина Ember, рельефный холст, 90×60",
-   "nameEn": "Ember textured canvas, 90×60",
+   "name": "Картина Ember, рельефный холст, 60×90",
+   "nameEn": "Ember textured canvas, 60×90",
    "price": 455,
    "dims": {
-    "w": 90,
+    "w": 60,
     "d": 3,
-    "h": 60
+    "h": 90
    },
    "materials": [
     "Масло на холсте",
@@ -2789,6 +2797,7 @@
   {
    "id": "tableware-mia-amber",
    "type": "tableware",
+   "family": "tableware:mia",
    "name": "Сервиз Mia на 4 персоны, янтарные стаканы, латунные приборы",
    "nameEn": "Mia stoneware set for 4, amber glasses, brass cutlery",
    "price": 571,
@@ -2916,6 +2925,7 @@
   {
    "id": "tableware-lillian-smoke",
    "type": "tableware",
+   "family": "tableware:lillian",
    "name": "Сервиз Lillian на 6 персон, дымчатые стаканы, деревянные приборы",
    "nameEn": "Lillian speckled stoneware set for 6, smoked glasses, wooden cutlery",
    "price": 439,
@@ -3306,7 +3316,7 @@
      "fringe": true,
      "size": [
       1.5,
-      2.0
+      2
      ]
     }
    }
@@ -3561,6 +3571,7 @@
   {
    "id": "runner-zen-bianca",
    "type": "runner",
+   "family": "runner:zen",
    "name": "Дорожка Zen Bianca, 220×70",
    "nameEn": "Zen Bianca runner, 220×70",
    "price": 479,
@@ -3639,6 +3650,7 @@
   {
    "id": "runner-zen-alba",
    "type": "runner",
+   "family": "runner:zen",
    "name": "Дорожка Zen Alba, 220×70",
    "nameEn": "Zen Alba runner, 220×70",
    "price": 479,
@@ -3670,7 +3682,7 @@
      "shape": "rect",
      "material": "wool-rug",
      "color": "#E3DACB",
-     "pattern": "plain-border",
+     "pattern": "geometric",
      "patternColor": "#CBBBA2"
     }
    }
@@ -3708,7 +3720,7 @@
      "shape": "rect",
      "material": "wool-rug",
      "color": "#D6CBB8",
-     "pattern": "berber-lines",
+     "pattern": "distressed",
      "patternColor": "#BFAE94"
     }
    }
@@ -3790,6 +3802,7 @@
   {
    "id": "mirror-artemis-arch-60",
    "type": "mirror",
+   "family": "mirror:artemis-arch",
    "name": "Зеркало Artemis, арка, латунь, 60×90",
    "nameEn": "Artemis arched mirror, brass, 60×90",
    "price": 239,
@@ -3827,6 +3840,7 @@
   {
    "id": "mirror-artemis-arch-80",
    "type": "mirror",
+   "family": "mirror:artemis-arch",
    "name": "Зеркало Artemis, арка, бронза, 80×120",
    "nameEn": "Artemis arched mirror, bronze, 80×120",
    "price": 419,
@@ -4206,8 +4220,8 @@
   {
    "id": "armchair-natura",
    "type": "armchair",
-   "name": "Кресло Natura, дубовый каркас",
-   "nameEn": "Natura armchair, oak frame",
+   "name": "Кресло Natura",
+   "nameEn": "Natura armchair",
    "price": 1559,
    "dims": {
     "w": 78,
@@ -4215,12 +4229,12 @@
     "h": 81
    },
    "materials": [
-    "Ткань",
-    "Каркас — массив дерева, светлый дуб"
+    "Ткань, полностью обитое",
+    "Основание и ножки — массив дерева"
    ],
    "materialsEn": [
-    "Fabric",
-    "Solid light oak frame"
+    "Fabric, fully upholstered",
+    "Solid wood base and legs"
    ],
    "color": "Лён / светлый дуб",
    "colorEn": "Linen / light oak",
@@ -4232,15 +4246,15 @@
    "model": {
     "archetype": "armchair",
     "params": {
-     "style": "lounge",
-     "arm": "wood-open",
+     "style": "barrel",
      "legs": "wood-taper",
      "fabric": "linen",
      "fabricColor": "#C4B9AD",
      "frame": "oak-light",
      "woodColor": "#D2BA94",
-     "cushion": "loose",
-     "backHeight": "mid"
+     "cushion": "tight",
+     "backHeight": "mid",
+     "legHeight": 0.15
     }
    }
   },
@@ -4624,7 +4638,7 @@
     "params": {
      "headboard": "wood-panel",
      "headboardColor": "#B58F66",
-     "headboardHeight": 1.0,
+     "headboardHeight": 1,
      "frame": "oak-light",
      "woodColor": "#B58F66",
      "legs": "wood-short",
@@ -4660,13 +4674,13 @@
     "archetype": "nightstand",
     "params": {
      "doors": 0,
-     "drawers": 1,
-     "open": 1,
+     "drawers": 2,
+     "open": 0,
      "legs": "wood-taper",
      "legHeight": 0.1,
      "wood": "oak-light",
      "woodColor": "#B58F66",
-     "handles": "cutout",
+     "handles": "knob-black",
      "fronts": "flat"
     }
    }
@@ -4674,8 +4688,8 @@
   {
    "id": "pendant-berit",
    "type": "pendant_lamp",
-   "name": "Подвес Berit, бумажный шнур, Ø50",
-   "nameEn": "Berit paper-cord pendant, Ø50",
+   "name": "Подвес Berit, бумага ручной работы, Ø50",
+   "nameEn": "Berit handmade-paper pendant, Ø50",
    "price": 227,
    "dims": {
     "w": 50,
@@ -4684,11 +4698,13 @@
     "round": true
    },
    "materials": [
-    "Бумажный шнур",
+    "Бумага ручной работы с цветами и травами",
+    "Кант — ротанг",
     "Каркас — металл"
    ],
    "materialsEn": [
-    "Paper cord",
+    "Handmade paper with pressed flowers and leaves",
+    "Cane-stitched rim",
     "Metal frame"
    ],
    "color": "Натуральный",
@@ -4700,10 +4716,10 @@
    "model": {
     "archetype": "pendant_lamp",
     "params": {
-     "body": "paper",
-     "shade": "dome",
+     "shade": "cone",
      "shadeColor": "#D9D3C2",
-     "drop": 1.11
+     "drop": 1.11,
+     "shadeMaterial": "linen"
     }
    }
   },
@@ -4720,11 +4736,11 @@
    },
    "materials": [
     "Абажур — ротанг",
-    "Тренога — дерево"
+    "Стойка и основание — чёрный металл"
    ],
    "materialsEn": [
     "Rattan shade",
-    "Wooden tripod"
+    "Black metal stem and base"
    ],
    "color": "Натуральный ротанг",
    "colorEn": "Natural rattan",
@@ -4735,9 +4751,9 @@
    "model": {
     "archetype": "floor_lamp",
     "params": {
-     "base": "oak-light",
-     "baseColor": "#B99A72",
-     "stem": "tripod",
+     "base": "metal-black",
+     "baseColor": "#211F1B",
+     "stem": "straight",
      "shade": "dome",
      "shadeMaterial": "rattan",
      "shadeColor": "#C4A57A",
@@ -5000,8 +5016,7 @@
    "colorEn": "Light oak",
    "colorHex": "#D2BA94",
    "tags": [
-    "light-oak",
-    "mediterranean"
+    "light-oak"
    ],
    "model": {
     "archetype": "tv_unit",
@@ -5068,10 +5083,12 @@
     "h": 50
    },
    "materials": [
-    "МДФ, меламин цвета крема"
+    "МДФ, меламин цвета крема",
+    "Кант и ручки — металл, шампань"
    ],
    "materialsEn": [
-    "Cream melamine MDF"
+    "Cream melamine MDF",
+    "Champagne-finish metal trim and pulls"
    ],
    "color": "Крем",
    "colorEn": "Cream",
@@ -5088,7 +5105,7 @@
      "legs": "plinth",
      "wood": "paint",
      "woodColor": "#DBCCBB",
-     "handles": "none",
+     "handles": "bar-brass",
      "fronts": "fluted"
     }
    }
@@ -5480,13 +5497,15 @@
      "seat": "fabric-linen",
      "seatColor": "#E6DCCB",
      "back": "cane",
-     "caneColor": "#C4A57A"
+     "caneColor": "#C4A57A",
+     "arms": true
     }
    }
   },
   {
    "id": "tableware-mia-smoke-wood",
    "type": "tableware",
+   "family": "tableware:mia",
    "name": "Сервиз Mia на 4 персоны, дымчатые стаканы, деревянные приборы",
    "nameEn": "Mia stoneware set for 4, smoked glasses, wooden cutlery",
    "price": 379,
@@ -5546,6 +5565,7 @@
   {
    "id": "tableware-lillian-amber-brass",
    "type": "tableware",
+   "family": "tableware:lillian",
    "name": "Сервиз Lillian на 6 персон, янтарные стаканы, латунные приборы",
    "nameEn": "Lillian speckled stoneware set for 6, amber glasses, brass cutlery",
    "price": 643,
@@ -6176,8 +6196,8 @@
   {
    "id": "cushions-tuscany-siena",
    "type": "cushions",
-   "name": "Подушки: терракота, синяя полоска, джут — комплект из 3",
-   "nameEn": "Cushions: terracotta, blue stripe, jute band, set of 3",
+   "name": "Подушки: терракота, синий рубчик, джут — комплект из 3",
+   "nameEn": "Cushions: terracotta, ribbed blue, jute band, set of 3",
    "price": 308,
    "dims": {
     "w": 50,
@@ -6186,13 +6206,13 @@
    },
    "materials": [
     "Фактурная ткань (чехлы)",
-    "Тканая полоска",
+    "Ткань в рубчик",
     "Хлопок",
     "Наполнитель — микрофибра"
    ],
    "materialsEn": [
     "Textured covers",
-    "Woven stripe",
+    "Ribbed weave",
     "Cotton",
     "Microfibre inserts"
    ],
@@ -6214,7 +6234,7 @@
      "fabric": "weave",
      "patterns": [
       "plain",
-      "stripes",
+      "plain",
       "band"
      ],
      "sizes": [
@@ -6651,6 +6671,1431 @@
       0.1,
       0.1,
       0.1
+     ]
+    }
+   }
+  },
+  {
+   "id": "nightstand-grant",
+   "type": "nightstand",
+   "name": "Тумба Grant, светлый дуб",
+   "nameEn": "Grant nightstand, light oak",
+   "price": 419,
+   "dims": {
+    "w": 45,
+    "d": 40,
+    "h": 51
+   },
+   "materials": [
+    "МДФ, шпон светлого дуба",
+    "Фасады с V-образными пазами, 2 ящика с доводчиками",
+    "Ручки — чёрный металл"
+   ],
+   "materialsEn": [
+    "Light oak veneer on MDF",
+    "V-grooved fronts, 2 soft-close drawers",
+    "Black metal pulls"
+   ],
+   "color": "Светлый дуб",
+   "colorEn": "Light oak",
+   "colorHex": "#D6C2A2",
+   "tags": [
+    "light-oak"
+   ],
+   "model": {
+    "archetype": "nightstand",
+    "params": {
+     "doors": 0,
+     "drawers": 2,
+     "open": 0,
+     "legs": "plinth",
+     "wood": "oak-light",
+     "woodColor": "#D6C2A2",
+     "handles": "bar-black",
+     "fronts": "fluted"
+    }
+   }
+  },
+  {
+   "id": "cushions-linen-oat-taupe",
+   "type": "cushions",
+   "name": "Подушки: лён — молочный, овсяный и тауп — комплект из 3",
+   "nameEn": "Cushions: milk, oat and taupe linen, set of 3",
+   "price": 1028,
+   "dims": {
+    "w": 50,
+    "d": 15,
+    "h": 50
+   },
+   "materials": [
+    "Лён",
+    "Наполнитель — перо"
+   ],
+   "materialsEn": [
+    "Linen",
+    "Feather filling"
+   ],
+   "color": "Молочный / овсяный / тауп",
+   "colorEn": "Milk / oat / taupe",
+   "colorHex": "#A39480",
+   "tags": [
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "cushions",
+    "params": {
+     "count": 3,
+     "colors": [
+      "#ECE6DC",
+      "#D6CBB8",
+      "#A39480"
+     ],
+     "fabric": "linen",
+     "sizes": [
+      [
+       0.5,
+       0.5
+      ],
+      [
+       0.5,
+       0.5
+      ],
+      [
+       0.5,
+       0.5
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "throw-verona-mocha",
+   "type": "throw",
+   "name": "Плед Verona, мокко, 130×170",
+   "nameEn": "Verona throw, mocha, 130×170",
+   "price": 107,
+   "dims": {
+    "w": 130,
+    "d": 170,
+    "h": 1
+   },
+   "materials": [
+    "Мягкое гладкое плетение",
+    "Бахрома в тон"
+   ],
+   "materialsEn": [
+    "Soft plain weave",
+    "Tonal fringe"
+   ],
+   "color": "Мокко",
+   "colorEn": "Mocha",
+   "colorHex": "#7B6354",
+   "tags": [
+    "greige-luxe"
+   ],
+   "model": {
+    "archetype": "throw",
+    "params": {
+     "fabric": "cotton-weave",
+     "color": "#7B6354",
+     "fringe": true,
+     "size": [
+      1.3,
+      1.7
+     ]
+    }
+   }
+  },
+  {
+   "id": "throw-fallon-taupe",
+   "type": "throw",
+   "name": "Плед Fallon, шенилл, тауп, 130×170",
+   "nameEn": "Fallon chenille throw, taupe, 130×170",
+   "price": 107,
+   "dims": {
+    "w": 130,
+    "d": 170,
+    "h": 1
+   },
+   "materials": [
+    "Шенилл",
+    "Бахрома в тон"
+   ],
+   "materialsEn": [
+    "Chenille",
+    "Tonal fringe"
+   ],
+   "color": "Тауп",
+   "colorEn": "Taupe",
+   "colorHex": "#9E9389",
+   "tags": [
+    "greige-luxe",
+    "light-oak"
+   ],
+   "model": {
+    "archetype": "throw",
+    "params": {
+     "fabric": "cotton-weave",
+     "color": "#9E9389",
+     "fringe": true,
+     "size": [
+      1.3,
+      1.7
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-seren-triptych",
+   "type": "wall_art",
+   "name": "Триптих Seren, полевые травы, 130×50",
+   "nameEn": "Seren meadow triptych, 130×50",
+   "price": 239,
+   "dims": {
+    "w": 130,
+    "d": 3,
+    "h": 50
+   },
+   "materials": [
+    "Холст, печать",
+    "Без рамы, 3 панели по 40×50"
+   ],
+   "materialsEn": [
+    "Printed canvas",
+    "Unframed, 3 panels of 40×50"
+   ],
+   "color": "Шалфей / белый",
+   "colorEn": "Sage / white",
+   "colorHex": "#8A9F8E",
+   "tags": [
+    "light-oak"
+   ],
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "none",
+     "motif": "botanical",
+     "panels": [
+      [
+       0.4,
+       0.5
+      ],
+      [
+       0.4,
+       0.5
+      ],
+      [
+       0.4,
+       0.5
+      ]
+     ],
+     "gap": 0.05,
+     "colors": [
+      "#8A9F8E",
+      "#F2EFE8"
+     ]
+    }
+   }
+  },
+  {
+   "id": "tv-truman",
+   "type": "tv_unit",
+   "name": "ТВ-тумба Truman, тёплый дуб и сетка",
+   "nameEn": "Truman TV unit, warm oak and cane",
+   "price": 1019,
+   "dims": {
+    "w": 180,
+    "d": 45,
+    "h": 61
+   },
+   "materials": [
+    "МДФ, отделка под натуральный дуб",
+    "Дверцы — венская сетка",
+    "Открытая полка"
+   ],
+   "materialsEn": [
+    "Natural oak finish MDF",
+    "Cane door panels",
+    "Open shelf"
+   ],
+   "color": "Тёплый дуб / сетка",
+   "colorEn": "Warm oak / cane",
+   "colorHex": "#BE9367",
+   "tags": [
+    "mediterranean"
+   ],
+   "model": {
+    "archetype": "tv_unit",
+    "params": {
+     "doors": 2,
+     "drawers": 0,
+     "open": 1,
+     "legs": "wood-block",
+     "legMaterial": "oak-light",
+     "legHeight": 0.1,
+     "wood": "oak-light",
+     "woodColor": "#BE9367",
+     "handles": "none",
+     "fronts": "cane",
+     "caneColor": "#C7B295"
+    }
+   }
+  },
+  {
+   "id": "art-ed-dw-umber-1",
+   "type": "wall_art",
+   "name": "Умбра № 1, диптих, 2 × 70×100",
+   "nameEn": "Umber No. 1, diptych, 2 × 70×100",
+   "shortName": "Умбра № 1",
+   "shortNameEn": "Umber No. 1",
+   "price": 1090,
+   "dims": {
+    "w": 150,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — тёмный орех",
+    "2 панели по 70×100 см",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — dark walnut",
+    "2 panels, 70×100 cm each",
+    "4 cm stretcher"
+   ],
+   "color": "Умбра / тёплый белый / ржавчина",
+   "colorEn": "Umber / warm white / rust",
+   "colorHex": "#D3C6B1",
+   "tags": [
+    "dark-walnut"
+   ],
+   "edition": true,
+   "image": "art/art-ed-dw-umber-1.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "walnut-dark",
+     "frameColor": "#553C2C",
+     "frameWidth": 0.012,
+     "motif": "abstract-organic",
+     "colors": [
+      "#ECE7DE",
+      "#553C2C",
+      "#D3C6B1",
+      "#B5674A"
+     ],
+     "panels": [
+      [
+       0.7,
+       1
+      ],
+      [
+       0.7,
+       1
+      ]
+     ],
+     "gap": 0.1
+    }
+   }
+  },
+  {
+   "id": "art-ed-dw-ink-field",
+   "type": "wall_art",
+   "name": "Чернильное поле, 160×100",
+   "nameEn": "Ink Field, 160×100",
+   "shortName": "Чернильное поле",
+   "shortNameEn": "Ink Field",
+   "price": 1490,
+   "dims": {
+    "w": 160,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — тёмный орех",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — dark walnut",
+    "4 cm stretcher"
+   ],
+   "color": "Овсяный / тушь / ржавчина",
+   "colorEn": "Oat / ink / rust",
+   "colorHex": "#D3C6B1",
+   "tags": [
+    "dark-walnut"
+   ],
+   "edition": true,
+   "image": "art/art-ed-dw-ink-field.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "walnut-dark",
+     "frameColor": "#553C2C",
+     "frameWidth": 0.012,
+     "motif": "landscape",
+     "colors": [
+      "#ECE7DE",
+      "#D3C6B1",
+      "#553C2C",
+      "#B5674A"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-dw-umber-2",
+   "type": "wall_art",
+   "name": "Умбра № 2, 120×90",
+   "nameEn": "Umber No. 2, 120×90",
+   "shortName": "Умбра № 2",
+   "shortNameEn": "Umber No. 2",
+   "price": 890,
+   "dims": {
+    "w": 120,
+    "d": 4,
+    "h": 90
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — тёмный орех",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — dark walnut",
+    "4 cm stretcher"
+   ],
+   "color": "Тёплый белый / умбра",
+   "colorEn": "Warm white / umber",
+   "colorHex": "#ECE7DE",
+   "tags": [
+    "dark-walnut"
+   ],
+   "edition": true,
+   "image": "art/art-ed-dw-umber-2.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "walnut-dark",
+     "frameColor": "#553C2C",
+     "frameWidth": 0.012,
+     "motif": "abstract-shapes",
+     "colors": [
+      "#ECE7DE",
+      "#D3C6B1",
+      "#553C2C",
+      "#B5674A"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-dw-warm-shadow",
+   "type": "wall_art",
+   "name": "Тёплая тень, 120×90",
+   "nameEn": "Warm Shadow, 120×90",
+   "shortName": "Тёплая тень",
+   "shortNameEn": "Warm Shadow",
+   "price": 890,
+   "dims": {
+    "w": 120,
+    "d": 4,
+    "h": 90
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — тёмный орех",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — dark walnut",
+    "4 cm stretcher"
+   ],
+   "color": "Овсяный / умбра",
+   "colorEn": "Oat / umber",
+   "colorHex": "#D3C6B1",
+   "tags": [
+    "dark-walnut"
+   ],
+   "edition": true,
+   "image": "art/art-ed-dw-warm-shadow.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "walnut-dark",
+     "frameColor": "#553C2C",
+     "frameWidth": 0.012,
+     "motif": "textured-wash",
+     "colors": [
+      "#ECE7DE",
+      "#D3C6B1",
+      "#553C2C"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-dw-rust-stroke",
+   "type": "wall_art",
+   "name": "Ржавый штрих, 70×100",
+   "nameEn": "Rust Stroke, 70×100",
+   "shortName": "Ржавый штрих",
+   "shortNameEn": "Rust Stroke",
+   "price": 590,
+   "dims": {
+    "w": 70,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — тёмный орех",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — dark walnut",
+    "4 cm stretcher"
+   ],
+   "color": "Тёплый белый / тушь / ржавчина",
+   "colorEn": "Warm white / ink / rust",
+   "colorHex": "#ECE7DE",
+   "tags": [
+    "dark-walnut"
+   ],
+   "edition": true,
+   "image": "art/art-ed-dw-rust-stroke.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "walnut-dark",
+     "frameColor": "#553C2C",
+     "frameWidth": 0.012,
+     "motif": "abstract-organic",
+     "colors": [
+      "#ECE7DE",
+      "#553C2C",
+      "#B5674A",
+      "#D3C6B1"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-dw-ink-3",
+   "type": "wall_art",
+   "name": "Тушь № 3, 70×100",
+   "nameEn": "Ink No. 3, 70×100",
+   "shortName": "Тушь № 3",
+   "shortNameEn": "Ink No. 3",
+   "price": 590,
+   "dims": {
+    "w": 70,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — тёмный орех",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — dark walnut",
+    "4 cm stretcher"
+   ],
+   "color": "Овсяный / тушь",
+   "colorEn": "Oat / ink",
+   "colorHex": "#D3C6B1",
+   "tags": [
+    "dark-walnut"
+   ],
+   "edition": true,
+   "image": "art/art-ed-dw-ink-3.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "walnut-dark",
+     "frameColor": "#553C2C",
+     "frameWidth": 0.012,
+     "motif": "stripes",
+     "colors": [
+      "#ECE7DE",
+      "#553C2C",
+      "#D3C6B1",
+      "#B5674A"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-lo-still-shore",
+   "type": "wall_art",
+   "name": "Тихий берег, 140×100",
+   "nameEn": "Still Shore, 140×100",
+   "shortName": "Тихий берег",
+   "shortNameEn": "Still Shore",
+   "price": 990,
+   "dims": {
+    "w": 140,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — светлый дуб",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — light oak",
+    "4 cm stretcher"
+   ],
+   "color": "Рисовая бумага / шалфей",
+   "colorEn": "Rice paper / sage",
+   "colorHex": "#ECE7DC",
+   "tags": [
+    "light-oak"
+   ],
+   "edition": true,
+   "image": "art/art-ed-lo-still-shore.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-light",
+     "frameColor": "#D2BA94",
+     "frameWidth": 0.012,
+     "motif": "landscape",
+     "colors": [
+      "#ECE7DC",
+      "#D6CDBE",
+      "#868A6C",
+      "#A99E8F"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-lo-line-1",
+   "type": "wall_art",
+   "name": "Линия № 1, диптих, 2 × 70×100",
+   "nameEn": "Line No. 1, diptych, 2 × 70×100",
+   "shortName": "Линия № 1",
+   "shortNameEn": "Line No. 1",
+   "price": 1090,
+   "dims": {
+    "w": 150,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — светлый дуб",
+    "2 панели по 70×100 см",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — light oak",
+    "2 panels, 70×100 cm each",
+    "4 cm stretcher"
+   ],
+   "color": "Рисовая бумага / уголь",
+   "colorEn": "Rice paper / charcoal",
+   "colorHex": "#ECE7DC",
+   "tags": [
+    "light-oak"
+   ],
+   "edition": true,
+   "image": "art/art-ed-lo-line-1.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-light",
+     "frameColor": "#D2BA94",
+     "frameWidth": 0.012,
+     "motif": "line",
+     "colors": [
+      "#ECE7DC",
+      "#2B2926",
+      "#868A6C"
+     ],
+     "panels": [
+      [
+       0.7,
+       1
+      ],
+      [
+       0.7,
+       1
+      ]
+     ],
+     "gap": 0.1
+    }
+   }
+  },
+  {
+   "id": "art-ed-lo-morning-mist",
+   "type": "wall_art",
+   "name": "Утренний туман, 120×90",
+   "nameEn": "Morning Mist, 120×90",
+   "shortName": "Утренний туман",
+   "shortNameEn": "Morning Mist",
+   "price": 890,
+   "dims": {
+    "w": 120,
+    "d": 4,
+    "h": 90
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — светлый дуб",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — light oak",
+    "4 cm stretcher"
+   ],
+   "color": "Рисовая бумага / каменный лён",
+   "colorEn": "Rice paper / stone linen",
+   "colorHex": "#ECE7DC",
+   "tags": [
+    "light-oak"
+   ],
+   "edition": true,
+   "image": "art/art-ed-lo-morning-mist.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-light",
+     "frameColor": "#D2BA94",
+     "frameWidth": 0.012,
+     "motif": "landscape",
+     "colors": [
+      "#ECE7DC",
+      "#D6CDBE",
+      "#A99E8F",
+      "#868A6C"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-lo-line-2",
+   "type": "wall_art",
+   "name": "Линия № 2, 120×90",
+   "nameEn": "Line No. 2, 120×90",
+   "shortName": "Линия № 2",
+   "shortNameEn": "Line No. 2",
+   "price": 890,
+   "dims": {
+    "w": 120,
+    "d": 4,
+    "h": 90
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — светлый дуб",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — light oak",
+    "4 cm stretcher"
+   ],
+   "color": "Рисовая бумага / шалфей / уголь",
+   "colorEn": "Rice paper / sage / charcoal",
+   "colorHex": "#ECE7DC",
+   "tags": [
+    "light-oak"
+   ],
+   "edition": true,
+   "image": "art/art-ed-lo-line-2.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-light",
+     "frameColor": "#D2BA94",
+     "frameWidth": 0.012,
+     "motif": "lines",
+     "colors": [
+      "#ECE7DC",
+      "#2B2926",
+      "#868A6C"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-lo-winter-light",
+   "type": "wall_art",
+   "name": "Зимний свет, 70×100",
+   "nameEn": "Winter Light, 70×100",
+   "shortName": "Зимний свет",
+   "shortNameEn": "Winter Light",
+   "price": 590,
+   "dims": {
+    "w": 70,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — светлый дуб",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — light oak",
+    "4 cm stretcher"
+   ],
+   "color": "Рисовая бумага / тауп",
+   "colorEn": "Rice paper / taupe",
+   "colorHex": "#ECE7DC",
+   "tags": [
+    "light-oak"
+   ],
+   "edition": true,
+   "image": "art/art-ed-lo-winter-light.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-light",
+     "frameColor": "#D2BA94",
+     "frameWidth": 0.012,
+     "motif": "landscape",
+     "colors": [
+      "#ECE7DC",
+      "#D6CDBE",
+      "#A99E8F",
+      "#2B2926"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-lo-line-3",
+   "type": "wall_art",
+   "name": "Линия № 3, 70×100",
+   "nameEn": "Line No. 3, 70×100",
+   "shortName": "Линия № 3",
+   "shortNameEn": "Line No. 3",
+   "price": 590,
+   "dims": {
+    "w": 70,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — светлый дуб",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — light oak",
+    "4 cm stretcher"
+   ],
+   "color": "Рисовая бумага / уголь / шалфей",
+   "colorEn": "Rice paper / charcoal / sage",
+   "colorHex": "#ECE7DC",
+   "tags": [
+    "light-oak"
+   ],
+   "edition": true,
+   "image": "art/art-ed-lo-line-3.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-light",
+     "frameColor": "#D2BA94",
+     "frameWidth": 0.012,
+     "motif": "line",
+     "colors": [
+      "#ECE7DC",
+      "#2B2926",
+      "#868A6C"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-gl-travertine-1",
+   "type": "wall_art",
+   "name": "Травертин № 1, 140×100",
+   "nameEn": "Travertine No. 1, 140×100",
+   "shortName": "Травертин № 1",
+   "shortNameEn": "Travertine No. 1",
+   "price": 990,
+   "dims": {
+    "w": 140,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — шампань-латунь",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — champagne brass",
+    "4 cm stretcher"
+   ],
+   "color": "Слоновая кость / травертин",
+   "colorEn": "Ivory / travertine",
+   "colorHex": "#EDE6DA",
+   "tags": [
+    "greige-luxe"
+   ],
+   "edition": true,
+   "image": "art/art-ed-gl-travertine-1.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "metal-brass",
+     "frameColor": "#B8A27A",
+     "frameWidth": 0.012,
+     "motif": "textured-plaster",
+     "colors": [
+      "#EDE6DA",
+      "#D7C8AF",
+      "#B8A27A"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-gl-champagne-field",
+   "type": "wall_art",
+   "name": "Поле шампань, 160×100",
+   "nameEn": "Champagne Field, 160×100",
+   "shortName": "Поле шампань",
+   "shortNameEn": "Champagne Field",
+   "price": 1490,
+   "dims": {
+    "w": 160,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — шампань-латунь",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — champagne brass",
+    "4 cm stretcher"
+   ],
+   "color": "Слоновая кость / шампань / мокко",
+   "colorEn": "Ivory / champagne / mocha",
+   "colorHex": "#EDE6DA",
+   "tags": [
+    "greige-luxe"
+   ],
+   "edition": true,
+   "image": "art/art-ed-gl-champagne-field.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "metal-brass",
+     "frameColor": "#B8A27A",
+     "frameWidth": 0.012,
+     "motif": "textured-plaster",
+     "colors": [
+      "#EDE6DA",
+      "#CFC4B4",
+      "#8B6F5E"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-gl-hush",
+   "type": "wall_art",
+   "name": "Тишина, 120×90",
+   "nameEn": "Hush, 120×90",
+   "shortName": "Тишина",
+   "shortNameEn": "Hush",
+   "price": 890,
+   "dims": {
+    "w": 120,
+    "d": 4,
+    "h": 90
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — шампань-латунь",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — champagne brass",
+    "4 cm stretcher"
+   ],
+   "color": "Слоновая кость",
+   "colorEn": "Ivory",
+   "colorHex": "#EDE6DA",
+   "tags": [
+    "greige-luxe"
+   ],
+   "edition": true,
+   "image": "art/art-ed-gl-hush.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "metal-brass",
+     "frameColor": "#B8A27A",
+     "frameWidth": 0.012,
+     "motif": "textured-plaster",
+     "colors": [
+      "#EDE6DA",
+      "#CFC4B4",
+      "#D7C8AF"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-gl-stone-light",
+   "type": "wall_art",
+   "name": "Камень и свет, 120×90",
+   "nameEn": "Stone and Light, 120×90",
+   "shortName": "Камень и свет",
+   "shortNameEn": "Stone and Light",
+   "price": 890,
+   "dims": {
+    "w": 120,
+    "d": 4,
+    "h": 90
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — шампань-латунь",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — champagne brass",
+    "4 cm stretcher"
+   ],
+   "color": "Слоновая кость / тауп",
+   "colorEn": "Ivory / taupe",
+   "colorHex": "#CFC4B4",
+   "tags": [
+    "greige-luxe"
+   ],
+   "edition": true,
+   "image": "art/art-ed-gl-stone-light.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "metal-brass",
+     "frameColor": "#B8A27A",
+     "frameWidth": 0.012,
+     "motif": "abstract-shapes",
+     "colors": [
+      "#EDE6DA",
+      "#CFC4B4",
+      "#A69686",
+      "#B8A27A"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-gl-mocha-2",
+   "type": "wall_art",
+   "name": "Мокко № 2, 70×100",
+   "nameEn": "Mocha No. 2, 70×100",
+   "shortName": "Мокко № 2",
+   "shortNameEn": "Mocha No. 2",
+   "price": 590,
+   "dims": {
+    "w": 70,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — шампань-латунь",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — champagne brass",
+    "4 cm stretcher"
+   ],
+   "color": "Слоновая кость / мокко",
+   "colorEn": "Ivory / mocha",
+   "colorHex": "#CFC4B4",
+   "tags": [
+    "greige-luxe"
+   ],
+   "edition": true,
+   "image": "art/art-ed-gl-mocha-2.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "metal-brass",
+     "frameColor": "#B8A27A",
+     "frameWidth": 0.012,
+     "motif": "textured-plaster",
+     "colors": [
+      "#EDE6DA",
+      "#8B6F5E",
+      "#CFC4B4"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-gl-layers",
+   "type": "wall_art",
+   "name": "Слои, 70×100",
+   "nameEn": "Layers, 70×100",
+   "shortName": "Слои",
+   "shortNameEn": "Layers",
+   "price": 590,
+   "dims": {
+    "w": 70,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — шампань-латунь",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — champagne brass",
+    "4 cm stretcher"
+   ],
+   "color": "Травертин / тауп",
+   "colorEn": "Travertine / taupe",
+   "colorHex": "#D7C8AF",
+   "tags": [
+    "greige-luxe"
+   ],
+   "edition": true,
+   "image": "art/art-ed-gl-layers.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "metal-brass",
+     "frameColor": "#B8A27A",
+     "frameWidth": 0.012,
+     "motif": "stripes",
+     "colors": [
+      "#EDE6DA",
+      "#D7C8AF",
+      "#A69686",
+      "#B8A27A"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-med-noon-coast",
+   "type": "wall_art",
+   "name": "Берег в полдень, диптих, 2 × 70×100",
+   "nameEn": "Noon Coast, diptych, 2 × 70×100",
+   "shortName": "Берег в полдень",
+   "shortNameEn": "Noon Coast",
+   "price": 1090,
+   "dims": {
+    "w": 150,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — натуральный дуб",
+    "2 панели по 70×100 см",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — natural oak",
+    "2 panels, 70×100 cm each",
+    "4 cm stretcher"
+   ],
+   "color": "Побелка / терракота / синий",
+   "colorEn": "Limewash / terracotta / sea blue",
+   "colorHex": "#DCCFB8",
+   "tags": [
+    "mediterranean"
+   ],
+   "edition": true,
+   "image": "art/art-ed-med-noon-coast.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-natural",
+     "frameColor": "#B99A72",
+     "frameWidth": 0.012,
+     "motif": "landscape",
+     "colors": [
+      "#F3EFE6",
+      "#DCCFB8",
+      "#C2704D",
+      "#2F5673"
+     ],
+     "panels": [
+      [
+       0.7,
+       1
+      ],
+      [
+       0.7,
+       1
+      ]
+     ],
+     "gap": 0.1
+    }
+   }
+  },
+  {
+   "id": "art-ed-med-terracotta-roofs",
+   "type": "wall_art",
+   "name": "Терракотовые крыши, 160×100",
+   "nameEn": "Terracotta Roofs, 160×100",
+   "shortName": "Терракотовые крыши",
+   "shortNameEn": "Terracotta Roofs",
+   "price": 1490,
+   "dims": {
+    "w": 160,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — натуральный дуб",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — natural oak",
+    "4 cm stretcher"
+   ],
+   "color": "Побелка / терракота / синий",
+   "colorEn": "Limewash / terracotta / sea blue",
+   "colorHex": "#F3EFE6",
+   "tags": [
+    "mediterranean"
+   ],
+   "edition": true,
+   "image": "art/art-ed-med-terracotta-roofs.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-natural",
+     "frameColor": "#B99A72",
+     "frameWidth": 0.012,
+     "motif": "grid-blocks",
+     "colors": [
+      "#F3EFE6",
+      "#C2704D",
+      "#DCCFB8",
+      "#2F5673"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-med-olive-grove",
+   "type": "wall_art",
+   "name": "Оливковая роща, 120×90",
+   "nameEn": "Olive Grove, 120×90",
+   "shortName": "Оливковая роща",
+   "shortNameEn": "Olive Grove",
+   "price": 890,
+   "dims": {
+    "w": 120,
+    "d": 4,
+    "h": 90
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — натуральный дуб",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — natural oak",
+    "4 cm stretcher"
+   ],
+   "color": "Побелка / олива / песок",
+   "colorEn": "Limewash / olive / sand",
+   "colorHex": "#DCCFB8",
+   "tags": [
+    "mediterranean"
+   ],
+   "edition": true,
+   "image": "art/art-ed-med-olive-grove.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-natural",
+     "frameColor": "#B99A72",
+     "frameWidth": 0.012,
+     "motif": "abstract-organic",
+     "colors": [
+      "#F3EFE6",
+      "#76764B",
+      "#DCCFB8",
+      "#D9C7A8"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-med-quiet-cove",
+   "type": "wall_art",
+   "name": "Тихая бухта, 120×90",
+   "nameEn": "Quiet Cove, 120×90",
+   "shortName": "Тихая бухта",
+   "shortNameEn": "Quiet Cove",
+   "price": 890,
+   "dims": {
+    "w": 120,
+    "d": 4,
+    "h": 90
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — натуральный дуб",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — natural oak",
+    "4 cm stretcher"
+   ],
+   "color": "Песок / синий / терракота",
+   "colorEn": "Sand / sea blue / terracotta",
+   "colorHex": "#DCCFB8",
+   "tags": [
+    "mediterranean"
+   ],
+   "edition": true,
+   "image": "art/art-ed-med-quiet-cove.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-natural",
+     "frameColor": "#B99A72",
+     "frameWidth": 0.012,
+     "motif": "abstract-shapes",
+     "colors": [
+      "#F3EFE6",
+      "#2F5673",
+      "#DCCFB8",
+      "#C2704D"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-med-arch-shade",
+   "type": "wall_art",
+   "name": "Арка и тень, 70×100",
+   "nameEn": "Arch and Shade, 70×100",
+   "shortName": "Арка и тень",
+   "shortNameEn": "Arch and Shade",
+   "price": 590,
+   "dims": {
+    "w": 70,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — натуральный дуб",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — natural oak",
+    "4 cm stretcher"
+   ],
+   "color": "Побелка / терракота",
+   "colorEn": "Limewash / terracotta",
+   "colorHex": "#F3EFE6",
+   "tags": [
+    "mediterranean"
+   ],
+   "edition": true,
+   "image": "art/art-ed-med-arch-shade.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-natural",
+     "frameColor": "#B99A72",
+     "frameWidth": 0.012,
+     "motif": "abstract-arches",
+     "colors": [
+      "#F3EFE6",
+      "#C2704D",
+      "#DCCFB8",
+      "#D9C7A8"
+     ]
+    }
+   }
+  },
+  {
+   "id": "art-ed-med-steps-sea",
+   "type": "wall_art",
+   "name": "Лестница к морю, 70×100",
+   "nameEn": "Steps to the Sea, 70×100",
+   "shortName": "Лестница к морю",
+   "shortNameEn": "Steps to the Sea",
+   "price": 590,
+   "dims": {
+    "w": 70,
+    "d": 4,
+    "h": 100
+   },
+   "materials": [
+    "Холст, пигментная печать",
+    "Плавающая рама — натуральный дуб",
+    "Подрамник 4 см"
+   ],
+   "materialsEn": [
+    "Canvas, pigment print",
+    "Float frame — natural oak",
+    "4 cm stretcher"
+   ],
+   "color": "Побелка / синий / терракота",
+   "colorEn": "Limewash / sea blue / terracotta",
+   "colorHex": "#F3EFE6",
+   "tags": [
+    "mediterranean"
+   ],
+   "edition": true,
+   "image": "art/art-ed-med-steps-sea.jpg",
+   "model": {
+    "archetype": "wall_art",
+    "params": {
+     "frame": "oak-natural",
+     "frameColor": "#B99A72",
+     "frameWidth": 0.012,
+     "motif": "grid-blocks",
+     "colors": [
+      "#F3EFE6",
+      "#DCCFB8",
+      "#C2704D",
+      "#2F5673"
      ]
     }
    }

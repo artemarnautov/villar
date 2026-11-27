@@ -68,12 +68,19 @@ export function createSim({ catalog, layout, packs, budget: budgetSpec = null })
     return out;
   };
 
-  /** Fill defaults and drop anything that is not a valid option of the pack. */
+  // FOCUS guest (store.js): an item that any pack offers for the same placements is a valid pick in every pack.
+  const offeredBy = (p, key, id) => !!(Object.prototype.hasOwnProperty.call(p?.slots || {}, key) && p.slots[key]?.options?.includes(id));
+  const guestOk = (packId, key, id) => {
+    const s = slotsForKey(pack(packId), key)[0];
+    return !!s && packIds.some((q) => q !== packId && offeredBy(pack(q), keyOfSlotIn(pack(q), s), id));
+  };
+
+  /** Fill defaults and drop anything that is not a valid option of the pack (or a guest from another pack). */
   const normalizeSelection = (packId, sel) => {
     const p = pack(packId); const out = defaults(packId);
     for (const [key, id] of Object.entries(sel || {})) {
       if (id === null && p?.slots?.[key]) out[key] = null;            // excluded by the budget slider / customer
-      else if (p?.slots?.[key]?.options?.includes(id) && items.has(id)) out[key] = id;
+      else if (items.has(id) && (offeredBy(p, key, id) || (p?.slots?.[key] && guestOk(packId, key, id)))) out[key] = id;
     }
     return out;
   };
@@ -398,6 +405,8 @@ export function buildAiIndex({ catalog, layout, packs, styles, budget = null }) 
       description: p.description ? String(p.description).slice(0, 280) : null,
       descriptionEn: p.descriptionEn ? String(p.descriptionEn).slice(0, 280) : null,
       slots, pairings: p.pairings || {},
+      // curator (ART §4): the planner reads these, so the server ladder equals the browser's
+      ...(p.picks ? { picks: p.picks } : {}), ...(Array.isArray(p.avoid) ? { avoid: p.avoid } : {}),
     };
   }
   const pick = (it) => {
@@ -406,6 +415,9 @@ export function buildAiIndex({ catalog, layout, packs, styles, budget = null }) 
     if (Array.isArray(it.materials)) o.materials = it.materials;
     if (Array.isArray(it.materialsEn)) o.materialsEn = it.materialsEn;
     if (it.dims) o.dims = { w: it.dims.w, d: it.dims.d, h: it.dims.h, ...(it.dims.round ? { round: true } : {}) };
+    // curator (ART §5): Villar Editions enter the ladder at the designer's room; `image` is the Storage key the
+    // photo function sends as the artwork reference
+    if (it.edition) { o.edition = true; if (typeof it.image === 'string') o.image = it.image; }
     return o;
   };
   const items = (catalog?.items || []).filter((it) => used.has(it.id)).map(pick);

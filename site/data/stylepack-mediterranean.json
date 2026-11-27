@@ -39,17 +39,18 @@
    ]
   },
   "rug": {
-   "default": "rug-pulara-160x230",
+   "default": "rug-heaton-200x290",
    "options": [
-    "rug-pulara-160x230",
-    "rug-heaton-200x290"
+    "rug-heaton-200x290",
+    "rug-marlow-200x290",
+    "rug-pulara-160x230"
    ]
   },
   "tv_unit": {
    "default": "tv-windsor",
    "options": [
     "tv-windsor",
-    "tv-echo"
+    "tv-truman"
    ]
   },
   "side_table": {
@@ -59,10 +60,10 @@
    ]
   },
   "armchair": {
-   "default": "armchair-sukhna",
+   "default": "armchair-natura",
    "options": [
-    "armchair-sukhna",
-    "armchair-natura"
+    "armchair-natura",
+    "armchair-sukhna"
    ]
   },
   "floor_lamp": {
@@ -90,10 +91,10 @@
    "default": "bedding-white-terracotta-blue",
    "options": [
     "bedding-white-terracotta-blue",
-    "bedding-white-oat-clay",
-    "bedding-oat-rust",
-    "bedding-white-oat-olive",
     "bedding-white-oat",
+    "bedding-oat-rust",
+    "bedding-white-oat-clay",
+    "bedding-white-oat-olive",
     "bedding-white-sateen-oat"
    ]
   },
@@ -104,10 +105,10 @@
    ]
   },
   "table_lamp": {
-   "default": "tablelamp-tolima",
+   "default": "tablelamp-crosby",
    "options": [
-    "tablelamp-tolima",
-    "tablelamp-crosby"
+    "tablelamp-crosby",
+    "tablelamp-tolima"
    ]
   },
   "dining_table": {
@@ -133,43 +134,49 @@
    ]
   },
   "art_sofa": {
-   "default": "art-macaire-120x60",
+   "default": "art-ed-med-noon-coast",
    "options": [
+    "art-ed-med-noon-coast",
+    "art-ed-med-terracotta-roofs",
     "art-macaire-120x60",
     "art-madar-aziza-100",
     "art-madar-hiba-100"
    ]
   },
   "art_bed": {
-   "default": "art-caitlin-triptych",
+   "default": "art-ed-med-olive-grove",
    "options": [
-    "art-caitlin-triptych",
-    "art-ember-90x60"
+    "art-ed-med-olive-grove",
+    "art-ed-med-quiet-cove",
+    "art-caitlin-triptych"
    ]
   },
   "art_dining": {
-   "default": "art-erato-80",
+   "default": "art-ed-med-arch-shade",
    "options": [
+    "art-ed-med-arch-shade",
+    "art-ed-med-steps-sea",
     "art-erato-80",
     "art-andreya-60x90",
     "art-aquarelle-53x80",
-    "art-vaseo-53x80"
+    "art-vaseo-53x80",
+    "art-ember-90x60"
    ]
   },
   "plant": {
    "default": "plant-olive-kerby",
    "options": [
     "plant-olive-kerby",
+    "plant-olive-180",
     "plant-olive-themis",
-    "plant-olive-urbano",
-    "plant-olive-180"
+    "plant-olive-urbano"
    ]
   },
   "curtains": {
    "default": "curtains-sullivan-layered",
    "options": [
-    "curtains-sullivan-sheer",
     "curtains-sullivan-layered",
+    "curtains-sullivan-sheer",
     "curtains-khor-sheer"
    ]
   },
@@ -192,17 +199,17 @@
    "default": "kitchen-white-basic",
    "options": [
     "kitchen-white-basic",
-    "kitchen-black-basic",
-    "kitchen-white-travertine"
+    "kitchen-white-travertine",
+    "kitchen-black-basic"
    ]
   },
   "throw": {
-   "default": "throw-sultana-sand",
+   "default": "throw-olivia-terracotta",
    "options": [
-    "throw-sultana-sand",
     "throw-olivia-terracotta",
-    "throw-vayu-sage",
     "throw-norham-olive",
+    "throw-vayu-sage",
+    "throw-sultana-sand",
     "throw-thorn-oat",
     "throw-boras-oat"
    ]
@@ -247,6 +254,153 @@
    ]
   }
  },
+ "picks": {
+  "sofa": [
+   "sofa-oshawa-3",
+   "sofa-anders-3"
+  ],
+  "cushions": [
+   "cushions-tuscany-siena"
+  ],
+  "coffee_table": [
+   "coffee-corta"
+  ],
+  "rug": [
+   "rug-heaton-200x290",
+   "rug-marlow-200x290"
+  ],
+  "tv_unit": [
+   "tv-windsor",
+   "tv-truman"
+  ],
+  "side_table": [
+   "side-pavia"
+  ],
+  "armchair": [
+   "armchair-natura"
+  ],
+  "floor_lamp": [
+   "floorlamp-audrey"
+  ],
+  "bed": [
+   "bed-forren-160"
+  ],
+  "mattress": [
+   "mattress-rejuvenate-160",
+   "mattress-bliss-gel-160"
+  ],
+  "bedding": [
+   "bedding-white-terracotta-blue",
+   "bedding-white-oat",
+   "bedding-oat-rust"
+  ],
+  "nightstand": [
+   "nightstand-forren"
+  ],
+  "table_lamp": [
+   "tablelamp-crosby"
+  ],
+  "dining_table": [
+   "dining-keira-100"
+  ],
+  "dining_chair": [
+   "chair-emily",
+   "chair-canovia"
+  ],
+  "pendant_lamp": [
+   "pendant-tobin",
+   "pendant-naturel",
+   "pendant-accorsa"
+  ],
+  "art_sofa": [
+   "art-ed-med-noon-coast",
+   "art-ed-med-terracotta-roofs",
+   "art-macaire-120x60"
+  ],
+  "art_bed": [
+   "art-ed-med-olive-grove",
+   "art-ed-med-quiet-cove",
+   "art-caitlin-triptych"
+  ],
+  "art_dining": [
+   "art-ed-med-arch-shade",
+   "art-ed-med-steps-sea",
+   "art-erato-80"
+  ],
+  "plant": [
+   "plant-olive-kerby",
+   "plant-olive-180",
+   "plant-olive-themis"
+  ],
+  "curtains": [
+   "curtains-sullivan-layered",
+   "curtains-sullivan-sheer"
+  ],
+  "tableware": [
+   "tableware-lillian-smoke",
+   "tableware-mia-smoke-wood"
+  ],
+  "centerpiece": [
+   "centerpiece-maya-eucalyptus",
+   "centerpiece-sable-eucalyptus"
+  ],
+  "kitchen_decor": [
+   "kitchen-white-basic",
+   "kitchen-white-travertine"
+  ],
+  "throw": [
+   "throw-olivia-terracotta",
+   "throw-norham-olive",
+   "throw-vayu-sage"
+  ],
+  "nightstand_decor": [
+   "nsdecor-travertine-candle",
+   "nsdecor-bud-vase-tealight"
+  ],
+  "runner": [
+   "runner-marco-sandy",
+   "runner-zen-bianca"
+  ],
+  "mirror": [
+   "mirror-mackenzie-arch",
+   "mirror-artemis-round-black"
+  ],
+  "decor_coffee": [
+   "decor-terracotta-low",
+   "decor-tray-candles",
+   "decor-stoneware-low"
+  ],
+  "decor_tv": [
+   "decor-terracotta",
+   "decor-cream-ceramic"
+  ]
+ },
+ "avoid": [
+  [
+   "rug-pulara-160x230",
+   "sofa-anders-3"
+  ],
+  [
+   "art-ed-med-terracotta-roofs",
+   "sofa-anders-3"
+  ],
+  [
+   "tablelamp-tolima",
+   "nightstand-forren"
+  ],
+  [
+   "throw-sultana-sand",
+   "sofa-oshawa-3"
+  ],
+  [
+   "throw-thorn-oat",
+   "sofa-oshawa-3"
+  ],
+  [
+   "throw-boras-oat",
+   "sofa-oshawa-3"
+  ]
+ ],
  "rules": [
   "60/30/10: побелённая оболочка ≈60%; лён, ротанг и светлое дерево ≈30%; терракота, олива, синий, глина и железо ≤10%.",
   "Стены и потолок — одна побелка (ΔE ≤ 2); шторы и постель — белёный лён в тон стенам (ΔE ≤ 5).",
@@ -265,28 +419,25 @@
  "pairings": {
   "sofa-oshawa-3": {
    "cushions": "cushions-tuscany-siena",
-   "throw": "throw-sultana-sand",
-   "rug": "rug-pulara-160x230",
+   "throw": "throw-olivia-terracotta",
+   "rug": "rug-heaton-200x290",
    "coffee_table": "coffee-corta",
-   "armchair": "armchair-sukhna",
-   "art_sofa": "art-macaire-120x60"
+   "armchair": "armchair-natura"
   },
   "bed-forren-160": {
    "nightstand": "nightstand-forren",
    "bedding": "bedding-white-terracotta-blue",
-   "table_lamp": "tablelamp-tolima",
-   "art_bed": "art-caitlin-triptych"
+   "table_lamp": "tablelamp-crosby"
   },
   "bed-cloud-160": {
    "nightstand": "nightstand-forren",
    "bedding": "bedding-white-terracotta-blue",
-   "table_lamp": "tablelamp-tolima"
+   "table_lamp": "tablelamp-crosby"
   },
   "dining-keira-100": {
    "pendant_lamp": "pendant-tobin",
    "dining_chair": "chair-emily",
-   "centerpiece": "centerpiece-maya-eucalyptus",
-   "art_dining": "art-erato-80"
+   "centerpiece": "centerpiece-maya-eucalyptus"
   },
   "pendant-tobin": {
    "dining_table": "dining-keira-100"

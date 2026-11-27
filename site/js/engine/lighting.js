@@ -130,6 +130,7 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
   }
   const hdrSky = new Map();   // tod → photographic sky texture (once loaded)
   const hdrTint = new Map();  // tod → colour of the sky light through the window (luminance 1)
+  const plateTint = new Map(); // tod → the window plate's sky/horizon colour (luminance 1): wins over the HDR's
   const hdrHaze = new Map();  // tod → colour of the horizon haze band (luminance 1)
   /** Mean colour of the horizon band (0.5–3° elevation, all azimuths): the haze the city fades into. */
   function hazeTint(t) {
@@ -218,6 +219,22 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
   }
 
   function setLampLights(list) { lampLights = list; applyLamps(); }
+  /**
+   * Time-lapse (ART §3): the sun between two times of day, t = 0…1 (direction, intensity, colour, shadow fit).
+   * Only while the sun's light set is on; the end state equals setTimeOfDay(to).
+   */
+  function sunBlend(from, to, t) {
+    const A = TOD[from].sun, B = TOD[to].sun;
+    const IA = TOD[from].lamps ? 0 : A.I, IB = TOD[to].lamps ? 0 : B.I;
+    let dz = B.az - A.az; dz = ((dz + 540) % 360) - 180;
+    const cfg = { sun: { alt: A.alt + (B.alt - A.alt) * t, az: A.az + dz * t } };
+    const dir = sunDirection(cfg);
+    const I = (IA + (IB - IA) * t) * (dir.y > 0 ? 1 : 0);
+    sun.color.copy(kelvin(A.K + (B.K - A.K) * t));
+    sun.intensity = I;
+    if (I > 0) fitShadow(dir);
+    placeSunDisc(dir, I);
+  }
   function applyLamps(on = TOD[current].lamps) {
     for (const l of lampLights) { l.visible = on; l.intensity = on ? (l.userData.baseIntensity ?? 1) : 0; }
   }
@@ -265,7 +282,7 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
     portal.color.set(P.horizon).lerp(new THREE.Color(P.zenith), 0.55);
     portal.intensity = (P.horizonL * 0.7 + P.zenithL * 0.3) * 0.92;
     // photographic sky: its own colour through the window, same luminance calibration
-    const tint = hdrSky.has(tod) && hdrTint.get(tod);
+    const tint = plateTint.get(tod) || (hdrSky.has(tod) && hdrTint.get(tod));
     if (tint) { const l = 0.2126 * portal.color.r + 0.7152 * portal.color.g + 0.0722 * portal.color.b; portal.color.copy(tint).multiplyScalar(l); }
     const lamps = cfg.lamps;
     for (const s of downlights) { s.intensity = lamps ? DOWNLIGHT_CD : 0; s.visible = lamps; }
@@ -309,7 +326,17 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
     get skyTexture() { return skyTex; },
     skyFor, skyEnvFor,
     sunDirection: () => sunDirection(TOD[current]),
-    setTimeOfDay, setLampLights, captureEnvironment, ambient, useLightSet,
+    setTimeOfDay, setLampLights, captureEnvironment, ambient, useLightSet, sunBlend,
+    get lampLights() { return lampLights; },
+    /** Window plate colours (plate.js colours()): the portal fill takes them; null = back to the HDR / preset. */
+    setPlateTint(tod, c) {
+      if (c && (c.sky || c.horizon)) {
+        const t = (c.sky || c.horizon).clone().lerp(c.horizon || c.sky, 0.45);
+        const l = 0.2126 * t.r + 0.7152 * t.g + 0.0722 * t.b;
+        if (l > 0) { plateTint.set(tod, t.multiplyScalar(1 / l)); return; }
+      }
+      plateTint.delete(tod);
+    },
     get evening() { return !!TOD[current].lamps; },
     // kept for API compatibility: there are no fallback fill lights any more
     setFallback() {}, setDollhouse() {}, get fallback() { return false; },

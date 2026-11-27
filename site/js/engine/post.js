@@ -240,6 +240,69 @@ class RefinePass extends Pass {
   dispose() { this.hold.dispose(); this.copy.dispose(); this.mix.dispose(); this.copy.material.dispose(); this.mix.material.dispose(); }
 }
 
+/**
+ * Focus v2 stage (FOCUS.md §1–2). Replaces the beauty RenderPass while an item is focused:
+ *  1. the room WITHOUT the item family is rendered, then blurred (soft depth of field) and dimmed in place;
+ *  2. the item family is drawn over it — keeping the room's depth (spotlight, item in the room) or with the depth
+ *     cleared (turntable away from home: never clips into walls), over a soft contact shadow on an invisible
+ *     turntable. The item keeps its exact light and catalogue colour; only the room dims.
+ * Shadow maps are never re-rendered from the split passes (pending updates wait for a normal frame).
+ */
+class StageBlur {
+  constructor() {
+    const vs = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4( position.xy, 0.0, 1.0 ); }';
+    this.a = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false });
+    this.b = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false });
+    this.copy = new FullScreenQuad(new THREE.ShaderMaterial({
+      uniforms: { map: { value: null } }, vertexShader: vs,
+      fragmentShader: 'uniform sampler2D map; varying vec2 vUv; void main() { gl_FragColor = texture2D( map, vUv ); }',
+      depthTest: false, depthWrite: false, toneMapped: false,
+    }));
+    this.blur = new FullScreenQuad(new THREE.ShaderMaterial({
+      uniforms: { map: { value: null }, dir: { value: new THREE.Vector2() } }, vertexShader: vs,
+      fragmentShader: /* glsl */`
+        uniform sampler2D map; uniform vec2 dir; varying vec2 vUv;
+        void main() {
+          vec4 c = texture2D( map, vUv ) * 0.2270270270;
+          c += ( texture2D( map, vUv + dir * 1.3846153846 ) + texture2D( map, vUv - dir * 1.3846153846 ) ) * 0.3162162162;
+          c += ( texture2D( map, vUv + dir * 3.2307692308 ) + texture2D( map, vUv - dir * 3.2307692308 ) ) * 0.0702702703;
+          gl_FragColor = c;
+        }`,
+      depthTest: false, depthWrite: false, toneMapped: false,
+    }));
+    this.back = new FullScreenQuad(new THREE.ShaderMaterial({
+      uniforms: { map: { value: null }, sharp: { value: null }, mixK: { value: 1 }, dim: { value: 1 } }, vertexShader: vs,
+      fragmentShader: /* glsl */`
+        uniform sampler2D map; uniform sampler2D sharp; uniform float mixK; uniform float dim; varying vec2 vUv;
+        void main() { gl_FragColor = vec4( mix( texture2D( sharp, vUv ).rgb, texture2D( map, vUv ).rgb, mixK ) * dim, 1.0 ); }`,
+      depthTest: false, depthWrite: false, toneMapped: false,
+    }));
+    this.sharp = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false });
+  }
+  setSize(w, h) {
+    this.sharp.setSize(w, h);
+    this.a.setSize(Math.max(1, w >> 1), Math.max(1, h >> 1)); this.b.setSize(Math.max(1, w >> 1), Math.max(1, h >> 1));
+  }
+  /** Soften + dim the room already in `target` (its depth buffer is kept). */
+  apply(renderer, target, blur, dim) {
+    const prev = renderer.getRenderTarget();
+    this.copy.material.uniforms.map.value = target.texture;
+    renderer.setRenderTarget(this.sharp); this.copy.render(renderer);
+    renderer.setRenderTarget(this.a); this.copy.render(renderer);
+    const u = this.blur.material.uniforms;
+    const r = Math.max(0.5, blur * 2.5);
+    for (let i = 0; i < 2; i++) {
+      u.map.value = this.a.texture; u.dir.value.set(r / this.a.width, 0); renderer.setRenderTarget(this.b); this.blur.render(renderer);
+      u.map.value = this.b.texture; u.dir.value.set(0, r / this.a.height); renderer.setRenderTarget(this.a); this.blur.render(renderer);
+    }
+    const bu = this.back.material.uniforms;
+    bu.map.value = this.a.texture; bu.sharp.value = this.sharp.texture; bu.mixK.value = Math.min(1, blur); bu.dim.value = dim;
+    renderer.setRenderTarget(target); this.back.render(renderer);
+    renderer.setRenderTarget(prev);
+  }
+  dispose() { for (const t of [this.a, this.b, this.sharp]) t.dispose(); for (const q of [this.copy, this.blur, this.back]) { q.material.dispose(); q.dispose(); } }
+}
+
 export const QUALITY = {
   high:   { msaa: 4, ao: true, aoScale: 1.0, aoCss: 1.35, aoSamples: 16, bloom: true, maxDpr: 2, lampShadows: 2, shadowMap: 4096 },
   medium: { msaa: 2, ao: true, aoScale: 0.5, aoCss: 1.0, aoSamples: 12, bloom: false, maxDpr: 1.5, lampShadows: 0, shadowMap: 2048 },
@@ -292,6 +355,40 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
 
   const renderPass = new RenderPass(scene, camera);
   composer.addPass(renderPass);
+  const stageBlur = new StageBlur();
+  stageBlur.setSize(size.x, size.y);
+  // stage: { mode: 'spot'|'stage', items: [objects drawn in the item pass], hideInItemPass: [objects], blob, dim, blur }
+  let stage = null;
+  const plainRender = renderPass.render.bind(renderPass);
+  renderPass.render = (r, writeBuffer, readBuffer, dt, mask) => {
+    if (!stage || !stage.items.length) return plainRender(r, writeBuffer, readBuffer, dt, mask);
+    // a pending shadow-map update is rendered by a normal frame first (the split passes would drop the item's shadows)
+    if (r.shadowMap.needsUpdate && stage.mode === 'spot') plainRender(r, writeBuffer, readBuffer, dt, mask);
+    const pending = r.shadowMap.needsUpdate;
+    r.shadowMap.needsUpdate = false;
+    const hidden = [];
+    const hide = (o) => { if (o && o.visible) { o.visible = false; hidden.push(o); } };
+    try {
+      // 1. the room without the item
+      for (const o of stage.items) hide(o);
+      if (stage.blob) hide(stage.blob);
+      plainRender(r, writeBuffer, readBuffer, dt, mask);
+      for (const o of hidden.splice(0)) o.visible = true;
+      // 2. soften + dim it in place (depth kept)
+      stageBlur.apply(r, readBuffer, stage.blur, stage.dim);
+      // 3. the item over it
+      for (const o of stage.hideInItemPass) hide(o);
+      const bg = scene.background; scene.background = null;
+      const ac = r.autoClear; r.autoClear = false;
+      r.setRenderTarget(readBuffer);
+      if (stage.mode === 'stage') r.clearDepth();
+      if (stage.blob) stage.blob.visible = true;
+      try { r.render(scene, camera); } finally { r.autoClear = ac; scene.background = bg; if (stage.blob) stage.blob.visible = false; }
+    } finally {
+      for (const o of hidden) o.visible = true;
+      r.shadowMap.needsUpdate = pending;
+    }
+  };
   const refine = new RefinePass();
   refine.setSize(size.x, size.y);
   composer.addPass(refine);
@@ -317,6 +414,8 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
 
   // --- bloom for emissive lamps only (threshold far above any lit surface)
   const bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.22, 0.35, 6.0);
+  // halation: the wide bloom mips lean warm (film's red layer scatter), the tight ones stay neutral
+  if (bloom.bloomTintColors) bloom.bloomTintColors.forEach((v, i) => v.set(1, 1 - 0.03 * i, 1 - 0.06 * i));
   bloom.enabled = false;
   composer.addPass(bloom);
 
@@ -327,12 +426,15 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
   output.uniforms.villarLiftRef = { value: 0 };    // ln of the pre-exposure luminance that displays at ~9 %
   output.uniforms.villarLiftMax = { value: 0 };    // EV (0 = off)
   output.uniforms.villarShoulder = { value: 0 };   // focus highlight roll-off 0…1 (R3-04)
+  // ART §2 grade, display-referred, after tone mapping: gentle S-curve, neutral-warm highlights, slightly cool
+  // shadows, fine static grain; whites stay white. x = S-curve, y = split tone, z = grain (0 = off)
+  output.uniforms.villarGrade = { value: new THREE.Vector3(0.14, 1, 1) };
   {
     const m = output.material;
     const a = 'gl_FragColor = texture2D( tDiffuse, vUv );';
     if (m.fragmentShader.includes(a)) {
       m.fragmentShader = m.fragmentShader
-        .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\n\t\tuniform vec3 villarGain;\n\t\tuniform sampler2D villarLocal;\n\t\tuniform float villarLiftRef;\n\t\tuniform float villarLiftMax;\n\t\tuniform float villarShoulder;')
+        .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\n\t\tuniform vec3 villarGain;\n\t\tuniform sampler2D villarLocal;\n\t\tuniform float villarLiftRef;\n\t\tuniform float villarLiftMax;\n\t\tuniform float villarShoulder;\n\t\tuniform vec3 villarGrade;')
         .replace(a, `${a}
 			gl_FragColor.rgb *= villarGain;
 			if ( villarLiftMax > 0.0 ) {
@@ -351,6 +453,25 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
 					gl_FragColor.rgb *= mix( 1.0, mc / m, villarShoulder );
 				}
 			}`);
+      const srgb = 'gl_FragColor = sRGBTransferOETF( gl_FragColor );\n\n\t\t\t#endif';
+      if (m.fragmentShader.includes(srgb)) {
+        m.fragmentShader = m.fragmentShader.replace(srgb, `${srgb}
+			{
+				vec3 c = clamp( gl_FragColor.rgb, 0.0, 1.0 );
+				float y = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
+				// S-curve on luminance (hue kept): pivot 0.45, ends pinned
+				float ys = y < 0.45 ? 0.45 * pow( y / 0.45, 1.0 + villarGrade.x ) : 1.0 - 0.55 * pow( ( 1.0 - y ) / 0.55, 1.0 + villarGrade.x );
+				c *= y > 1e-4 ? ys / y : 1.0;
+				// split tone: cool shadows, neutral-warm highlights; zero at black and at white
+				float hw = smoothstep( 0.35, 0.85, ys ), keep = ( 1.0 - smoothstep( 0.9, 1.0, ys ) ) * smoothstep( 0.0, 0.08, ys );
+				c += mix( vec3( -0.006, -0.001, 0.008 ), vec3( 0.008, 0.003, -0.006 ), hw ) * keep * villarGrade.y;
+				// fine static film grain (stable frame to frame: the photo compare stays exact)
+				vec2 q = floor( gl_FragCoord.xy );
+				float n = fract( sin( dot( q, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) + fract( sin( dot( q, vec2( 39.3468, 11.135 ) ) ) * 24634.6345 ) - 1.0;
+				c += n * 0.012 * villarGrade.z * 4.0 * ys * ( 1.0 - ys );
+				gl_FragColor.rgb = clamp( c, 0.0, 1.0 );
+			}`);
+      }
       m.needsUpdate = true;
     }
   }
@@ -381,18 +502,23 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
       this.setSize(s.x, s.y);
     },
     /** strength: 0.22 for the walk view, 0.1 in the dollhouse (lamps stay lamps, not white discs). */
-    setBloom(on, strength = 0.22) { bloomWanted = on; bloom.strength = strength; bloom.enabled = Q.bloom && on; },
+    setBloom(on, strength = 0.22, threshold = 6.0) { bloomWanted = on; bloom.strength = strength; bloom.threshold = threshold; bloom.enabled = Q.bloom && on; },
+    /** ART §2 grade: { curve, split, grain } (0 = off each). */
+    setGrade({ curve = 0.14, split = 1, grain = 1 } = {}) { output.uniforms.villarGrade.value.set(curve, split, grain); },
     setAO(v) { aoIntensity = v; },
     setNoAO(list) { noAO = list; },
     /** Shadow dodge: `ref` = ln(pre-exposure luminance shown at ~9 %), `max` = EV cap (0 = off). */
     setShoulder(k) { output.uniforms.villarShoulder.value = k; },
+    /** Focus stage (null = off); see StageBlur. */
+    setStage(st) { stage = st; },
+    get stage() { return stage; },
     setLift(ref, max) { output.uniforms.villarLiftRef.value = ref; output.uniforms.villarLiftMax.value = max; local.enabled = max > 0; },
     /** Camera white balance as linear RGB gains (luminance-normalised). */
     setWhiteBalance(gain) { output.uniforms.villarGain.value.copy(gain); },
     setSelection(objects) { outline.selectedObjects = objects; outline.enabled = objects.length > 0; outline.edgeStrength = 1.5; outline.edgeGlow = 0.4; },
     /** 0…1 visibility of the selection halo (fades out after a focus flight). */
     setSelectionStrength(k) { outline.edgeStrength = 1.5 * k; outline.edgeGlow = 0.4 * k; outline.enabled = outline.selectedObjects.length > 0 && k > 0.01; },
-    setSize(w, h) { composer.setSize(w, h); gtao.setSize(); syncSSAO(); },  // (composer sizes the refine hold too)
+    setSize(w, h) { composer.setSize(w, h); gtao.setSize(); stageBlur.setSize(w, h); syncSSAO(); },  // (composer sizes the refine hold too)
     /**
      * `ref` (idle refinement): { capture } keeps this raster frame; { texture, k } while holding mixes the
      * path-traced estimate over the held frame without re-rendering the scene (and without re-metering).
@@ -413,6 +539,13 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
         if (saved) [gtao.enabled, renderPass.enabled, meter.enabled, local.enabled] = saved;
       }
     },
+    /** Render the full chain into the composer's own target (not the canvas); returns that target (sRGB, tone mapped). */
+    renderOffscreen(dt = 0.016) {
+      const was = composer.renderToScreen;
+      composer.renderToScreen = false;
+      try { this.render(dt); } finally { composer.renderToScreen = was; }
+      return composer.readBuffer;
+    },
     get holding() { return refine.holding; },
     get holdRT() { return refine.hold; },
     /** Compile the post materials used only at night / on selection (bloom, outline) ahead of time. */
@@ -429,7 +562,7 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
     /** After a context restore: GL objects are gone; mark targets for re-creation. */
     onContextRestored() { WHITE.needsUpdate = true; },
     dispose() {
-      gtao.dispose(); outline.dispose(); bloom.dispose(); output.dispose(); meter.dispose(); local.dispose(); refine.dispose();
+      gtao.dispose(); outline.dispose(); bloom.dispose(); output.dispose(); meter.dispose(); local.dispose(); refine.dispose(); stageBlur.dispose();
       composer.renderTarget1.dispose(); composer.renderTarget2.dispose();
     },
   };
