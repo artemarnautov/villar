@@ -535,7 +535,7 @@ export async function createVillar({
     const lift = (cutaway ? 0 : TOD[currentTime].lamps ? 0.7 : 1.4) * (1 - stageK); // no shadow dodge on the stage: it erased the item's contact shadow
     post.setLift(Math.log(0.11 / Math.max(1e-4, renderer.toneMappingExposure)), lift);
     // focus boost → highlight roll-off, in step with the boost (R3-04)
-    post.setShoulder(ae.spot && !cutaway ? clamp(ae.ev / 0.4, 0, 1) : 0);
+    post.setShoulder(cutaway ? 0 : ae.spot ? clamp(ae.ev / 0.4, 0, 1) : clamp(ae.ev / 0.8, 0, 1));
   }
   function applyWhiteBalance() {
     const wbOf = (t, out) => whiteBalanceGain(TOD[t].wb, cutaway ? 0.4 : (WB_STRENGTH[t] ?? 0.8), out, cutaway ? 1 : (WB_TINT[t] ?? 1));
@@ -635,7 +635,8 @@ export async function createVillar({
   function refreshEnvironment(passes = 1) {
     phase = 'env-capture';
     renderer.shadowMap.needsUpdate = true;
-    withFullScene(() => lighting.captureEnvironment({ passes, hide: [marker.mesh] }));
+    const unsnap = plate.snap(); // mid-crossfade: capture the sky the fade ends on
+    try { withFullScene(() => lighting.captureEnvironment({ passes, hide: [marker.mesh] })); } finally { unsnap(); }
     renderer.shadowMap.needsUpdate = true;
     sceneVersion++;
     invalidate();
@@ -649,7 +650,7 @@ export async function createVillar({
   const giKey = (tod = currentTime) => `${styleKey()}|${tod}`;
   // (a room lit with the procedural sofa is not the room with its twin)
   const twinSig = () => { let t = ''; for (const [id, rec] of furnisher.placed) if (rec.twin) t += id + ','; return t; };
-  const sceneSig = () => { try { return JSON.stringify(store?.snapshot?.().selection || {}) + '|' + arch.wallColor + '|' + arch.doorFinish + '|' + (lighting.hasSky(currentTime) ? 'hdr' : 'proc') + '|t:' + twinSig(); } catch { return ''; } };
+  const sceneSig = () => { try { return JSON.stringify(store?.snapshot?.().selection || {}) + '|' + arch.wallColor + '|' + arch.doorFinish + '|' + (lighting.hasSky(currentTime) ? 'hdr' : 'proc') + (plate.state(currentTime) === 'ready' ? '|plate' : '') + '|t:' + twinSig(); } catch { return ''; } };
   // per (style, time): the latest result (a stand-in for any selection) + per exact selection (R4-01: the same
   // room always gets the same light back). Bounded LRU.
   const giExact = new Map();
@@ -675,6 +676,7 @@ export async function createVillar({
     const hidden = [];
     const hide = (o) => { if (o.visible) { o.visible = false; hidden.push(o); } };
     hide(marker.mesh); hide(groundShadow.mesh);
+    const unsnap = plate.snap(); // the bake sees the sky the current fade / crossfade ends on
     // the room env stays on during captures: an env-less variant of every material (×2 light sets) would
     // otherwise be compiled on the first bake of each time of day (R2-11); its diffuse part is skipped
     // inside the probe grid anyway, only the specular share is captured
@@ -687,6 +689,7 @@ export async function createVillar({
     }
     return () => {
       for (const o of hidden) o.visible = true;
+      unsnap();
       scene.environment = env;
       if (was) { arch.setCutaway(true); for (const g of cutHidden) g.visible = false; applyBackdrop(); }
     };
@@ -2082,6 +2085,13 @@ export async function createVillar({
     invalidate(3);
   }
   /** Preload the other times' skies once the first frame is up (idle, one at a time). */
+  /** The other times' sky plates, one every few seconds after the first frame (a switch then needs no download). */
+  function preloadPlates() {
+    const rest = TIMES.filter((t) => plate.timeOf(t) !== plate.timeOf(currentTime));
+    const seen = new Set();
+    let i = 0;
+    for (const t of rest) { const k = plate.timeOf(t); if (seen.has(k)) continue; seen.add(k); setTimeout(() => { if (!disposed) idle(() => plate.preload(t)); }, 4000 + 5000 * i++); }
+  }
   function preloadSkies() {
     const rest = TIMES.filter((t) => t !== currentTime && !lighting.hasSky(t));
     const next = () => { const t = rest.shift(); if (t && !disposed) idle(() => lighting.loadSky(t).then(next)); };
@@ -2111,6 +2121,9 @@ export async function createVillar({
       const changed = tod !== currentTime;
       currentTime = tod;
       applyTimeOfDay(tod);
+      // this time's sky plate is already decoded: the capture and bake below see it in its final state
+      // (plate.snap), so its crossfade must not trigger a second room capture + full re-bake when it ends
+      if (plate.state(tod) === 'ready') plateBaked = `${tod}|${plate.timeOf(tod)}`;
       sceneVersion++;
       if (changed || !probes.hasBaked) {
         const cached = useCachedGI(ready ? 400 : 0);
@@ -2310,6 +2323,9 @@ export async function createVillar({
     if (plate.animating) { plate.step(dt); invalidate(1); if (!plate.animating) plateSettled(); }
     else if (plateLanded) { plateLanded = false; if (plate.state(currentTime) === 'ready') { applyTimeOfDay(currentTime); invalidate(2); } }
     if (probes.update(now)) invalidate(1);
+    // room views expose at the time of day's level, except looking back from the window by day: no sun or
+    // window in frame, only the shaded depth of the room, which read grey and flat (+0.8 EV there, highlights rolled off)
+    if (!ae.spot && ae.enabled) { const t = controls.view === 'window' && controls.targetMode === 'walk' && !cutaway && !TOD[currentTime].lamps ? 0.8 : 0; if (ae.target !== t) { ae.target = t; invalidate(2); } }
     if (stepExposure(dt)) invalidate(1);
     if (moving) invalidate(2);
     if (moving || fader.active || controls.isDragging()) {
@@ -2991,7 +3007,7 @@ export async function createVillar({
     texturesSettled = true; stamp('textures');
     bakeFresh();
     invalidate(3);
-    preloadSkies();
+    preloadSkies(); preloadPlates();
   });
   void DEG; void TIERS;
   return api;

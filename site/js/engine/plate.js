@@ -282,6 +282,19 @@ export function createPlate({ center, eyeY = 1.45, quality = 'high', enabled = t
       if (shown) fadeTo = 0; // no plate for this time yet: back to the HDR sky (a fade, no pop)
       return false;
     },
+    /** Fetch + decode a time's plate ahead of a switch (idle, after ready): the switch then needs no download. */
+    preload(tod) { const time = TIMES[tod] || 'day'; if (slot(time).state === 'idle') request(time); },
+    timeOf: (tod) => TIMES[tod] || 'day',
+    /**
+     * For light captures (room reflection, GI) during a fade or crossfade: show the sky as it will be when the
+     * animation ends, so one capture is enough. Returns the restore function.
+     */
+    snap() {
+      const o = mats.sky.opacity, m = U.plateMix.value, v = meshes.sky ? meshes.sky.visible : false;
+      if (fade !== fadeTo) { mats.sky.opacity = fadeTo; if (meshes.sky) meshes.sky.visible = fadeTo > 0; }
+      if (mixAnim) U.plateMix.value = 1;
+      return () => { mats.sky.opacity = o; U.plateMix.value = m; if (meshes.sky) meshes.sky.visible = v; };
+    },
     /** Radiance of the haze below the horizon (linear RGB): the HDR sky's horizon haze of this time of day. */
     setHaze(color) { U.plateSkirt.value.copy(color); },
     /** Per frame. Returns true while animating (fade, crossfade). */
