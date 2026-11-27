@@ -13,12 +13,19 @@
   - pairs stay pairs (nightstands, table lamps, dining chairs);
   - dependencies hold (no bedding without a mattress, no tableware without a table);
   - style pairings hold (walnut ↔ travertine etc.).
-- **Named levels** are milestones of the ladder for the active style, not fixed AED:
-  1. «Самое нужное / Essentials» — end of tier 1;
-  2. «Удобно жить / Comfortable» — end of tier 2;
-  3. «Под ключ / Move-in ready» — exactly the curated designer set (today's default room);
-  4. «Как в журнале / Magazine-ready» — the premium end.
-  - Tick marks sit on the track. The current level name shows next to the number.
+- **Named levels** are milestones of the ladder for the active style, not fixed AED (site/data/budget.json):
+  step 0 «Минимум / Minimum» · «Самое нужное / Essentials» (end of tier 1) · «Удобно жить / Comfortable» (tier 2) ·
+  «Всё для жизни / Move-in ready» (tier 3) · «Полностью обставлено / Fully furnished» (every slot filled) ·
+  «Как в журнале / Magazine-ready» (= the curated designer room) · «Без компромиссов / No compromises» (premium end).
+  Steps between the minimum and Essentials are «Основа / Basics». Tick marks on the track; the current level
+  name shows next to the number.
+- **Dependencies always hold.** A pinned or added piece brings what it needs (lamps → nightstands, tableware →
+  table + chairs, …): `buildLadder` includes the closure in its minimum, and «Добавить» uses
+  `requiredFor({ pack, spec, selection, key })` to add the missing pieces with it.
+- **Style switch keeps the budget.** If the room is a budget-ladder step other than the designer room, switching
+  style lands on the target style's richest step ≤ the same total (its minimum if higher):
+  `store.setStyle(id, { selection: targetLadder.steps[i].selection })`. From the designer room it lands on the
+  target's designer room as before.
 - **Your picks stay.** Any item the customer picks by hand (HUD, AI, list) is *pinned*: the slider plans around it and
   never changes it. A pinned item shows a small pin in the list and the card, with «Открепить / Unpin».
   The slider's minimum rises to include pinned items.

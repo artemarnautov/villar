@@ -113,9 +113,17 @@ export function buildLadder({ pack, items, layout, spec, pinned = {} }) {
   const keptByFunction = (k) => (spec.functional || []).some((f) => f.key === k && f.keepAboveCurated && sel[k] && matches(sel[k], f.match));
 
   // 1. Minimum: tier 0 at the cheapest options, plus every pinned item.
+  // A pinned piece brings what it needs (lamps → nightstands, tableware → table + chairs, …), so the minimum is
+  // always a coherent room: no priced item that can't be placed (PT4-01).
   const min = [];
-  for (const k of spec.order?.['0'] || []) if (P[k] && !fixed(k)) min.push([k, entry(k, 0)]);
+  for (const k of spec.order?.['0'] || []) if (has(k) && !fixed(k)) min.push([k, entry(k, 0)]);
   for (const k of Object.keys(pins)) { const it = pinnedItem(k); if (it) min.push([k, it]); }
+  const inMin = new Set(min.map(([k]) => k));
+  for (const k of dependencyClosure([...inMin], spec, has)) {
+    if (inMin.has(k) || fixed(k)) continue;
+    sel[k] = entry(k, 1); inMin.add(k); min.push([k, sel[k]]); // later deps see earlier ones (pairings)
+  }
+  for (const [k] of min) if (!(k in pins)) delete sel[k];
   commit('minimum', 'min', 0, min);
 
   // 2. Adds, tier by tier (groups move together), plus functional upgrades (e.g. blackout curtains).
@@ -179,6 +187,29 @@ export function buildLadder({ pack, items, layout, spec, pinned = {} }) {
     minIndex: 0, maxIndex: steps.length - 1, defaultIndex: Math.max(0, idx.designer),
     min: steps[0]?.total || 0, max: run, designerTotal: designer,
   };
+}
+
+/** Keys required (transitively, groups included) by `keys`: e.g. table_lamp → nightstand; tableware → table + chairs. */
+export function dependencyClosure(keys, spec, has = () => true) {
+  const out = new Set(keys); const queue = [...keys];
+  const groupOf = new Map(); for (const g of spec.groups || []) for (const k of g) groupOf.set(k, g);
+  while (queue.length) {
+    const k = queue.pop();
+    for (const d of [...(spec.requires?.[k] || []), ...(groupOf.get(k) || [])]) if (has(d) && !out.has(d)) { out.add(d); queue.push(d); }
+  }
+  return [...out];
+}
+
+/**
+ * What adding `key` to the current room also needs (the "Add" button, a pick in an empty zone): every missing
+ * dependency at the style's designer pick. Returns { [key]: itemId } (the key itself excluded).
+ */
+export function requiredFor({ pack, spec, selection, key }) {
+  const P = pack.slots || {};
+  const has = (k) => Object.prototype.hasOwnProperty.call(P, k);
+  const out = {};
+  for (const k of dependencyClosure([key], spec, has)) if (k !== key && selection[k] == null && P[k]?.default) out[k] = P[k].default;
+  return out;
 }
 
 /** Index of the richest step whose total ≤ budget (clamped to the minimum). */

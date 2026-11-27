@@ -164,7 +164,14 @@ export function createStore({ catalog, layout, packs, styleId, stylepack, persis
     },
 
     /** Switch the whole room to another style pack (keeping an optional anchor item). */
-    setStyle(styleId, { anchor, fresh = false } = {}) {
+    setStyle(styleId, { anchor, fresh = false, selection = null } = {}) {
+      // `selection`: land on exactly this room (e.g. the target style's budget-ladder step at the customer's budget,
+      // PT4-02) — validated per key (nulls allowed), the rest from that style's set. One 'style' transition.
+      if (selection && packs[styleId]) {
+        const next = { ...defaultsOf[styleId], ...selections[styleId] };
+        for (const [k, id] of Object.entries(selection)) if (validFor(styleId, k, id)) next[k] = id;
+        return applyStyle(styleId, next, { anchor: null });
+      }
       const pv = store.previewStyle(styleId, anchor, { fresh });
       if (!pv) { console.warn(`[store] unknown style ${styleId}`); return false; }
       // A fresh (curated) landing also clears that style's pins — they belonged to picks that are gone (R4-11).
