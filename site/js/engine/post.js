@@ -413,13 +413,17 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
   composer.addPass(local);
 
   // --- selection outline: thin, soft, warm white
+  // The halo is added to the HDR frame BEFORE exposure and white balance: at evening the camera's blue gain (×2.2)
+  // and exposure turned a neutral ivory into a cold blue-white rim (eng-7). Its colour is pre-divided by both
+  // (setSelectionTint), so it lands as a warm ivory at the same strength at any time of day.
+  const HALO = new THREE.Color('#ecdfcc'), HALO_STRENGTH = 1.15, HALO_GLOW = 0.25;
   const outline = new OutlinePass(new THREE.Vector2(size.x, size.y), scene, camera, []);
   // soft, anti-aliased 1.5 px halo with a little glow (R2-23 / D2-22), faded out after the flight
-  outline.edgeStrength = 1.5;
-  outline.edgeGlow = 0.4;
+  outline.edgeStrength = HALO_STRENGTH;
+  outline.edgeGlow = HALO_GLOW;
   outline.edgeThickness = 1.5;
   outline.pulsePeriod = 0;
-  outline.visibleEdgeColor.set('#d9d4cc');  // ≈ white at 85 %
+  outline.visibleEdgeColor.copy(HALO);
   outline.hiddenEdgeColor.set('#4a453f');
   outline.downSampleRatio = 2;
   outline.enabled = false;
@@ -530,9 +534,14 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
     setLift(ref, max) { output.uniforms.villarLiftRef.value = ref; output.uniforms.villarLiftMax.value = max; local.enabled = max > 0; },
     /** Camera white balance as linear RGB gains (luminance-normalised). */
     setWhiteBalance(gain) { output.uniforms.villarGain.value.copy(gain); },
-    setSelection(objects) { outline.selectedObjects = objects; outline.enabled = objects.length > 0; outline.edgeStrength = 1.5; outline.edgeGlow = 0.4; },
+    setSelection(objects) { outline.selectedObjects = objects; outline.enabled = objects.length > 0; outline.edgeStrength = HALO_STRENGTH; outline.edgeGlow = HALO_GLOW; },
+    /** Camera white-balance gain + exposure the halo is compensated for (see HALO). */
+    setSelectionTint(gain, exposure) {
+      const k = Math.min(2, Math.max(0.35, 3 / Math.max(0.1, exposure))); // the day room's exposure (3) is the reference
+      outline.visibleEdgeColor.setRGB(HALO.r / Math.max(0.2, gain.x) * k, HALO.g / Math.max(0.2, gain.y) * k, HALO.b / Math.max(0.2, gain.z) * k);
+    },
     /** 0…1 visibility of the selection halo (fades out after a focus flight). */
-    setSelectionStrength(k) { outline.edgeStrength = 1.5 * k; outline.edgeGlow = 0.4 * k; outline.enabled = outline.selectedObjects.length > 0 && k > 0.01; },
+    setSelectionStrength(k) { outline.edgeStrength = HALO_STRENGTH * k; outline.edgeGlow = HALO_GLOW * k; outline.enabled = outline.selectedObjects.length > 0 && k > 0.01; },
     setSize(w, h) { composer.setSize(w, h); gtao.setSize(); stageBlur.setSize(w, h); syncSSAO(); },  // (composer sizes the refine hold too)
     /**
      * `ref` (idle refinement): { capture } keeps this raster frame; { texture, k } while holding mixes the

@@ -11,14 +11,22 @@ import { clamp } from './util.js';
 
 const smooth = (t) => t * t * (3 - 2 * t);
 
+// `blend: 'alpha'` (eng-7): a true alpha fade instead of the dither — for pieces that fade out of the way and back
+// (line-of-sight occluders): no screen-door noise on a slow frame. Each mesh gets a depth-only twin drawn just
+// before it (polygon offset pushes it a hair back), so the faded piece blends as ONE layer — its own back faces
+// and inner parts stay hidden, like a photo cross-dissolve, not a ghostly x-ray.
+const PRE_ORDER = 50;
 export function createFader({ renderer, scene, camera, target = () => null, onShadow = () => {}, decorate = () => {} }) {
-  const pool = new Map();       // source material → [clone]
+  const pool = new Map();       // source material → [clone]  (alpha-hash)
+  const poolA = new Map();      // source material → [clone]  (real alpha)
+  const preMat = new THREE.MeshStandardMaterial({ colorWrite: false, depthWrite: true, transparent: true, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1, name: 'fade-depth-pre' });
   const runs = new Set();
   const parallel = renderer.extensions.has('KHR_parallel_shader_compile');
 
-  function cloneFor(m) {
-    let list = pool.get(m);
-    if (!list) { list = []; pool.set(m, list); }
+  function cloneFor(m, alpha = false) {
+    const P = alpha ? poolA : pool;
+    let list = P.get(m);
+    if (!list) { list = []; P.set(m, list); }
     let c = list.pop();
     // Material.copy() serialises userData (JSON): a texture kept there (an edition's motif, a twin's maps) made
     // three warn "Unable to serialize Texture" on every dissolve. Copy without it; userData is set right below
@@ -27,27 +35,41 @@ export function createFader({ renderer, scene, camera, target = () => null, onSh
       if (c) c.copy(m);                   // re-sync: colour fixes, lamp glow, visibility may have changed (T6)
       else c = m.clone();
     } finally { m.userData = ud; }
-    c.alphaHash = true; c.transparent = false; c.depthWrite = true;
-    c.userData = { ...m.userData, fadeOf: m, villarSSAO: false };
+    if (alpha) { c.alphaHash = false; c.transparent = true; c.depthWrite = true; }
+    else { c.alphaHash = true; c.transparent = false; c.depthWrite = true; }
+    c.userData = { ...m.userData, fadeOf: m, fadeAlpha: alpha, villarSSAO: false };
     decorate(c);
     c.opacity = 0;
     return c;
   }
-  function release(c) { const src = c.userData.fadeOf; if (src) { c.opacity = 1; pool.get(src)?.push(c); } }
+  function release(c) { const src = c.userData.fadeOf; if (src) { c.opacity = 1; (c.userData.fadeAlpha ? poolA : pool).get(src)?.push(c); } }
 
-  function dress(group) {
+  const noRay = () => {};
+  function dress(group, alpha = false) {
     const meshes = [];
-    group.traverse((o) => {
-      if (!o.isMesh || !o.material || Array.isArray(o.material)) return;
+    const list = [];
+    group.traverse((o) => { if (o.isMesh && o.material && !Array.isArray(o.material) && !o.userData.fadePre) list.push(o); });
+    for (const o of list) {
       const m = o.material;
-      if (m.transparent || m.userData?.fadeOf) return; // glass etc: left as is
-      meshes.push([o, m, o.castShadow]);
-      o.material = cloneFor(m);
-    });
+      if (m.transparent || m.userData?.fadeOf) continue; // glass etc: left as is
+      let pre = null;
+      if (alpha) {
+        pre = new THREE.Mesh(o.geometry, preMat);
+        pre.userData.fadePre = true; pre.userData.noPick = true; pre.userData.noCapture = true; pre.userData.noAO = true;
+        pre.raycast = noRay; pre.castShadow = false; pre.receiveShadow = false; pre.renderOrder = PRE_ORDER; pre.frustumCulled = o.frustumCulled;
+        o.add(pre);
+      }
+      meshes.push([o, m, o.castShadow, pre, o.renderOrder]);
+      o.material = cloneFor(m, alpha);
+      if (alpha) o.renderOrder = PRE_ORDER + 1;
+    }
     return meshes;
   }
   function undress(meshes) {
-    for (const [o, m, cast] of meshes) { const c = o.material; o.material = m; o.castShadow = cast; release(c); }
+    for (const [o, m, cast, pre, order] of meshes) {
+      const c = o.material; o.material = m; o.castShadow = cast; release(c);
+      if (pre) { o.remove(pre); o.renderOrder = order; }
+    }
   }
 
   /**
@@ -55,12 +77,16 @@ export function createFader({ renderer, scene, camera, target = () => null, onSh
    * Light intensities of `inLights` ramp 0 → base with the fade.
    */
   const flushedTags = new WeakSet(); // tags finished early (the run may still be compiling)
-  async function swap({ inn = [], out = [], inLights = [], ms = 280, delay = 0, settle = true, tag = null }) {
+  async function swap({ inn = [], out = [], inLights = [], ms = 280, delay = 0, settle = true, tag = null, blend = 'dither' }) {
     const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) ms = 1;
-    const dressedIn = inn.map((g) => ({ g, meshes: dress(g), base: g.scale.clone() }));
-    const dressedOut = out.map((g) => ({ g, meshes: dress(g), base: g.scale.clone() }));
+    const alpha = blend === 'alpha';
+    const dressedIn = inn.map((g) => ({ g, meshes: dress(g, alpha), base: g.scale.clone() }));
+    const dressedOut = out.map((g) => ({ g, meshes: dress(g, alpha), base: g.scale.clone() }));
     for (const d of dressedIn) for (const [o] of d.meshes) o.castShadow = false;
+    // the outgoing pieces keep showing at full opacity while the fade variants compile (clones start at 0: the
+    // outgoing piece used to vanish for the compile, then pop back and fade — seconds on a slow GPU)
+    for (const d of dressedOut) for (const [o] of d.meshes) o.material.opacity = 1;
     // compile the alpha-hash variants without blocking (first use only); the incoming groups stay
     // hidden until their programs are ready, the outgoing ones keep showing
     if (dressedIn.length || dressedOut.length) {
@@ -149,8 +175,8 @@ export function createFader({ renderer, scene, camera, target = () => null, onSh
     flush() { for (const run of [...runs]) { run.t0 = -Infinity; } step(performance.now()); },
     dispose() {
       this.flush();
-      for (const list of pool.values()) for (const c of list) c.dispose();
-      pool.clear();
+      for (const P of [pool, poolA]) { for (const list of P.values()) for (const c of list) c.dispose(); P.clear(); }
+      preMat.dispose();
     },
   };
 }

@@ -431,7 +431,11 @@ export async function createVillar({
     last = -1; // first frame after a wake: nominal dt (rAF timestamps may precede the wake call)
     raf = requestAnimationFrame(frame);
   }
-  const invalidate = (n = 2) => { framesToRender = Math.max(framesToRender, n); wake(); };
+  // Inside a frame the request is for the NEXT frame(s): the running frame decrements framesToRender after its
+  // steps, so a step's invalidate(1) (lapse, dissolve, exposure ease, turntable coast…) used to be consumed by
+  // the very frame that asked — the loop stopped after one frame whenever nothing else kept it alive. Seen as a
+  // time-lapse frozen at k = 0 for 90 s on the phone, and as busy stuck on ["fade", "exposure(…)"] (eng-7).
+  const invalidate = (n = 2) => { framesToRender = Math.max(framesToRender, inFrame ? n + 1 : n); wake(); };
   let hoverX = 0, hoverY = 0, onHoverMove = null; // set once the refinement controller exists
   canvas.addEventListener('pointermove', (e) => {
     // pointer movement is input: a refining still fades back to raster (hover highlight / price)
@@ -521,17 +525,23 @@ export async function createVillar({
   const mqReduced = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
   function stepExposure(dt) {
     if (!Number.isFinite(ae.ev) || Math.abs(ae.ev) > 4) ae.ev = 0;
+    // eases run on the wall clock, not the frame clock: in a throttled / hidden pane frames come in bursts seconds
+    // apart and the frame dt is clamped to 0.25 s, so a 0.3 s ease could take a dozen bursts (busyReasons showed
+    // "exposure(0.19→1.73)" — ev and target are both EV; the applied exposure 1.706 = 1.5 · 2^0.19 matched ev)
+    const now = performance.now();
+    const easing = Math.abs(ae.target - ae.ev) >= 0.03 || (ae.wbK || 0) !== (ae.spot && !cutaway ? 1 : 0);
+    if (easing) { dt = ae.clock ? Math.max(dt, (now - ae.clock) / 1000) : dt; ae.clock = now; } else ae.clock = 0;
     if (!(dt > 0)) return false;
     // focus white balance blend (evening close-ups): time-based, same 0.3 s constant as the exposure
     const wbT = ae.spot && !cutaway ? 1 : 0, wbK = ae.wbK || 0;
     if (wbK !== wbT) {
-      ae.wbK = Math.abs(wbT - wbK) < 0.02 ? wbT : wbK + (wbT - wbK) * (1 - Math.exp(-Math.min(dt, 1) / (mqReduced?.matches || softwareGL ? 0.02 : 0.3)));
+      ae.wbK = Math.abs(wbT - wbK) < 0.02 ? wbT : wbK + (wbT - wbK) * (1 - Math.exp(-Math.min(dt, 3) / (mqReduced?.matches || softwareGL ? 0.02 : 0.3)));
       applyWhiteBalance();
       if (ae.wbK !== wbT) invalidate(1);
     }
     const d = ae.target - ae.ev;
     if (Math.abs(d) < 0.03) { if (ae.ev !== ae.target) { ae.ev = ae.target; applyExposure(); if (!ae.spot) applyWhiteBalance(); } return false; }
-    ae.ev += d * (1 - Math.exp(-Math.min(dt, 1) / (mqReduced?.matches || softwareGL ? 0.02 : 0.3)));
+    ae.ev += d * (1 - Math.exp(-Math.min(dt, 3) / (mqReduced?.matches || softwareGL ? 0.02 : 0.3)));
     applyExposure(); if (!ae.spot) applyWhiteBalance();
     return true;
   }
@@ -542,6 +552,7 @@ export async function createVillar({
     const todExp = lapse ? Math.exp(Math.log(TOD[lapse.from].exposure) + (Math.log(TOD[lapse.to].exposure) - Math.log(TOD[lapse.from].exposure)) * lapse.k) : TOD[currentTime].exposure;
     const v = exposureOverride ?? base * todExp * (cutaway ? (TOD[currentTime].lamps ? 0.8 : 0.17) : Math.pow(2, ae.ev));
     renderer.toneMappingExposure = Number.isFinite(v) ? v : base * TOD[currentTime].exposure;
+    post.setSelectionTint(wbGain, renderer.toneMappingExposure);
     // dodge deep interior shadows (corridor, kitchen) by up to ~0.9 EV; off in the dollhouse and at night
     // night: a gentler dodge keeps dark wood legible (walnut ≥ 45, R3-01) without flattening the lamp pools
     // no shadow dodge on the stage (it erased the item's contact shadow) nor in a focus close-up (it flattened the
@@ -563,6 +574,7 @@ export async function createVillar({
     // [1.031, 1.004, 0.976] = that target, fully reached) → about Entry's sunlit-wall warmth
     if (warm > 0) { wbGain.x *= 1 + 0.10 * warm; wbGain.y *= 1 + 0.01 * warm; wbGain.z *= 1 - 0.12 * warm; } // walls R/B ≈ 1.19 (Entry 1.14; 1.07 / 0.91 gave ≈ 1.12, ×1.13 / ×0.83 overshot to 1.30)
     post.setWhiteBalance(wbGain);
+    post.setSelectionTint(wbGain, renderer.toneMappingExposure);
   }
 
   // ---------------------------------------------------------------- dollhouse / cutaway
@@ -1279,7 +1291,9 @@ export async function createVillar({
       if (insp.returning) { insp.returning.angle = nearestHome(insp.returning.angle); applyTurn(insp.returning); }
       insp.returning = { homes: insp.homes, pivot: insp.pivot.clone(), angle: insp.angle, vel: insp.coast ? insp.vel : insp.vel, target: nearestHome(insp.angle) };
     }
-    insp.slotId = null; insp.homes = []; insp.ids = []; insp.angle = 0; insp.vel = 0; insp.dragging = false;
+    // target / coast too: a released turn left target at its rest angle (90) with angle 0 → `busy` stayed true
+    // ("turntable") after closing a turned item, until the next focus (eng-7)
+    insp.slotId = null; insp.homes = []; insp.ids = []; insp.angle = 0; insp.vel = 0; insp.target = 0; insp.coast = false; insp.dragging = false;
   }
   const atHome = () => Math.abs(insp.angle - nearestHome(insp.angle)) < 0.05 && !insp.dragging && Math.abs(insp.vel) < 1;
   /** Spring the focused item home (400 ms); resolves when it is there (swaps wait for it). */
@@ -1428,7 +1442,8 @@ export async function createVillar({
     occl.ids = next;
     if (!back.length && !gone.length) return;
     for (const g of back) g.visible = true;
-    fader.swap({ inn: back, out: gone, ms: 220, settle: false }).then(() => { renderer.shadowMap.needsUpdate = true; invalidate(2); });
+    // a real alpha fade (no dither noise when a frame is dropped), a little longer so it reads as a dissolve
+    fader.swap({ inn: back, out: gone, ms: 280, settle: false, blend: 'alpha' }).then(() => { renderer.shadowMap.needsUpdate = true; invalidate(2); });
     renderer.shadowMap.needsUpdate = true; sceneVersion++; invalidate(2);
   }
   function stepOccluders() {
@@ -2401,11 +2416,13 @@ export async function createVillar({
     // floor marker fade / pulse
     if (marker.mesh.visible) {
       const want = marker.pulse > 0 ? 0.9 : marker.target;
+      const op0 = marker.mat.opacity;
       marker.mat.opacity += (want - marker.mat.opacity) * Math.min(1, dt * 10);
+      if (Math.abs(want - marker.mat.opacity) < 0.004) marker.mat.opacity = want;
       if (marker.pulse > 0) { marker.pulse = Math.max(0, marker.pulse - dt * 1.4); const s = 1 + (1 - marker.pulse) * 0.5; marker.mesh.scale.setScalar(s); }
       else marker.mesh.scale.setScalar(1);
       if (marker.mat.opacity < 0.01 && marker.target === 0 && marker.pulse === 0) marker.mesh.visible = false;
-      invalidate(1);
+      if (marker.mat.opacity !== op0 || marker.pulse > 0) invalidate(1); // only while it changes (a resting marker needs no frames)
     }
     if (fader.step(now)) invalidate(1);
     if (stepWalls(now)) invalidate(1);
@@ -2749,7 +2766,7 @@ export async function createVillar({
     dispose,
     // debug / lab helpers (not part of the product contract)
     debug: {
-      renderer, scene, camera, lighting, post, arch, furnisher, plate, skyline, turnBlob, loadTimes, busyReasons, get lapse() { return lapse ? { k: +lapse.k.toFixed(2), switched: lapse.switched, to: lapse.to } : null; }, get time() { return currentTime; }, controls, materials, probes, fader, thumbs,
+      renderer, scene, camera, lighting, post, arch, furnisher, plate, skyline, turnBlob, loadTimes, busyReasons, get loop() { return { raf, inFrame, framesToRender, keepAlive, contextLost, restoring, last: Math.round(last) }; }, get lapse() { return lapse ? { k: +lapse.k.toFixed(2), switched: lapse.switched, to: lapse.to } : null; }, get time() { return currentTime; }, controls, materials, probes, fader, thumbs,
       relight: () => bakeFresh(), rebakeAll, refreshEnvironment, applyPackArchitecture,
       get fps() { return perf.fps; }, get bakeMs() { return perf.bakeMs; }, get dpr() { return dpr; }, get quality() { return Q; },
       get worstFrame() { return perf.worst; }, resetWorst() { perf.worst = 0; },
@@ -2861,6 +2878,9 @@ export async function createVillar({
   const REST_DELAY = 400;
   const restTimer = setInterval(() => {
     if (disposed) return;
+    // hidden page: no frames at all — time-based animations (exposure, white balance, dissolves) still finish on
+    // the clock, so `busy` / `rest` reflect the scene, not the tab state (the next visible frame shows the result)
+    if (typeof document !== 'undefined' && document.hidden && ready && !contextLost) { fader.step(performance.now()); stepExposure(0); }
     const b = isBusy(), now = performance.now();
     if (b) { if (!rest.busy) events.emit('busy', { busy: true }); rest.busy = true; rest.emitted = false; rest.since = now; return; }
     if (rest.busy) { rest.busy = false; rest.since = now; events.emit('busy', { busy: false }); }
