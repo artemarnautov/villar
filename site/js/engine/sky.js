@@ -255,7 +255,8 @@ function skylineTextures() {
 
 // ----------------------------------------------------------------------------- geometry
 class GeoBuilder {
-  constructor() { this.pos = []; this.nor = []; this.uv = []; this.uv1 = []; this.col = []; this.idx = []; }
+  /** `unit`: metres per uv unit for walls (photo facades; texture.repeat sets each one's real size). */
+  constructor(unit = 0) { this.unit = unit; this.pos = []; this.nor = []; this.uv = []; this.uv1 = []; this.col = []; this.idx = []; }
   quad(p0, p1, p2, p3, n, uvs, haze, color) {
     const b = this.pos.length / 3;
     for (const p of [p0, p1, p2, p3]) this.pos.push(p[0], p[1], p[2]);
@@ -264,7 +265,7 @@ class GeoBuilder {
     this.idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
   }
   /** Prism with a polygonal footprint (CCW in x/z, local), sides + roof. */
-  prism(cx, cz, poly, y0, y1, rot, haze, color, uOff, vOff, roofColor) {
+  prism(cx, cz, poly, y0, y1, rot, haze, color, uOff, vOff, roofColor, roofB = null) {
     const c = Math.cos(rot), s = Math.sin(rot);
     const P = (lx, y, lz) => [cx + lx * c + lz * s, y, cz - lx * s + lz * c];
     let u = uOff;
@@ -274,18 +275,25 @@ class GeoBuilder {
       const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
       const nx = (b[1] - a[1]) / len, nz = -(b[0] - a[0]) / len;
       const nn = [nx * c + nz * s, 0, -nx * s + nz * c];
-      const u0 = u / TILE_W, u1 = (u + len) / TILE_W;
-      const v0 = (y0 - GROUND_Y) / TILE_H + vOff, v1 = (y1 - GROUND_Y) / TILE_H + vOff;
+      const U = this.unit || TILE_W, V = this.unit || TILE_H;
+      const u0 = u / U, u1 = (u + len) / U;
+      const v0 = (y0 - GROUND_Y) / V + vOff, v1 = (y1 - GROUND_Y) / V + vOff;
       this.quad(P(a[0], y0, a[1]), P(a[0], y1, a[1]), P(b[0], y1, b[1]), P(b[0], y0, b[1]), nn, [[u0, v0], [u0, v1], [u1, v1], [u1, v0]], haze, color);
       u += len;
     }
-    // roof as a fan (uv in a spandrel band: dark, no windows)
+    // roof as a fan: into the roof builder (world-space uv on a roof texture) or, legacy, a dark spandrel uv
     const rc = roofColor || color.clone().multiplyScalar(0.42); // roofs: parapets, plant, gravel — not white slabs
+    const R = roofB || this;
     for (let k = 1; k < n - 1; k++) {
       const p0 = poly[0], p1 = poly[k], p2 = poly[k + 1];
-      const b = this.pos.length / 3;
-      for (const p of [p0, p2, p1]) { const w = P(p[0], y1, p[1]); this.pos.push(w[0], w[1], w[2]); this.nor.push(0, 1, 0); this.uv.push(0.001, 0.02); this.uv1.push(haze, 0.5); this.col.push(rc.r, rc.g, rc.b); }
-      this.idx.push(b, b + 1, b + 2);
+      const b = R.pos.length / 3;
+      for (const p of [p0, p2, p1]) {
+        const w = P(p[0], y1, p[1]);
+        R.pos.push(w[0], w[1], w[2]); R.nor.push(0, 1, 0);
+        if (roofB) R.uv.push(w[0] / 24, w[2] / 24); else R.uv.push(0.001, 0.02);
+        R.uv1.push(haze, 0.5); R.col.push(rc.r, rc.g, rc.b);
+      }
+      R.idx.push(b, b + 1, b + 2);
     }
   }
   build() {
@@ -310,7 +318,26 @@ const STONE = ['#d9cfbf', '#cfc3ae', '#e3ddd2', '#bfb19a', '#d4c7b2'];
 
 export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 11 } = {}) {
   const r = rng(seed);
-  const glassB = new GeoBuilder(), stoneB = new GeoBuilder(), groundB = new GeoBuilder(), waterB = new GeoBuilder();
+  // photo facades (CC0 ambientCG, assets/city): 3 glass and 3 stone variants, one merged mesh each, uv in metres
+  const UNIT = 100;
+  const glassBs = [0, 1, 2].map(() => new GeoBuilder(UNIT)), stoneBs = [0, 1, 2].map(() => new GeoBuilder(UNIT));
+  const roofB = new GeoBuilder(), groundB = new GeoBuilder(), waterB = new GeoBuilder();
+  const glassB = glassBs[0];
+  // sun-facing roofs get the full noon sun: darker gravel / membrane albedo than the facades (R3-02: 'snow')
+  const ROOF = ['#6b6357', '#60594e', '#72695c', '#5a544a'];
+  const roofOf = (hz) => new THREE.Color(ROOF[(r() * ROOF.length) | 0]).multiplyScalar((0.85 + r() * 0.3) * (1 - hz * 0.8));
+  const tintOf = (palette, hz, k = 0.35) => new THREE.Color(1, 1, 1).lerp(new THREE.Color(palette[(r() * palette.length) | 0]), k).multiplyScalar(1 - hz * 0.8);
+  /** Rooftop plant: a few low boxes (AC units, stair cores) — flat white slabs read as snow (R3-02). */
+  function clutter(cx, cz, w, d, y, rot, hz) {
+    const n = 1 + ((r() * 3) | 0);
+    for (let i = 0; i < n; i++) {
+      const bw = 3 + r() * Math.min(9, w * 0.3), bd = 3 + r() * Math.min(9, d * 0.3), bh = 1.5 + r() * 3.5;
+      const ox = (r() - 0.5) * (w - bw) * 0.8, oz = (r() - 0.5) * (d - bd) * 0.8;
+      const c = Math.cos(rot), sn = Math.sin(rot);
+      const c2 = new THREE.Color('#7a7266').multiplyScalar((0.8 + r() * 0.35) * (1 - hz * 0.8));
+      roofB.prism(cx + ox * c + oz * sn, cz - ox * sn + oz * c, rect(bw, bd), y, y + bh, rot, hz, c2, 0, 0, c2.clone().multiplyScalar(0.9), roofB);
+    }
+  }
   const hazeOf = (dist) => 1 - Math.exp(-dist / 3400);
   const at = (ang, dist) => [center.x + Math.sin(ang) * dist, center.z + Math.cos(ang) * dist];
 
@@ -318,22 +345,22 @@ export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 
     const [cx, cz] = at(ang, dist);
     const hz = hazeOf(dist);
     const glass = opts.glass ?? r() < 0.75;
-    const B = glass ? glassB : stoneB;
-    const base = new THREE.Color((glass ? GLASS : STONE)[(r() * (glass ? GLASS.length : STONE.length)) | 0]);
-    const col = base.multiplyScalar(1 - hz * 0.8);
+    const v = (r() * 3) | 0;
+    const B = glass ? glassBs[v] : stoneBs[v];
+    const col = tintOf(glass ? GLASS : STONE, hz, glass ? 0.3 : 0.2);
     const kind = opts.kind || (r() < 0.55 ? 'box' : r() < 0.6 ? 'round' : 'chamfer');
     const w = opts.w || 22 + r() * 22, d = opts.d || 22 + r() * 22;
     const poly = kind === 'round' ? circle(w / 2, 16) : kind === 'chamfer' ? chamfer(w, d, Math.min(w, d) * 0.22) : rect(w, d);
     const y0 = GROUND_Y, y1 = GROUND_Y + h;
     const rot = r() * Math.PI;
-    const vOff = Math.floor(r() * 16) / 16, uOff = r() * TILE_W;
-    B.prism(cx, cz, poly, y0, y1, rot, hz, col, uOff, vOff);
+    const vOff = r(), uOff = r() * UNIT;
+    B.prism(cx, cz, poly, y0, y1, rot, hz, col, uOff, vOff, roofOf(hz), roofB);
     // crown / setback
     if (h > 160 && r() < 0.55) {
       const k = 0.55 + r() * 0.25, h2 = 12 + r() * 30;
       const poly2 = poly.map(([x, z]) => [x * k, z * k]);
-      B.prism(cx, cz, poly2, y1, y1 + h2, rot, hz, col.clone().multiplyScalar(0.9), uOff, vOff);
-    }
+      B.prism(cx, cz, poly2, y1, y1 + h2, rot, hz, col.clone().multiplyScalar(0.9), uOff, vOff, roofOf(hz), roofB);
+    } else if (dist < 1800 && kind !== 'round') clutter(cx, cz, w, d, y1, rot, hz);
   }
 
   // clusters: Marina (left), JLT behind it, Business Bay / Downtown (far left), new towers right
@@ -366,8 +393,11 @@ export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 
       if (Math.abs(ang) > 120 * DEG) continue;
       const [cx, cz] = at(ang, dist);
       const hz = hazeOf(dist);
-      const col = new THREE.Color(STONE[(r() * STONE.length) | 0]).multiplyScalar(1 - hz * 0.8);
-      stoneB.prism(cx, cz, rect(30 + r() * 22, 30 + r() * 22), GROUND_Y, GROUND_Y + 18 + Math.pow(r(), 1.5) * 42, rot, hz, col, r() * TILE_W, Math.floor(r() * 16) / 16);
+      const col = tintOf(STONE, hz, 0.25);
+      const w = 30 + r() * 22, d = 30 + r() * 22, h = 18 + Math.pow(r(), 1.5) * 42;
+      const v = r() < 0.5 ? 0 : 1; // dense small-window blocks (the 21 m variant reads too coarse on a mid-rise)
+      stoneBs[v].prism(cx, cz, rect(w, d), GROUND_Y, GROUND_Y + h, rot, hz, col, r() * UNIT, r(), roofOf(hz), roofB);
+      if (dist < 1500 && r() < 0.6) clutter(cx, cz, w, d, GROUND_Y + h, rot, hz);
     }
   }
   // signature supertall (Y-plan, spiralling setbacks, spire) — 828 m
@@ -405,28 +435,51 @@ export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 
       const hz = hazeOf((r0 + r1) / 2);
       const isWater = r0 >= waterDist && a0 >= waterFrom && a1 <= waterTo;
       const B = isWater ? waterB : groundB;
-      const c = isWater ? new THREE.Color(1, 1, 1).multiplyScalar(1 - hz * 0.6) : new THREE.Color(1, 1, 1).multiplyScalar(1 - hz * 0.8);
+      const c = isWater ? new THREE.Color(1, 1, 1).multiplyScalar(1 - hz * 0.6) : new THREE.Color(0.78, 0.76, 0.74).multiplyScalar(1 - hz * 0.8);
       B.quad(p0, p3, p2, p1, [0, 1, 0], [U(p0), U(p3), U(p2), U(p1)], hz, c);
     }
   }
 
   const tx = skylineTextures();
+  // procedural stand-ins (until the photo facades have loaded) are laid out for the old 24 × 56 m tile
+  for (const t of [tx.curtain, tx.stone, tx.night]) t.repeat.set(UNIT / TILE_W, UNIT / TILE_H);
   const haze = new THREE.Color('#d9cdb8');
   const mk = (P, opts) => { const m = new P(opts); m.userData.skyline = true; return m; };
   // day materials (envMap = sky PMREM, assigned in setTimeOfDay)
   const M = {
     glassDay: mk(THREE.MeshPhysicalMaterial, { vertexColors: true, map: tx.curtain, roughness: 0.04, metalness: 0, envMapIntensity: 1.2, ior: 2.0, specularIntensity: 1, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-glass' }),
     stoneDay: mk(THREE.MeshStandardMaterial, { vertexColors: true, map: tx.stone, roughness: 0.85, metalness: 0, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-stone' }),
-    groundDay: mk(THREE.MeshStandardMaterial, { vertexColors: true, map: tx.ground, roughness: 0.95, metalness: 0, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-ground' }),
+    groundDay: mk(THREE.MeshPhysicalMaterial, { vertexColors: true, map: tx.ground, roughness: 1, metalness: 0, specularIntensity: 0.2, envMapIntensity: 0.6, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-ground' }),
     water: mk(THREE.MeshPhysicalMaterial, { vertexColors: true, color: new THREE.Color('#1c3b47'), roughness: 0.14, metalness: 0, ior: 1.33, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-water' }),
     glassNight: mk(THREE.MeshPhysicalMaterial, { vertexColors: true, map: tx.curtain, color: new THREE.Color(0.25, 0.27, 0.3), roughness: 0.12, metalness: 0, ior: 2.0, emissive: new THREE.Color(1, 1, 1), emissiveMap: tx.night, emissiveIntensity: 0.5, name: 'skyline-glass-night' }),
     stoneNight: mk(THREE.MeshStandardMaterial, { vertexColors: true, map: tx.stone, color: new THREE.Color(0.3, 0.3, 0.32), roughness: 0.85, emissive: new THREE.Color(1, 1, 1), emissiveMap: tx.night, emissiveIntensity: 0.35, name: 'skyline-stone-night' }),
     groundNight: mk(THREE.MeshStandardMaterial, { vertexColors: true, map: tx.ground, color: new THREE.Color(0.25, 0.25, 0.28), roughness: 0.95, emissive: new THREE.Color(1, 1, 1), emissiveMap: tx.groundNight, emissiveIntensity: 0.55, name: 'skyline-ground-night' }),
   };
+  // per-variant facade materials (day / night); the base glassDay/stoneDay above stay the templates
+  const V = [0, 1, 2];
+  // roofs: gravel / membrane tones per roof (vertex colour) and plant boxes; no texture (no roads on roofs)
+  // seen at a grazing angle from the 40th floor, a rough roof's Fresnel sheen of the bright sky outweighed its
+  // albedo (roofs Y′ 230 whatever their colour): gravel and membranes barely reflect — keep the env mostly diffuse
+  M.roofDay = mk(THREE.MeshPhysicalMaterial, { vertexColors: true, roughness: 1, metalness: 0, specularIntensity: 0.15, envMapIntensity: 0.6, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-roof' });
+  M.roofNight = mk(THREE.MeshStandardMaterial, { vertexColors: true, color: new THREE.Color(0.22, 0.22, 0.25), roughness: 0.95, name: 'skyline-roof-night' });
+  for (const v of V) {
+    M['glassDay' + v] = mk(THREE.MeshPhysicalMaterial, { vertexColors: true, map: tx.curtain, roughness: 0.05, metalness: 0, envMapIntensity: 0.7, ior: 1.8, specularIntensity: 1, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-glass-' + v });
+    M['stoneDay' + v] = mk(THREE.MeshStandardMaterial, { vertexColors: true, map: tx.stone, roughness: 0.85, metalness: 0, emissive: haze, emissiveMap: tx.ramp, emissiveIntensity: 1, name: 'skyline-stone-' + v });
+    M['glassNight' + v] = mk(THREE.MeshPhysicalMaterial, { vertexColors: true, map: tx.curtain, color: new THREE.Color(0.22, 0.24, 0.27), roughness: 0.12, metalness: 0, ior: 1.8, emissive: new THREE.Color(1, 1, 1), emissiveMap: tx.night, emissiveIntensity: 0.5, name: 'skyline-glass-night-' + v });
+    // variant c's night photo is the same block with nearly every window lit: much dimmer
+    M['stoneNight' + v] = mk(THREE.MeshStandardMaterial, { vertexColors: true, map: tx.stone, color: new THREE.Color(0.28, 0.28, 0.3), roughness: 0.85, emissive: new THREE.Color(1, 1, 1), emissiveMap: tx.night, emissiveIntensity: v === 2 ? 0.12 : 0.4, name: 'skyline-stone-night-' + v });
+  }
+  // tinted high-rise glazing (visible transmission ≈ 60 %): the city is seen THROUGH it, so it reads a stop
+  // darker than the room's exposure would make it — sunlit roofs stop reading as snow (R3-02)
+  const VLT = 0.6;
+  for (const m of [M.groundDay, M.water, M.roofDay, ...V.map((v) => M['glassDay' + v]), ...V.map((v) => M['stoneDay' + v])]) m.color.multiplyScalar(VLT);
   const group = new THREE.Group();
   group.name = 'skyline';
   const meshes = {};
-  for (const [key, B, mat] of [['glass', glassB, M.glassDay], ['stone', stoneB, M.stoneDay], ['ground', groundB, M.groundDay], ['water', waterB, M.water]]) {
+  const parts = [['ground', groundB, M.groundDay], ['water', waterB, M.water], ['roof', roofB, M.roofDay]];
+  for (const v of V) { parts.push(['glass' + v, glassBs[v], M['glassDay' + v]], ['stone' + v, stoneBs[v], M['stoneDay' + v]]); }
+  for (const [key, B, mat] of parts) {
+    if (!B.idx.length) continue;
     const m = new THREE.Mesh(B.build(), mat);
     m.name = 'skyline-' + key;
     m.frustumCulled = false;
@@ -439,6 +492,37 @@ export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 
 
   let night = false;
   let env = null;
+  function setSet(on) {
+    if (meshes.ground) meshes.ground.material = on ? M.groundNight : M.groundDay;
+    if (meshes.roof) meshes.roof.material = on ? M.roofNight : M.roofDay;
+    for (const v of V) {
+      if (meshes['glass' + v]) meshes['glass' + v].material = on ? M['glassNight' + v] : M['glassDay' + v];
+      if (meshes['stone' + v]) meshes['stone' + v].material = on ? M['stoneNight' + v] : M['stoneDay' + v];
+    }
+  }
+  // photo facades: day albedo (also under the night emission) + lit-window night photos; real size via repeat
+  const FACADES = [
+    ['glass', 0, 'glass-a', 27.6, 'night-glass-a', 40], ['glass', 1, 'glass-b', 86, 'night-glass-b', 86], ['glass', 2, 'glass-c', 30, 'night-glass-c', 118],
+    ['stone', 0, 'stone-a', 100, 'night-stone-a', 100], ['stone', 1, 'stone-b', 102, 'night-stone-b', 118], ['stone', 2, 'stone-c', 21, 'night-stone-c', 21],
+  ];
+  if (typeof document !== 'undefined') {
+    const loader = new THREE.TextureLoader();
+    const load = (name, size, srgb = true) => new Promise((res) => loader.load(`/assets/city/${name}.jpg`, (t) => {
+      t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.repeat.set(UNIT / size, UNIT / size);
+      t.anisotropy = 8; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter;
+      t.name = 'city:' + name; res(t);
+    }, undefined, () => res(null)));
+    for (const [kind, v, day, dSize, nightName, nSize] of FACADES) {
+      const cap = kind[0].toUpperCase() + kind.slice(1);
+      load(day, dSize).then((t) => { if (!t) return; for (const m of [M[kind + 'Day' + v], M[kind + 'Night' + v]]) { m.map = t; m.needsUpdate = true; } cityTex.push(t); onCity?.(); });
+      load(nightName, nSize).then((t) => { if (!t) return; const m = M[kind + 'Night' + v]; m.emissiveMap = t; m.needsUpdate = true; cityTex.push(t); onCity?.(); });
+      void cap;
+    }
+  }
+  const cityTex = [];
+  let onCity = null;
   function applyEnv() {
     for (const m of Object.values(M)) { m.envMap = env; m.needsUpdate = true; }
   }
@@ -450,21 +534,17 @@ export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 
     setTimeOfDay(tod, preset, skyEnv) {
       night = tod === 'evening';
       if (env !== skyEnv) { env = skyEnv || null; applyEnv(); }
-      meshes.glass.material = night ? M.glassNight : M.glassDay;
-      meshes.stone.material = night ? M.stoneNight : M.stoneDay;
-      meshes.ground.material = night ? M.groundNight : M.groundDay;
+      setSet(night);
       const hz = new THREE.Color(preset.haze);
       if (preset.hazeTint) { const l = 0.2126 * hz.r + 0.7152 * hz.g + 0.0722 * hz.b; hz.copy(preset.hazeTint).multiplyScalar(l); }
-      for (const m of [M.glassDay, M.stoneDay, M.groundDay, M.water]) m.emissive.copy(hz).multiplyScalar(preset.hazeL * 0.38);
+      for (const m of [M.groundDay, M.water, M.roofDay, ...V.map((v) => M['glassDay' + v]), ...V.map((v) => M['stoneDay' + v])]) m.emissive.copy(hz).multiplyScalar(preset.hazeL * 0.38 * VLT);
       M.water.envMapIntensity = night ? 0.6 : 1;
     },
     /** Run fn with the night (or day) materials on — for pre-compiling the other set. */
     withMaterials(nightOn, fn) {
-      const was = [meshes.glass.material, meshes.stone.material, meshes.ground.material];
-      meshes.glass.material = nightOn ? M.glassNight : M.glassDay;
-      meshes.stone.material = nightOn ? M.stoneNight : M.stoneDay;
-      meshes.ground.material = nightOn ? M.groundNight : M.groundDay;
-      try { return fn(); } finally { [meshes.glass.material, meshes.stone.material, meshes.ground.material] = was; }
+      const was = Object.values(meshes).map((m) => [m, m.material]);
+      setSet(nightOn);
+      try { return fn(); } finally { for (const [m, mat] of was) m.material = mat; }
     },
     /** Path tracer snapshot: no PMREM envMaps (it lights with its own sky) and no uv1 haze ramp. */
     preparePhoto() {
@@ -475,10 +555,13 @@ export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 
       }
       return () => { for (const [m, e, em, ei] of saved) { m.envMap = e; m.emissiveMap = em; m.emissiveIntensity = ei; } };
     },
+    /** fn() whenever a facade photo has landed (the engine invalidates / refreshes the sky capture). */
+    set onTextures(fn) { onCity = fn; },
     dispose() {
       for (const m of Object.values(meshes)) m.geometry.dispose();
       for (const m of Object.values(M)) m.dispose();
       for (const t of Object.values(tx)) t.dispose();
+      for (const t of cityTex) t.dispose();
     },
   };
 }

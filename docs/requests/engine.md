@@ -57,6 +57,21 @@
     landscape stage, so `object-fit: cover` on the poster matches the live framing.
   - Thumbnails render only while the camera and dissolves are idle, one per idle slice (T7) — request them freely.
   - The focus halo fades out ~1.2 s after a flight lands; the canvas focus ring shows only for keyboard focus.
+- Budget slider (docs/BUDGET.md), engine side:
+  - `'change'` with `itemId: null` dissolves the model out, and null → item dissolves it in. Empty slots are
+    skipped at load. An attached item whose host is empty is never placed.
+  - `'plan' {reason: 'budget'}` bursts are coalesced per slot (latest wins). A slot that is mid-dissolve is rebuilt
+    from the store's current selection when its dissolve ends. At most 8 slots dissolve at once, nearest first,
+    with starts 45 ms apart. A host carries its attached items in the same rebuild.
+  - GI re-bakes local probes once, after ≥ 350 ms with no plan event and only when not dragging. Lab, 11-plan
+    drag: 0 bakes during the drag, one local bake after release.
+  - `villar.setDragging(true|false)`: call on slider grab / release. While held, the engine defers thumbnails,
+    bakes and idle refinement, and the camera ignores input. Please still `unfocus()` on grab.
+  - Lights: an empty lamp or candle slot keeps a zero-intensity copy of its light set, so the evening light
+    count stays the same (18 in the lab from the minimum room to the premium room) and no programs recompile.
+  - The active pack's slider options are built off-thread and compiled (both light sets plus dissolves) in idle
+    time after ready, and again after each style switch. A drag then only clones cached models and finds
+    compiled programs. This needs parallel shader compile; on other browsers it runs as synchronous idle slices.
 - Round 3 (focus + exposure):
   - `focus()` fits the object's actual box, not its bounding sphere, into the free part of the stage, so a sofa
     behind the HUD at 1280×800 is now shot from ≈ 3 m instead of from the entry (PT3-01 / D3-02). Candidate
