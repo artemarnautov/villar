@@ -232,7 +232,7 @@ export function createSim({ catalog, layout, packs, budget: budgetSpec = null })
     if (!budgetSpec || !p) return null;
     const norm = normalizeSelection(packId, cur);
     const pinned = {};
-    for (const k of pins) if (p.slots?.[k] && k in norm) pinned[k] = norm[k];
+    for (const k of pins) if (typeof k === 'string' && Object.prototype.hasOwnProperty.call(p.slots || {}, k) && Object.prototype.hasOwnProperty.call(norm, k)) pinned[k] = norm[k];
     const id = `${packId}|${JSON.stringify(Object.entries(pinned).sort())}`;
     if (!ladders.has(id)) { if (ladders.size > 24) ladders.clear(); ladders.set(id, buildLadder({ pack: p, items, layout, spec: budgetSpec, pinned })); }
     const L = ladders.get(id);

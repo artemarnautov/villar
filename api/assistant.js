@@ -267,7 +267,7 @@ function cleanState(state) {
   const view = VIEWS.includes(state?.view) ? state.view : null;
   const time = TIMES.includes(state?.time) ? state.time : null;
   const keys = sim.pack(style)?.slots || {};
-  const pins = Array.isArray(state?.pins) ? [...new Set(state.pins.filter((k) => typeof k === 'string' && keys[k]))].slice(0, 60) : [];
+  const pins = Array.isArray(state?.pins) ? [...new Set(state.pins.filter((k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(keys, k)))].slice(0, 60) : [];
   return { style, selection, view, time, pins };
 }
 

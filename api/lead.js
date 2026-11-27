@@ -117,7 +117,8 @@ async function store(lead) {
   try {
     const r = await fetch(`${url.replace(/\/$/, '')}/rest/v1/rpc/submit_lead`, {
       method: 'POST', signal: ctl.signal,
-      headers: { 'content-type': 'application/json', apikey: key, authorization: `Bearer ${key}` },
+      // Secret keys (sb_secret_…) go in `apikey` only; publishable/legacy keys also as a bearer token.
+      headers: { 'content-type': 'application/json', apikey: key, ...(key.startsWith('sb_secret_') ? {} : { authorization: `Bearer ${key}` }) },
       body: JSON.stringify({ p }),
     });
     if (!r.ok) { console.error('[lead] store HTTP', r.status, (await r.text()).slice(0, 300)); return { error: 'store_failed' }; }

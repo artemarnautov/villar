@@ -24,6 +24,7 @@ const re = (m) => new RegExp(m.pattern, 'i');
 export function buildLadder({ pack, items, layout, spec, pinned = {} }) {
   const byId = items instanceof Map ? items : new Map(items.map((i) => [i.id, i]));
   const P = pack.slots || {};
+  const has = (k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(P, k);
   const keyOf = (s) => (P[s.id] && s.id) || (s.group && P[s.group] && s.group) || s.type;
   const qty = {};
   for (const s of layout.slots) { const k = keyOf(s); qty[k] = (qty[k] || 0) + 1; }
@@ -31,7 +32,7 @@ export function buildLadder({ pack, items, layout, spec, pinned = {} }) {
   const FURN = new Set(spec.furniture || []);
   const FUNC = new Map((spec.functional || []).map((f) => [f.id, f]));
   const matches = (it, m) => re(m).test(String(it?.[m.field] || ''));
-  const pins = Object.fromEntries(Object.entries(pinned).filter(([k, v]) => P[k] && (v === null || P[k].options.includes(v))));
+  const pins = Object.fromEntries(Object.entries(pinned || {}).filter(([k, v]) => has(k) && (v === null || P[k].options.includes(v))));
 
   const curated = (k) => byId.get(P[k].default) || opts(k)[0];
   const opts = (k) => P[k].options.map((id) => byId.get(id)).filter(Boolean)
@@ -51,16 +52,34 @@ export function buildLadder({ pack, items, layout, spec, pinned = {} }) {
   const total = () => Object.entries(sel).reduce((a, [k, it]) => a + (it ? it.price * (qty[k] || 0) : 0), 0);
   const selection = () => Object.fromEntries(keys.map((k) => [k, sel[k] ? sel[k].id : null]));
   const commit = (label, kind, tier, changes) => {
-    const delta = [];
+    const delta = []; const before = {};
     for (const [k, it] of changes) {
-      if (fixed(k) && !(kind === 'min' && pinnedItem(k) === it)) continue;
-      if (sel[k]?.id !== it.id) delta.push({ key: k, from: sel[k]?.id || null, to: it.id });
+      if (!it || (fixed(k) && !(kind === 'min' && pinnedItem(k) === it))) continue;
+      if (sel[k]?.id !== it.id) { delta.push({ key: k, from: sel[k]?.id || null, to: it.id }); before[k] = sel[k]; }
       sel[k] = it;
     }
-    if (!delta.length) return;
+    if (!delta.length) return false;
     const t = total();
+    // The contract: every step after the minimum makes the room strictly richer (moving right never takes away).
+    if (kind !== 'min' && t <= run) { for (const [k, v] of Object.entries(before)) { if (v) sel[k] = v; else delete sel[k]; } return false; }
     steps.push({ label, kind, tier, add: t - run, total: t, delta, selection: selection() });
     run = t;
+    return true;
+  };
+  /** Would putting `m` on furniture key `k` break a pairing demanded by a pinned furniture item? */
+  // What the customer's pinned piece asks for wins; only when it asks nothing do we avoid partners that would
+  // themselves ask for a different piece (pairings in the data are not always symmetric).
+  const pinConflict = (k, m) => {
+    if (!FURN.has(k)) return false;
+    let back = false;
+    for (const k2 of Object.keys(pins)) {
+      const it2 = pinnedItem(k2); if (!it2 || !FURN.has(k2)) continue;
+      const want = pack.pairings?.[it2.id]?.[k];
+      if (want) return want !== m.id;
+      const b = pack.pairings?.[m.id]?.[k2];
+      if (b && b !== it2.id) back = true;
+    }
+    return back;
   };
   const pairFor = (k) => {
     if (!FURN.has(k)) return null;
@@ -70,15 +89,18 @@ export function buildLadder({ pack, items, layout, spec, pinned = {} }) {
     }
     return null;
   };
+  // Options that don't fight a pinned furniture item's pairing (the customer's pick wins).
+  const okOpts = (k) => { const o = opts(k); const f = o.filter((i) => !pinConflict(k, i)); return f.length ? f : o; };
   const entry = (k, tier) => {
-    if (tier === 0) return cheapest(k);
-    const paired = pairFor(k); if (paired) return paired;
+    const paired = pairFor(k); if (paired && !pinConflict(k, paired)) return paired;
+    if (tier === 0) return okOpts(k)[0];
     if (!FURN.has(k)) return curated(k);
+    const o = okOpts(k);
     if (k === 'rug' && spec.entry?.rug) {
-      const c = cheapest(k); const r = opts(k).find((i) => (i.dims?.w || 0) >= spec.entry.rug.preferWidthCmAtLeast);
+      const c = o[0]; const r = o.find((i) => (i.dims?.w || 0) >= spec.entry.rug.preferWidthCmAtLeast);
       return r && r.price <= spec.entry.rug.ifPriceAtMost * c.price ? r : c;
     }
-    return cheapest(k);
+    return o[0];
   };
   const withCompanions = (k, it) => {
     const ch = [[k, it]];
@@ -120,19 +142,21 @@ export function buildLadder({ pack, items, layout, spec, pinned = {} }) {
   const complete = run;
 
   // 3. Main pieces up to the designer's picks (furniture companions in the same step), then the rest.
-  for (const k of spec.heroes || []) if (P[k] && sel[k] && !fixed(k) && !keptByFunction(k) && sel[k].id !== curated(k).id) commit(`${k} → designer`, 'upg', 5, withCompanions(k, curated(k)));
-  for (const k of [...(spec.premiumOrder || []), ...keys]) if (P[k] && sel[k] && !fixed(k) && !keptByFunction(k) && sel[k].id !== curated(k).id) commit(`${k} → designer`, 'upg', 5, [[k, curated(k)]]);
+  const upgradable = (k) => has(k) && sel[k] && !fixed(k) && !keptByFunction(k) && sel[k].id !== curated(k).id && !pinConflict(k, curated(k));
+  for (const k of spec.heroes || []) if (upgradable(k)) commit(`${k} → designer`, 'upg', 5, withCompanions(k, curated(k)).filter(([k2, it]) => k2 === k || !pinConflict(k2, it)));
+  for (const k of [...(spec.premiumOrder || []), ...keys]) if (upgradable(k)) commit(`${k} → designer`, 'upg', 5, [[k, curated(k)]]);
   const designer = run;
 
   // 4. Premium, pairing-safe.
   const conflicts = (k, m) => {
     if (!FURN.has(k)) return false;
+    if (pinConflict(k, m)) return true;
     for (const [k2, it2] of Object.entries(sel)) { if (k2 === k || !it2) continue; const w = FURN.has(k2) && pack.pairings?.[it2.id]?.[k]; if (w && w !== m.id) return true; }
     for (const [k2, w] of Object.entries(pack.pairings?.[m.id] || {})) if (sel[k2] && FURN.has(k2) && sel[k2].id !== w && (fixed(k2) || byId.get(w).price < sel[k2].price)) return true;
     return false;
   };
   for (const k of spec.premiumOrder || []) {
-    if (!P[k] || !sel[k] || fixed(k)) continue;
+    if (!has(k) || !sel[k] || fixed(k)) continue;
     const m = opts(k).filter((i) => i.price > sel[k].price).sort((a, b) => b.price - a.price).find((c) => !conflicts(k, c));
     if (m) commit(`${k} → premium`, 'prem', 6, withCompanions(k, m));
   }

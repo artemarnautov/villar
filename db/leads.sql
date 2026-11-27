@@ -160,3 +160,9 @@ revoke all on function public.notify_lead_telegram() from public, anon, authenti
 
 create trigger leads_notify_telegram after insert on public.leads
   for each row execute function public.notify_lead_telegram();
+
+-- ---------------------------------------------------------------------------------------------------------
+-- Migration 4 (applied 27.11, R4-02 mitigation): the global hourly cap ('busy') let one script block every
+-- real lead, so it is gone; submit_lead is otherwise as in migration 3 (per-phone cap, consistent items and
+-- totals), and service_role may call it too. Planned: revoke EXECUTE from anon/authenticated once the API uses
+-- a secret key (SUPABASE_KEY = sb_secret_… in Vercel env).
