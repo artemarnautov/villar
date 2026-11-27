@@ -106,6 +106,8 @@ export async function createVillar({
   // Villar Editions (curator §2): `media.url(key)` → public URL of a Storage key; `media.approved` = keys whose file
   // exists (Set | array | promise | () => promise). Nothing is requested for a key that is not approved: no 404s.
   media = null,
+  // digital twins (docs/TWINS.md): `twinsBase` = public media base URL; the manifest decides which items have one
+  twinsBase = null,
   // window plates (PHOTOREAL.md): 'auto' = on except on a bare local static server (no /api there: no 404s);
   // true / false; `plateSource(time)` → plate JSON for stubs and tests. URL ?plate=on|off overrides.
   plates: platesOpt = false, plateSource = null,
@@ -114,7 +116,7 @@ export async function createVillar({
   // time of day as a 1.2 s time-lapse instead of a cut; ART §2 grade (S-curve, split tone, grain, day halation)
   timelapse = false, grade = false,
   // Focus v2 §2 (spotlight stage + turntable); off = the item stays put and a drag orbits the camera as before
-  inspect = false,
+  inspect = true,
 } = {}) {
   if (!container) throw new Error('createVillar: container is required');
   patchProbeChunks(); // before any program compiles (incl. the non-finite pixel guard)
@@ -266,6 +268,21 @@ export async function createVillar({
 
   const mods = await modulesP;
   if (disposed) return null;
+  // (awaits stay up here: below, callbacks registered on materials / the city may fire between awaits)
+  let twins = null;
+  if (twinsBase) {
+    try { const m = await import('./twins.js'); twins = m.createTwins({ THREE, renderer, baseUrl: twinsBase, quality: Q }); }
+    catch (e) { console.debug('[villar] twins unavailable', e?.message || e); twins = null; }
+    if (disposed) return null;
+  }
+  const artApproved = new Set();
+  if (media?.approved) {
+    const take = (v) => { for (const k of (v instanceof Set ? [...v] : Array.isArray(v) ? v : [])) artApproved.add(k); };
+    const a = typeof media.approved === 'function' ? media.approved() : media.approved;
+    // a small local list: wait for it (≤ 1.5 s) so the first build of an approved edition already has its image
+    if (a && typeof a.then === 'function') { await Promise.race([a.then(take).catch(() => {}), new Promise((r) => setTimeout(r, 1500))]); if (disposed) return null; }
+    else take(a);
+  }
   const materials = mods.makeMaterials(renderer, Q);
   const buildItem = mods.buildItem;
   loadProgress(0.15, 'modules');
@@ -300,15 +317,11 @@ export async function createVillar({
   // Programs are keyed on the render target's tone mapping / colour space: compile with the HDR target
   // bound, exactly as the beauty pass renders, or every pre-compiled program is the wrong variant.
   const withHDR = (fn) => { const prev = renderer.getRenderTarget(); renderer.setRenderTarget(post.rt); try { return fn(); } finally { renderer.setRenderTarget(prev); } };
-  const artApproved = new Set();
-  if (media?.approved) {
-    const take = (v) => { for (const k of (v instanceof Set ? [...v] : Array.isArray(v) ? v : [])) artApproved.add(k); };
-    const a = typeof media.approved === 'function' ? media.approved() : media.approved;
-    if (a && typeof a.then === 'function') a.then(take).catch(() => {}); else take(a);
-  }
+  /** Lamp shades / bulbs glow (procedural materials and lamp twins alike). */
+  function lampsOn(on, k = 1) { materials.setLampsOn?.(on, k); twins?.setLampsOn?.(on, k); }
   /** Approved edition image → its URL (else null: the builder draws the motif on the same canvas + frame). */
   const artImage = (item) => (item?.image && artApproved.has(item.image) && typeof media?.url === 'function' ? media.url(item.image) : null);
-  const furnisher = createFurnisher({ layout, store, materials, buildItem, releaseItem: mods.releaseItem, quality: Q, maxLampShadows: post.settings.lampShadows, artImage });
+  const furnisher = createFurnisher({ layout, store, materials, buildItem, releaseItem: mods.releaseItem, quality: Q, maxLampShadows: post.settings.lampShadows, artImage, twins, onTwin: (rec, adopt) => { onTwin(rec, adopt).catch((e) => console.debug('[villar] twin', e?.message || e)); } });
   scene.add(furnisher.root);
   furnisher.placeAll();
   furnisher.assignLampShadows();
@@ -621,7 +634,9 @@ export async function createVillar({
   const giCache = new Map();
   const styleKey = () => store?.styleId?.() || stylepack?.id || 'default';
   const giKey = (tod = currentTime) => `${styleKey()}|${tod}`;
-  const sceneSig = () => { try { return JSON.stringify(store?.snapshot?.().selection || {}) + '|' + arch.wallColor + '|' + arch.doorFinish + '|' + (lighting.hasSky(currentTime) ? 'hdr' : 'proc'); } catch { return ''; } };
+  // (a room lit with the procedural sofa is not the room with its twin)
+  const twinSig = () => { let t = ''; for (const [id, rec] of furnisher.placed) if (rec.twin) t += id + ','; return t; };
+  const sceneSig = () => { try { return JSON.stringify(store?.snapshot?.().selection || {}) + '|' + arch.wallColor + '|' + arch.doorFinish + '|' + (lighting.hasSky(currentTime) ? 'hdr' : 'proc') + '|t:' + twinSig(); } catch { return ''; } };
   // per (style, time): the latest result (a stand-in for any selection) + per exact selection (R4-01: the same
   // room always gets the same light back). Bounded LRU.
   const giExact = new Map();
@@ -748,7 +763,7 @@ export async function createVillar({
   function scansIn(roots, out = new Set()) {
     if (!materials.scanIdOf) return out;
     for (const root of roots) root?.traverse?.((o) => {
-      const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+      const ms = [].concat(o.material || [], o.customDepthMaterial || [], o.customDistanceMaterial || []); // + hashed-alpha shadow materials
       for (const m of ms) for (const k in m) { const v = m[k]; if (v && v.isTexture) { const id = materials.scanIdOf(v); if (id) out.add(id); } }
     });
     return out;
@@ -769,10 +784,14 @@ export async function createVillar({
   function ensureScans(roots) {
     if (!materials.scanSets) return Promise.resolve();
     const ids = scansIn(roots);
+    // everything these objects use counts as seen NOW: a set near the end of its grace must not be evicted between
+    // this call and the render it prepares (thumbnail of an item whose fabric left the room 2 min ago → three
+    // re-uploaded the pixel-less stub: "texSubImage2D … Overload resolution failed")
+    const now = performance.now();
+    for (const id of ids) scanSeen.set(id, now);
     const back = materials.scanSets().filter((e) => e.evicted && ids.has(e.id));
     if (!back.length) return Promise.resolve();
-    for (const e of back) scanSeen.set(e.id, performance.now());
-    return Promise.race([Promise.all(back.map((e) => materials.restoreScanSet(e.id))), new Promise((r) => setTimeout(r, 4000))]);
+    return Promise.race([Promise.all(back.map((e) => materials.restoreScanSet(e.id))), new Promise((r) => setTimeout(r, 12000))]);
   }
   /** Keep `objs` hidden until their scan sets are back on the GPU (no upload without pixels). */
   async function scansReady(objs) {
@@ -926,12 +945,20 @@ export async function createVillar({
     const rec = furnisher.placed.get(slotId);
     if (!rec) return null;
     const q = new THREE.Quaternion(); rec.group.getWorldQuaternion(q);
-    const f = new THREE.Vector3(0, 0, 1).applyQuaternion(q); f.y = 0;
+    const lf = rec.group.userData.front; // modeler / twins: the item's 0° rest direction (local)
+    const f = (Array.isArray(lf) && lf.length === 3 ? new THREE.Vector3(...lf) : new THREE.Vector3(0, 0, 1)).applyQuaternion(q); f.y = 0;
     return f.lengthSq() > 1e-6 ? f.normalize() : null;
   }
   /** Frame a slot's current model (fits the free part of the stage; see camera.focusOn). */
   function frameSlot(slotId, { refit = false } = {}) {
-    const box = furnisher.boxOf(slotId);
+    // a turned item is framed as it stands at home (its box and front must not follow the turntable)
+    const turned = insp.homes.length > 0 && insp.slotId === slotId && Math.abs(insp.angle) > 0.01;
+    if (turned) { const a = insp.angle; insp.angle = 0; applyTurn(); insp.angle = a; }
+    try { return frameSlotHome(slotId, refit); } finally { if (turned) applyTurn(); }
+  }
+  function frameSlotHome(slotId, refit) {
+    const fb = furnisher.fitBox(slotId);
+    const box = fb && !fb.isEmpty() ? fb : furnisher.boxOf(slotId);
     if (!box || box.isEmpty()) return false;
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
@@ -1124,7 +1151,7 @@ export async function createVillar({
   const REST_DEG = 45, DIM_SPOT = Math.pow(2, -0.3), DIM_STAGE = Math.pow(2, -0.7);
   const UP = new THREE.Vector3(0, 1, 0);
   const insp = { slotId: null, ids: [], homes: [], pivot: new THREE.Vector3(), angle: 0, vel: 0, target: 0, w: 14.5, coast: false,
-    dragging: false, samples: [], ticked: true, spot: 0, last: '', returning: null, order: null, hideKey: '', hide: [], homeWaits: [] };
+    dragging: false, samples: [], ticked: true, spot: 0, last: '', returning: null, order: null, hideKey: '', hide: [], homeWaits: [], ghosts: null, rootId: null };
   const turnBlob = (() => {
     const c = document.createElement('canvas'); c.width = c.height = 64;
     const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
@@ -1168,6 +1195,9 @@ export async function createVillar({
     const sz = b.getSize(new THREE.Vector3()), r = Math.max(0.25, Math.max(sz.x, sz.z) * 0.62);
     turnBlob.position.set(insp.pivot.x, Math.max(0.003, b.min.y + 0.003), insp.pivot.z);
     turnBlob.scale.set(r * 2, 1, r * 2);
+    // the radius the family sweeps round the pivot (a hosted item's host swings wide): the stage keeps clear of it
+    const fb = new THREE.Box3(); for (const h of insp.homes) fb.expandByObject(h.g);
+    insp.turnR = fb.isEmpty() ? 0 : Math.max(...[[fb.min.x, fb.min.z], [fb.min.x, fb.max.z], [fb.max.x, fb.min.z], [fb.max.x, fb.max.z]].map(([x, z]) => Math.hypot(x - insp.pivot.x, z - insp.pivot.z)));
     insp.hideKey = '';
   }
   function applyTurn(rec = insp) {
@@ -1284,7 +1314,7 @@ export async function createVillar({
     if (insp.homes.length) {
       const was = insp.angle;
       const turning = stepTurn(insp, dt);
-      if (turning || was !== insp.angle) applyTurn();
+      if (turning || was !== insp.angle) { applyTurn(); if (insp.ghosts) { insp.ghosts.angle = insp.angle; applyTurn(insp.ghosts); } }
       moving = moving || turning;
       if (!turning && atHome()) {
         if (insp.angle !== 0) { insp.angle = insp.target = 0; applyTurn(); }
@@ -1299,7 +1329,11 @@ export async function createVillar({
     if (amount > 0.002 && insp.homes.length) {
       const dim = 1 + (DIM_SPOT + (DIM_STAGE - DIM_SPOT) * k - 1) * amount;
       turnBlob.material.opacity = 0.55 * k;
-      post.setStage({ mode: away ? 'stage' : 'spot', items: insp.homes.map((h) => h.g), hideInItemPass: stageHideList(), blob: k > 0.01 ? turnBlob : null, dim, blur: amount * (0.45 + 0.55 * k) });
+      // never clip: while the family is turned, the item layer is drawn from further back when its sweep would
+      // reach the camera (the room behind is a soft backdrop by then, so no wall is in the way)
+      const camD = Math.hypot(camera.position.x - insp.pivot.x, camera.position.z - insp.pivot.z);
+      const dolly = Math.max(0, (insp.turnR || 0) + 0.35 - camD) * k;
+      post.setStage({ mode: away ? 'stage' : 'spot', items: insp.homes.map((h) => h.g), hideInItemPass: stageHideList(), blob: k > 0.01 ? turnBlob : null, dim, blur: amount * (0.45 + 0.55 * k), dolly });
     } else post.setStage(null);
     // event for the UI dial
     const atRest = !insp.dragging && !insp.coast && insp.vel === 0;
@@ -1322,13 +1356,21 @@ export async function createVillar({
       list.push([id, az, b.min.y]);
     }
     list.sort((p, q) => p[1] - q[1] || p[2] - q[2]);
-    insp.order = list.map((x) => x[0]);
+    // one stop per selection key (the four dining chairs are one choice)
+    const seen = new Set(), order = [];
+    for (const [id] of list) {
+      const key = (store?.slotsFor?.(id) || [id]).slice().sort()[0];
+      if (seen.has(key)) continue;
+      seen.add(key); order.push(id);
+    }
+    insp.order = order;
   }
   function focusNext(dir = 1) {
     if (!insp.order || !insp.order.length) inspectOrder();
     const order = insp.order.filter((id) => furnisher.placed.has(id));
     if (!order.length) return null;
-    const i = order.indexOf(focusedSlot);
+    const mates = focusedSlot ? (store?.slotsFor?.(focusedSlot) || [focusedSlot]) : [];
+    const i = order.findIndex((id) => id === focusedSlot || mates.includes(id));
     const next = order[((i < 0 ? (dir > 0 ? -1 : 0) : i) + (dir > 0 ? 1 : -1) + order.length) % order.length];
     focus(next);
     events.emit('select', furnisher.info(next) ? { ...furnisher.info(next) } : null);
@@ -1342,7 +1384,9 @@ export async function createVillar({
     if (changed) refineInput(false); // HUD panel animating
     insets.bottom = b; insets.right = r;
     controls.setInsets(insets);
-    if (changed && focusedSlot) refocus(); // keep the object inside the free part of the stage
+    // keep the object inside the free part of the stage: retarget the flight NOW, from its current velocity, so
+    // the camera and the sheet's spring move as one (no 120 ms wait + a second 0.6 s flight)
+    if (changed && focusedSlot && controls.focused) { clearTimeout(refocusTimer); frameSlot(focusedSlot, { refit: true }); setSpot(focusedSlot); }
     invalidate(2);
   }
   let haloT0 = 0, haloK = 1;
@@ -1721,7 +1765,6 @@ export async function createVillar({
       if (!ids.length) return;
     }
     const fam = new Set(ids.flatMap((id) => [id, ...descendantsOf(id)]));
-    if (insp.ids.some((id) => fam.has(id))) await inspectHome(); // swapping springs the item home (400 ms) first
     for (const f of fam) budget.inflight.add(f);
     try { await swapRun(ids, ms); } finally {
       for (const f of fam) budget.inflight.delete(f);
@@ -1729,9 +1772,40 @@ export async function createVillar({
     }
   }
   async function swapRun(ids, ms) {
+    // a swap inside the turned family: rebuild it at home (children attach to their host's home transform), then
+    // put the new models at the same angle in the same frame — the camera and the turntable stay where they are
+    const famSet = new Set(ids.flatMap((id) => [id, ...descendantsOf(id)]));
+    let turn = null;
+    if (insp.homes.length && insp.ids.some((id) => famSet.has(id))) {
+      turn = { angle: insp.angle, target: insp.target, vel: insp.vel, coast: insp.coast, w: insp.w, homes: insp.homes, pivot: insp.pivot.clone() };
+      insp.angle = 0; applyTurn(); insp.angle = turn.angle;
+    }
+    const focusBox0 = focusedSlot && famSet.has(focusedSlot) ? furnisher.boxOf(focusedSlot) : null;
     const oldBoxes = ids.map((id) => furnisher.boxOf(id)).filter(Boolean);
     const { ids: all, outgoing, incoming } = furnisher.rebuildSlots(ids, { keepOld: true });
-    if (focusedSlot && furnisher.placed.has(focusedSlot) && (all.includes(focusedSlot) || insp.ids.some((id) => all.includes(id)) || all.some((id) => famOf(focusedSlot).includes(id)))) inspectBind(focusedSlot);
+    let reframe = false;
+    if (focusedSlot && furnisher.placed.has(focusedSlot) && (all.includes(focusedSlot) || insp.ids.some((id) => all.includes(id)) || all.some((id) => famOf(focusedSlot).includes(id)))) {
+      inspectBind(focusedSlot);
+      const b1 = focusBox0 && furnisher.boxOf(focusedSlot);
+      if (b1 && !b1.isEmpty() && !focusBox0.isEmpty()) {
+        // re-frame only when the new model's box differs by more than ~10 % (size or position)
+        const s0 = focusBox0.getSize(new THREE.Vector3()), s1 = b1.getSize(new THREE.Vector3());
+        const big = Math.max(s0.x, s0.y, s0.z, 0.05);
+        const dSize = Math.max(Math.abs(s1.x - s0.x), Math.abs(s1.y - s0.y), Math.abs(s1.z - s0.z)) / big;
+        const dPos = b1.getCenter(new THREE.Vector3()).distanceTo(focusBox0.getCenter(new THREE.Vector3())) / big;
+        reframe = dSize > 0.1 || dPos > 0.1;
+      }
+      if (turn && insp.homes.length) {
+        Object.assign(insp, { angle: turn.angle, target: turn.target, vel: turn.vel, coast: turn.coast, w: turn.w, ticked: true });
+        applyTurn();
+      }
+    }
+    if (turn) {
+      // the outgoing models dissolve at the angle they were shown at
+      const gone = new Set(outgoing.map((r) => r.group));
+      insp.ghosts = { homes: turn.homes.filter((h) => gone.has(h.g)), pivot: turn.pivot, angle: insp.homes.length ? insp.angle : turn.angle };
+      applyTurn(insp.ghosts);
+    }
     for (const rec of incoming) { decorate(rec.group); hideForCutaway(rec); }
     furnisher.assignLampShadows();
     lighting.setLampLights(furnisher.lampLights());
@@ -1749,6 +1823,7 @@ export async function createVillar({
     if (moves.length) { glides.push({ t0: performance.now(), ms: Math.max(ms, 320), moves }); controls.setColliders(furnisher.colliders()); }
     invalidate(3);
     await fader.swap({ inn: incoming.map((r) => r.group), out: outgoing.map((r) => r.group), inLights, ms });
+    insp.ghosts = null;
     furnisher.retire(outgoing);
     if (disposed) return;
     queueContact();
@@ -1758,9 +1833,32 @@ export async function createVillar({
     scheduleLocal([...oldBoxes, ...newBoxes]);
     watchTextures();
     if (!styleWave) queueWarm(incoming.map((r) => r.group));
-    // the focused slot got a new model: re-frame it (T5)
-    if (focusedSlot && all.includes(focusedSlot)) refocus();
+    // the focused slot got a clearly different model: re-frame it and bring it home (T5); otherwise the camera
+    // and the turntable angle stay (variant / same-size model swap)
+    if (focusedSlot && all.includes(focusedSlot) && reframe) { inspectHome(); refocus(); }
     invalidate(3);
+  }
+  /** A twin resolved for an item on screen: dissolve procedural → twin in the same slot group, then re-light. */
+  async function onTwin(rec, adopt) {
+    const id = rec.slot.id;
+    // never two runs on one group (R4-05): wait for a swap / wave on this slot family to end
+    while (!disposed && (familyBusy(id) || styleWave)) await new Promise((r) => setTimeout(r, 120));
+    if (disposed) return;
+    const shell = adopt();
+    if (!shell) return;
+    if (furnisher.placed.get(id) !== rec) { shell.removeFromParent(); return; } // swapped away meanwhile: it is in the cache
+    budget.inflight.add(id);
+    try {
+      decorate(rec.twin); hideForCutaway(rec); refreshNoAO(); interaction.refresh(); sceneVersion++; invalidate(3);
+      await fader.swap({ inn: [rec.twin], out: [shell], ms: 350, settle: false }); // TWINS §2.5
+    } finally { budget.inflight.delete(id); shell.removeFromParent(); shell.visible = true; if (budget.pending.size && !budget.timer) budget.timer = setTimeout(pumpBudget, 0); }
+    if (disposed) return;
+    sceneVersion++;
+    if (highlighted === id) post.setSelection(furnisher.meshesOf(id));
+    // same catalogue dims: the camera and the turntable stay (the family's home transforms are unchanged)
+    renderer.shadowMap.needsUpdate = true; queueContact();
+    scheduleLocal([furnisher.boxOf(id)]); // probes near the item re-bake (new albedo), blended in
+    queueWarm([rec.group]); invalidate(3);
   }
   const unsubStore = store?.on ? store.on('change', onStoreChange) : () => {};
   const unsubPlan = store?.on ? store.on('plan', onPlan) : () => {};
@@ -1895,11 +1993,10 @@ export async function createVillar({
     const env = lighting.skyEnvFor(tod);
     // the city's aerial-perspective haze takes the photographic sky's horizon colour (same level as before)
     skyline.setTimeOfDay(tod, { ...SKY_PRESETS[tod], hazeTint: lighting.hazeTint(tod) }, env);
-    // window plate (if approved for this time): crossfades in over the city; its colours tint the window fill
-    lighting.setPlateTint(tod, plate.colours(tod));
+    // window plate (if approved for this time): crossfades in over the city
     plate.setTimeOfDay(tod);
     arch.setSkyEnv(env);
-    materials.setLampsOn?.(TOD[tod].lamps, 1);
+    lampsOn(TOD[tod].lamps, 1);
     applyExposure();
     applyWhiteBalance();
     applyBackdrop();
@@ -2025,14 +2122,14 @@ export async function createVillar({
     }
     if (!L.switched) {
       if (!TOD[L.from].lamps) lighting.sunBlend(L.from, L.to, t / 0.5 * 0.5);
-      else if (L.groups) { ramp(L.groups, 0, 0.45, false, t); materials.setLampsOn?.(true, 1 - clamp(t / 0.45, 0, 1)); }
+      else if (L.groups) { ramp(L.groups, 0, 0.45, false, t); lampsOn(true, 1 - clamp(t / 0.45, 0, 1)); }
     } else {
       if (!TOD[L.to].lamps) lighting.sunBlend(L.from, L.to, t);
       else {
         if (L.groups) ramp(L.groups, 0.5, 0.95, true, t);
         const f = clamp((t - 0.5) / 0.2, 0, 1);
         for (const [l, I] of L.fixed || []) l.intensity = I * f;
-        materials.setLampsOn?.(true, clamp((t - 0.5) / 0.45, 0, 1));
+        lampsOn(true, clamp((t - 0.5) / 0.45, 0, 1));
       }
     }
     applyExposure(); applyWhiteBalance();
@@ -2040,7 +2137,7 @@ export async function createVillar({
     if (t >= 1) {
       lapse = null;
       lighting.setTimeOfDay(currentTime);   // exact end state (sun, lamps, downlights)
-      materials.setLampsOn?.(TOD[currentTime].lamps, 1);
+      lampsOn(TOD[currentTime].lamps, 1);
       applyExposure(); applyWhiteBalance();
       renderer.shadowMap.needsUpdate = true;
     }
@@ -2196,8 +2293,8 @@ export async function createVillar({
     const cur = lighting.evening;
     if (evening === cur) return fn();
     lighting.useLightSet(evening);
-    materials.setLampsOn?.(evening, 1);
-    try { return skyline.withMaterials(evening, fn); } finally { lighting.useLightSet(cur); materials.setLampsOn?.(cur, 1); }
+    lampsOn(evening, 1);
+    try { return skyline.withMaterials(evening, fn); } finally { lighting.useLightSet(cur); lampsOn(cur, 1); }
   };
   /** Programs can be compiled ahead at all (non-KHR software GL would freeze for seconds per program). */
   const canWarm = () => parallelCompile || !softwareGL || prewarmOpt === 'force';
@@ -2409,6 +2506,43 @@ export async function createVillar({
     },
     /** Build a slot's alternatives in idle time (the UI calls this when the item sheet opens). */
     prebuild(slotId) { queuePrebuild(slotId); },
+    /**
+     * Build + compile these items for a slot ahead of a swap (focus card tiles: other packs' pieces, variants,
+     * guests — anything `prebuild(slotId)` does not cover). Idle-time, newest request first, ≤ 24 queued.
+     */
+    prefetch(itemIds, { slotId } = {}) {
+      if (!slotId || !furnisher.placed.has(slotId) && !layout.slots.some((q) => q.id === slotId)) return 0;
+      const all = catalog?.items || catalog || [];
+      const items = (Array.isArray(itemIds) ? itemIds : [itemIds]).map((id) => (typeof id === 'object' ? id : (store?.item?.(id) || all.find?.((i) => i.id === id)))).filter((it) => it && it.id);
+      if (!items.length) return 0;
+      const sids = store?.slotsFor?.(slotId) || [slotId];
+      const jobs = [];
+      for (const item of items) for (const sid of sids) jobs.push({ slotId: sid, item });
+      const key = (j) => j.slotId + '|' + j.item.id, mine = new Set(jobs.map(key));
+      prebuildQ = jobs.concat(prebuildQ.filter((q) => !mine.has(key(q)))).slice(0, 24);
+      workerPrebuild(items).then(() => idle(prebuildStep));
+      return jobs.length;
+    },
+    /**
+     * Where slots are on screen: { [slotId]: { x, y (NDC of the box centre, lens shift and insets included),
+     * angle (° yaw off the view axis, + = right), visible (centre inside the frame, in front of the camera) } }.
+     */
+    project(slotIds) {
+      const out = {};
+      camera.updateMatrixWorld();
+      const v = new THREE.Vector3(), c = new THREE.Vector3();
+      for (const id of (Array.isArray(slotIds) ? slotIds : [slotIds])) {
+        const b = furnisher.boxOf(id);
+        if (!b || b.isEmpty()) continue;
+        b.getCenter(c);
+        v.copy(c).applyMatrix4(camera.matrixWorldInverse);
+        const front = v.z < -camera.near;
+        const angle = Math.atan2(v.x, -v.z) / DEG;
+        v.copy(c).project(camera);
+        out[id] = { x: +v.x.toFixed(4), y: +v.y.toFixed(4), angle: +angle.toFixed(1), visible: front && Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1 };
+      }
+      return out;
+    },
     /** Live → Photo: clean JPEG of the current view + quantized pose + items by pixel area (see capture()). */
     capture,
     /** True while anything changes the next frame on its own (flight, dissolves, slider runs, GI bakes, …). */
@@ -2485,6 +2619,7 @@ export async function createVillar({
     probes.dispose();
     skyline.dispose();
     plate.dispose();
+    try { twins?.dispose?.(); } catch { /* ignore */ }
     lighting.dispose();
     post.dispose();
     marker.mesh.geometry.dispose(); marker.mat.dispose();

@@ -359,6 +359,7 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
   stageBlur.setSize(size.x, size.y);
   // stage: { mode: 'spot'|'stage', items: [objects drawn in the item pass], hideInItemPass: [objects], blob, dim, blur }
   let stage = null;
+  const _stageDir = new THREE.Vector3(), _stagePos = new THREE.Vector3();
   const plainRender = renderPass.render.bind(renderPass);
   renderPass.render = (r, writeBuffer, readBuffer, dt, mask) => {
     if (!stage || !stage.items.length) return plainRender(r, writeBuffer, readBuffer, dt, mask);
@@ -383,7 +384,13 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
       r.setRenderTarget(readBuffer);
       if (stage.mode === 'stage') r.clearDepth();
       if (stage.blob) stage.blob.visible = true;
-      try { r.render(scene, camera); } finally { r.autoClear = ac; scene.background = bg; if (stage.blob) stage.blob.visible = false; }
+      // optional dolly back along the view axis for the item layer only (turntable clearance)
+      const dolly = stage.mode === 'stage' ? (stage.dolly || 0) : 0;
+      if (dolly > 0) { camera.getWorldDirection(_stageDir); _stagePos.copy(camera.position); camera.position.addScaledVector(_stageDir, -dolly); camera.updateMatrixWorld(); }
+      try { r.render(scene, camera); } finally {
+        if (dolly > 0) { camera.position.copy(_stagePos); camera.updateMatrixWorld(); }
+        r.autoClear = ac; scene.background = bg; if (stage.blob) stage.blob.visible = false;
+      }
     } finally {
       for (const o of hidden) o.visible = true;
       r.shadowMap.needsUpdate = pending;

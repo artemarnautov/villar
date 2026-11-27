@@ -20,8 +20,13 @@ export function createFader({ renderer, scene, camera, target = () => null, onSh
     let list = pool.get(m);
     if (!list) { list = []; pool.set(m, list); }
     let c = list.pop();
-    if (c) c.copy(m);                     // re-sync: colour fixes, lamp glow, visibility may have changed (T6)
-    else c = m.clone();
+    // Material.copy() serialises userData (JSON): a texture kept there (an edition's motif, a twin's maps) made
+    // three warn "Unable to serialize Texture" on every dissolve. Copy without it; userData is set right below
+    const ud = m.userData; m.userData = {};
+    try {
+      if (c) c.copy(m);                   // re-sync: colour fixes, lamp glow, visibility may have changed (T6)
+      else c = m.clone();
+    } finally { m.userData = ud; }
     c.alphaHash = true; c.transparent = false; c.depthWrite = true;
     c.userData = { ...m.userData, fadeOf: m, villarSSAO: false };
     decorate(c);

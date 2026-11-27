@@ -489,3 +489,38 @@ and proportions off by more than ±3 % after the uniform scale. A final failure 
   slot's descendants after `onTwin`.
 - **Beds and sofas.** A reconstructed bed must be the frame and headboard only (mattress, bedding are their own
   slots), a sofa without scatter cushions and throws. The turnaround prompt removes them; the QA gate checks it.
+
+## Engine status: eng-1 / eng-2 (27 Nov) — what shipped, for the other owners
+
+New / changed API (all feature-detectable on `villar`):
+
+- `capture({ width, height, quality, wait, timeout = 4000, depth })` → `{ blob, width, height, pose, items, time, style,
+  version, depth? }`. `items[i].bbox` = normalised `[x, y, w, h]`, origin top-left. `depth: true` adds
+  `{ blob (8-bit PNG, white = near), width (≤ 512), height, near, far, encoding: 'inverse' }`;
+  metres = `1 / (v/255 · (1/near − 1/far) + 1/far)`. Captures queue (each keeps its own size); the visible canvas is
+  never resized or drawn by a capture.
+- `pose().key` ends `|a<aspect>|m<cut>` and `|o<slot>:<angle>` when an item is focused.
+- `focusNext(dir)` → `slotId | null` (one stop per selection key, left → right as on screen at entry); it flies and emits
+  `select`. `inspectReset()`. `inspect` getter + `'inspect' { slotId, angle, atRest, home }`.
+- `project(slotIds)` → `{ [slotId]: { x, y, angle, visible } }` (NDC of the body-box centre; `angle` ° off the view
+  axis, + right).
+- `prefetch(itemIds, { slotId })` → number of builds queued (any catalogue item, idle-time build + compile).
+- `setInsets()` while focused retargets the flight at once from its current velocity (no debounce).
+- A swap of the focused slot keeps the camera and the turntable angle unless the new body box differs by > 10 %.
+- Hosted items (cushions, throw, bedding, decor, tableware) turn together with their host; a turned family never
+  clips the camera (the item layer is drawn from further back when its sweep would reach it).
+- Wall art hangs by the slot's `hang` rule (furnish.js `hang()`), re-placed when its `over` / `centreOn` / `clear` slot
+  changes.
+
+Engine options (createVillar): `media: { url(key), approved }` (edition images only for approved Storage keys;
+main.js passes `mediaUrl` + `artApproved` from ui/config.js, list = `site/data/art.json`), `twinsBase` (twins.js is
+created only when it is given; main.js passes `MEDIA_BASE`), `inspect` (Focus v2 stage + turntable, default on),
+`timelapse`, `grade`, `opening`, `plates` (default off until eng-3; URL flags `?inspect=…&timelapse=…&grade=…
+&opening=…&plate=on|off` override for the harness).
+
+For the modeler: (1) `sinkParts` nickel parts have no `uv` but the material is anisotropic → NaN normals; the engine
+adds planar uvs and a global non-finite guard now, but anisotropic parts should carry uvs. (2) A texture kept in
+`material.userData` (`artMotif`) makes `Material.copy()` warn "Unable to serialize Texture"; the fader now copies
+without userData, other cloners would still warn.
+
+For twins: `connect-src 'self'` in the CSP will block `fetch()` of GLBs from Storage once the manifest is not empty.

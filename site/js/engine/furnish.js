@@ -17,7 +17,7 @@ export const LAMP_CANDELA = 2.2;
 const FLAME_PAD = { centerpiece: 3, nightstand_decor: 1, decor_set: 1 };
 const FLAT = new Set(['rug', 'runner']);
 
-export function createFurnisher({ layout, store, materials, buildItem, releaseItem = null, quality = 'high', maxLampShadows = 2, artImage = null }) {
+export function createFurnisher({ layout, store, materials, buildItem, releaseItem = null, quality = 'high', maxLampShadows = 2, artImage = null, twins = null, onTwin = null }) {
   const root = new THREE.Group();
   root.name = 'furniture';
   const slots = layout.slots;
@@ -239,6 +239,7 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
     return rec || null;
   }
   function disposeRec(rec) {
+    rec.gone = true; if (rec.twin && twins) { twins.release(rec.twin); rec.twin = null; } // not in the modeler's cache
     // engine-made lights first (shadow maps), then hand the model back to the modeler's cache
     for (const l of rec.lights) { l.removeFromParent(); l.target?.removeFromParent(); l.dispose?.(); }
     if (releaseItem) { try { releaseItem(rec.group); return; } catch (e) { console.debug('[villar] releaseItem failed', e); } }
@@ -283,7 +284,18 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
     const lights = makeLights(group, slot, item);
     group.traverse((o) => { if (o.isMesh && o.userData.noCastShadow) o.castShadow = false; });
     ensureBVH(group);
-    return { slot, item, group, lights, baseScaleY: group.scale.y, host: hostOf(slot.id) };
+    const rec = { slot, item, group, lights, baseScaleY: group.scale.y, host: hostOf(slot.id), twin: null, gone: false };
+    if (twins?.has(item.id)) twins.load(item).then((twin) => {          // docs/TWINS.md §2.5: the procedural model shows at once
+      if (!twin) return;                                                 // 404 / bad dims / timeout: it simply stays
+      const adopt = () => {                                              // → the procedural holder, or null when the rec is gone
+        if (rec.gone || rec.twin) { twins.release(twin); return null; }
+        ensureBVH(twin); rec.twin = twin;
+        return twins.adopt(group, twin);                                 // same slot group; slotId / slotType on its meshes (ID pass, picking)
+      };
+      if (onTwin && placed.get(slot.id) === rec) onTwin(rec, adopt);     // on screen: the engine dissolves and re-lights
+      else adopt()?.removeFromParent();                                  // cached / prebuilt: nothing to animate
+    });
+    return rec;
   }
 
   /** Position a rec in its slot (attach slots follow their parent's current anchors). */
@@ -545,6 +557,8 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
     assignLampShadows: () => assignLampShadows(maxLampShadows),
     /** World bounding box of a slot's current item (null if empty). */
     boxOf: (id) => { const g = placed.get(id)?.group; return g ? new THREE.Box3().setFromObject(g) : null; }, lampLights, meshesOf, info,
+    /** Body box for framing: the modeler's / twin's `userData.bounds` (no cords, no stray leaves), else the hull. */
+    fitBox: (id) => { const g = placed.get(id)?.group; return g ? fitBounds(g) : null; },
     groupOf: (id) => placed.get(id)?.group || null,
     slotsOfType: (type) => slots.filter((s) => s.type === type),
     dispose() {

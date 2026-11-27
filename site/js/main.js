@@ -17,6 +17,7 @@ import { createStage } from './ui/stage.js';
 import { createStylePicker } from './ui/stylepicker.js';
 import { createToast } from './ui/toast.js';
 import { packName } from './ui/format.js';
+import { MEDIA_BASE, mediaUrl, artApproved } from './ui/config.js'; // [engine, eng-2] edition images + twins
 
 const warn = (...a) => console.warn('[villar]', ...a);
 const mq = (q) => window.matchMedia(q).matches;
@@ -271,7 +272,11 @@ async function boot() {
       const mod = await import('./engine/index.js');
       const createVillar = mod.createVillar || mod.default?.createVillar || mod.default;
       if (typeof createVillar !== 'function') throw new Error('engine/index.js does not export createVillar');
-      await stage.mountEngine((opts) => createVillar(opts), { layout, catalog, stylepack: store.style(), palette: activePalette(), quality: pickQuality() });
+      await stage.mountEngine((opts) => createVillar(opts), {
+        layout, catalog, stylepack: store.style(), palette: activePalette(), quality: pickQuality(),
+        // [engine, eng-2] edition images only for approved keys (data/art.json); twins by the manifest (data/twins.json)
+        media: { url: mediaUrl, approved: artApproved }, twinsBase: MEDIA_BASE,
+      });
     } catch (err) {
       stage.fail(err);
     }
