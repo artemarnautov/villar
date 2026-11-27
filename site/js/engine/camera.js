@@ -295,14 +295,23 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
     commitPose(introFrom(to, back, rise));
     flyTo(to, { duration: seconds, onDone: () => { onChange({ view: name, mode: 'walk' }); onDone?.(true); } });
     const tr = state.transition;
-    if (tr) { tr.intro = true; tr.lift = 0; }
+    if (tr) {
+      tr.intro = true; tr.lift = 0;
+      // ANY input skips it — also input that never reaches the canvas (page scroll, a tap on the HUD, a key)
+      const stop = () => { off(); cancelIntro(); };
+      const evs = ['pointerdown', 'wheel', 'keydown', 'touchstart'];
+      const off = () => { for (const n of evs) window.removeEventListener(n, stop, true); };
+      for (const n of evs) window.addEventListener(n, stop, { capture: true, passive: true });
+      tr.offIntro = off;
+      const done = tr.onDone; tr.onDone = () => { off(); done?.(); };
+    }
     return true;
   }
   /** Stop the opening shot where it is, easing out of its current velocity (≈ 0.45 s). */
   function cancelIntro() {
     const tr = state.transition;
     if (!tr || !tr.intro || tr.kind !== 'spring') return false;
-    tr.intro = false;
+    tr.intro = false; tr.offIntro?.();
     const w = 5.8 / 0.45;
     tr.w = w;
     tr.toPos.copy(tr.pos).addScaledVector(tr.vPos, 1 / w);
@@ -361,7 +370,8 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
     const tv = Math.tan((camera.fov * DEG) / 2), th = tv * camera.aspect;
     const fh = Math.max(0.25, 1 - state.insetTarget), fw = Math.max(0.25, 1 - state.insetRTarget);
     // focus v2 §1: the item fills ~55 % of the free height or 60 % of the free width, whichever binds first
-    const FILL_H = 0.55, FILL_W = 0.6;
+    // phone (portrait stage): the free area is small, so the item takes more of it (it read small at 390 px)
+    const FILL_H = camera.aspect < PORTRAIT ? 0.62 : 0.55, FILL_W = camera.aspect < PORTRAIT ? 0.78 : 0.6;
     const half = Math.min(Math.atan(tv * fh * FILL_H), Math.atan(th * fw * FILL_W));
     const dSphere = clamp(r / Math.sin(half), 0.9, 6);
     const tall = box ? box.max.y - box.min.y > 1.3 : false;

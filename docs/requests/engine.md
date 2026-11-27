@@ -515,8 +515,13 @@ New / changed API (all feature-detectable on `villar`):
 Engine options (createVillar): `media: { url(key), approved }` (edition images only for approved Storage keys;
 main.js passes `mediaUrl` + `artApproved` from ui/config.js, list = `site/data/art.json`), `twinsBase` (twins.js is
 created only when it is given; main.js passes `MEDIA_BASE`), `inspect` (Focus v2 stage + turntable, default on),
-`timelapse`, `grade`, `opening`, `plates` (default off until eng-3; URL flags `?inspect=…&timelapse=…&grade=…
-&opening=…&plate=on|off` override for the harness).
+`timelapse` (1.2 s time-lapse between times of day), `grade` (ART §2 S-curve, split tone, grain, day halation) and
+`opening` ('auto' = the 3.5 s push-in once per session, never under reduced motion; emits `'opening' { done, played,
+skipped }`, `rest` follows) are on from eng-3. `plates` (window plate from `/api/plate`, plate.js) stays OFF by default
+until its radiance is checked against the real plate on a real GPU: preview with `?plate=on&plateGain=<×>`, then
+pass `plates: true` (and `plateGain`) from main.js. URL flags `?inspect=…&timelapse=…&grade=…&opening=on|off
+&plate=on|off` override the options for the harness. `villar.busy` is also true while a time-of-day change waits
+for its sky file or shader compile.
 
 For the modeler: (1) `sinkParts` nickel parts have no `uv` but the material is anisotropic → NaN normals; the engine
 adds planar uvs and a global non-finite guard now, but anisotropic parts should carry uvs. (2) A texture kept in

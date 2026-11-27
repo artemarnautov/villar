@@ -1,45 +1,44 @@
-// Villar engine — photographic window plates (docs/PHOTOREAL.md "The window: plates", docs/ART.md §3). Owner: engine.
+// Villar engine — the window shows ONLY SKY (founder decision, 27 Nov; docs/PHOTOREAL.md "The window: plates",
+// docs/ART.md §3). Owner: engine.
 //
-// One real photo per time of day (Dubai Marina, 40th floor, 21:9, ~100° wide) replaces the procedural city in the
-// window, in depth planes:
-//   sky   — the whole plate at infinity (moves with the camera: no parallax), top edge fading into the HDR sky;
-//   city  — the plate with the sky mask cut out, on a cylinder R ≈ 900 m round the window (≈ 0.2° parallax);
-//   near  — optional second mask (near towers) on R ≈ 250 m (≈ 0.7°);
-//   without a mask: the plate alone on R ≈ 1500 m.
-// The balcony rail and the window frame are the room's own 3D in front of it. Atmospheric haze grows with the
-// layer's distance; past the plate's sides the image mirrors (no streaks), below its bottom it fades into the
-// mean colour of the bottom band (the view down past the balcony slab).
-//
-// Every layer is drawn at a fixed 40 m view depth along its true ray (vertex shader): the interior (< 15 m) always
-// covers it, it always covers the procedural skyline (> 100 m) during the crossfade, and the layers never fight.
-// `GET /api/plate?time=…` → { url, url2k, width, height, horizon, hfov, sun, mask?, video } | { pending } | { error }.
-// `pending` is the normal state until a plate is approved: the procedural city stays, and we poll gently.
+// No city, no skyline, no ground: through the glass there is sky down to the horizon and luminous haze below it.
+//   skirt — always on: haze from a few degrees above the horizon down to the nadir, over the HDR sky's own ground,
+//           so looking down from the high floor never shows an edge or a ground (also the fallback without a plate);
+//   sky   — a sky-only plate when one is approved (`GET /api/plate?time=…` → { url, url2k, width, height, sky: true,
+//           horizon: 1, hfov, sun, video } | { pending } | { error }): the image's bottom edge is the horizon, it
+//           spans `hfov` round the window normal and hfov × height / width of elevation; past its sides it mirrors,
+//           above its top the top row continues, below the horizon its bottom rows melt into a slightly brighter
+//           haze. Both layers are at infinity (direction only: no parallax with walking, which is right for sky).
+// The balcony rail and the window frame are the room's own 3D in front of it. Layers are drawn at a fixed 40 m
+// view depth along their ray, so the interior always covers them. `pending` is the normal state until a plate is
+// approved: the photographic HDR sky + skirt stay, and we poll gently.
 import * as THREE from 'three';
 import { clamp } from './util.js';
 
 const TIMES = { morning: 'day', day: 'day', golden: 'sunset', sunset: 'sunset', evening: 'evening' };
-const DEPTH = 40;            // m, view distance every layer is drawn at
-const R = { city: 900, near: 250, single: 1500 };
-const HAZE = { sky: 0, city: 0.06, near: 0.015, single: 0.05 };
-// mean linear luminance the plate is scaled to (the window reads like today's calibrated sky; harness-tuned)
-const PLATE_L = { day: 0.3, sunset: 0.22, evening: 0.035 };
+const DEPTH = 40;            // m, view distance the layers are drawn at
+// mean linear luminance a sky plate is scaled to (≈ today's calibrated sky through the window; `gain` tunes it)
+const PLATE_L = { day: 0.16, sunset: 0.14, evening: 0.035 }; // lower than the plain HDR sky on purpose: clouds keep their texture
 const FADE_MS = 900;
+const KIND = { sky: 0, skirt: 4 };
 
 const smooth = (t) => t * t * (3 - 2 * t);
 
-/** Cylinder segment round (0,0,0) facing +Z, spanning the plate ±30 % beyond its sides and 35 % below. */
-function arcGeometry(radius, hfov, vfov, horizon) {
-  const nu = 96, nv = 28, u0 = -0.3, u1 = 1.3, v0 = -0.35, v1 = 1.0;
-  const Hs = 2 * radius * Math.tan((vfov / 2) * Math.PI / 180); // height of the image (uv straight, as specified)
-  const vh = 1 - horizon;
+/**
+ * Sphere patch round the origin facing +Z: azimuth (0.5 − u) · hfov for u = −0.4 … 1.4 (image left = +X = left when
+ * looking out), elevation v · vfov from the nadir to the zenith. uv = (u, v): v = 0 is the horizon.
+ */
+function skyPatch(hfov, vfov) {
+  const nu = 72, nv = 48, u0 = -0.4, u1 = 1.4, v0 = -90 / vfov, v1 = 90 / vfov;
   const pos = [], uv = [], idx = [];
   for (let j = 0; j <= nv; j++) {
-    const v = v0 + (v1 - v0) * (j / nv);
+    // denser rows near the horizon
+    const t = j / nv, e = (t < 0.5 ? -Math.pow(1 - 2 * t, 1.6) : Math.pow(2 * t - 1, 1.6)) * 90;
+    const el = e * Math.PI / 180, v = e / vfov;
     for (let i = 0; i <= nu; i++) {
-      const u = u0 + (u1 - u0) * (i / nu);
-      const th = (0.5 - u) * hfov * Math.PI / 180; // u = 0 (image left) = +X = left when looking out along +Z
-      pos.push(radius * Math.sin(th), (v - vh) * Hs, radius * Math.cos(th));
-      uv.push(u, v);
+      const u = u0 + (u1 - u0) * (i / nu), az = (0.5 - u) * hfov * Math.PI / 180;
+      pos.push(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az));
+      uv.push(u, clamp(v, v0, v1));
     }
   }
   for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
@@ -54,76 +53,49 @@ function arcGeometry(radius, hfov, vfov, horizon) {
   return g;
 }
 
-/** MeshStandard (scene rule) that is all emission: the plate, its mask, haze, bottom fade, crossfade to a 2nd plate. */
+/** MeshStandard (scene rule) that is all emission: the sky plate (crossfading to a 2nd one) or the haze skirt. */
 function plateMaterial(kind, U) {
   const m = new THREE.MeshStandardMaterial({
     color: 0x000000, roughness: 1, metalness: 0, emissive: 0xffffff, emissiveIntensity: 1, envMapIntensity: 0,
-    transparent: true, opacity: 0, depthWrite: false, fog: false, side: THREE.DoubleSide, name: `window-plate-${kind}`,
+    transparent: true, opacity: kind === 'skirt' ? 1 : 0, depthWrite: false, fog: false, side: THREE.DoubleSide, name: `window-${kind}`,
   });
-  m.defines = { PLATE_KIND: { sky: 0, city: 1, near: 2, single: 3 }[kind] };
+  m.defines = { PLATE_KIND: KIND[kind] };
   m.userData.plate = true;
   m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, U, { plateHazeK: { value: HAZE[kind] } });
+    Object.assign(sh.uniforms, U);
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec2 vPlateUv;\nuniform vec3 plateOrigin;')
+      .replace('#include <common>', '#include <common>\nvarying vec2 vPlateUv;')
       .replace('#include <project_vertex>', `
         vPlateUv = uv;
-        #if PLATE_KIND == 0
-          // at infinity: direction only (the camera's translation does not move it)
-          vec3 plateDir = normalize( ( modelMatrix * vec4( transformed, 1.0 ) ).xyz - plateOrigin );
-          vec4 mvPosition = vec4( mat3( viewMatrix ) * plateDir * ${DEPTH.toFixed(1)}, 1.0 );
-        #else
-          vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
-          mvPosition.xyz = normalize( mvPosition.xyz ) * ${DEPTH.toFixed(1)};
-        #endif
+        // at infinity: direction only (the camera's translation does not move it)
+        vec4 mvPosition = vec4( mat3( viewMatrix ) * normalize( mat3( modelMatrix ) * transformed ) * ${DEPTH.toFixed(1)}, 1.0 );
         gl_Position = projectionMatrix * mvPosition;`);
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         varying vec2 vPlateUv;
-        uniform sampler2D plateMap; uniform sampler2D plateMap2; uniform float plateMix;
-        uniform sampler2D plateMask; uniform sampler2D plateMask2; uniform float plateHasMask;
-        uniform sampler2D plateNear; uniform float plateHasNear;
-        uniform vec3 plateBottom; uniform vec3 plateBottom2; uniform vec3 plateHaze; uniform vec3 plateHaze2;
-        uniform float plateGain; uniform float plateGain2; uniform float plateHazeK;
-        vec2 plateUv( vec2 uv ) {
-          float u = uv.x < 0.0 ? - uv.x : ( uv.x > 1.0 ? 2.0 - uv.x : uv.x ); // mirrored past the sides
-          return vec2( u, clamp( uv.y, 0.002, 0.998 ) );
-        }`)
+        uniform sampler2D plateMap; uniform sampler2D plateMap2; uniform float plateMix; uniform float plateDrift;
+        uniform vec3 plateBottom; uniform vec3 plateBottom2; uniform vec3 plateSkirt;
+        uniform float plateGain; uniform float plateGain2;`)
       .replace('#include <emissivemap_fragment>', `
         {
-          vec2 puv = plateUv( vPlateUv );
-          vec3 c1 = texture2D( plateMap, puv ).rgb * plateGain;
-          vec3 c2 = texture2D( plateMap2, puv ).rgb * plateGain2;
-          vec3 bottom = mix( plateBottom * plateGain, plateBottom2 * plateGain2, plateMix );
-          vec3 haze = mix( plateHaze * plateGain, plateHaze2 * plateGain2, plateMix );
-          vec3 c = mix( c1, c2, plateMix );
-          c = mix( c, bottom, smoothstep( 0.0, -0.22, vPlateUv.y ) );         // below the plate: the bottom band
-          c = mix( c, haze, plateHazeK );                                       // aerial perspective by depth plane
-          float a = 1.0 - smoothstep( 0.9, 1.0, vPlateUv.y );                   // top edge: into the HDR sky
-          #if PLATE_KIND == 1
-            float sky = mix( texture2D( plateMask, puv ).r, texture2D( plateMask2, puv ).r, plateMix );
-            a *= 1.0 - sky * step( 0.5, plateHasMask );
-          #elif PLATE_KIND == 2
-            a *= texture2D( plateNear, puv ).r * step( 0.5, plateHasNear );
+          #if PLATE_KIND == 4
+            // haze from just above the horizon down: the fallback "ground" of a sky-only window
+            totalEmissiveRadiance = plateSkirt * ( 1.0 + 0.1 * smoothstep( 0.0, -0.6, vPlateUv.y ) );
+            diffuseColor.a *= 1.0 - smoothstep( 0.0, 0.14, vPlateUv.y );
+          #else
+            float u = vPlateUv.x + plateDrift;
+            u = u < 0.0 ? - u : ( u > 1.0 ? 2.0 - u : u );                          // mirrored past the sides
+            vec2 puv = vec2( u, clamp( vPlateUv.y, 0.004, 0.996 ) );              // top row continues upward
+            vec3 c = mix( texture2D( plateMap, puv ).rgb * plateGain, texture2D( plateMap2, puv ).rgb * plateGain2, plateMix );
+            vec3 haze = mix( plateBottom * plateGain, plateBottom2 * plateGain2, plateMix );
+            // below the horizon: the bottom rows melt into a slightly brighter haze (no edge, no ground)
+            c = mix( c, haze * 1.08, smoothstep( 0.0, -0.3, vPlateUv.y ) );
+            totalEmissiveRadiance = c;
           #endif
-          totalEmissiveRadiance = c;
-          diffuseColor.a *= a;
         }`);
   };
-  m.customProgramCacheKey = () => `villar-plate-${kind}`;
+  m.customProgramCacheKey = () => `villar-window-${kind}`;
   return m;
-}
-
-/** Feathered (≈ 2 px) single-channel mask texture from an image; white = sky. */
-function maskTexture(img) {
-  const c = document.createElement('canvas');
-  c.width = Math.min(2048, img.naturalWidth || img.width); c.height = Math.round(c.width * (img.naturalHeight || img.height) / (img.naturalWidth || img.width));
-  const g = c.getContext('2d');
-  g.filter = `blur(${Math.max(0.6, c.width / 2048).toFixed(2)}px)`;
-  g.drawImage(img, 0, 0, c.width, c.height);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.NoColorSpace; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter;
-  return t;
 }
 
 /** Mean linear colours of the plate: whole frame, sky band, horizon band (±3°), bottom band. null if tainted. */
@@ -175,46 +147,42 @@ function loadImage(url) {
  * @param enabled false = never fetch (the procedural city stays)
  * @param source  optional (time) → Promise<plate json> (tests / stubs); default GET `${base}?time=`
  */
-export function createPlate({ center, eyeY = 1.45, quality = 'high', enabled = true, source = null, base = '/api/plate', onChange = () => {} } = {}) {
+export function createPlate({ center, eyeY = 1.45, quality = 'high', enabled = true, source = null, base = '/api/plate', gain = 1, onChange = () => {} } = {}) {
   const group = new THREE.Group();
-  group.name = 'window-plate';
-  group.visible = false;
-  group.position.set(center.x, 0, center.z);
-  const WHITE = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1); WHITE.needsUpdate = true;
+  group.name = 'window-sky';
+  group.position.set(center.x, eyeY, center.z);
   const BLACK = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); BLACK.needsUpdate = true;
   const U = {
-    plateMap: { value: BLACK }, plateMap2: { value: BLACK }, plateMix: { value: 0 },
-    plateMask: { value: BLACK }, plateMask2: { value: BLACK }, plateHasMask: { value: 0 },
-    plateNear: { value: BLACK }, plateHasNear: { value: 0 },
+    plateMap: { value: BLACK }, plateMap2: { value: BLACK }, plateMix: { value: 0 }, plateDrift: { value: 0 },
     plateBottom: { value: new THREE.Color() }, plateBottom2: { value: new THREE.Color() },
-    plateHaze: { value: new THREE.Color() }, plateHaze2: { value: new THREE.Color() },
+    plateSkirt: { value: new THREE.Color(0.5, 0.5, 0.5) },
     plateGain: { value: 1 }, plateGain2: { value: 1 },
-    plateOrigin: { value: new THREE.Vector3(center.x, eyeY, center.z) },
   };
-  const mats = { sky: plateMaterial('sky', U), city: plateMaterial('city', U), near: plateMaterial('near', U), single: plateMaterial('single', U) };
+  const mats = { skirt: plateMaterial('skirt', U), sky: plateMaterial('sky', U) };
   const meshes = {};
+  const mk = (kind, geo, order) => {
+    const m = new THREE.Mesh(geo, mats[kind]);
+    m.renderOrder = order; m.frustumCulled = false;
+    m.userData.noPick = true; m.userData.noAO = true; m.userData.plate = true;
+    m.castShadow = false; m.receiveShadow = false; m.name = `window-${kind}`;
+    group.add(m); meshes[kind] = m;
+    return m;
+  };
+  mk('skirt', skyPatch(100, 43), -40);
   let geomKey = '';
   function ensureGeometry(meta) {
     const hfov = clamp(+meta.hfov || 100, 40, 160);
     const vfov = hfov * (meta.height || 9) / (meta.width || 21);
-    const horizon = clamp(+meta.horizon || 0.5, 0.2, 0.8);
-    const key = `${hfov}|${vfov.toFixed(2)}|${horizon}`;
+    const key = `${hfov}|${vfov.toFixed(2)}`;
     if (key === geomKey) return;
     geomKey = key;
-    for (const m of Object.values(meshes)) { m.geometry.dispose(); group.remove(m); }
-    const mk = (kind, radius, order) => {
-      const m = new THREE.Mesh(arcGeometry(radius, hfov, vfov, horizon), mats[kind]);
-      m.position.y = eyeY; m.renderOrder = order; m.frustumCulled = false;
-      m.userData.noPick = true; m.userData.noAO = true; m.userData.plate = true;
-      m.castShadow = false; m.receiveShadow = false; m.name = `plate-${kind}`;
-      group.add(m); meshes[kind] = m;
-    };
-    mk('sky', R.single, -30); mk('city', R.city, -20); mk('near', R.near, -10); mk('single', R.single, -30);
+    if (meshes.sky) { meshes.sky.geometry.dispose(); group.remove(meshes.sky); }
+    mk('sky', skyPatch(hfov, vfov), -30).visible = false;
   }
 
-  const plates = new Map(); // time → { state, meta, tex, mask, near, colours, gain, timer, tries }
+  const plates = new Map(); // time → { state, meta, tex, colours, gain, timer, tries }
   let want = null, shown = null, fade = 0, fadeTo = 0, mixAnim = null, disposed = false;
-  let video = null;
+  let video = null, driftT = 0;
 
   function slot(time) { let s = plates.get(time); if (!s) { s = { state: 'idle', tries: 0 }; plates.set(time, s); } return s; }
 
@@ -233,18 +201,19 @@ export function createPlate({ center, eyeY = 1.45, quality = 'high', enabled = t
       clearTimeout(s.timer); s.timer = setTimeout(() => { s.state = 'idle'; if (want === time || !shown) request(time); }, wait);
       return;
     }
+    // only sky plates go in the window (an older plate with a skyline would put a district there)
+    if (meta.sky !== true) { s.state = 'error'; s.meta = meta; return; }
     try {
       const url = quality === 'high' ? meta.url : (meta.url2k || meta.url);
-      const [img, maskImg] = await Promise.all([loadImage(url), meta.mask ? loadImage(meta.mask).catch(() => null) : null]);
+      const img = await loadImage(url);
       if (disposed) return;
       const tex = new THREE.Texture(img);
       tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter;
-      tex.anisotropy = 8; tex.needsUpdate = true; tex.name = `plate:${time}`;
+      tex.anisotropy = 8; tex.needsUpdate = true; tex.name = `sky-plate:${time}`;
       const vfov = (+meta.hfov || 100) * (meta.height || img.naturalHeight) / (meta.width || img.naturalWidth);
-      const colours = plateColours(img, clamp(+meta.horizon || 0.5, 0.2, 0.8), vfov, maskImg);
-      const L = lum(colours?.mean) || 0.2;
-      s.gain = (PLATE_L[time] ?? 0.5) / L;
-      Object.assign(s, { state: 'ready', meta, tex, mask: maskImg ? maskTexture(maskImg) : null, colours });
+      const colours = plateColours(img, 1, vfov, null);
+      const L = lum(colours?.mean) || 0.3;
+      Object.assign(s, { state: 'ready', meta, tex, colours, gain: gain * (PLATE_L[time] ?? 0.5) / L });
       onChange({ type: 'ready', time });
       if (want === time) show(time);
     } catch {
@@ -255,32 +224,24 @@ export function createPlate({ center, eyeY = 1.45, quality = 'high', enabled = t
   function bind(which, s) {
     const two = which === 2;
     U[two ? 'plateMap2' : 'plateMap'].value = s.tex;
-    U[two ? 'plateMask2' : 'plateMask'].value = s.mask || BLACK;
     U[two ? 'plateGain2' : 'plateGain'].value = s.gain;
-    U[two ? 'plateBottom2' : 'plateBottom'].value.copy(s.colours?.bottom || s.colours?.mean || new THREE.Color(0.2, 0.2, 0.2));
-    U[two ? 'plateHaze2' : 'plateHaze'].value.copy(s.colours?.horizon || s.colours?.mean || new THREE.Color(0.5, 0.5, 0.5));
+    U[two ? 'plateBottom2' : 'plateBottom'].value.copy(s.colours?.bottom || s.colours?.horizon || s.colours?.mean || new THREE.Color(0.5, 0.5, 0.5));
   }
-  function layout(s) {
-    ensureGeometry(s.meta);
-    const masked = !!s.mask;
-    U.plateHasMask.value = masked ? 1 : 0;
-    U.plateHasNear.value = 0;
-    meshes.sky.visible = masked; meshes.city.visible = masked; meshes.near.visible = false; meshes.single.visible = !masked;
-  }
-  /** Show `time`'s plate: fade in over the city, or crossfade from the plate on screen. */
+  /** Show `time`'s sky: fade in over the HDR sky, or crossfade from the sky on screen. */
   function show(time, { ms = FADE_MS } = {}) {
     const s = plates.get(time);
     if (!s || s.state !== 'ready') return false;
     if (mixAnim && mixAnim.to === time) { fadeTo = 1; return true; } // already crossfading there
-    if (shown === time && !mixAnim) { fadeTo = 1; group.visible = true; return true; }
+    if (shown === time && !mixAnim) { fadeTo = 1; return true; }
+    ensureGeometry(s.meta);
     if (shown && shown !== time && fade > 0.01) {
       bind(2, s);
       mixAnim = { t: 0, ms: Math.max(1, ms), to: time };
     } else {
-      bind(1, s); U.plateMix.value = 0; layout(s);
+      bind(1, s); U.plateMix.value = 0;
       shown = time; mixAnim = null;
     }
-    fadeTo = 1; group.visible = true;
+    fadeTo = 1; meshes.sky.visible = true;
     syncVideo();
     onChange({ type: 'show', time });
     return true;
@@ -305,26 +266,26 @@ export function createPlate({ center, eyeY = 1.45, quality = 'high', enabled = t
 
   return {
     group,
-    /** Time of day changed (or first call): show its plate if we have it, else ask for it; keep the city meanwhile. */
+    /** Time of day changed (or first call): show its sky plate if we have it, else ask for it; the HDR sky meanwhile. */
     setTimeOfDay(tod, { ms = FADE_MS } = {}) {
       const time = TIMES[tod] || 'day';
       want = time;
       const s = slot(time);
       if (s.state === 'ready') return show(time, { ms });
       if (s.state === 'idle') request(time);
-      // no plate for this time yet: back to the procedural city (no pop — fade)
-      if (shown) fadeTo = 0;
+      if (shown) fadeTo = 0; // no plate for this time yet: back to the HDR sky (a fade, no pop)
       return false;
     },
+    /** Radiance of the haze below the horizon (linear RGB): the HDR sky's horizon haze of this time of day. */
+    setHaze(color) { U.plateSkirt.value.copy(color); },
     /** Per frame. Returns true while animating (fade, crossfade). */
     step(dt) {
       let busy = false;
       if (fade !== fadeTo) {
         const k = dt * 1000 / FADE_MS;
         fade = fadeTo > fade ? Math.min(fadeTo, fade + k) : Math.max(fadeTo, fade - k);
-        const e = smooth(fade);
-        for (const m of Object.values(mats)) m.opacity = e;
-        if (fade === 0) { group.visible = false; shown = null; syncVideo(); }
+        mats.sky.opacity = smooth(fade);
+        if (fade === 0) { if (meshes.sky) meshes.sky.visible = false; shown = null; syncVideo(); }
         busy = true;
       }
       if (mixAnim) {
@@ -333,33 +294,40 @@ export function createPlate({ center, eyeY = 1.45, quality = 'high', enabled = t
         U.plateMix.value = smooth(t);
         if (t >= 1) {
           const s = plates.get(mixAnim.to);
-          bind(1, s); U.plateMix.value = 0; layout(s); shown = mixAnim.to; mixAnim = null; syncVideo();
+          bind(1, s); U.plateMix.value = 0; shown = mixAnim.to; mixAnim = null; syncVideo();
         }
         busy = true;
       }
       return busy;
     },
-    /** 0…1: how much of the window the plate covers (the engine hides the procedural city at 1). */
+    /** Slow cloud drift: a ping-pong of ±1 % of the plate's width over ~5 min (wrap-free). Returns true if it moved. */
+    drift(dt) {
+      if (!shown || fade < 1) return false;
+      driftT += dt;
+      U.plateDrift.value = 0.01 * Math.sin(driftT * 2 * Math.PI / 300);
+      return true;
+    },
+    /** 0…1: how much of the window sky is the plate. */
     get coverage() { return fade >= 1 && !mixAnim ? 1 : fade; },
     get shown() { return shown; },
     get animating() { return fade !== fadeTo || !!mixAnim; },
-    /** Plate colours for lighting (linear, luminance 1): { sky, horizon } of the plate on screen, or null. */
+    /** Plate colours for lighting (linear, luminance 1): { sky, horizon } of the plate, or null. */
     colours(tod) {
       const s = plates.get(TIMES[tod] || 'day');
       if (!s || s.state !== 'ready' || !s.colours) return null;
       const n = (c) => { if (!c) return null; const l = lum(c); return l > 0 ? c.clone().multiplyScalar(1 / l) : null; };
-      return { sky: n(s.colours.sky), horizon: n(s.colours.horizon) };
+      return { sky: n(s.colours.sky || s.colours.mean), horizon: n(s.colours.horizon || s.colours.bottom) };
     },
     state(tod) { return slot(TIMES[tod] || 'day').state; },
-    /** Path tracer snapshot: the plate leaves (it keeps the HDR sky and the procedural city). */
+    /** Path tracer snapshot: the raster sky layers leave (it lights with the HDR sky). */
     preparePhoto() { const v = group.visible; group.visible = false; return () => { group.visible = v; }; },
     dispose() {
       disposed = true;
-      for (const s of plates.values()) { clearTimeout(s.timer); s.tex?.dispose(); s.mask?.dispose(); }
+      for (const s of plates.values()) { clearTimeout(s.timer); s.tex?.dispose(); }
       for (const m of Object.values(meshes)) m.geometry.dispose();
       for (const m of Object.values(mats)) m.dispose();
       if (video) { video.el.pause(); video.tex.dispose(); video = null; }
-      WHITE.dispose(); BLACK.dispose();
+      BLACK.dispose();
     },
   };
 }

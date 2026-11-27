@@ -38,7 +38,7 @@ const PHOTO_EXPOSURE = 1.25;   // path-traced vs raster: the traced Entry/Day fr
 const RANK = { low: 0, medium: 1, high: 2 };
 const TIERS = ['low', 'medium', 'high'];
 // evening: a 3300 K camera under 2700 K lamps keeps them cream (R3-01: 0.6 pushed blue ×1.8 → lavender walls)
-const WB_STRENGTH = { morning: 0.85, day: 0.85, golden: 0.75, evening: 0.45 };
+const WB_STRENGTH = { morning: 0.85, day: 0.85, golden: 0.75, evening: 0.68 };
 // green/magenta trim: the desaturated night bounce under the blue gain drifts lilac (R3-01) / sunset shade magenta (R3-11)
 const WB_TINT = { morning: 1, day: 1, golden: 1.02, evening: 1.04 };
 
@@ -110,11 +110,13 @@ export async function createVillar({
   twinsBase = null,
   // window plates (PHOTOREAL.md): 'auto' = on except on a bare local static server (no /api there: no 404s);
   // true / false; `plateSource(time)` → plate JSON for stubs and tests. URL ?plate=on|off overrides.
-  plates: platesOpt = false, plateSource = null,
+  plates: platesOpt = 'auto', plateSource = null, plateGain = 1,
   // opening shot (ART §3): 'auto' = once per session on the Entry view, never under prefers-reduced-motion
-  opening = false,
+  opening = 'auto',
   // time of day as a 1.2 s time-lapse instead of a cut; ART §2 grade (S-curve, split tone, grain, day halation)
-  timelapse = false, grade = false,
+  timelapse = true, grade = true,
+  // slow cloud drift of the sky plate (±1 % of its width over ~5 min, 4 fps) on the high tier; off by default
+  skyDrift = false,
   // Focus v2 §2 (spotlight stage + turntable); off = the item stays put and a drag orbits the camera as before
   inspect = true,
 } = {}) {
@@ -122,7 +124,7 @@ export async function createVillar({
   patchProbeChunks(); // before any program compiles (incl. the non-finite pixel guard)
   // staged features: option, overridable per URL (?timelapse=on|off&grade=…&opening=…&plate=…) for the harness
   const urlFlag = (name, def) => { const v = typeof location !== 'undefined' ? new URLSearchParams(location.search).get(name) : null; return v === 'on' || v === '1' ? true : v === 'off' || v === '0' ? false : def; };
-  const FEATURE = { timelapse: urlFlag('timelapse', !!timelapse), grade: urlFlag('grade', !!grade), inspect: urlFlag('inspect', !!inspect) };
+  const FEATURE = { timelapse: urlFlag('timelapse', !!timelapse), grade: urlFlag('grade', !!grade), inspect: urlFlag('inspect', !!inspect), drift: urlFlag('drift', !!skyDrift) };
   layout = layout || store?.state?.layout;
   stylepack = store?.style?.() || stylepack || store?.state?.stylepack;
   // the active pack's architecture (walls, door finish …): palette block, pack block on top
@@ -135,6 +137,9 @@ export async function createVillar({
   catalog = catalog || store?.state?.catalog;
   const events = createEmitter();
   let disposed = false;
+  // ms since navigation at each load milestone (villar.debug.loadTimes; performance.measure('villar:ready'))
+  const loadTimes = { start: Math.round(performance.now()) };
+  const stamp = (k) => { if (loadTimes[k] == null) loadTimes[k] = Math.round(performance.now()); };
   // loading progress for the host UI (0…1), monotonic
   let loadP = 0;
   const loadProgress = (v, stage) => {
@@ -285,20 +290,26 @@ export async function createVillar({
   }
   const materials = mods.makeMaterials(renderer, Q);
   const buildItem = mods.buildItem;
-  loadProgress(0.15, 'modules');
+  loadProgress(0.15, 'modules'); stamp('modules');
 
   const S = layout.size;
   const arch = buildArchitecture({ layout, stylepack, palette, materials });
   scene.add(arch.group);
-  const skyline = createSkyline({ center: new THREE.Vector3(S.x / 2, 0, S.z) });
-  scene.add(skyline.group);
+  // The window shows only sky (founder, 27 Nov): no city, no facades, no ground — on any tier, at any time of
+  // day, in what the camera, the reflections and the GI see. The procedural skyline (sky.js createSkyline) is no
+  // longer built or loaded; this inert stand-in keeps the call sites below unchanged.
+  const skyline = { group: new THREE.Group(), setTimeOfDay() {}, withMaterials(_n, fn) { return fn(); }, preparePhoto() { return () => {}; }, dispose() {}, set onTextures(_f) {} };
+  void createSkyline;
   // a facade photo landed: redraw (the path tracer's snapshot is stale too)
   skyline.onTextures = () => { if (disposed) return; sceneVersion++; invalidate(2); };
   const plateParam = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('plate') : null;
+  // lab: ?plate=<same-origin url of a 21:9 sky image> stands in for /api/plate (all three times)
+  if (plateParam && /^\/[\w./-]+\.(jpe?g|png|webp)$/i.test(plateParam) && !plateSource) plateSource = () => ({ url: plateParam, url2k: plateParam, width: 21, height: 9, sky: true, horizon: 1, hfov: 100, video: null });
   const platesOn = plateParam === 'on' || plateParam === '1' ? true : plateParam === 'off' || plateParam === '0' ? false
     : platesOpt === 'auto' ? !!plateSource || (typeof location !== 'undefined' && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) : !!platesOpt;
   const plate = createPlate({
     center: new THREE.Vector3(S.x / 2, 0, S.z), eyeY: 1.42, quality: Q, enabled: platesOn, source: plateSource,
+    gain: (() => { const v = typeof location !== 'undefined' ? parseFloat(new URLSearchParams(location.search).get('plateGain')) : NaN; return Number.isFinite(v) && v > 0 ? v : (plateGain || 1); })(),
     onChange: (e) => {
       if (disposed) return;
       if (e.type === 'ready' && plateTOD(e.time).includes(currentTime)) plateLanded = true;
@@ -306,6 +317,7 @@ export async function createVillar({
     },
   });
   scene.add(plate.group);
+  let driftTimer = 0;
   let plateLanded = false, plateBaked = null;
   // scanned maps replaced procedural ones on live materials: same (R4-09)
   const unsubMaterials = materials.onChange ? materials.onChange(() => { if (disposed) return; sceneVersion++; invalidate(2); }) : () => {};
@@ -397,6 +409,7 @@ export async function createVillar({
   // ---------------------------------------------------------------- state & helpers
   let framesToRender = 3;
   let currentTime = TOD[timeOfDay] ? timeOfDay : 'day';
+  let stageK = 0; // 0…1: the focused item is turned away from home (stage)
   let lapse = null; // time-lapse between two times of day (see startLapse)
   let exposureOverride = null;
   let highlighted = null;
@@ -519,7 +532,7 @@ export async function createVillar({
     renderer.toneMappingExposure = Number.isFinite(v) ? v : base * TOD[currentTime].exposure;
     // dodge deep interior shadows (corridor, kitchen) by up to ~0.9 EV; off in the dollhouse and at night
     // night: a gentler dodge keeps dark wood legible (walnut ≥ 45, R3-01) without flattening the lamp pools
-    const lift = cutaway ? 0 : TOD[currentTime].lamps ? 0.7 : 1.4;
+    const lift = (cutaway ? 0 : TOD[currentTime].lamps ? 0.7 : 1.4) * (1 - stageK); // no shadow dodge on the stage: it erased the item's contact shadow
     post.setLift(Math.log(0.11 / Math.max(1e-4, renderer.toneMappingExposure)), lift);
     // focus boost → highlight roll-off, in step with the boost (R3-04)
     post.setShoulder(ae.spot && !cutaway ? clamp(ae.ev / 0.4, 0, 1) : 0);
@@ -602,7 +615,7 @@ export async function createVillar({
   /** Engine times of day a plate time stands for (morning → day, golden → sunset). */
   function plateTOD(t) { return t === 'day' ? ['morning', 'day'] : t === 'sunset' ? ['golden'] : t === 'evening' ? ['evening'] : []; }
   /** The procedural city shows wherever the plate does not cover the window yet (and in the dollhouse never). */
-  function syncCity() { skyline.group.visible = !cutaway && plate.coverage < 1; plate.group.visible = !cutaway && plate.coverage > 0; }
+  function syncCity() { plate.group.visible = !cutaway; } // the sky layers (haze skirt always, the plate when shown)
   /** Run fn with the full (non-cutaway) apartment, real sky and interior GI — for light captures. */
   function withFullScene(fn) {
     const was = cutaway;
@@ -1155,7 +1168,7 @@ export async function createVillar({
   const turnBlob = (() => {
     const c = document.createElement('canvas'); c.width = c.height = 64;
     const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    gr.addColorStop(0, '#fff'); gr.addColorStop(0.55, '#888'); gr.addColorStop(1, '#000');
+    gr.addColorStop(0, '#fff'); gr.addColorStop(0.62, '#f0f0f0'); gr.addColorStop(0.8, '#8a8a8a'); gr.addColorStop(0.92, '#2a2a2a'); gr.addColorStop(1, '#000');
     g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.NoColorSpace;
     const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 1, metalness: 0, envMapIntensity: 0, alphaMap: t, transparent: true, opacity: 0, depthWrite: false }));
@@ -1192,9 +1205,13 @@ export async function createVillar({
     insp.pivot.y = b.min.y;
     // hosted item: the pair turns about the item's own vertical axis (it stays framed; its host swings round it)
     if (rootId !== slotId) { const ib = furnisher.boxOf(slotId); if (ib && !ib.isEmpty()) { const c = ib.getCenter(new THREE.Vector3()); insp.pivot.x = c.x; insp.pivot.z = c.z; } }
-    const sz = b.getSize(new THREE.Vector3()), r = Math.max(0.25, Math.max(sz.x, sz.z) * 0.62);
-    turnBlob.position.set(insp.pivot.x, Math.max(0.003, b.min.y + 0.003), insp.pivot.z);
-    turnBlob.scale.set(r * 2, 1, r * 2);
+    // contact shadow: the family root's footprint (its body bounds), turning with it — the item stands on something
+    const lb = root.userData.bounds, sz = b.getSize(new THREE.Vector3());
+    const fw = lb ? (lb.max[0] - lb.min[0]) * root.scale.x : sz.x, fd = lb ? (lb.max[2] - lb.min[2]) * root.scale.z : sz.z;
+    insp.blobYaw = lb ? root.rotation.y : 0;
+    insp.blobHome = b.getCenter(new THREE.Vector3()); insp.blobHome.y = Math.max(0.004, b.min.y + 0.004);
+    turnBlob.scale.set(Math.max(0.3, fw) * 1.5, 1, Math.max(0.3, fd) * 1.7);
+    turnBlob.position.copy(insp.blobHome);
     // the radius the family sweeps round the pivot (a hosted item's host swings wide): the stage keeps clear of it
     const fb = new THREE.Box3(); for (const h of insp.homes) fb.expandByObject(h.g);
     insp.turnR = fb.isEmpty() ? 0 : Math.max(...[[fb.min.x, fb.min.z], [fb.min.x, fb.max.z], [fb.max.x, fb.min.z], [fb.max.x, fb.max.z]].map(([x, z]) => Math.hypot(x - insp.pivot.x, z - insp.pivot.z)));
@@ -1328,13 +1345,19 @@ export async function createVillar({
     const amount = Math.max(insp.spot, away ? 1 : 0);
     if (amount > 0.002 && insp.homes.length) {
       const dim = 1 + (DIM_SPOT + (DIM_STAGE - DIM_SPOT) * k - 1) * amount;
-      turnBlob.material.opacity = 0.55 * k;
+      turnBlob.material.opacity = 0.9 * k;
+      if (Math.abs(k - stageK) > 0.01 || (k === 0) !== (stageK === 0)) { stageK = k; applyExposure(); }
+      if (insp.blobHome) {
+        _q.setFromAxisAngle(UP, insp.angle * DEG);
+        turnBlob.position.copy(insp.blobHome).sub(insp.pivot).applyQuaternion(_q).add(insp.pivot); turnBlob.position.y = insp.blobHome.y;
+        turnBlob.rotation.set(0, (insp.blobYaw || 0) + insp.angle * DEG, 0);
+      }
       // never clip: while the family is turned, the item layer is drawn from further back when its sweep would
       // reach the camera (the room behind is a soft backdrop by then, so no wall is in the way)
       const camD = Math.hypot(camera.position.x - insp.pivot.x, camera.position.z - insp.pivot.z);
       const dolly = Math.max(0, (insp.turnR || 0) + 0.35 - camD) * k;
       post.setStage({ mode: away ? 'stage' : 'spot', items: insp.homes.map((h) => h.g), hideInItemPass: stageHideList(), blob: k > 0.01 ? turnBlob : null, dim, blur: amount * (0.45 + 0.55 * k), dolly });
-    } else post.setStage(null);
+    } else { post.setStage(null); if (stageK !== 0) { stageK = 0; applyExposure(); } }
     // event for the UI dial
     const atRest = !insp.dragging && !insp.coast && insp.vel === 0;
     const sig = `${insp.slotId}|${a.toFixed(1)}|${atRest}`;
@@ -1430,9 +1453,8 @@ export async function createVillar({
       const restoreSky = skyline.preparePhoto();
       // the tracer keeps the HDR sky + procedural city (the plate is a raster layer)
       const restorePlate = plate.preparePhoto();
-      const cityVis = skyline.group.visible; skyline.group.visible = !cutaway;
       const restore = () => {
-        skyline.group.visible = cityVis; restorePlate();
+        restorePlate();
         restoreSky(); restoreArch();
         for (let i = saved.length - 1; i >= 0; i--) { const [o, k, v] = saved[i]; o[k] = v; }
       };
@@ -1993,6 +2015,10 @@ export async function createVillar({
     const env = lighting.skyEnvFor(tod);
     // the city's aerial-perspective haze takes the photographic sky's horizon colour (same level as before)
     skyline.setTimeOfDay(tod, { ...SKY_PRESETS[tod], hazeTint: lighting.hazeTint(tod) }, env);
+    // haze below the horizon: the photographic sky's horizon colour at the preset's haze level
+    { const P = SKY_PRESETS[tod], hz = new THREE.Color(P.haze), tint = lighting.hazeTint(tod);
+      if (tint) hz.copy(tint); const l = 0.2126 * hz.r + 0.7152 * hz.g + 0.0722 * hz.b;
+      plate.setHaze(hz.multiplyScalar((P.horizonL * 0.55 + P.hazeL * 0.45) / Math.max(1e-4, l))); }
     // window plate (if approved for this time): crossfades in over the city
     plate.setTimeOfDay(tod);
     arch.setSkyEnv(env);
@@ -2001,7 +2027,7 @@ export async function createVillar({
     applyWhiteBalance();
     applyBackdrop();
   }
-  let todGen = 0;
+  let todGen = 0, todPending = false;
   /** A photographic sky landed after its time of day was applied with the procedural stand-in. */
   /** A plate finished fading in / out: the window light changed — new room capture and GI (once per plate + time). */
   function plateSettled() {
@@ -2038,8 +2064,10 @@ export async function createVillar({
     refineInput(true);
     if (photo.active || photo.busy || pendingPhoto) stopPhoto();
     const my = ++todGen;
+    todPending = true; // busy until the switch has happened (it may wait for the sky file or a shader compile)
     const go = () => {
       if (my !== todGen || disposed) return;
+      todPending = false;
       // a visible change of time is a 1.2 s time-lapse (ART §3), not a cut: the switch happens at its midpoint
       if (FEATURE.timelapse && tod !== currentTime && ready && !cutaway && !REDUCED_MOTION() && !lapse) { startLapse(currentTime, tod, apply); return; }
       apply();
@@ -2245,7 +2273,7 @@ export async function createVillar({
     if (stepGlides(now)) invalidate(1);
     if (stepInspect(dt)) invalidate(1);
     if (stepLapse(now)) invalidate(1);
-    if (plate.animating) { plate.step(dt); syncCity(); invalidate(1); if (!plate.animating) plateSettled(); }
+    if (plate.animating) { plate.step(dt); invalidate(1); if (!plate.animating) plateSettled(); }
     else if (plateLanded) { plateLanded = false; if (plate.state(currentTime) === 'ready') { applyTimeOfDay(currentTime); invalidate(2); } }
     if (probes.update(now)) invalidate(1);
     if (stepExposure(dt)) invalidate(1);
@@ -2417,11 +2445,23 @@ export async function createVillar({
     // after the room: the active pack's slider ladder (all its options), then the other packs' defaults
     idle(() => prewarm().then(() => idle(() => { primeBudget(); prebuildPacks(); })));
     loadProgress(1, 'ready');
+    stamp('ready');
+    loadTimes.giBakeMs = Math.round(perf.bakeMs || 0); loadTimes.gi = giState.converged ? 'baked' : 'ambient'; loadTimes.quality = Q;
+    // breakdown: fetch+parse of the engine modules → scene built + first compile → textures (scans) → GI → ready
+    loadTimes.breakdown = { modules: (loadTimes.modules ?? 0) - loadTimes.start, build: (loadTimes.scene ?? 0) - (loadTimes.modules ?? 0), textures: (loadTimes.textures ?? loadTimes.ready) - (loadTimes.scene ?? 0), giAndRest: loadTimes.ready - (loadTimes.textures ?? loadTimes.ready) };
+    try { performance.measure('villar:ready', { start: 0, end: performance.now(), detail: loadTimes }); } catch { /* older browsers */ }
+    if (FEATURE.drift && Q === 'high') driftTimer = setInterval(() => {
+    if (disposed || !FEATURE.drift || Q !== 'high' || !ready || cutaway || contextLost || photo.active || (typeof document !== 'undefined' && document.hidden)) return;
+    if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (plate.drift(0.25)) invalidate(1);
+    }, 250);
     // opening shot: the slow push-in toward the window light; `rest` follows its end, so the photo develops then
     if (openingPlanned && controls.view === 'eye' && controls.mode === 'walk') {
       openingPlanned = false;
       try { sessionStorage.setItem('villar.opening', '1'); } catch { /* private mode */ }
-      controls.intro('eye', { seconds: 3.5, onDone: (played) => events.emit('opening', { done: true, played }) });
+      let skipped = false;
+      controls.onIntroCancel = () => { skipped = true; };
+      controls.intro('eye', { seconds: 3.5, onDone: (played) => events.emit('opening', { done: true, played, skipped }) });
       events.emit('opening', { done: false });
     }
     window.villar = api;
@@ -2455,7 +2495,7 @@ export async function createVillar({
       Promise.race([watchTextures(), new Promise((r) => setTimeout(r, 30000))]).then(() => {
         if (disposed || contextLost) return;
         restoring = false;
-        texturesSettled = true;
+        texturesSettled = true; stamp('textures');
         renderer.shadowMap.needsUpdate = true;
         const cached = giCache.get(giKey());
         if (cached && cached.sig === sceneSig()) refreshEnvironment(1); else bakeFresh();
@@ -2557,7 +2597,7 @@ export async function createVillar({
     dispose,
     // debug / lab helpers (not part of the product contract)
     debug: {
-      renderer, scene, camera, lighting, post, arch, furnisher, plate, skyline, controls, materials, probes, fader, thumbs,
+      renderer, scene, camera, lighting, post, arch, furnisher, plate, skyline, turnBlob, loadTimes, get lapse() { return lapse ? { k: +lapse.k.toFixed(2), switched: lapse.switched, to: lapse.to } : null; }, get time() { return currentTime; }, controls, materials, probes, fader, thumbs,
       relight: () => bakeFresh(), rebakeAll, refreshEnvironment, applyPackArchitecture,
       get fps() { return perf.fps; }, get bakeMs() { return perf.bakeMs; }, get dpr() { return dpr; }, get quality() { return Q; },
       get worstFrame() { return perf.worst; }, resetWorst() { perf.worst = 0; },
@@ -2618,7 +2658,7 @@ export async function createVillar({
     arch.dispose();
     probes.dispose();
     skyline.dispose();
-    plate.dispose();
+    plate.dispose(); clearInterval(driftTimer);
     try { twins?.dispose?.(); } catch { /* ignore */ }
     lighting.dispose();
     post.dispose();
@@ -2637,7 +2677,7 @@ export async function createVillar({
   // busy: anything that changes the next frame on its own — the client develops a photo only from a stable frame.
   function isBusy() {
     return !!(controls.moving || controls.isDragging() || controls.mode === 'transition' || fader.active || styleWave
-      || pendingChanges.size || budgetBusy() || plate.animating || !!lapse || probes.baking || giState.inflightLocal || giState.inflightFresh
+      || pendingChanges.size || budgetBusy() || plate.animating || !!lapse || todPending || probes.baking || giState.inflightLocal || giState.inflightFresh
       || wallAnim || glides.length || Math.abs(ae.target - ae.ev) > 0.03 || !ready || contextLost || restoring
       || (materials.pending && materials.pending() > 0) || photo.busy
       || insp.dragging || insp.coast || insp.vel !== 0 || insp.angle !== insp.target || !!insp.returning || Math.abs(insp.spot - (focusedSlot && !cutaway ? 1 : 0)) > 0.01);
@@ -2901,7 +2941,7 @@ export async function createVillar({
   if (disposed) return null;
   refreshEnvironment(1);
   invalidate(3);
-  loadProgress(0.3, 'scene');
+  loadProgress(0.3, 'scene'); stamp('scene');
   // loading bar: textures 0.3→0.65, GI bake 0.65→0.97
   let maxPending = 1;
   progTimer = setInterval(() => {
@@ -2914,7 +2954,7 @@ export async function createVillar({
   // "first good frame" = real textures (hard cap 30 s) + GI baked (or given up) + env captured
   Promise.race([watchTextures(), new Promise((r) => setTimeout(r, 30000))]).then(() => {
     if (disposed) return;
-    texturesSettled = true;
+    texturesSettled = true; stamp('textures');
     bakeFresh();
     invalidate(3);
     preloadSkies();

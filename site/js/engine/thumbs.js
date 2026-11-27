@@ -37,7 +37,7 @@ export function createThumbnailer({ renderer, materials, buildItem, releaseItem 
     pmrem.dispose();
     scene.environment = env.texture;
     scene.environmentIntensity = 0.75;
-    const key = new THREE.DirectionalLight(new THREE.Color().setRGB(1.0, 0.97, 0.93), 2.2);
+    const key = new THREE.DirectionalLight(new THREE.Color().setRGB(1.0, 1.0, 1.0), 2.2) /* neutral: tiles must match the item's catalogue colour, not a warm studio */;
     key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024);
     key.shadow.radius = 6;
