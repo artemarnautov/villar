@@ -29,7 +29,7 @@
   (by pack id; optional — style transitions read `store.style(id).architecture`), `timeOfDay`, `view`, `quality` (capped by device: phones → low,
   tablets/iOS → medium; `forceQuality: true` to override), `adaptive`, `gi`, `autoExposure`,
   `toneMapping` (`neutral` default | `agx` | `agx-punchy` | `aces`), `autoFocus` (default true).
-- Events: `ready {quality, time, view, gi, photo}` (`photo: false` → hide Фото: low tier or software GL);
+- Events: `ready {quality, time, view, gi, photo, refine}` (`photo: false` → hide Фото: low tier or software GL);
   `hover` / `select` `{slotId, slotType, item, x, y}` or `null`; `focus {slotId|null}`; `view {view|null}`
   (`null` = free camera after drag/walk); `time {time}`; `progress {samples, target}`;
   `photo {state: preparing|started|done|stopped|error}`; `context {state: lost|restored}` (transient);
@@ -57,6 +57,28 @@
     landscape stage, so `object-fit: cover` on the poster matches the live framing.
   - Thumbnails render only while the camera and dissolves are idle, one per idle slice (T7) — request them freely.
   - The focus halo fades out ~1.2 s after a flight lands; the canvas focus ring shows only for keyboard focus.
+- Round 3 (focus + exposure):
+  - `focus()` fits the object's actual box, not its bounding sphere, into the free part of the stage, so a sofa
+    behind the HUD at 1280×800 is now shot from ≈ 3 m instead of from the entry (PT3-01 / D3-02). Candidate
+    poses are scored for visibility: walls, other furniture, and for decor sets their own parts (PT3-03). It also
+    tries a raised and a lowered pose. `villar.debug.controls.state.focusInfo` →
+    `{ score, occluded, raised, dist }`.
+  - Focus exposure: at most +2.3 EV over the room, aiming at ≈ −10–15 % of the catalogue Y′. A highlight roll-off
+    keeps the sunlit backdrop from clipping (≤ 3 % guard; R3-04). `villar.debug.meter.clip` reports the estimate.
+  - Portrait phones: if you want a different Entry pose (the sofa is out of the first view), tell me the stage
+    size and which items must be in it, and I'll add a portrait variant of the preset.
+- Photoreal push (levers 1 + 4):
+  - **Idle refinement.** When the view rests (≥ 700 ms with no input, flight, dissolve, bake or thumbnail) on the
+    desktop high tier, the engine path-traces the same frame and blends it in over the raster frame through the
+    same exposure / white balance / tone mapping. Any input cancels it: camera motion, swaps, time and focus
+    changes do so instantly; hover, clicks and `setInsets` with a 150 ms fade. Nothing to do on the UI side, but:
+    keep calling `setInsets` while a panel animates (that pauses it), and don't render other WebGL on top.
+  - Events: `refine {state: start|visible|done|cancel, samples, ms}`. Option `createVillar({ refine: 'off' })`
+    disables it; URL `?pt=force` forces it on (software GL too, for the harness), `?pt=off` turns it off.
+  - QA: `villar.debug.refine` → `{ on, phase, k, samples, tiles, snapshotMs, firstMs, cleanMs, sps, scale }`.
+  - **Window.** The sky is now a photographic CC0 HDRI per time of day (`/assets/sky/*.hdr`, 0.6–0.8 MB each, the
+    current time loads before the first frame, the others in idle time; same origin only). It also lights the path
+    tracer, with a 0.53° sun disc for soft shadows.
 
 ## To modeler
 
@@ -97,3 +119,42 @@
    - The door (`materials.get('walnut-dark')`) now shows warm grain, (41,29,17) where it was (34,30,31). Corridor exposure is still yours (R2-20, items 1–2).
 7. **New light descriptors.** `decor_set` candles now export flame point lights (`flame: true`), like centerpieces, with 1–3 per set. The Diamant column lamp exports a diffuser point light (shadow) plus a weak up spot.
 8. **R2-13 limewash** walls are still yours (`plaster-wall`, mottle 1.4).
+
+## From modeler (photoreal, lever 2 + 3) — engine changes needed
+
+1. **Photoscanned maps swap in after load.** `materials.get()` still returns its procedural material at once. When the CC0 scan set
+   (`site/assets/materials/`, ≈ 0.3–1 MB a set, lazy per material) is on the GPU, its maps replace the procedural ones **in the same
+   slots** (no shader recompile) and colour / roughness are re-derived. Subscribe once:
+   `materials.onChange(() => { sceneVersion++; pathTracer?.updateMaterials?.(); rebakeAll(400); })` — anything that cached the old
+   textures (path-tracer material/texture arrays, baked GI / probes, thumbnails) must refresh. Callbacks are batched (one per
+   microtask); `materials.scanVersion` counts swaps.
+   - `materials.ready()` / `pending()` now include the scan downloads (a set whose network + decode exceeds 90 s, or fails, keeps
+     the procedural maps for good) — so the first GI bake after load already sees the scanned albedo.
+   - Uploads go through `renderer.initTexture`, one texture per queue slice, ahead of queued procedural work (≈ 4–20 ms for a 1K
+     map in SwiftShader; the 2K floor ≈ 100 ms in SwiftShader, once, at load); no upload lands inside a frame.
+   - Clones are covered: the engine's `wallMaterial(...).clone()` and `satin(floor)` copies swap too (the clone hook re-registers).
+   - Tier: `createMaterials(renderer, { quality })` → high 2048 (floor only has a 2K file), medium 1024, low 512.
+   - `?scans=0` turns them off (A/B frames). `materials.scanStats()` → `{ sets, files, bytes, decoded, maxDecode, uploads,
+     maxUpload, failed, ids }`.
+2. **Wall colour animation.** `animateWalls(hex)` writes the raw hex into the wall material. The paint scan was prepared with a
+   detail mean of 0.92 (procedural: 0.944) so that stays within 3 %. The limewash scan (R3-08: ± 6–8 % brushed clouds + trowel
+   normal) has mean 0.85, so a raw hex written into a *limewash* material renders ≈ 10 % dark (today that only happens between two
+   limewash packs; a finish change goes through `materials.get` and is compensated). To be exact everywhere:
+   `to.clone().multiplyScalar(1 / (m.userData.detailMean || 1))` per material.
+3. **Leaves (lever 3).** `plant-leaf` materials now carry an `onBeforeCompile` (back-lit translucency + underside tone,
+   `customProgramCacheKey 'villar-leaf'`). `attachSSAO` chains it correctly (it calls `prev`). Please don't replace
+   `onBeforeCompile` on these without chaining. The olive canopy uses an alpha-cut scanned leaf (`alphaTest 0.5`,
+   `shadowSide: DoubleSide`) — leaf shadows are dappled now.
+4. **CSP.** Scans are same-origin `fetch()` + `createImageBitmap` (needs only `connect-src 'self'`, already there). Consider a long
+   `Cache-Control` for `/assets/materials/(.*)` (immutable content; `max-age=31536000`) in `vercel.json`.
+5. **For lever 4 (the window):** CC0 HDRIs are reachable through GitHub mirrors (no polyhaven.com needed):
+   `github.com/zuujis-cc0/polyhaven-hdris-pure-skies`, `…-streets-and-town`, `…-streets-and-town-2`, `…-interiors`, `…-interiors-2`,
+   and `ambientcg-hdris`, `ambientcg-hdris-2…5`. Clone with `--depth 1 --filter=blob:none --sparse --no-checkout`, list names
+   with `git ls-tree --name-only HEAD` (never `-l`: it fetches every blob), then `sparse-checkout add` only the 1K/2K files.
+   `tools/materials-prep.mjs` shows the pattern, and how LICENSES.md is generated from each mirror's `MANIFEST.tsv`.
+6. **R3-12 (phone bed-base blotch)** is not geometry: the bed base side is one smooth upholstered softBox and the duvet no longer
+   intersects it (its hang is clamped above the rail). The review's diagnosis stands — please apply its low-tier probe fix
+   (`mix(0.6, 1.0, valid)` or a 0.5 × spacing normal offset). The duvet's own dark "dent" (R3-07) was geometry and is fixed
+   (crease depth soft-clamped to ±7 mm, creases ≥ 4 cm wide, duvet grid 96 × 80).
+7. **Budgets.** All 21 scan sets at their largest file: 12.1 MB (high: floor 2K + 1K rest); medium 10.6 MB; low (512) 2.5 MB.
+   Measured per style in the engine lab, high: Dark Walnut 8.7 MB / 15 sets; Dark Walnut → Mediterranean adds 3.0 MB / 4 sets.

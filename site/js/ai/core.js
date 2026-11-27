@@ -5,9 +5,11 @@
 // pack defines slots[slotId], else its group if the pack defines slots[group], else its slot type.
 // Totals are the sum over every layout slot of the price of the item chosen for that slot's key.
 
+import { buildLadder, ladderIndexFor, levelAt } from '../core/budget.js';
+
 export const VIEWS = ['eye', 'living', 'bed', 'dining', 'window', 'top'];
 export const TIMES = ['morning', 'day', 'golden', 'evening'];
-export const ACTION_TYPES = ['select', 'style', 'view', 'time', 'focus', 'reset'];
+export const ACTION_TYPES = ['select', 'style', 'view', 'time', 'focus', 'reset', 'budget'];
 
 const VIEW_ALIASES = {
   entry: 'eye', entrance: 'eye', door: 'eye', hall: 'eye', default: 'eye', start: 'eye',
@@ -38,7 +40,7 @@ export function normalizeTime(name) {
  * Selection simulator over the raw data (catalog, layout, packs). No events, no persistence.
  * `packs` = { [id]: stylepack }.
  */
-export function createSim({ catalog, layout, packs }) {
+export function createSim({ catalog, layout, packs, budget: budgetSpec = null }) {
   const items = new Map((catalog?.items || []).map((it) => [it.id, it]));
   const slots = layout?.slots || [];
   const slotById = new Map(slots.map((s) => [s.id, s]));
@@ -162,11 +164,12 @@ export function createSim({ catalog, layout, packs }) {
     let selection = normalizeSelection(style, state0?.selection);
     const out = []; const dropped = [];
     const list = (Array.isArray(raw) ? raw : []).slice(0, maxActions).filter((a) => a && typeof a === 'object');
-    const order = { style: 0, reset: 1, select: 2, time: 3, view: 4, focus: 5 };
+    const order = { style: 0, reset: 1, budget: 2, select: 3, time: 4, view: 5, focus: 6 };
     const sorted = list.map((a, i) => ({ a, i, t: String(a.type || a.action || '').toLowerCase() }))
       .sort((x, y) => (order[x.t] ?? 9) - (order[y.t] ?? 9) || x.i - y.i);
 
-    let hadStyle = false, hadReset = false, view = null, time = null, focus = null;
+    let hadStyle = false, hadReset = false, hadBudget = false, view = null, time = null, focus = null;
+    const pins = Array.isArray(state0?.pins) ? state0.pins.filter((k) => typeof k === 'string').slice(0, 60) : [];
     const selects = new Map();
     for (const { a, t } of sorted) {
       if (t === 'style') {
@@ -183,6 +186,14 @@ export function createSim({ catalog, layout, packs }) {
         if (hadReset) continue;
         hadReset = true; selection = defaults(style);
         out.push({ type: 'reset' });
+      } else if (t === 'budget') {
+        // Same planner as the budget slider: the richest designer-correct room ≤ amount, around the customer's pins.
+        const amount = Math.round(Number(a.amount ?? a.value ?? a.total));
+        if (hadBudget || !Number.isFinite(amount) || amount <= 0 || amount > 10_000_000) { dropped.push({ action: a, why: 'bad amount' }); continue; }
+        const plan = planBudget(style, amount, { selection, pins: style === state0?.style ? pins : [] });
+        if (!plan) { dropped.push({ action: a, why: 'no budget spec' }); continue; }
+        hadBudget = true; selection = plan.selection;
+        out.push({ type: 'budget', amount, total: plan.total, level: plan.level?.id || null, ok: plan.ok });
       } else if (t === 'select') {
         const r = resolveSelect(style, { key: a.key, slotId: a.slotId, itemId: a.itemId || a.item || a.id });
         if (!r) { dropped.push({ action: a, why: 'not a compatible option' }); continue; }
@@ -207,6 +218,26 @@ export function createSim({ catalog, layout, packs }) {
     if (view) out.push({ type: 'view', name: view });
     if (focus) out.push({ type: 'focus', slotId: focus });
     return { state: { style, selection }, actions: out, dropped };
+  };
+
+  /**
+   * The budget slider's answer for `amount`: the richest ladder step ≤ amount for the pack, planned around the
+   * pinned keys of `selection` (core/budget.js). Returns { selection, total, ok, min, max, level, index } or
+   * null without a budget spec.
+   */
+  const ladders = new Map();
+  const planBudget = (packId, amount, { selection: cur = {}, pins = [] } = {}) => {
+    const p = pack(packId);
+    if (!budgetSpec || !p) return null;
+    const norm = normalizeSelection(packId, cur);
+    const pinned = {};
+    for (const k of pins) if (p.slots?.[k] && k in norm) pinned[k] = norm[k];
+    const id = `${packId}|${JSON.stringify(Object.entries(pinned).sort())}`;
+    if (!ladders.has(id)) { if (ladders.size > 24) ladders.clear(); ladders.set(id, buildLadder({ pack: p, items, layout, spec: budgetSpec, pinned })); }
+    const L = ladders.get(id);
+    const index = ladderIndexFor(L, amount);
+    const step = L.steps[index];
+    return { selection: { ...step.selection }, total: step.total, ok: step.total <= amount, min: L.min, max: L.max, level: levelAt(L, index), index };
   };
 
   const minTotal = (packId) => {
@@ -263,7 +294,7 @@ export function createSim({ catalog, layout, packs }) {
   return {
     items, slots, slotById, packIds, pack, keyIn, keyOfSlotIn, slotsForKey, defaults, normalizeSelection,
     placedKeys, qty, typeOfKey, options, total, styleSelection, resolveStyle, resolveSelect, resolveSlot,
-    applyActions, minTotal, fitBudget,
+    applyActions, minTotal, fitBudget, planBudget, hasBudget: () => !!budgetSpec,
   };
 }
 
@@ -351,7 +382,7 @@ const fnv = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h 
  * api/_catalog.js): items referenced by any pack (display fields only — no model params), layout slots,
  * views, packs (options, defaults, pairings) and the default style. Same shape the simulator reads.
  */
-export function buildAiIndex({ catalog, layout, packs, styles }) {
+export function buildAiIndex({ catalog, layout, packs, styles, budget = null }) {
   const used = new Set();
   const packOut = {};
   for (const [id, p] of Object.entries(packs || {})) {
@@ -388,7 +419,8 @@ export function buildAiIndex({ catalog, layout, packs, styles }) {
     },
     packs: packOut,
     catalog: { items },
+    budget,
   };
-  out.hash = fnv(JSON.stringify([out.layout, out.packs, out.catalog]));
+  out.hash = fnv(JSON.stringify([out.layout, out.packs, out.catalog, out.budget]));
   return out;
 }

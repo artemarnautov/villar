@@ -44,7 +44,9 @@ if (!packs['test-light']) {
     pairings: { [base.slots.sofa.options[0]]: { rug: base.slots.rug.options[1] } },
   };
 }
-const data = { catalog, layout, packs };
+let budgetSpec = null;
+try { budgetSpec = JSON.parse(readFileSync(resolve(ROOT, 'site/data/budget.json'), 'utf8')); } catch { /* optional */ }
+const data = { catalog, layout, packs, budget: budgetSpec };
 // Fixtures derived from the data, so catalog edits don't break the suite.
 const itemById = new Map((catalog.items || catalog).map((i) => [i.id, i]));
 const priceOf = (id) => Number(itemById.get(id)?.price) || 0;
@@ -110,6 +112,23 @@ section('core: applyActions validation');
   ok(st.actions[0].anchor?.key === 'sofa', 'anchor resolved');
   ok(st.state.selection.sofa === SOFA_B, 'select after style applies in the target pack');
 }
+
+section('core: budget planner (slider parity)');
+if (budgetSpec) {
+  const p0 = sim.planBudget(base.id, 20000, { selection: S0.selection });
+  ok(p0 && p0.total <= 20000 && p0.level, `planBudget 20 000 → ${p0?.total} (${p0?.level?.id})`);
+  const nulls = Object.values(p0.selection).filter((v) => v === null).length;
+  ok(nulls > 0, `a lower budget leaves slots empty (${nulls})`);
+  const pf = sim.planBudget(base.id, 1e7, { selection: S0.selection });
+  ok(pf.total >= S0.total || pf.total >= sim.total(base.id, S0.selection), 'max budget ≥ designer room');
+  const pinSofa = SOFA_B;
+  const sp = { ...S0.selection, sofa: pinSofa };
+  const pp = sim.planBudget(base.id, 15000, { selection: sp, pins: ['sofa'] });
+  ok(pp.selection.sofa === pinSofa, 'pinned sofa kept by the planner');
+  const r = sim.applyActions(S0, [{ type: 'budget', amount: 20000 }]);
+  ok(r.actions[0]?.type === 'budget' && sim.total(r.state.style, r.state.selection) === p0.total, 'budget action = planBudget');
+  ok(sim.applyActions(S0, [{ type: 'budget', amount: -5 }]).dropped.length === 1, 'bad amount dropped');
+} else ok(true, 'no budget.json — skipped');
 
 section('core: fitBudget');
 {

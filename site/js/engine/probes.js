@@ -315,12 +315,16 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
   // photographically wrong (a photographer white-balances it away). Each SH band keeps its luminance and
   // a fraction `chroma` of its colour deviation.
   let chroma = 1;
+  // The colour the bounce is pulled toward: the camera's neutral (1 / white-balance gain, luminance 1), so a
+  // desaturated bounce renders grey after white balance — not lilac under a 2700 K-balanced camera (R3-01).
+  const neutral = [1, 1, 1];
   function desaturate(sh, k) {
+    const [nr, ng, nb] = neutral;
     for (let j = 0; j < N; j++) {
       const o = j * 28;
       for (let b = 0; b < 9; b++) {
         const i = o + b * 3, y = 0.2126 * sh[i] + 0.7152 * sh[i + 1] + 0.0722 * sh[i + 2];
-        sh[i] = y + (sh[i] - y) * k; sh[i + 1] = y + (sh[i + 1] - y) * k; sh[i + 2] = y + (sh[i + 2] - y) * k;
+        sh[i] = y * nr + (sh[i] - y * nr) * k; sh[i + 1] = y * ng + (sh[i + 1] - y * ng) * k; sh[i + 2] = y * nb + (sh[i + 2] - y * nb) * k;
       }
     }
   }
@@ -486,7 +490,14 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
     get progress() { return job ? Math.min(1, (job.bounce + job.k / Math.max(1, job.list.length)) / job.bounces) : 1; },
     get count() { return N; },
     /** Fraction of the bounce light's colour that is kept (1 = physical). Applies from the next bake. */
-    setChroma(k) { chroma = Math.max(0, Math.min(1, k)); },
+    /** `white`: the camera's neutral as linear RGB (1 / WB gain); the bounce desaturates toward it. */
+    setChroma(k, white = null) {
+      chroma = Math.max(0, Math.min(1, k));
+      if (white) {
+        const l = 0.2126 * white[0] + 0.7152 * white[1] + 0.0722 * white[2];
+        if (l > 0) { neutral[0] = white[0] / l; neutral[1] = white[1] / l; neutral[2] = white[2] / l; }
+      } else { neutral[0] = neutral[1] = neutral[2] = 1; }
+    },
     /** Missing-bounce extrapolation (luminance) and an overall indirect gain (evening pools, R2-09). */
     setTail(k) { TAIL = Math.max(0, k); },
     setGain(g) { GAIN = Math.max(0, g); },

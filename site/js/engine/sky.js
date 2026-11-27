@@ -73,6 +73,85 @@ export function makeSkyTexture(preset, sunDir, { width = 512, height = 256 } = {
   return tex;
 }
 
+// ----------------------------------------------------------------------------- photographic skies
+// CC0 Poly Haven pure-sky HDRIs (sources + licence: assets/materials/LICENSES.md), prepared offline
+// (tools: docs/requests/engine.md): the sun disc and its lens spikes are inpainted (the engine's sun is
+// a light), the image is rotated so its sun glow sits at the engine's sun azimuth, the horizon band
+// below a few degrees is rebuilt as haze (no foreign trees / buildings behind our skyline), and the
+// level is matched to the procedural preset over the 5°–35° band seen through the window (so
+// exposure, GI and the stand-in fits stay calibrated). 1024 × 512 RGBE, ~0.5–0.8 MB each.
+export const SKY_HDR = {
+  morning: '/assets/sky/morning.hdr',
+  day: '/assets/sky/day.hdr',
+  golden: '/assets/sky/golden.hdr',
+  evening: '/assets/sky/evening.hdr',
+};
+
+let RGBE_HALF = null; // (exponent << 8 | mantissa) → half float bits: one table lookup per channel
+function rgbeTable() {
+  if (RGBE_HALF) return RGBE_HALF;
+  RGBE_HALF = new Uint16Array(65536);
+  const toH = THREE.DataUtils.toHalfFloat;
+  for (let e = 1; e < 256; e++) {
+    const s = Math.pow(2, e - 136);
+    for (let m = 0; m < 256; m++) RGBE_HALF[(e << 8) | m] = toH(Math.min(65000, (m + 0.5) * s));
+  }
+  for (let m = 0; m < 256; m++) RGBE_HALF[m] = 0;
+  return RGBE_HALF;
+}
+
+/** Decode a Radiance .hdr (RLE or flat) into RGBA half floats, rows bottom → top (DataTexture order). */
+export function decodeRGBE(bytes) {
+  let p = 0;
+  const line = () => { let s = ''; while (p < bytes.length && bytes[p] !== 10) s += String.fromCharCode(bytes[p++]); p++; return s; };
+  if (!line().startsWith('#?')) throw new Error('not a Radiance HDR');
+  for (let l = line(); l !== ''; l = line()) if (p >= bytes.length) throw new Error('bad HDR header');
+  const m = /-Y (\d+) \+X (\d+)/.exec(line());
+  if (!m) throw new Error('unsupported HDR orientation');
+  const H = +m[1], W = +m[2];
+  const T = rgbeTable();
+  const out = new Uint16Array(W * H * 4);
+  const row = new Uint8Array(W * 4);
+  for (let y = 0; y < H; y++) {
+    if (W >= 8 && W < 32768 && bytes[p] === 2 && bytes[p + 1] === 2 && ((bytes[p + 2] << 8) | bytes[p + 3]) === W) {
+      p += 4;
+      for (let c = 0; c < 4; c++) {
+        let x = 0;
+        while (x < W) {
+          let n = bytes[p++];
+          if (n > 128) { n -= 128; const v = bytes[p++]; for (let k = 0; k < n; k++) row[(x++) * 4 + c] = v; }
+          else for (let k = 0; k < n; k++) row[(x++) * 4 + c] = bytes[p++];
+        }
+      }
+    } else {
+      row.set(bytes.subarray(p, p + W * 4)); p += W * 4;
+    }
+    const o = (H - 1 - y) * W * 4;
+    for (let x = 0; x < W; x++) {
+      const e = row[x * 4 + 3] << 8;
+      out[o + x * 4] = T[e | row[x * 4]]; out[o + x * 4 + 1] = T[e | row[x * 4 + 1]]; out[o + x * 4 + 2] = T[e | row[x * 4 + 2]];
+      out[o + x * 4 + 3] = 15360; // 1.0
+    }
+  }
+  return { width: W, height: H, data: out };
+}
+
+/** Fetch + decode a sky HDR (same origin, no network beyond the site) → equirect DataTexture like makeSkyTexture. */
+export async function loadSkyTexture(url, { signal } = {}) {
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error(`sky ${url}: HTTP ${res.status}`);
+  const { width, height, data } = decodeRGBE(new Uint8Array(await res.arrayBuffer()));
+  const tex = new THREE.DataTexture(data, width, height, THREE.RGBAFormat, THREE.HalfFloatType);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  tex.colorSpace = THREE.LinearSRGBColorSpace;
+  tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter;
+  tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  tex.name = 'villar-sky-hdr';
+  return tex;
+}
+
 // ----------------------------------------------------------------------------- textures
 const GROUND_Y = -138;              // ~40th floor
 const TILE_W = 24, TILE_H = 56;     // facade tile: 16 bays × 16 floors (1.5 m × 3.5 m)
@@ -115,20 +194,31 @@ function skylineTextures() {
   const night = new Uint8Array(Nn * Nn * 4);
   const win = [];
   for (let k = 0; k < cells * cells; k++) {
-    const on = r() < 0.38;
-    const t = r(), b = 0.35 + Math.pow(r(), 0.6) * 0.65;
-    const col = t < 0.62 ? [255, 190, 120] : t < 0.88 ? [250, 232, 205] : [205, 225, 255];
-    const blind = r() < 0.3 ? 0.35 + r() * 0.5 : 1;  // drawn blinds: lit only partly
-    win.push(on ? { c: col.map((v) => v * b), blind } : null);
+    const on = r() < 0.36;
+    const t = r(), b = 0.3 + Math.pow(r(), 0.8) * 0.7;
+    // muted interior colours: warm white most, some tungsten, a few cool screens / LEDs
+    const col = t < 0.55 ? [246, 214, 172] : t < 0.85 ? [240, 226, 206] : t < 0.95 ? [255, 186, 120] : [196, 214, 236];
+    const blind = r() < 0.35 ? 0.3 + r() * 0.55 : 1;  // drawn blinds: lit only partly
+    const panes = r() < 0.5 ? 2 : 3;                    // mullions split the bay
+    win.push(on ? { c: col.map((v) => v * b), blind, panes, dim: r() < 0.25 ? 0.35 : 1 } : null);
   }
+  const sm = (a, b, x) => { const u = Math.min(1, Math.max(0, (x - a) / (b - a))); return u * u * (3 - 2 * u); };
   for (let y = 0; y < Nn; y++) for (let x = 0; x < Nn; x++) {
     const cx = (x / cn) | 0, cy = (y / cn) | 0, fx = (x % cn) / cn, fy = (y % cn) / cn;
     const o = (y * Nn + x) * 4;
     const w = win[cy * cells + cx];
     let R = 2, G = 2, B = 3;
-    if (w && fy > 0.18 && fx > 0.07 && fy < 0.18 + 0.82 * w.blind) {
-      const v = 0.85 + 0.15 * Math.sin(fx * 9.0) * Math.sin(fy * 7.0);
-      R = w.c[0] * v; G = w.c[1] * v; B = w.c[2] * v;
+    if (w && fy > 0.18 && fx > 0.07) {
+      const top = 0.18 + 0.82 * w.blind;
+      // soft pane edges, dark mullions, a ceiling-lit falloff (bright top → dimmer sill) and a centre glow:
+      // reads as a lit room behind glass instead of a flat coloured tile
+      const edge = sm(0.18, 0.21, fy) * sm(0.07, 0.1, fx) * (1 - sm(top - 0.03, top, fy)) * (1 - sm(0.97, 1.0, fx));
+      const pf = ((fx - 0.07) / 0.93) * w.panes, pr = pf - Math.floor(pf);
+      const mull = 0.25 + 0.75 * sm(0.0, 0.06, pr) * (1 - sm(0.94, 1.0, pr));
+      const fall = 0.55 + 0.45 * Math.pow(Math.min(1, Math.max(0, (fy - 0.18) / 0.82)), 0.7);
+      const glow = 0.8 + 0.2 * Math.sin(Math.PI * Math.min(1, Math.max(0, (fx - 0.07) / 0.93)));
+      const v = edge * mull * fall * glow * w.dim;
+      R = 2 + w.c[0] * v; G = 2 + w.c[1] * v; B = 3 + w.c[2] * v;
     }
     night[o] = R; night[o + 1] = G; night[o + 2] = B; night[o + 3] = 255;
   }
@@ -363,7 +453,9 @@ export function createSkyline({ center = new THREE.Vector3(2.3, 0, 9.0), seed = 
       meshes.glass.material = night ? M.glassNight : M.glassDay;
       meshes.stone.material = night ? M.stoneNight : M.stoneDay;
       meshes.ground.material = night ? M.groundNight : M.groundDay;
-      for (const m of [M.glassDay, M.stoneDay, M.groundDay, M.water]) m.emissive.set(preset.haze).multiplyScalar(preset.hazeL * 0.38);
+      const hz = new THREE.Color(preset.haze);
+      if (preset.hazeTint) { const l = 0.2126 * hz.r + 0.7152 * hz.g + 0.0722 * hz.b; hz.copy(preset.hazeTint).multiplyScalar(l); }
+      for (const m of [M.glassDay, M.stoneDay, M.groundDay, M.water]) m.emissive.copy(hz).multiplyScalar(preset.hazeL * 0.38);
       M.water.envMapIntensity = night ? 0.6 : 1;
     },
     /** Run fn with the night (or day) materials on — for pre-compiling the other set. */

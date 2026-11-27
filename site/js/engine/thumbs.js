@@ -22,6 +22,7 @@ export function createThumbnailer({ renderer, materials, buildItem, releaseItem 
   });
   const cache = new Map();
   let chain = Promise.resolve();
+  let inflight = 0; // thumbnails queued or rendering (idle refinement waits for them)
   let res = null;
   let disposed = false;
 
@@ -206,12 +207,14 @@ export function createThumbnailer({ renderer, materials, buildItem, releaseItem 
       size = Math.max(32, Math.min(512, Math.round(size) || 256));
       const k = `${item.id}@${size}`;
       if (cache.has(k)) return cache.get(k);
-      const p = chain.then(quiet).then(() => renderOne(item, size));
+      inflight++;
+      const p = chain.then(quiet).then(() => renderOne(item, size)).finally(() => { inflight--; });
       chain = p.catch(() => {});
       cache.set(k, p);
       p.catch(() => cache.delete(k)); // allow a retry after failures
       return p;
     },
+    get busy() { return inflight > 0; },
     onContextLost() { cache.clear(); if (res) { res.rtHDR = null; res.rtLDR = null; res.size = 0; res.env = null; res = null; } },
     dispose() {
       disposed = true;

@@ -12,9 +12,10 @@ async function getJSON(name) {
 export async function loadData({ layoutId = 'studio' } = {}) {
   let index;
   try { index = await getJSON('styles.json'); } catch { index = { default: 'dark-walnut', packs: [{ id: 'dark-walnut' }] }; }
-  const [layout, catalog, ...packList] = await Promise.all([
+  const [layout, catalog, budget, ...packList] = await Promise.all([
     getJSON(`layout-${layoutId}.json`),
     getJSON('catalog.json'),
+    getJSON('budget.json').catch(() => null),          // budget slider ladder spec (optional: no slider without it)
     ...index.packs.map((p) => getJSON(p.file || `stylepack-${p.id}.json`).catch(() => null)),
   ]);
   const packs = {};
@@ -25,7 +26,7 @@ export async function loadData({ layoutId = 'studio' } = {}) {
   }));
   const styleId = packs[index.default] ? index.default : Object.keys(packs)[0];
   // Back-compat fields for code written against a single pack.
-  return { layout, catalog, packs, palettes, styleId, stylepack: packs[styleId], palette: palettes[styleId] || null };
+  return { layout, catalog, packs, palettes, budget, styleId, stylepack: packs[styleId], palette: palettes[styleId] || null };
 }
 
 export const formatAED = (n) => `${new Intl.NumberFormat('ru-RU').format(Math.round(n))} AED`;

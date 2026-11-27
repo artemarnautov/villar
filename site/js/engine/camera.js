@@ -24,6 +24,7 @@ const PITCH_LIMIT = 80 * DEG;
 const SHIFT_MAX = 15 * DEG;   // look pitch absorbed by lens shift (verticals stay vertical)
 const H_FOV = 74 * DEG;       // 24 mm full-frame, horizontal
 const H_FOV_PORTRAIT_MIN = 66 * DEG;
+const PORTRAIT = 0.8;           // stage aspect below which the portrait variants of presets apply
 const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export function createCameraController({ camera, dom, layout, colliders = [], onChange = () => {} }) {
@@ -187,7 +188,9 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
       const o = { ...state.orbit, target: new THREE.Vector3(S.x / 2, 0.4, S.z / 2), radius: wide ? 9.6 : 11.2, theta: wide ? -90 * DEG : 0, phi: wide ? 58 * DEG : 64 * DEG, thetaVel: 0, phiVel: 0 };
       return { mode: 'orbit', orbit: o };
     }
-    const v = views[name] || views.eye;
+    // portrait stages (phones): Entry pulls back 0.4 m and turns toward the sofa, so sofa, bed and window are all
+    // in the opening frame (D3-07: the sofa projected to x = −20 at 390×844)
+    const v = (name === 'eye' && camera.aspect < PORTRAIT && views.eyePortrait) || views[name] || views.eye;
     const pos = resolve(new THREE.Vector3(...v.pos));
     const { yaw, pitch } = yawPitchFromDir(new THREE.Vector3(...v.target).sub(pos));
     return { mode: 'walk', pos, yaw, pitch };
@@ -269,46 +272,85 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
 
   // ---------------------------------------------------------------- focus
   /**
+   * Distance from the box centre at which all 8 corners of `box` fit within ±tw / ±tv (tangents of
+   * the free rect's half-angles) when looking at `center` from direction (yaw, pitch).
+   */
+  const _bf = { f: new THREE.Vector3(), r: new THREE.Vector3(), u: new THREE.Vector3(), o: new THREE.Vector3() };
+  function boxFit(box, center, yaw, pitch, tw, tv) {
+    const { f, r, u, o } = _bf;
+    f.set(-Math.sin(yaw) * Math.cos(pitch), -Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
+    r.set(-f.z, 0, f.x).normalize();
+    u.crossVectors(r, f);
+    let d = 0;
+    for (let i = 0; i < 8; i++) {
+      o.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).sub(center);
+      const z = o.dot(f); // > 0: corner further from the camera than the centre
+      d = Math.max(d, Math.abs(o.dot(r)) / tw - z, Math.abs(o.dot(u)) / tv - z, 0.35 - z);
+    }
+    return d;
+  }
+  /**
    * Fly to a pleasing 3/4 framing of an object: candidates around its front (±35° preferred), at a
    * distance from its size, camera a little above the object; each candidate must be a free spot
    * with a clear line of sight (`clear(from, to)`, supplied by the engine). Falls back to re-aiming
    * from where the camera is.
    */
-  function focusOn({ center, size = 0.8, radius = null, front = null, clear = () => true, preferYaw = null }) {
+  function focusOn({ center, size = 0.8, radius = null, box = null, front = null, clear = () => true, occlusion = null, preferYaw = null }) {
     if (!state.focus && !(state.transition && state.transition.pose.mode === 'focus')) state.returnPose = currentPose();
     const cam = camera.position;
     const base = front ? Math.atan2(front.x, front.z) : Math.atan2(cam.x - center.x, cam.z - center.z);
-    // distance that fits the object's bounding sphere inside the FREE part of the stage (HUD insets
-    // applied), with margin (D2-01): r / sin(half-angle of the free rect)
+    // The object must fit the FREE part of the stage (HUD insets applied), with margin (D2-01).
+    // With a box this is the exact fit of its 8 corners for each candidate direction; the bounding
+    // sphere (fallback) is far too conservative for long low things on a wide stage — a sofa on a
+    // 2.75:1 stage behind the HUD wanted 4.7 m and flew back to the entry.
     const r = Math.max(0.15, radius ?? size * 0.6);
     const tv = Math.tan((camera.fov * DEG) / 2), th = tv * camera.aspect;
     const fh = Math.max(0.25, 1 - state.insetTarget), fw = Math.max(0.25, 1 - state.insetRTarget);
     const half = Math.min(Math.atan(tv * fh), Math.atan(th * fw));
-    const dFit = clamp((1.12 * r) / Math.sin(half), 0.9, 5.5);
+    const dSphere = clamp((1.12 * r) / Math.sin(half), 0.9, 5.5);
+    const camY0 = clamp(center.y + 0.3 + r * 0.45, 0.95, 1.75);
     const offs = [35, -35, 25, -25, 48, -48, 12, -12, 62, -62, 0, 80, -80, 100, -100].map((a) => a * DEG);
     let best = null;
-    // prefer another angle before moving closer; closer only when no angle has room
-    for (const k of [1, 0.9, 0.8, 0.7, 0.6, 0.5]) {
-      const dist = dFit * k;
-      const dy = clamp(center.y + 0.3 + r * 0.45, 0.95, 1.75) - center.y;
-      const h = Math.sqrt(Math.max(0.04, dist * dist - dy * dy));
+    // every angle at its own fit distance, then closer steps; another angle is preferred to moving much
+    // closer, the usual eye height to a raised / lowered one, and views where furniture, walls or the
+    // object's own parts hide it score worse (occlusion 0..1, PT3-03) — so a blocked view falls back to
+    // another angle, a closer, a higher or a lower pose
+    for (const [hOff, hCost] of [[0, 0], [0.4, 0.35], [-0.3, 0.45]]) {
+      const camY = clamp(camY0 + hOff, 0.75, S.ceiling - 0.35);
+      if (hOff !== 0 && Math.abs(camY - camY0) < 0.1) continue;
+      const dy = camY - center.y;
+      const pitchAt = (d) => Math.atan2(dy, Math.sqrt(Math.max(0.04, d * d - dy * dy)));
+      const fitAt = (yaw) => {
+        if (!box) return dSphere;
+        let d = 2.2;
+        for (let i = 0; i < 3; i++) d = boxFit(box, center, yaw, pitchAt(d), (th * fw) / 1.16, (tv * fh) / 1.16);
+        return clamp(d, 0.9, 5.5);
+      };
       for (const off of offs) {
-        const fo = { center: center.clone(), size, yaw: base + off, pitch: Math.atan2(dy, h), dist };
-        const p = focusPos(fo);
-        if (!freeSpot(p) || !clear(p, center)) continue;
-        let score = Math.abs(Math.abs(off) - 35 * DEG) * 1.2 + p.distanceTo(cam) * 0.04;
-        if (preferYaw !== null) score += Math.abs(wrapAngle(fo.yaw - preferYaw)) * 2.5;
-        if (!best || score < best.score) best = { fo, score };
+        const yaw = base + off;
+        const dFit = fitAt(yaw);
+        for (const k of [1, 0.92, 0.84, 0.76, 0.68, 0.6, 0.52]) {
+          const dist = Math.max(0.7, dFit * k);
+          const fo = { center: center.clone(), size, yaw, pitch: pitchAt(dist), dist };
+          const p = focusPos(fo);
+          let score = Math.abs(Math.abs(off) - 35 * DEG) * 1.2 + (1 - k) * 4 + hCost + p.distanceTo(cam) * 0.04;
+          if (preferYaw !== null) score += Math.abs(wrapAngle(yaw - preferYaw)) * 2.5;
+          if (best && score >= best.score) continue;
+          if (!freeSpot(p) || !clear(p, center)) continue;
+          let occ = 0;
+          if (occlusion) { occ = occlusion(p); score += occ * 4; if (best && score >= best.score) continue; }
+          best = { fo, score, occ, hOff };
+        }
       }
-      if (best) break;
     }
+    state.focusInfo = best ? { score: +best.score.toFixed(2), occluded: +best.occ.toFixed(2), raised: best.hOff, dist: +best.fo.dist.toFixed(2) } : { fallback: true };
     let fo = best?.fo;
     if (!fo) {
       // nowhere better: stay, just turn toward the object
       const d = new THREE.Vector3().subVectors(cam, center);
       fo = { center: center.clone(), size, yaw: Math.atan2(d.x, d.z), pitch: Math.asin(clamp(d.y / Math.max(1e-6, d.length()), -0.99, 0.99)), dist: Math.max(0.6, d.length()) };
     }
-    fo.yaw0 = fo.yaw; fo.dist0 = fo.dist; fo.yawVel = 0; fo.pitchVel = 0; fo.clear = clear;
+    fo.yaw0 = fo.yaw; fo.dist0 = fo.dist; fo.pitch0 = fo.pitch; fo.yawVel = 0; fo.pitchVel = 0; fo.clear = clear;
     flyTo({ mode: 'focus', focus: fo }, { duration: preferYaw !== null ? 0.6 : 0.9 });
     return true;
   }
@@ -325,7 +367,7 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
     const fo = state.focus;
     const prev = { yaw: fo.yaw, pitch: fo.pitch, dist: fo.dist };
     fo.yaw = clamp(fo.yaw0 + wrapAngle(fo.yaw + dyaw - fo.yaw0), fo.yaw0 - 80 * DEG, fo.yaw0 + 80 * DEG);
-    fo.pitch = clamp(fo.pitch + dpitch, 3 * DEG, 55 * DEG);
+    fo.pitch = clamp(fo.pitch + dpitch, Math.min(3 * DEG, fo.pitch0 ?? 3 * DEG), 55 * DEG); // a lowered pose may look up
     fo.dist = clamp(fo.dist + ddist, Math.max(0.55, fo.dist0 * 0.6), fo.dist0 * 1.7);
     const p = focusPos(fo);
     if (!freeSpot(p, 0.12) || !fo.clear(p, fo.center)) { Object.assign(fo, prev); return false; }
@@ -583,12 +625,18 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
     api.onInteract?.();
   }
 
+  let wasPortrait = null;
   function resize(w, h) {
     viewW = w; viewH = h;
     camera.aspect = w / h;
+    const portrait = camera.aspect < PORTRAIT;
+    const flip = wasPortrait !== null && portrait !== wasPortrait && state.view === 'eye' && state.mode === 'walk' && !state.transition;
+    wasPortrait = portrait;
     const hfov = camera.aspect >= 1 ? H_FOV : H_FOV_PORTRAIT_MIN;
     // the lens is defined horizontally; very wide stages (2.5:1 product strip) keep 74° h by going down to 28° v (R2-19)
     camera.fov = clamp(2 * Math.atan(Math.tan(hfov / 2) / camera.aspect) / DEG, 28, 82);
+    // rotating a phone while still on Entry: take the variant for the new orientation
+    if (flip && views.eyePortrait) { const pose = poseForView('eye'); state.pos.copy(pose.pos); state.yaw = pose.yaw; state.pitch = pose.pitch; }
     applyCurrent();
   }
 

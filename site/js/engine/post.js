@@ -99,23 +99,23 @@ class MeterPass extends Pass {
         uniform sampler2D map; uniform vec4 rect; uniform float useRect; varying vec2 vUv;
         void main() {
           vec2 o = vec2( 0.25 ) / vec2( 32.0, 20.0 );
-          float L = 0.0, cw = 0.0, rg = 0.0, bg = 0.0;
+          float L = 0.0, mx = -20.0, cmx = -20.0;
           for ( int i = 0; i < 4; i ++ ) {
             vec2 j = vec2( i % 2 == 0 ? -o.x : o.x, i < 2 ? -o.y : o.y );
             vec3 c = texture2D( map, vUv + j ).rgb;
             c = clamp( c == c ? c : vec3( 0.0 ), vec3( 1e-4 ), vec3( 1e4 ) );   // NaN-safe
             float l = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
             L += log( l );
-            float a = log( c.r / c.g ), b = log( c.b / c.g );
-            float k = exp( - 2.0 * ( abs( a ) + abs( b ) ) ) * ( l < 0.6 ? 1.0 : 0.08 );
-            cw += k; rg += a * k; bg += b * k;
+            mx = max( mx, log( l ) );
+            cmx = max( cmx, log( max( c.r, max( c.g, c.b ) ) ) );
           }
           // spot (focused object's screen rect) or centre-weighted average
           float w;
           if ( useRect > 0.5 ) w = ( vUv.x >= rect.x && vUv.x <= rect.z && vUv.y >= rect.y && vUv.y <= rect.w ) ? 1.0 : 0.0;
           else { vec2 d = ( vUv - vec2( 0.5, 0.48 ) ) * vec2( 1.3, 1.6 ); w = exp( - dot( d, d ) * 3.0 ); }
-          // R: log-luminance · w   G: w   B, A: chroma (diagnostics)
-          gl_FragColor = vec4( L * 0.25 * w, w, rg * 0.25 * w, bg * 0.25 * w );
+          // R: log-luminance · w   G: w   B: brightest log-luminance of the texel, A: brightest log-channel
+          // (whole frame, unweighted — the focus meter's highlight guard)
+          gl_FragColor = vec4( L * 0.25 * w, w, mx, cmx );
         }`,
       depthTest: false, depthWrite: false, toneMapped: false,
     });
@@ -176,6 +176,56 @@ class LocalLumPass extends Pass {
 }
 
 // msaa: RenderPass samples. aoScale: AO resolution relative to the drawing buffer (capped by aoCss).
+/**
+ * Idle refinement compositor: on a `capture` frame it keeps a copy of the raster HDR frame; while
+ * holding, the raster passes are skipped and the frame is mix(held raster, path-traced estimate, k)
+ * — exposure, white balance, dodge, bloom and tone mapping downstream stay exactly the raster ones.
+ */
+class RefinePass extends Pass {
+  constructor() {
+    super();
+    this.hold = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false });
+    this.hold.texture.name = 'villar.hold';
+    const vs = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4( position.xy, 0.0, 1.0 ); }';
+    this.copy = new FullScreenQuad(new THREE.ShaderMaterial({
+      uniforms: { map: { value: null } }, vertexShader: vs,
+      fragmentShader: 'uniform sampler2D map; varying vec2 vUv; void main() { gl_FragColor = texture2D( map, vUv ); }',
+      depthTest: false, depthWrite: false, toneMapped: false,
+    }));
+    this.mix = new FullScreenQuad(new THREE.ShaderMaterial({
+      uniforms: { tHold: { value: this.hold.texture }, tPT: { value: null }, k: { value: 0 }, demod: { value: 0 } }, vertexShader: vs,
+      fragmentShader: /* glsl */`
+        uniform sampler2D tHold; uniform sampler2D tPT; uniform float k; uniform float demod; varying vec2 vUv;
+        void main() {
+          vec3 a = texture2D( tHold, vUv ).rgb;
+          vec3 t = texture2D( tPT, vUv ).rgb;
+          if ( any( isnan( t ) ) || any( isinf( t ) ) ) t = demod > 0.5 ? vec3( 1.0 ) : a;
+          // demodulated estimate (path traced ÷ raster, filtered): back onto the full-resolution raster frame
+          vec3 b = k > 0.0 ? ( demod > 0.5 ? ( a + vec3( 0.006 ) ) * t : t ) : a;
+          gl_FragColor = vec4( mix( a, b, k ), 1.0 );
+        }`,
+      depthTest: false, depthWrite: false, toneMapped: false,
+    }));
+    this.capture = false; this.holding = false; this.k = 0; this.texture = null; this.demod = false;
+    this.needsSwap = false;
+  }
+  setSize(w, h) { this.hold.setSize(w, h); this.holding = false; }
+  render(renderer, writeBuffer, readBuffer) {
+    if (this.capture) {
+      this.copy.material.uniforms.map.value = readBuffer.texture;
+      renderer.setRenderTarget(this.hold); this.copy.render(renderer);
+      this.capture = false; this.holding = true;
+    }
+    if (!this.holding) { this.needsSwap = false; return; }
+    const u = this.mix.material.uniforms;
+    u.k.value = this.texture ? this.k : 0; u.tPT.value = this.texture; u.demod.value = this.demod ? 1 : 0;
+    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+    this.mix.render(renderer);
+    this.needsSwap = true;
+  }
+  dispose() { this.hold.dispose(); this.copy.dispose(); this.mix.dispose(); this.copy.material.dispose(); this.mix.material.dispose(); }
+}
+
 export const QUALITY = {
   high:   { msaa: 4, ao: true, aoScale: 1.0, aoCss: 1.35, aoSamples: 16, bloom: true, maxDpr: 2, lampShadows: 2, shadowMap: 4096 },
   medium: { msaa: 2, ao: true, aoScale: 0.5, aoCss: 1.0, aoSamples: 12, bloom: false, maxDpr: 1.5, lampShadows: 0, shadowMap: 2048 },
@@ -228,6 +278,9 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
 
   const renderPass = new RenderPass(scene, camera);
   composer.addPass(renderPass);
+  const refine = new RefinePass();
+  refine.setSize(size.x, size.y);
+  composer.addPass(refine);
 
   // --- exposure metering (auto-exposure / eye adaptation)
   const meter = new MeterPass(renderer.extensions.has('EXT_color_buffer_float'));
@@ -259,12 +312,13 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
   output.uniforms.villarLocal = { value: local.rt.texture };
   output.uniforms.villarLiftRef = { value: 0 };    // ln of the pre-exposure luminance that displays at ~9 %
   output.uniforms.villarLiftMax = { value: 0 };    // EV (0 = off)
+  output.uniforms.villarShoulder = { value: 0 };   // focus highlight roll-off 0…1 (R3-04)
   {
     const m = output.material;
     const a = 'gl_FragColor = texture2D( tDiffuse, vUv );';
     if (m.fragmentShader.includes(a)) {
       m.fragmentShader = m.fragmentShader
-        .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\n\t\tuniform vec3 villarGain;\n\t\tuniform sampler2D villarLocal;\n\t\tuniform float villarLiftRef;\n\t\tuniform float villarLiftMax;')
+        .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\n\t\tuniform vec3 villarGain;\n\t\tuniform sampler2D villarLocal;\n\t\tuniform float villarLiftRef;\n\t\tuniform float villarLiftMax;\n\t\tuniform float villarShoulder;')
         .replace(a, `${a}
 			gl_FragColor.rgb *= villarGain;
 			if ( villarLiftMax > 0.0 ) {
@@ -273,6 +327,15 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
 				// edge-aware: a pixel much brighter than its neighbourhood (a wall beside a black TV) is not lifted → no halos
 				float k = clamp( 1.0 - ( lp - l ) * 2.0, 0.0, 1.0 );
 				gl_FragColor.rgb *= exp2( k * clamp( 0.75 * ( villarLiftRef - l ) / 0.6931, 0.0, villarLiftMax ) );
+			}
+			if ( villarShoulder > 0.0 ) {
+				// focus close-up: the brightest channel rolls off toward 2.4× white (Neutral clips at ≈ 2.65),
+				// so a sunlit wall behind a boosted object stays photographic instead of clipping (R3-04)
+				float m = max( gl_FragColor.r, max( gl_FragColor.g, gl_FragColor.b ) ) * toneMappingExposure;
+				if ( m > 1.1 ) {
+					float mc = 1.1 + ( m - 1.1 ) / ( 1.0 + ( m - 1.1 ) / 1.3 );
+					gl_FragColor.rgb *= mix( 1.0, mc / m, villarShoulder );
+				}
 			}`);
       m.needsUpdate = true;
     }
@@ -308,20 +371,36 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
     setAO(v) { aoIntensity = v; },
     setNoAO(list) { noAO = list; },
     /** Shadow dodge: `ref` = ln(pre-exposure luminance shown at ~9 %), `max` = EV cap (0 = off). */
+    setShoulder(k) { output.uniforms.villarShoulder.value = k; },
     setLift(ref, max) { output.uniforms.villarLiftRef.value = ref; output.uniforms.villarLiftMax.value = max; local.enabled = max > 0; },
     /** Camera white balance as linear RGB gains (luminance-normalised). */
     setWhiteBalance(gain) { output.uniforms.villarGain.value.copy(gain); },
     setSelection(objects) { outline.selectedObjects = objects; outline.enabled = objects.length > 0; outline.edgeStrength = 1.5; outline.edgeGlow = 0.4; },
     /** 0…1 visibility of the selection halo (fades out after a focus flight). */
     setSelectionStrength(k) { outline.edgeStrength = 1.5 * k; outline.edgeGlow = 0.4 * k; outline.enabled = outline.selectedObjects.length > 0 && k > 0.01; },
-    setSize(w, h) { composer.setSize(w, h); gtao.setSize(); syncSSAO(); },
-    render(dt) {
+    setSize(w, h) { composer.setSize(w, h); gtao.setSize(); syncSSAO(); },  // (composer sizes the refine hold too)
+    /**
+     * `ref` (idle refinement): { capture } keeps this raster frame; { texture, k } while holding mixes the
+     * path-traced estimate over the held frame without re-rendering the scene (and without re-metering).
+     */
+    render(dt, ref = null) {
       // the MSAA target must be the beauty pass's read buffer (swap parity can change with passes)
       if (composer.readBuffer !== rt) composer.swapBuffers();
+      if (!ref) { refine.holding = false; refine.capture = false; }
+      else if (ref.capture) { refine.capture = true; refine.texture = null; refine.k = 0; }
+      else { refine.texture = ref.texture || null; refine.k = ref.k || 0; refine.demod = !!ref.demod; }
+      const skip = refine.holding && !refine.capture;
+      const saved = skip ? [gtao.enabled, renderPass.enabled, meter.enabled, local.enabled] : null;
+      if (skip) { gtao.enabled = false; renderPass.enabled = false; meter.enabled = false; local.enabled = false; }
       syncSSAO();
       SSAO.villarSSAOIntensity.value = gtao.enabled ? aoIntensity : 0;
-      try { composer.render(dt); } finally { SSAO.villarSSAOIntensity.value = 0; }
+      try { composer.render(dt); } finally {
+        SSAO.villarSSAOIntensity.value = 0;
+        if (saved) [gtao.enabled, renderPass.enabled, meter.enabled, local.enabled] = saved;
+      }
     },
+    get holding() { return refine.holding; },
+    get holdRT() { return refine.hold; },
     /** Compile the post materials used only at night / on selection (bloom, outline) ahead of time. */
     prewarm() {
       const geo = new THREE.PlaneGeometry(2, 2), cam = new THREE.OrthographicCamera();
@@ -336,7 +415,7 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
     /** After a context restore: GL objects are gone; mark targets for re-creation. */
     onContextRestored() { WHITE.needsUpdate = true; },
     dispose() {
-      gtao.dispose(); outline.dispose(); bloom.dispose(); output.dispose(); meter.dispose(); local.dispose();
+      gtao.dispose(); outline.dispose(); bloom.dispose(); output.dispose(); meter.dispose(); local.dispose(); refine.dispose();
       composer.renderTarget1.dispose(); composer.renderTarget2.dispose();
     },
   };

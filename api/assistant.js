@@ -48,6 +48,7 @@ const TEXT = {
     timeout: 'Не успел ответить — попробуйте ещё раз.', rate_limited: 'Слишком много запросов. Подождите минуту.',
     bad_request: 'Не понял запрос.', forbidden: 'Запрос отклонён.', empty: 'Готово.',
     budgetMin: (m) => `Ниже ${m} в этом стиле не получится — собрал самый экономный вариант.`,
+    budgetPlan: (n, lvl, t) => `Собрал комнату под ${n}: «${lvl}», итог ${t}.`,
     budgetFixed: (n, k, t) => `Уложился в ${n}: ${k} ${plural('ru', k, ['замена', 'замены', 'замен'])}, итог ${t}.`,
     budgetAlready: (t) => `Вы уже укладываетесь: итог ${t}.`,
   },
@@ -56,6 +57,7 @@ const TEXT = {
     timeout: 'That took too long — please try again.', rate_limited: 'Too many requests. Please wait a minute.',
     bad_request: 'I didn’t understand the request.', forbidden: 'Request refused.', empty: 'Done.',
     budgetMin: (m) => `This style can’t go below ${m} — here is the most economical set.`,
+    budgetPlan: (n, lvl, t) => `Room set for ${n}: “${lvl}”, total ${t}.`,
     budgetFixed: (n, k, t) => `Within ${n}: ${k} ${plural('en', k, ['swap', 'swaps'])}, total ${t}.`,
     budgetAlready: (t) => `You’re already within budget: total ${t}.`,
   },
@@ -179,7 +181,8 @@ const TOOL = {
           items: {
             type: 'object',
             properties: {
-              type: { type: 'string', enum: ['select', 'style', 'view', 'time', 'focus', 'reset'] },
+              type: { type: 'string', enum: ['select', 'style', 'view', 'time', 'focus', 'reset', 'budget'] },
+              amount: { type: 'number', description: 'budget: AED amount — moves the budget slider (the room adds/removes/upgrades items to the best designer room within it)' },
               key: { type: 'string', description: 'select: selection key (or slotId)' },
               slotId: { type: 'string', description: 'focus/select: layout slot id' },
               itemId: { type: 'string', description: 'select: catalog item id' },
@@ -263,7 +266,9 @@ function cleanState(state) {
   const selection = sim.normalizeSelection(style, state?.selection);
   const view = VIEWS.includes(state?.view) ? state.view : null;
   const time = TIMES.includes(state?.time) ? state.time : null;
-  return { style, selection, view, time };
+  const keys = sim.pack(style)?.slots || {};
+  const pins = Array.isArray(state?.pins) ? [...new Set(state.pins.filter((k) => typeof k === 'string' && keys[k]))].slice(0, 60) : [];
+  return { style, selection, view, time, pins };
 }
 
 function stateBlock(lang, st) {
@@ -458,7 +463,19 @@ export default async function handler(req, res) {
   const target = parseBudget(userText) || (/\d/.test(userText) ? first.budget : null);
   let budget = null;
   let iterations = 1;
-  if (target) {
+  if (target && sim.hasBudget()) {
+    // The budget slider's planner decides the room (same answer as dragging the slider to `target`); the model's
+    // own swaps for the budget are ignored, its style/time/view/focus actions are kept.
+    const keep = (Array.isArray(raw) ? raw : []).filter((a) => a && !['select', 'reset', 'budget'].includes(String(a.type || '').toLowerCase()));
+    raw = [...keep, { type: 'budget', amount: target }];
+    v = sim.applyActions(st, raw);
+    total = sim.total(v.state.style, v.state.selection);
+    const b = v.actions.find((a) => a.type === 'budget');
+    const plan = sim.planBudget(v.state.style, target, { selection: v.state.style === st.style ? st.selection : v.state.selection, pins: v.state.style === st.style ? st.pins : [] });
+    const lvl = plan?.level ? (lang === 'en' ? plan.level.nameEn : plan.level.name) : '';
+    reply = b && total <= target ? TEXT[lang].budgetPlan(aed(lang, target), lvl, aed(lang, total)) : TEXT[lang].budgetMin(aed(lang, plan?.min ?? total));
+    budget = { target, total, ok: total <= target, min: plan?.min ?? total, level: plan?.level?.id || null };
+  } else if (target) {
     if (total > target && remaining() >= SECOND_CALL_MIN_MS) {
       const en = lang === 'en';
       const fb = en

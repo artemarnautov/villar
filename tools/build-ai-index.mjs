@@ -20,7 +20,9 @@ for (const p of styles.packs || []) {
 }
 const layout = read('layout-studio.json');
 const catalog = read('catalog.json');
-const index = buildAiIndex({ catalog, layout, packs, styles });
+let budget = null;
+try { budget = read('budget.json'); } catch { /* optional: no budget planning without it */ }
+const index = buildAiIndex({ catalog, layout, packs, styles, budget });
 
 // Public-safety guard: nothing supplier-ish may reach the function bundle either.
 const text = JSON.stringify(index);

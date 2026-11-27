@@ -581,6 +581,15 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
     glassMaterials: [M.glass, M.railGlass],
     /** Materials that carry the wall colour (walls, skirting, painted doors) — animated on style changes. */
     get wallMaterials() { return [M.wall, M.skirting, ...[...doorMats.values()].filter((d) => d.finish === 'paint').map((d) => d.mat)]; },
+    /**
+     * Target colours of `wallMaterials` for the wall hex: each one as its own material constructor
+     * would make it (detail-texture compensated), so a pack's walls look the same on every path (R3-03).
+     */
+    wallTargets(hex) {
+      return this.wallMaterials.map((m) => (m === M.wall ? wallMaterial(wallFinish, hex)
+        : m === M.skirting ? materials.get('kitchen-front', { color: hex, roughness: 0.5 })
+          : finishMaterial('paint', hex)).color.clone());
+    },
     get doorFinish() { return [...doorMats.values()].find((d) => d.fromPack)?.finish || null; },
     get wallFinish() { return wallFinish; },
     /** Stage a wall-finish change (paint ↔ limewash) for a dissolve, like prepareDoorFinish. */
@@ -609,13 +618,14 @@ export function buildArchitecture({ layout, stylepack, palette, materials }) {
      * Stage a door-finish change: new meshes (same geometry, new material) are added next to the old
      * ones for a dissolve; `commit()` removes the old ones. Doors pinned by the layout are kept.
      */
-    prepareDoorFinish(finish) {
+    prepareDoorFinish(finish, wallsHex = null) {
       // door meshes are found by a stable tag, never by material identity: a dissolve dresses them in
       // temporary clones, and a second switch during it must still find them (T3)
       const inn = [], out = [], jobs = [];
       for (const [key, d] of doorMats) {
         if (!d.fromPack || d.finish === finish) continue;
-        const mat = own(finishMaterial(finish, '#' + M.wall.color.getHexString()).clone());
+        // a painted door takes the TARGET wall hex (walls may still be animating; R3-03)
+        const mat = own(finishMaterial(finish, wallsHex || A.walls || '#EDE7DE').clone());
         mat.shadowSide = THREE.DoubleSide;
         const found = [];
         for (const g of [full, cutGroup]) g.traverse((o) => { if (o.isMesh && o.userData.doorKey === key && !o.userData.doorOld) found.push(o); });

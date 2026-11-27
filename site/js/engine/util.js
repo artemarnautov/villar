@@ -95,9 +95,10 @@ export function planckRGB(T) {
  * Camera white balance gains (von Kries in linear sRGB) for a white point of `K` kelvin, applied with
  * `strength` (0…1, in log space) and normalised to unit luminance so exposure is unaffected.
  */
-export function whiteBalanceGain(K, strength = 1, out = new THREE.Vector3()) {
+export function whiteBalanceGain(K, strength = 1, out = new THREE.Vector3(), tint = 1) {
   const w = planckRGB(K), d = planckRGB(6504);
   const g = [d.r / Math.max(1e-4, w.r), d.g / Math.max(1e-4, w.g), d.b / Math.max(1e-4, w.b)].map((v) => Math.pow(v, strength));
+  g[1] *= tint; // green/magenta: > 1 pulls a magenta cast back to neutral
   const l = 0.2126 * g[0] + 0.7152 * g[1] + 0.0722 * g[2];
   return out.set(g[0] / l, g[1] / l, g[2] / l);
 }

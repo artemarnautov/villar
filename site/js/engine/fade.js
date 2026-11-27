@@ -49,7 +49,8 @@ export function createFader({ renderer, scene, camera, target = () => null, onSh
    * Fade groups: `inn` appear, `out` disappear, over `ms` after `delay`. Resolves when done.
    * Light intensities of `inLights` ramp 0 → base with the fade.
    */
-  async function swap({ inn = [], out = [], inLights = [], ms = 280, delay = 0, settle = true }) {
+  const flushedTags = new WeakSet(); // tags finished early (the run may still be compiling)
+  async function swap({ inn = [], out = [], inLights = [], ms = 280, delay = 0, settle = true, tag = null }) {
     const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) ms = 1;
     const dressedIn = inn.map((g) => ({ g, meshes: dress(g), base: g.scale.clone() }));
@@ -65,7 +66,8 @@ export function createFader({ renderer, scene, camera, target = () => null, onSh
     const lights = inLights.map((l) => [l, l.intensity]);
     for (const [l] of lights) l.intensity = 0;
     return new Promise((resolve) => {
-      const run = { t0: performance.now() + delay, ms, dressedIn, dressedOut, lights, resolve, swapped: false, settle };
+      const run = { t0: performance.now() + delay, ms, dressedIn, dressedOut, lights, resolve, swapped: false, settle, tag };
+      if (tag && flushedTags.has(tag)) run.t0 = -Infinity;
       runs.add(run);
       step(performance.now());
     });
@@ -130,6 +132,14 @@ export function createFader({ renderer, scene, camera, target = () => null, onSh
     dressForWarm: (group) => dress(group),
     undress: (meshes) => undress(meshes),
     get active() { return runs.size > 0; },
+    /** Finish only the run(s) started with this `tag` (door / wall serialisation, R3-05). */
+    finishTag(tag) {
+      if (!tag) return;
+      flushedTags.add(tag);
+      let hit = false;
+      for (const run of runs) if (run.tag === tag) { run.t0 = -Infinity; hit = true; }
+      if (hit) step(performance.now());
+    },
     /** Finish everything at once (photo mode, dispose). */
     flush() { for (const run of [...runs]) { run.t0 = -Infinity; } step(performance.now()); },
     dispose() {

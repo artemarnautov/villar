@@ -2,7 +2,10 @@
 //
 //  • Sun: DirectionalLight with a shadow camera fitted tightly (in light space) to the apartment,
 //    physically sensible altitude/azimuth per time of day; enters through the window wall (+Z).
-//  • Sky: procedural HDR equirect (background; also the path tracer's environment).
+//  • Sky: a photographic HDR per time of day (CC0 HDRI prepared offline, sky.js) — background, sky
+//    reflections and the path tracer's environment; the procedural sky stands in until it has loaded.
+//  • Path tracer sun: a distant circular area light subtending the real sun (0.53°) — soft, physically
+//    sized shadows and specular glints; its irradiance equals the raster DirectionalLight's.
 //  • Interior indirect light comes from the baked probe volume (probes.js). Until it is baked the
 //    grid carries a constant ambient SH (`ambient(tod)`), so there are no "fallback" fill lights.
 //  • Exactly two light sets exist: daylight (sun + GI) and evening (downlights, LED strip, lamp
@@ -15,7 +18,7 @@
 //    for reflections (the probe-grid patch disables its diffuse inside the apartment).
 import * as THREE from 'three';
 import { DEG, kelvin, clamp } from './util.js';
-import { SKY_PRESETS, makeSkyTexture } from './sky.js';
+import { SKY_PRESETS, SKY_HDR, makeSkyTexture, loadSkyTexture } from './sky.js';
 
 export const TIMES = ['morning', 'day', 'golden', 'evening'];
 
@@ -24,7 +27,7 @@ export const TIMES = ['morning', 'day', 'golden', 'evening'];
 export const TOD = {
   morning: { sun: { alt: 17, az: 40, K: 4700, I: 8.5 }, exposure: 3.0, wb: 5300, lamps: false },
   day:     { sun: { alt: 41, az: -24, K: 5500, I: 10.5 }, exposure: 3.0, wb: 6000, lamps: false },
-  golden:  { sun: { alt: 9, az: -47, K: 3500, I: 7.0 }, exposure: 2.9, wb: 4600, lamps: false },
+  golden:  { sun: { alt: 9, az: -47, K: 3500, I: 6.3 }, exposure: 2.9, wb: 4600, lamps: false }, // I 7.0 → 6.3: sun patches keep their saturation (R3-11)
   evening: { sun: { alt: -5, az: -60, K: 3000, I: 0 }, exposure: 1.5, wb: 3300, lamps: true },
 };
 
@@ -60,6 +63,23 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
   portal.visibleToCameraRays = false;
   portal.visible = false;
   rig.add(portal);
+  // path-tracer sun: disc of the sun's angular size at SUN_D, facing the apartment (never drawn by raster)
+  const SUN_D = 40, SUN_ANG = 0.53 * DEG;
+  const sunDiam = 2 * SUN_D * Math.tan(SUN_ANG / 2);
+  const sunDisc = new THREE.RectAreaLight(0xffffff, 0, sunDiam, sunDiam);
+  sunDisc.isCircular = true;
+  sunDisc.name = 'sun-disc';
+  sunDisc.visibleToCameraRays = false;
+  sunDisc.visible = false;
+  rig.add(sunDisc);
+  /** Radiance that gives the disc the DirectionalLight's irradiance: E = L · A / d². */
+  function placeSunDisc(dir, I) {
+    sunDisc.position.copy(center).setY(1.4).addScaledVector(dir, SUN_D);
+    sunDisc.lookAt(center.x, 1.4, center.z);
+    sunDisc.color.copy(sun.color);
+    sunDisc.intensity = I > 0 ? (I * SUN_D * SUN_D) / ((Math.PI / 4) * sunDiam * sunDiam) : 0;
+    sunDisc.updateMatrixWorld();
+  }
 
   // ---------------------------------------------------------------- evening lights (always present)
   const downlights = [];
@@ -108,10 +128,70 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
     const a = cfg.sun.alt * DEG, z = cfg.sun.az * DEG;
     return new THREE.Vector3(Math.sin(z) * Math.cos(a), Math.sin(a), Math.cos(z) * Math.cos(a)).normalize();
   }
+  const hdrSky = new Map();   // tod → photographic sky texture (once loaded)
+  const hdrTint = new Map();  // tod → colour of the sky light through the window (luminance 1)
+  const hdrHaze = new Map();  // tod → colour of the horizon haze band (luminance 1)
+  /** Mean colour of the horizon band (0.5–3° elevation, all azimuths): the haze the city fades into. */
+  function hazeTint(t) {
+    const { data, width: W, height: H } = t.image;
+    const fh = THREE.DataUtils.fromHalfFloat;
+    let r = 0, g = 0, b = 0;
+    for (let j = 0; j < H; j++) {
+      const lat = (((j + 0.5) / H) - 0.5) * 180;
+      if (lat < 0.5 || lat > 3) continue;
+      for (let i = 0; i < W; i += 2) { const o = (j * W + i) * 4; r += fh(data[o]); g += fh(data[o + 1]); b += fh(data[o + 2]); }
+    }
+    const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return L > 0 ? new THREE.Color(r / L, g / L, b / L) : null;
+  }
+  /** Cosine-weighted mean colour of the sky seen through the window (+Z), 0–45° elevation. */
+  function windowTint(t) {
+    const { data, width: W, height: H } = t.image;
+    const fh = THREE.DataUtils.fromHalfFloat;
+    let r = 0, g = 0, b = 0;
+    for (let j = 0; j < H; j += 2) {
+      const lat = ((j + 0.5) / H - 0.5) * Math.PI;
+      if (lat < 0 || lat > 0.8) continue;
+      const cl = Math.cos(lat);
+      for (let i = 0; i < W; i += 4) {
+        const z = Math.sin(((i + 0.5) / W - 0.5) * 2 * Math.PI) * cl;
+        if (z <= 0) continue;
+        const w = z * cl, o = (j * W + i) * 4;
+        r += fh(data[o]) * w; g += fh(data[o + 1]) * w; b += fh(data[o + 2]) * w;
+      }
+    }
+    const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return L > 0 ? new THREE.Color(r / L, g / L, b / L) : null;
+  }
+  const hdrLoads = new Map(); // tod → Promise
   function skyFor(tod) {
+    if (hdrSky.has(tod)) return hdrSky.get(tod);
     if (!skyCache.has(tod)) skyCache.set(tod, makeSkyTexture(SKY_PRESETS[tod], sunDirection(TOD[tod])));
     return skyCache.get(tod);
   }
+  /**
+   * Load the photographic sky of a time of day. Resolves true when it replaced the sky currently in
+   * use (the caller refreshes reflections / GI), false otherwise; never rejects (procedural stays).
+   */
+  function loadSky(tod) {
+    if (!SKY_HDR[tod]) return Promise.resolve(false);
+    if (!hdrLoads.has(tod)) {
+      hdrLoads.set(tod, loadSkyTexture(SKY_HDR[tod]).then((t) => {
+        if (disposed) { t.dispose(); return null; }
+        t.name = 'villar-sky-' + tod;
+        hdrSky.set(tod, t);
+        try { const c = windowTint(t); if (c) hdrTint.set(tod, c); const h = hazeTint(t); if (h) hdrHaze.set(tod, h); } catch { /* preset colour */ }
+        const old = skyPMREM.get(tod); if (old) { old.dispose(); skyPMREM.delete(tod); }
+        return t;
+      }).catch((e) => { console.warn('[villar] sky', tod, e?.message || e); return null; }));
+    }
+    return hdrLoads.get(tod).then((t) => {
+      if (!t || current !== tod || skyTex === t) return false;
+      skyTex = t;
+      return true;
+    });
+  }
+  let disposed = false;
   /** PMREM of the sky alone (exterior objects reflect the sky, never the room). */
   function skyEnvFor(tod) {
     if (!skyPMREM.has(tod)) skyPMREM.set(tod, pmrem.fromEquirectangular(skyFor(tod)));
@@ -178,11 +258,15 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
     sun.intensity = sunUp ? cfg.sun.I : 0;
     sun.visible = !cfg.lamps;
     if (sunUp) fitShadow(dir);
+    placeSunDisc(dir, sunUp ? cfg.sun.I : 0);
     skyTex = skyFor(tod);
     const P = SKY_PRESETS[tod];
     // portal radiance ≈ mean sky radiance seen through a vertical window; sky-blue weighted
     portal.color.set(P.horizon).lerp(new THREE.Color(P.zenith), 0.55);
     portal.intensity = (P.horizonL * 0.7 + P.zenithL * 0.3) * 0.92;
+    // photographic sky: its own colour through the window, same luminance calibration
+    const tint = hdrSky.has(tod) && hdrTint.get(tod);
+    if (tint) { const l = 0.2126 * portal.color.r + 0.7152 * portal.color.g + 0.0722 * portal.color.b; portal.color.copy(tint).multiplyScalar(l); }
     const lamps = cfg.lamps;
     for (const s of downlights) { s.intensity = lamps ? DOWNLIGHT_CD : 0; s.visible = lamps; }
     for (const s of strip) { s.intensity = lamps ? s.userData.cd : 0; s.visible = lamps; }
@@ -216,7 +300,10 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
   }
 
   return {
-    rig, sun, downlights, strip, portal,
+    rig, sun, downlights, strip, portal, sunDisc,
+    loadSky, hasSky: (tod) => hdrSky.has(tod),
+    /** Horizon haze colour of the photographic sky (luminance 1), or null while the procedural one is used. */
+    hazeTint: (tod) => (hdrSky.has(tod) && hdrHaze.get(tod)) || null,
     capturePoint: CAPTURE,
     get time() { return current; },
     get skyTexture() { return skyTex; },
@@ -234,9 +321,12 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
       cubeCam = new THREE.CubeCamera(0.05, 8000, cubeRT); cubeCam.position.copy(CAPTURE);
       envRT = null; scene.environment = null;
       for (const t of skyCache.values()) t.needsUpdate = true;
+      for (const t of hdrSky.values()) t.needsUpdate = true;
       skyPMREM.clear();
     },
     dispose() {
+      disposed = true;
+      for (const t of hdrSky.values()) t.dispose();
       for (const t of skyCache.values()) t.dispose();
       for (const rt of skyPMREM.values()) rt.dispose();
       skyCache.clear(); skyPMREM.clear();

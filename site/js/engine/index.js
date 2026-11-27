@@ -33,10 +33,13 @@ const DEFAULT_TONE = 'neutral';
 // slots hidden in the dollhouse (they hang from the ceiling or sit high on cut walls)
 const CUTAWAY_HIDE = new Set(['pendant_lamp', 'wall_art', 'curtains', 'mirror']);
 const NO_OBSTACLE = new Set(['rug', 'runner', 'curtains', 'wall_art', 'mirror', 'pendant_lamp', 'throw', 'tableware', 'centerpiece', 'kitchen_decor', 'nightstand_decor']);
-const PHOTO_EXPOSURE = 1.0;    // path-traced exposure relative to raster (calibrated against GI)
+const PHOTO_EXPOSURE = 1.25;   // path-traced vs raster: the traced Entry/Day frame averaged −0.37 EV (portal + sun disc)
 const RANK = { low: 0, medium: 1, high: 2 };
 const TIERS = ['low', 'medium', 'high'];
-const WB_STRENGTH = { morning: 0.85, day: 0.85, golden: 0.75, evening: 0.6 };
+// evening: a 3300 K camera under 2700 K lamps keeps them cream (R3-01: 0.6 pushed blue ×1.8 → lavender walls)
+const WB_STRENGTH = { morning: 0.85, day: 0.85, golden: 0.75, evening: 0.45 };
+// green/magenta trim: the desaturated night bounce under the blue gain drifts lilac (R3-01) / sunset shade magenta (R3-11)
+const WB_TINT = { morning: 1, day: 1, golden: 1.02, evening: 1.04 };
 
 let chunksPatched = false;
 function patchShadowChunk(taps) {
@@ -96,7 +99,7 @@ async function loadModules() {
 export async function createVillar({
   container, store, layout, catalog, stylepack, palette = null, palettes = null,
   quality = 'high', forceQuality = false, timeOfDay = 'day', view = 'eye', adaptive = true, toneMapping = DEFAULT_TONE, gi = true, autoExposure = true,
-  autoFocus = true, onProgress = null, prewarm: prewarmOpt = 'auto',
+  autoFocus = true, onProgress = null, prewarm: prewarmOpt = 'auto', refine: refineOpt = 'auto',
 } = {}) {
   if (!container) throw new Error('createVillar: container is required');
   layout = layout || store?.state?.layout;
@@ -163,16 +166,70 @@ export async function createVillar({
     console.warn(`[villar] WebGL context lost during ${phase}`);
     contextLost = true;
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    try { if (REFINE.phase !== 'off') cancelRefine(true); } catch { /* not built yet */ }
     try { photo?.onContextLost(); thumbs?.onContextLost(); probes?.cancel(); } catch { /* not built yet */ }
     events.emit('context', { state: 'lost' });
     clearTimeout(lostTimer);
     // not back within 5 s → the host should fall back (2D plan)
     lostTimer = setTimeout(() => { if (contextLost && !disposed) events.emit('fatal', { reason: 'context-lost' }); }, 5000);
   });
+  /**
+   * R3-07: three's managers of the LOST context left 'dispose' listeners on every geometry, material, texture and
+   * render target they had seen; disposing such an object later (swaps, resizes, releases) made them delete
+   * handles of the dead context ("object does not belong to this context"). On restore (three has already
+   * re-initialised; nothing has been drawn yet) drop those listeners from everything the engine reaches; the new
+   * managers add their own on first use. Listeners of our own (e.g. the modeler's regenerators) are kept.
+   */
+  // The old managers' listener closures are shared by every object they saw — also by objects the engine can't
+  // reach (the modeler's cached prototypes, pools). Once known, a 'dispose' never calls them again (R3-07).
+  const DEAD_DISPOSERS = new Set();
+  function installDeadFilter() {
+    const P = THREE.EventDispatcher.prototype;
+    if (P.__villarDeadFilter) { P.__villarDeadFilter.add(DEAD_DISPOSERS); return; }
+    const sets = new Set([DEAD_DISPOSERS]);
+    const orig = P.dispatchEvent;
+    P.dispatchEvent = function (event) {
+      const l = event && event.type === 'dispose' && this._listeners && this._listeners.dispose;
+      if (l && l.length) this._listeners.dispose = l.filter((fn) => { for (const d of sets) if (d.has(fn)) return false; return true; });
+      return orig.call(this, event);
+    };
+    P.__villarDeadFilter = sets;
+  }
+  const THREE_DISPOSERS = new Set(['onGeometryDispose', 'onMaterialDispose', 'onTextureDispose', 'onRenderTargetDispose']);
+  function forgetDeadContext() {
+    const seen = new Set();
+    const strip = (o) => {
+      if (!o || seen.has(o)) return;
+      seen.add(o);
+      const l = o._listeners && o._listeners.dispose;
+      if (l && l.length) o._listeners.dispose = l.filter((fn) => { if (THREE_DISPOSERS.has(fn.name)) { DEAD_DISPOSERS.add(fn); return false; } return true; });
+    };
+    installDeadFilter();
+    const stripMaterial = (m) => {
+      if (!m || seen.has(m)) return;
+      strip(m);
+      for (const k in m) { const v = m[k]; if (v && v.isTexture) strip(v); }
+      if (m.uniforms) for (const u of Object.values(m.uniforms)) { const v = u && u.value; if (v && v.isTexture) strip(v); }
+    };
+    scene.traverse((o) => {
+      if (o.geometry) strip(o.geometry);
+      if (o.material) for (const m of Array.isArray(o.material) ? o.material : [o.material]) stripMaterial(m);
+    });
+    for (const t of [scene.background, scene.environment]) if (t && t.isTexture) strip(t);
+    for (const rt of [post.rt, post.composer.renderTarget1, post.composer.renderTarget2, post.holdRT]) if (rt) { strip(rt); strip(rt.texture); }
+    for (const pass of post.composer.passes) {
+      for (const k of Object.keys(pass)) {
+        const v = pass[k];
+        if (!v) continue;
+        if (v.isWebGLRenderTarget) { strip(v); strip(v.texture); } else if (v.isMaterial) stripMaterial(v); else if (v.isTexture) strip(v);
+      }
+    }
+  }
   canvas.addEventListener('webglcontextrestored', () => {
     if (disposed) return;
     console.warn('[villar] WebGL context restored — rebuilding lighting');
     contextLost = false; clearTimeout(lostTimer);
+    try { forgetDeadContext(); } catch { /* best effort */ }
     try { onRestored(); } catch (e) { console.warn('[villar] restore failed', e); events.emit('fatal', { reason: 'restore-failed' }); return; }
     events.emit('context', { state: 'restored' });
   });
@@ -303,7 +360,12 @@ export async function createVillar({
     raf = requestAnimationFrame(frame);
   }
   const invalidate = (n = 2) => { framesToRender = Math.max(framesToRender, n); wake(); };
-  canvas.addEventListener('pointermove', () => wake());
+  let hoverX = 0, hoverY = 0, onHoverMove = null; // set once the refinement controller exists
+  canvas.addEventListener('pointermove', (e) => {
+    // pointer movement is input: a refining still fades back to raster (hover highlight / price)
+    if (Math.abs(e.clientX - hoverX) + Math.abs(e.clientY - hoverY) > 3) { hoverX = e.clientX; hoverY = e.clientY; onHoverMove?.(); }
+    wake();
+  });
 
   // ---------------------------------------------------------------- exposure + white balance
   // Deterministic per time of day (calibrated on the Entry view): the room never changes colour or
@@ -348,9 +410,24 @@ export async function createVillar({
       if (!Number.isFinite(logL)) return;  // never let a NaN texel reach the exposure
       ae.lastLog = logL;
       if (!ae.spot) return;
-      // expose so the object's (log-average) luminance lands at ~80 % of its catalogue colour (≈ −10 % Y′)
+      // expose so the object's (log-average) luminance lands at ~78 % of its catalogue colour, at most +2.3 EV over
+      // the room (R3-04: +1.3 alone left a shaded sofa at −40 % of its swatch; the roll-off below keeps the
+      // backdrop from clipping, which is what made +2.2 look like a cut-out)…
       const base = (BASE_EXPOSURE[tone] ?? 1) * TOD[currentTime].exposure;
-      ae.target = clamp(Math.log2((0.8 * ae.spot.Y) / (base * Math.exp(logL))), -1.5, 2.2);
+      const evSpot = clamp(Math.log2((0.78 * ae.spot.Y) / (base * Math.exp(logL))), -1.5, 2.3);
+      // …with a highlight roll-off in the output (setShoulder) the backdrop stays photographic; if even that
+      // would leave more than ~3 % of the frame clipped, give up to −0.25 EV of the object's match (≈ −15 % Y′).
+      // Clipping is estimated from the meter's brightest channel per texel, through the same roll-off curve.
+      let ev = evSpot;
+      if (ev > 0) {
+        const gmax = Math.max(wbGain.x, wbGain.y, wbGain.z);
+        const roll = (m) => (m > 1.1 ? 1.1 + (m - 1.1) / (1 + (m - 1.1) / 1.3) : m);
+        const frac = (e) => { const E = base * Math.pow(2, e) * gmax; let n = 0; for (let i = 0; i < 32 * 20; i++) if (roll(Math.exp(ae.buf[i * 4 + 3]) * E) > 2.3) n++; return n / 640; };
+        const floor = Math.max(0, evSpot - 0.25);
+        while (ev > floor && frac(ev) > 0.03) ev = Math.max(floor, ev - 0.05);
+        ae.clip = +frac(ev).toFixed(3);
+      }
+      ae.target = ev;
       if (Math.abs(ae.target - ae.ev) > 0.03) invalidate(2);
     };
     if (!softwareGL && renderer.readRenderTargetPixelsAsync) renderer.readRenderTargetPixelsAsync(post.meter.rt, 0, 0, 32, 20, dst).then(done, () => { ae.busy = false; });
@@ -377,14 +454,18 @@ export async function createVillar({
   function applyExposure() {
     const base = BASE_EXPOSURE[tone] ?? 1;
     // dollhouse: open to the sun and sky, brighter than the interior → its own exposure
-    const v = exposureOverride ?? base * TOD[currentTime].exposure * (cutaway ? (TOD[currentTime].lamps ? 0.8 : 0.4) : Math.pow(2, ae.ev));
+    // daylight dollhouse 0.17 (R3-03: the interior exposure went up 2.3 → 3.0, the open model must not follow)
+    const v = exposureOverride ?? base * TOD[currentTime].exposure * (cutaway ? (TOD[currentTime].lamps ? 0.8 : 0.17) : Math.pow(2, ae.ev));
     renderer.toneMappingExposure = Number.isFinite(v) ? v : base * TOD[currentTime].exposure;
     // dodge deep interior shadows (corridor, kitchen) by up to ~0.9 EV; off in the dollhouse and at night
-    const lift = cutaway || TOD[currentTime].lamps ? 0 : 1.4;
+    // night: a gentler dodge keeps dark wood legible (walnut ≥ 45, R3-01) without flattening the lamp pools
+    const lift = cutaway ? 0 : TOD[currentTime].lamps ? 0.7 : 1.4;
     post.setLift(Math.log(0.11 / Math.max(1e-4, renderer.toneMappingExposure)), lift);
+    // focus boost → highlight roll-off, in step with the boost (R3-04)
+    post.setShoulder(ae.spot && !cutaway ? clamp(ae.ev / 0.4, 0, 1) : 0);
   }
   function applyWhiteBalance() {
-    whiteBalanceGain(TOD[currentTime].wb, cutaway ? 0.4 : (WB_STRENGTH[currentTime] ?? 0.8), wbGain);
+    whiteBalanceGain(TOD[currentTime].wb, cutaway ? 0.4 : (WB_STRENGTH[currentTime] ?? 0.8), wbGain, cutaway ? 1 : (WB_TINT[currentTime] ?? 1));
     post.setWhiteBalance(wbGain);
   }
 
@@ -440,6 +521,7 @@ export async function createVillar({
   }
   function setCutaway(on) {
     if (cutaway === on) return;
+    refineInput(true);
     cutaway = on;
     arch.setCutaway(on);
     for (const g of cutHidden) g.visible = true;
@@ -483,7 +565,7 @@ export async function createVillar({
   const giCache = new Map();
   const styleKey = () => store?.styleId?.() || stylepack?.id || 'default';
   const giKey = (tod = currentTime) => `${styleKey()}|${tod}`;
-  const sceneSig = () => { try { return JSON.stringify(store?.snapshot?.().selection || {}) + '|' + arch.wallColor + '|' + arch.doorFinish; } catch { return ''; } };
+  const sceneSig = () => { try { return JSON.stringify(store?.snapshot?.().selection || {}) + '|' + arch.wallColor + '|' + arch.doorFinish + '|' + (lighting.hasSky(currentTime) ? 'hdr' : 'proc'); } catch { return ''; } };
   function cacheGI() { const sh = probes.snapshot(); if (sh && !cutaway) giCache.set(giKey(), { sh, sig: sceneSig() }); }
   /** Present the cached GI for the current (style, time); returns 'fresh' | 'stale' | null. */
   function useCachedGI(ms = 400) {
@@ -649,7 +731,7 @@ export async function createVillar({
     },
   });
   controls.onClick = (e) => { if (photo.active || photo.busy || pendingPhoto) return; interaction.click(e); };
-  controls.onInteract = () => { if (photo.active || photo.busy || pendingPhoto) stopPhoto(); invalidate(); };
+  controls.onInteract = () => { refineInput(false); if (photo.active || photo.busy || pendingPhoto) stopPhoto(); invalidate(); };
 
   // ---------------------------------------------------------------- focus (game-like)
   function slotFront(slotId) {
@@ -670,13 +752,107 @@ export async function createVillar({
     if (size.y < 0.08) center.y += 0.05;
     const radius = size.length() / 2;
     controls.focusOn({
-      center, size: Math.max(size.x, size.y * 1.15, size.z), radius,
+      center, size: Math.max(size.x, size.y * 1.15, size.z), radius, box,
       front: rec?.slot.mount === 'ceiling' ? null : slotFront(slotId), clear: clearLine,
+      occlusion: occlusionFor(slotId, box),
       preferYaw: refit ? controls.state.focus?.yaw ?? null : null,
     });
     return true;
   }
+  /**
+   * Fraction (0..1) of sample points on the object hidden from a viewpoint (PT3-03), by architecture (kitchen
+   * run, partitions), by other furniture (a pendant shade in front of the mirror) or — for small multi-part sets
+   * (decor, tableware) — by the set's own parts (the candle holder behind the bowl). Never counted: the object's
+   * support and what is attached to it (throw, cushions, the table under the tableware), and anything entirely
+   * below the object (a ray from a camera above cannot meet it).
+   */
+  const _occRay = new THREE.Ray(), _occD = new THREE.Vector3(), _occHit = new THREE.Vector3();
+  const occCaster = new THREE.Raycaster();
+  const SET_TYPES = new Set(['decor_set', 'tableware', 'centerpiece', 'nightstand_decor']);
+  function relatedSlots(slotId) {
+    const byId = new Map(layout.slots.map((q) => [q.id, q]));
+    const rel = new Set([slotId]);
+    for (let q = byId.get(slotId); q?.attach; q = byId.get(q.attach.slot)) rel.add(q.attach.slot); // supports
+    let grew = true;
+    while (grew) { grew = false; for (const q of layout.slots) if (q.attach && rel.has(q.attach.slot) && !rel.has(q.id) && isBelow(q.id, slotId)) { rel.add(q.id); grew = true; } }
+    return rel;
+  }
+  // attached children only (not siblings on the same support): walk up from q to see if slotId is an ancestor
+  function isBelow(id, slotId) {
+    const byId = new Map(layout.slots.map((q) => [q.id, q]));
+    for (let q = byId.get(id); q?.attach; q = byId.get(q.attach.slot)) if (q.attach.slot === slotId) return true;
+    return false;
+  }
+  function occlusionFor(slotId, box) {
+    const rel = relatedSlots(slotId);
+    const others = [];
+    for (const id of furnisher.placed.keys()) {
+      if (rel.has(id)) continue;
+      const b = furnisher.boxOf(id);
+      if (!b || b.isEmpty() || b.max.y < box.min.y + 0.02) continue;
+      // boxes are coarse (chairs, a pendant's cord): inset them by 12 % horizontally
+      const sz = b.getSize(_occD);
+      b.min.x += sz.x * 0.12; b.max.x -= sz.x * 0.12; b.min.z += sz.z * 0.12; b.max.z -= sz.z * 0.12;
+      others.push(b);
+    }
+    const slot = layout.slots.find((q) => q.id === slotId);
+    const own = furnisher.meshesOf(slotId).filter((m) => m.isMesh && m.visible !== false);
+    // a "part" = the node right under the slot's group (bowl, candle holder…); its meshes don't hide each other
+    // parts live under the first node that branches (sets are often wrapped in a single group)
+    let root = furnisher.placed.get(slotId)?.group;
+    const hasMesh = (o) => { let f = false; o.traverse((c) => { if (c.isMesh && c.userData.slotId === slotId) f = true; }); return f; };
+    for (let i = 0; i < 6 && root; i++) {
+      const kids = root.children.filter(hasMesh);
+      if (kids.length !== 1 || kids[0].isMesh) break;
+      root = kids[0];
+    }
+    const partOf = (m) => { let o = m; while (o.parent && o.parent !== root) o = o.parent; return o; };
+    const pts = []; const owners = [];
+    let parts = false;
+    if (SET_TYPES.has(slot?.type) && own.length > 1) {
+      const byPart = new Map();
+      for (const m of own) { const k = partOf(m); if (!byPart.has(k)) byPart.set(k, new THREE.Box3()); byPart.get(k).expandByObject(m); }
+      const items = [...byPart.entries()].filter(([, bb]) => !bb.isEmpty())
+        .map(([k, bb]) => ({ k, bb, v: bb.getSize(new THREE.Vector3()).lengthSq() })).sort((x, y) => y.v - x.v).slice(0, 6);
+      if (items.length >= 2) {
+        parts = true;
+        for (const it of items) { const c = it.bb.getCenter(new THREE.Vector3()); c.y = it.bb.min.y + (it.bb.max.y - it.bb.min.y) * 0.6; pts.push(c); owners.push(it.k); }
+      }
+    }
+    if (!parts) {
+      const sz = box.getSize(new THREE.Vector3());
+      pts.push(box.getCenter(new THREE.Vector3())); owners.push(null);
+      for (const fx of [0.2, 0.8]) for (const fz of [0.2, 0.8]) {
+        pts.push(new THREE.Vector3(box.min.x + sz.x * fx, box.min.y + sz.y * 0.75, box.min.z + sz.z * fz)); owners.push(null);
+      }
+    }
+    return (from) => {
+      let hidden = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        const len = _occD.subVectors(p, from).length();
+        if (len < 1e-3) continue;
+        _occD.divideScalar(len);
+        archRay.set(from, _occD); archRay.far = Math.max(0.01, len - 0.05);
+        let hit = archRay.intersectObject(arch.full, true).length > 0;
+        if (!hit) {
+          _occRay.set(from, _occD);
+          for (const b of others) {
+            if (b.containsPoint(p)) continue; // the plate under a chair's box edge is not "behind" the chair
+            if (_occRay.intersectBox(b, _occHit) && _occHit.distanceTo(from) < len - 0.05) { hit = true; break; }
+          }
+        }
+        if (!hit && parts) {
+          occCaster.set(from, _occD); occCaster.far = Math.max(0.01, len - 0.01);
+          hit = occCaster.intersectObjects(own, false).some((h) => partOf(h.object) !== owners[i]);
+        }
+        if (hit) hidden++;
+      }
+      return hidden / pts.length;
+    };
+  }
   function focus(slotId, opts = {}) {
+    refineInput(true);
     if (opts.inset) {
       // insets that come with the call frame this flight (no extra re-frame)
       insets.bottom = Math.max(0, +opts.inset.bottom || 0); insets.right = Math.max(0, +opts.inset.right || 0);
@@ -704,6 +880,7 @@ export async function createVillar({
   }
   function unfocus() {
     if (!focusedSlot && !controls.focused) return false;
+    refineInput(true);
     focusedSlot = null;
     controls.unfocus();
     highlightSlot(null);
@@ -715,6 +892,7 @@ export async function createVillar({
   function setInsets({ bottom = insets.bottom, right = insets.right } = {}) {
     const b = Math.max(0, +bottom || 0), r = Math.max(0, +right || 0);
     const changed = Math.abs(b - insets.bottom) > 2 || Math.abs(r - insets.right) > 2;
+    if (changed) refineInput(false); // HUD panel animating
     insets.bottom = b; insets.right = r;
     controls.setInsets(insets);
     if (changed && focusedSlot) refocus(); // keep the object inside the free part of the stage
@@ -722,6 +900,7 @@ export async function createVillar({
   }
   let haloT0 = 0, haloK = 1;
   function highlightSlot(slotId) {
+    if ((slotId || null) !== highlighted) refineInput(false);
     haloT0 = 0; haloK = 1;
     highlighted = slotId || null;
     post.setSelection(highlighted && !photo.active ? furnisher.meshesOf(highlighted) : []);
@@ -736,17 +915,26 @@ export async function createVillar({
     emit: (evt, p) => { events.emit(evt, p); photoNeedsRender = true; invalidate(1); },
     rasterRender: () => post.render(0.016),
     prepare: () => {
-      // physical state for the path tracer snapshot
+      // physical state for the path tracer snapshot (Фото and idle refinement alike)
       const saved = [];
       const set = (obj, key, val) => { saved.push([obj, key, obj[key]]); obj[key] = val; };
       set(marker.mesh, 'visible', false);
       set(groundShadow.mesh, 'visible', false);
       set(probes.grid, 'visible', false);
-      // window portal: sky light enters as an area light (fast, low-noise convergence); the sky
-      // stays visible as background, but escaping indirect rays no longer sample it (no double count)
+      // window portal: the sky's light enters as an area light over the window (importance-sampled, fast,
+      // low-noise convergence — sampling the environment from inside a room wastes most rays on walls); the
+      // photographic sky stays what camera rays see outside, and escaping indirect rays no longer sample it
+      // (no double count). Dollhouse: no portal, the sky lights the open room directly. The sun is a disc of
+      // its real angular size (soft, physical shadows and glints).
       set(scene, 'environment', lighting.skyTexture);
       set(scene, 'environmentIntensity', cutaway ? 1 : 0);
       set(lighting.portal, 'visible', !cutaway);
+      // dollhouse: the backdrop is a screen-space gradient in raster; the tracer would read it as an equirect
+      // sky — trace without a background (alpha 0) and keep the raster backdrop there
+      if (cutaway) set(scene, 'background', null);
+      const sunOn = lighting.sun.visible && lighting.sun.intensity > 0;
+      set(lighting.sun, 'visible', false);
+      set(lighting.sunDisc, 'visible', sunOn);
       const restoreArch = arch.preparePhoto();
       const restoreSky = skyline.preparePhoto();
       const restore = () => {
@@ -759,6 +947,7 @@ export async function createVillar({
   });
   function startPhoto(opts = {}) {
     if (photo.active || photo.busy || pendingPhoto) return;
+    refineInput(true);
     fader.flush();
     interaction.setEnabled(false);
     marker.target = 0; marker.mesh.visible = false;
@@ -787,11 +976,116 @@ export async function createVillar({
     invalidate(3);
   }
 
+  // ---------------------------------------------------------------- idle refinement (path-traced stills)
+  // When the view rests (≥ 700 ms: no input, flight, dissolve, bake, thumbnail or HUD animation; page
+  // visible) the same frame is progressively path-traced and blended in over the held raster frame through
+  // the raster post chain. Any input cancels it: instantly when the camera moves or the scene changes, with a
+  // 150 ms fade otherwise. Desktop high tier; `?pt=force` forces it on (software GL too — the harness),
+  // `?pt=off` turns it off. The tile count adapts so the page keeps ≥ 30 fps while it refines.
+  const ptParam = (() => { try { return new URLSearchParams(location.search).get('pt'); } catch { return null; } })();
+  const REFINE = {
+    // Opt-in (`?pt=on`) until the path tracer's scene/BVH build runs off the main thread (it stalls 1–2 s after a
+    // scene change); then default back to: desktop high tier, not software GL.
+    on: ptParam === 'force' || (ptParam === 'on' && refineOpt !== 'off' && !softwareGL),
+    phase: 'off', // off | starting | run | done | fade
+    k: 0, t0: 0, fadeFrom: 0, lastInput: 0, lastActive: 0, gen: 0,
+    tiles: 2, samples: 0, target: 384, frames: 0, dtAvg: 16,
+    stats: { snapshotMs: 0, firstMs: 0, cleanMs: 0, sps: 0, tiles: 2, scale: 1 },
+  };
+  const REST_MS = 700, FADE_IN_MS = 450, FADE_OUT_MS = 150, MIN_SPP = 4, CLEAN_SPP = 48;
+  /** Any input: remember it; cancel a refinement (instant = the camera / scene changes). */
+  function refineInput(instant = false) {
+    REFINE.lastInput = performance.now();
+    if (REFINE.phase !== 'off') cancelRefine(instant);
+  }
+  function cancelRefine(instant = true) {
+    const was = REFINE.phase;
+    photo.stopRefine();
+    REFINE.gen++;
+    if (instant || REFINE.k <= 0.001 || !post.holding) { REFINE.phase = 'off'; REFINE.k = 0; }
+    else { REFINE.phase = 'fade'; REFINE.fadeFrom = REFINE.k; REFINE.t0 = performance.now(); }
+    if (was !== 'off' && was !== 'fade') events.emit('refine', { state: 'cancel', samples: Math.floor(REFINE.samples) });
+    invalidate(2);
+  }
+  function refineAllowed(now) {
+    return REFINE.on && ready && texturesSettled && !disposed && !contextLost && !restoring
+      && (typeof document === 'undefined' || document.visibilityState !== 'hidden')
+      && now - Math.max(REFINE.lastInput, REFINE.lastActive) >= REST_MS
+      && !controls.moving && !controls.isDragging() && !fader.active && !styleWave && !probes.baking
+      && !photo.active && !photo.busy && !pendingPhoto && !thumbs.busy && pendingChanges.size === 0;
+  }
+  function startRefine() {
+    const my = ++REFINE.gen;
+    REFINE.phase = 'starting'; REFINE.k = 0; REFINE.samples = 0; REFINE.frames = 0; REFINE.readyAt = 0; REFINE.stats.cleanAt = 0;
+    REFINE.stats.firstMs = 0; REFINE.stats.cleanMs = 0; lastRefineTex = null; REFINE.startAt = performance.now();
+    const dpr = renderer.getPixelRatio();
+    const scale = clamp(1.25 / Math.max(1, dpr), 0.5, 1); // ≈ CSS pixels, denoised
+    REFINE.stats.scale = scale;
+    // let a frame paint first: the snapshot below is synchronous (geometry merge + BVH, cached per version)
+    setTimeout(() => {
+      if (my !== REFINE.gen || !refineAllowed(performance.now())) { if (my === REFINE.gen) REFINE.phase = 'off'; return; }
+      photo.startRefine({ version: `${sceneVersion}|${cutaway ? 1 : 0}|${currentTime}`, scale, tiles: REFINE.tiles }).then((r) => {
+        if (my !== REFINE.gen) return;
+        if (!r) { REFINE.phase = 'off'; return; }
+        REFINE.stats.snapshotMs = Math.round(r.snapshotMs);
+        REFINE.phase = 'run'; REFINE.t0 = performance.now(); REFINE.capture = true;
+        events.emit('refine', { state: 'start' });
+        invalidate(2);
+      }).catch((e) => { console.warn('[villar] refine failed', e); if (my === REFINE.gen) { REFINE.phase = 'off'; REFINE.on = ptParam === 'force'; } });
+    }, 30);
+  }
+  /** Per frame while refining: one tile, adaptive budget, fade; returns the post `ref` argument. */
+  function stepRefine(now, dtMs) {
+    if (REFINE.phase === 'fade') {
+      REFINE.k = REFINE.fadeFrom * clamp(1 - (now - REFINE.t0) / FADE_OUT_MS, 0, 1);
+      if (REFINE.k <= 0) { REFINE.phase = 'off'; REFINE.k = 0; return null; }
+      invalidate(1);
+      return { texture: lastRefineTex, k: REFINE.k, demod: lastRefineDemod };
+    }
+    if (REFINE.phase !== 'run' && REFINE.phase !== 'done') return null;
+    if (REFINE.capture) { REFINE.capture = false; invalidate(1); return { capture: true }; }
+    if (REFINE.phase === 'run') {
+      // keep the page ≥ 30 fps: more tiles (less work per frame) when frames run long
+      if (dtMs > 0 && dtMs < 250) REFINE.dtAvg += (dtMs - REFINE.dtAvg) * 0.2;
+      if (++REFINE.frames % 8 === 0) {
+        const t = REFINE.tiles;
+        const nt = REFINE.dtAvg > 30 ? Math.min(6, t + 1) : REFINE.dtAvg < 18 ? Math.max(1, t - 1) : t;
+        if (nt !== t) { REFINE.tiles = nt; photo.setRefineBudget({ tiles: nt }); }
+        REFINE.stats.tiles = REFINE.tiles;
+      }
+      const r = photo.stepRefine(post.holdRT.texture);
+      if (r) {
+        REFINE.samples = r.samples;
+        if (r.texture) { lastRefineTex = r.texture; lastRefineDemod = !!r.demod; }
+        const el = now - REFINE.t0;
+        const fromRest = now - REFINE.startAt; // includes the snapshot
+        if (r.samples >= MIN_SPP && lastRefineTex && !REFINE.readyAt) { REFINE.readyAt = now; REFINE.stats.firstMs = Math.round(fromRest); events.emit('refine', { state: 'visible', samples: Math.floor(r.samples), ms: Math.round(el) }); }
+        if (r.samples >= CLEAN_SPP && !REFINE.stats.cleanAt) { REFINE.stats.cleanAt = now; REFINE.stats.cleanMs = Math.round(fromRest); }
+        if (el > 0) REFINE.stats.sps = +(r.samples / (el / 1000)).toFixed(2);
+        if (Math.floor(r.samples) >= REFINE.target) { REFINE.phase = 'done'; photo.stopRefine(); events.emit('refine', { state: 'done', samples: Math.floor(r.samples), ms: Math.round(el) }); }
+      }
+      if (REFINE.readyAt) REFINE.k = clamp((now - REFINE.readyAt) / FADE_IN_MS, 0, 1);
+      invalidate(1);
+    }
+    return { texture: lastRefineTex, k: REFINE.k, demod: lastRefineDemod };
+  }
+  let lastRefineTex = null, lastRefineDemod = false;
+  onHoverMove = () => refineInput(false);
+  let refineWatch = 0;
+  const refineWatchOn = () => !!refineWatch;
+  function refineWatchStart() {
+    refineWatch = setInterval(() => {
+      if (REFINE.phase === 'off' && refineAllowed(performance.now())) startRefine();
+    }, 200);
+  }
+  if (REFINE.on) refineWatchStart();
+
   // ---------------------------------------------------------------- store changes (seamless swaps)
   let styleWave = null; // { t0, n } while a style switch is being staged
   const pendingChanges = new Map(); // slotId → true (batched per microtask)
   let changeFlush = null;
   function onStoreChange(e) {
+    refineInput(true);
     if (photo.active || photo.busy || pendingPhoto) stopPhoto();
     const ids = Array.isArray(e.slots) && e.slots.length ? e.slots : furnisher.slotsOfType(e.slotType).map((s) => s.id);
     for (const id of ids) pendingChanges.set(id, true);
@@ -868,12 +1162,12 @@ export async function createVillar({
     const finish = A.wallFinish || (packId === 'mediterranean' ? 'limewash' : 'paint');
     const curFinish = wallRun ? wallRun.finish : arch.wallFinish;
     if (finish !== curFinish) {
-      if (wallRun) { fader.flush(); wallRun.commit(); wallRun = null; }
+      if (wallRun) { fader.finishTag(wallRun); wallRun.commit(); wallRun = null; }
       const sw = finish !== arch.wallFinish ? arch.prepareWallFinish(finish, A.walls) : null;
       if (sw) {
         for (const m of sw.inn) decorate(m);
         wallRun = sw;
-        fader.swap({ inn: sw.inn, out: sw.out, ms: 900, delay: 150, settle: false }).then(() => {
+        fader.swap({ inn: sw.inn, out: sw.out, ms: 900, delay: 150, settle: false, tag: sw }).then(() => {
           sw.commit(); if (wallRun === sw) wallRun = null;
           refreshNoAO(); sceneVersion++; rebakeAll(150);
         });
@@ -883,12 +1177,12 @@ export async function createVillar({
     const current = doorRun ? doorRun.finish : arch.doorFinish;
     if (A.doorFinish && A.doorFinish !== current) {
       // serialise: a pending dissolve is finished and committed before the next one starts (T3)
-      if (doorRun) { fader.flush(); doorRun.commit(); doorRun = null; }
+      if (doorRun) { fader.finishTag(doorRun); doorRun.commit(); doorRun = null; }
       if (A.doorFinish === arch.doorFinish) return;
-      const sw = arch.prepareDoorFinish(A.doorFinish);
+      const sw = arch.prepareDoorFinish(A.doorFinish, A.walls);
       for (const m of sw.inn) decorate(m);
       doorRun = sw;
-      fader.swap({ inn: sw.inn, out: sw.out, ms: 700, delay: 250, settle: false }).then(() => {
+      fader.swap({ inn: sw.inn, out: sw.out, ms: 700, delay: 250, settle: false, tag: sw }).then(() => {
         sw.commit(); if (doorRun === sw) doorRun = null;
         refreshNoAO(); sceneVersion++; scheduleLocal([new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(3.3, 1.1, 0.1), new THREE.Vector3(1.2, 2.3, 0.4))], 200);
       });
@@ -908,9 +1202,10 @@ export async function createVillar({
   // wall colour (style packs may recommend one): smooth 1.2 s blend, then one GI bounce for all
   let wallAnim = null;
   function animateWalls(hex, ms = 1200) {
-    const to = new THREE.Color(hex);
     const mats = arch.wallMaterials;
-    if (mats.every((m) => m.color.equals(to))) return;
+    // compensated per-material targets (what a fresh load of this pack shows), not the raw hex (R3-03)
+    const to = arch.wallTargets ? arch.wallTargets(hex) : mats.map(() => new THREE.Color(hex));
+    if (mats.every((m, i) => m.color.equals(to[i]))) return;
     wallAnim = { t0: performance.now(), ms, from: mats.map((m) => m.color.clone()), to, mats };
     invalidate(2);
   }
@@ -918,9 +1213,9 @@ export async function createVillar({
     if (!wallAnim) return false;
     const t = clamp((now - wallAnim.t0) / wallAnim.ms, 0, 1);
     const e = t * t * (3 - 2 * t);
-    wallAnim.mats.forEach((m, i) => m.color.copy(wallAnim.from[i]).lerp(wallAnim.to, e));
+    wallAnim.mats.forEach((m, i) => m.color.copy(wallAnim.from[i]).lerp(wallAnim.to[i], e));
     if (t >= 1) {
-      const big = wallAnim.from.some((c) => Math.max(Math.abs(c.r - wallAnim.to.r), Math.abs(c.g - wallAnim.to.g), Math.abs(c.b - wallAnim.to.b)) > 0.012);
+      const big = wallAnim.from.some((c, i) => { const d = wallAnim.to[i]; return Math.max(Math.abs(c.r - d.r), Math.abs(c.g - d.g), Math.abs(c.b - d.b)) > 0.012; });
       wallAnim = null; sceneVersion++;
       if (big) rebakeAll(100); // ΔE ≲ 3: not worth a pass (T9)
     }
@@ -963,17 +1258,23 @@ export async function createVillar({
   // ---------------------------------------------------------------- time of day
   // share of the bounce light's colour kept in the GI (see probes.setChroma): neutral shade by day,
   // some warmth kept at sunset and under the lamps
-  const GI_CHROMA = { morning: 0.35, day: 0.3, golden: 0.55, evening: 0.72 };
+  const GI_CHROMA = { morning: 0.35, day: 0.3, golden: 0.55, evening: 0.6 };
+  const GI_TO_CAMERA = { golden: true, evening: true }; // desaturate toward the camera's neutral (R3-01 / R3-11)
   // evening: no extrapolated tail and less indirect, so lamp pools read (far wall ≤ −1 EV vs next to a lamp)
   const GI_TAIL = { morning: 0.35, day: 0.35, golden: 0.35, evening: 0 };
   const GI_GAIN = { morning: 1, day: 1, golden: 1, evening: 0.6 };
+  let appliedSky = null;
   function applyTimeOfDay(tod) {
-    probes.setChroma(GI_CHROMA[tod] ?? 0.5);
+    appliedSky = lighting.skyFor(tod);
+    // evening / sunset: the bounce desaturates toward what the camera renders neutral (no lilac / mauve shade)
+    const camWhite = GI_TO_CAMERA[tod] ? (() => { const g = whiteBalanceGain(TOD[tod].wb, WB_STRENGTH[tod] ?? 0.8, new THREE.Vector3(), WB_TINT[tod] ?? 1); return [1 / g.x, 1 / g.y, 1 / g.z]; })() : null;
+    probes.setChroma(GI_CHROMA[tod] ?? 0.5, camWhite);
     probes.setTail(GI_TAIL[tod] ?? 0.35);
     probes.setGain(GI_GAIN[tod] ?? 1);
     lighting.setTimeOfDay(tod);
     const env = lighting.skyEnvFor(tod);
-    skyline.setTimeOfDay(tod, SKY_PRESETS[tod], env);
+    // the city's aerial-perspective haze takes the photographic sky's horizon colour (same level as before)
+    skyline.setTimeOfDay(tod, { ...SKY_PRESETS[tod], hazeTint: lighting.hazeTint(tod) }, env);
     arch.setSkyEnv(env);
     materials.setLampsOn?.(TOD[tod].lamps, 1);
     applyExposure();
@@ -981,6 +1282,20 @@ export async function createVillar({
     applyBackdrop();
   }
   let todGen = 0;
+  /** A photographic sky landed after its time of day was applied with the procedural stand-in. */
+  function skyLanded(tod) {
+    if (disposed || tod !== currentTime || appliedSky === lighting.skyFor(tod)) return;
+    applyTimeOfDay(tod);
+    refreshEnvironment(1);
+    if (texturesSettled) rebakeAll(300);
+    invalidate(3);
+  }
+  /** Preload the other times' skies once the first frame is up (idle, one at a time). */
+  function preloadSkies() {
+    const rest = TIMES.filter((t) => t !== currentTime && !lighting.hasSky(t));
+    const next = () => { const t = rest.shift(); if (t && !disposed) idle(() => lighting.loadSky(t).then(next)); };
+    next();
+  }
   /**
    * Time of day. With KHR_parallel_shader_compile the new light set is compiled off-thread first (the old
    * time stays on screen meanwhile; after the idle prewarm this resolves at once), so the switch itself
@@ -989,6 +1304,7 @@ export async function createVillar({
    */
   function setTimeOfDay(tod) {
     if (!TOD[tod]) { console.warn(`[villar] unknown time of day "${tod}"`); return; }
+    refineInput(true);
     if (photo.active || photo.busy || pendingPhoto) stopPhoto();
     const my = ++todGen;
     const go = () => {
@@ -1009,6 +1325,13 @@ export async function createVillar({
       events.emit('time', { time: tod });
       invalidate(3);
     };
+    // the photographic sky of that time: normally preloaded; otherwise wait briefly, else swap it in later
+    if (!lighting.hasSky(tod)) {
+      const late = lighting.loadSky(tod);
+      Promise.race([late, new Promise((r) => setTimeout(r, 1200))]).then(() => { if (my === todGen) setTimeOfDay(tod); });
+      late.then(() => skyLanded(tod));
+      return;
+    }
     const evening = !!TOD[tod].lamps;
     if (ready && parallelCompile && evening !== lighting.evening) {
       lighting.useLightSet(evening);
@@ -1025,6 +1348,7 @@ export async function createVillar({
     const key = `${w}x${h}@${dpr}`;
     if (!force && key === lastSize) return;
     lastSize = key;
+    refineInput(true);
     renderer.setPixelRatio(dpr);
     renderer.setSize(w, h, false);
     const db = renderer.getDrawingBufferSize(new THREE.Vector2());
@@ -1068,10 +1392,11 @@ export async function createVillar({
       const r = spotRect();
       if (r) { post.meter.material.uniforms.rect.value.set(...r); post.meter.requested = true; ae.last = now; }
     }
-    post.render(0.016);
-    readMeter();
+    const ref = REFINE.phase === 'off' || REFINE.phase === 'starting' ? null : stepRefine(now, lastRenderAt ? now - lastRenderAt : 0);
+    post.render(0.016, ref);
+    if (!post.holding) readMeter();
     const dt = (now - lastRenderAt) / 1000;
-    if (lastRenderAt && dt < 0.25 && !probes.baking) adapt(dt);
+    if (lastRenderAt && dt < 0.25 && !probes.baking && !ref) adapt(dt);
     lastRenderAt = now;
     clock.frames++;
   }
@@ -1115,6 +1440,10 @@ export async function createVillar({
     if (probes.update(now)) invalidate(1);
     if (stepExposure(dt)) invalidate(1);
     if (moving) invalidate(2);
+    if (moving || fader.active || controls.isDragging()) {
+      REFINE.lastActive = now;
+      if (REFINE.phase !== 'off') cancelRefine(true);
+    }
     if (probes.baking && !photo.active) {
       phase = 'probe-bake';
       probes.step(moving || controls.isDragging() || fader.active ? 4 : 10);
@@ -1157,8 +1486,11 @@ export async function createVillar({
     materials.setLampsOn?.(evening, 1);
     try { return skyline.withMaterials(evening, fn); } finally { lighting.useLightSet(cur); materials.setLampsOn?.(cur, 1); }
   };
+  /** Programs can be compiled ahead at all (non-KHR software GL would freeze for seconds per program). */
+  const canWarm = () => parallelCompile || !softwareGL || prewarmOpt === 'force';
   async function warmObjects(objs, { fades = true } = {}) {
-    if (!parallelCompile || disposed || contextLost || !objs.length) return;
+    if (disposed || contextLost || !objs.length) return;
+    if (!parallelCompile) { if (canWarm()) await warmSync(objs, { fades }); return; }
     const ps = [];
     for (const ev of [false, true]) withLightSet(ev, () => {
       for (const o of objs) {
@@ -1168,11 +1500,33 @@ export async function createVillar({
     });
     await Promise.race([Promise.all(ps).catch(() => {}), new Promise((r) => setTimeout(r, 8000))]);
   }
+  /**
+   * No KHR_parallel_shader_compile (R3-08): the same warm-up as synchronous compiles, one object × light set ×
+   * (plain | fade) per idle slice, only while nothing moves or dissolves — the compile cost lands in idle time
+   * instead of on the first Evening after a style switch. Already-compiled programs cost nothing.
+   */
+  async function warmSync(objs, { fades = true } = {}) {
+    for (const o of objs) {
+      for (const ev of [false, true]) {
+        for (const fade of fades ? [false, true] : [false]) {
+          await new Promise((r) => idle(r));
+          for (let i = 0; i < 240 && !disposed && (controls.moving || controls.isDragging() || busyScene()); i++) await new Promise((r) => setTimeout(r, 250));
+          if (disposed || contextLost || photo.active || (o !== scene && !o.parent)) return;
+          try {
+            withLightSet(ev, () => {
+              const d = fade ? fader.dressForWarm(o) : null;
+              try { withHDR(() => renderer.compile(o, camera, scene)); } finally { if (d) fader.undress(d); }
+            });
+          } catch { /* compiles on first draw */ }
+        }
+      }
+    }
+  }
   const warmQueue = new Set();
   let warmTimer = 0;
   /** Debounced: warm these groups (both light sets + fades) when the scene is quiet. */
   function queueWarm(groups) {
-    if (!parallelCompile) return;
+    if (!canWarm()) return;
     for (const g of groups) warmQueue.add(g);
     clearTimeout(warmTimer);
     warmTimer = setTimeout(() => idle(async () => {
@@ -1196,13 +1550,9 @@ export async function createVillar({
         post.prewarm();
       } else {
         post.prewarm();
-        // no parallel compile: one object per idle slice (each slice still blocks for its compile)
-        const objs = [arch.group, skyline.group, ...[...furnisher.placed.values()].map((r) => r.group)];
-        for (const o of objs) {
-          await new Promise((r) => idle(r));
-          if (disposed || photo.active || contextLost) return;
-          withLightSet(!lighting.evening, () => withHDR(() => renderer.compile(o, camera, scene)));
-        }
+        // no parallel compile: one object × light set (× fade) per idle slice (each slice blocks for its compile)
+        await warmSync([arch.group, skyline.group], { fades: false });
+        await warmSync([...furnisher.placed.values()].map((r) => r.group));
       }
     } catch (e) { console.debug('[villar] prewarm skipped', e); arch.setCutaway(cutaway); groundShadow.mesh.visible = cutaway; }
   }
@@ -1247,7 +1597,7 @@ export async function createVillar({
     window.villar = api;
     window.__villarReady = true;
     // photo mode is offered on 'high' with a hardware GPU (software GL freezes for tens of seconds)
-    events.emit('ready', { quality: Q, time: currentTime, view: controls.view, tier: Q, gi: giState.converged ? 'baked' : 'ambient', photo: Q === 'high' && !softwareGL });
+    events.emit('ready', { quality: Q, time: currentTime, view: controls.view, tier: Q, gi: giState.converged ? 'baked' : 'ambient', photo: Q === 'high' && !softwareGL, refine: REFINE.on });
   }
 
   // ---------------------------------------------------------------- context restore
@@ -1333,6 +1683,10 @@ export async function createVillar({
       get worstFrame() { return perf.worst; }, resetWorst() { perf.worst = 0; },
       get gi() { return { ...giState, dirty: giState.dirty.size, mode: probes.mode, hasBaked: probes.hasBaked, baking: probes.baking }; },
       get running() { return !!raf; },
+      /** idle refinement state: phase, blend, samples, adaptive tiles, timings (ms) and samples/s */
+      get refine() { return { on: REFINE.on, phase: REFINE.phase, k: +REFINE.k.toFixed(3), samples: +REFINE.samples.toFixed(2), tiles: REFINE.tiles, ...REFINE.stats }; },
+      setRefine(on) { REFINE.on = !!on; if (!on && REFINE.phase !== 'off') cancelRefine(true); if (on && !refineWatchOn()) refineWatchStart(); },
+      photo,
       setToneMapping(name) { if (TONE[name]) { tone = name; renderer.toneMapping = TONE[name]; applyExposure(); invalidate(); } },
       get toneMapping() { return tone; },
       setExposure(v) { exposureOverride = v; applyExposure(); invalidate(); },
@@ -1342,7 +1696,7 @@ export async function createVillar({
       setAdaptive(v) { adaptive = !!v; },
       setAutoExposure(v) { ae.enabled = !!v; ae.target = 0; applyExposure(); invalidate(); },
       setAO(v) { post.setAO(v); invalidate(); },
-      get meter() { return { log: ae.lastLog, ev: ae.ev, target: ae.target }; },
+      get meter() { return { log: ae.lastLog, ev: ae.ev, target: ae.target, clip: ae.clip ?? null }; },
       setPose(pos, target) {
         const st = controls.state;
         st.transition = null; st.focus = null; st.mode = 'walk';
@@ -1387,10 +1741,15 @@ export async function createVillar({
     renderer.dispose();
     try { renderer.forceContextLoss(); } catch { /* already lost */ }
     canvas.remove();
+    clearInterval(refineWatch);
     if (window.villar === api) { delete window.villar; window.__villarReady = false; }
   }
 
   // ---------------------------------------------------------------- go
+  // photographic sky for the first time of day (local file, ~0.6 MB) before anything is lit or baked
+  await Promise.race([lighting.loadSky(currentTime), new Promise((r) => setTimeout(r, 4000))]);
+  if (disposed) return null;
+  lighting.loadSky(currentTime).then(() => skyLanded(currentTime));
   resize(true);
   controls.setView(VIEWS.includes(view) ? view : 'eye', { instant: true });
   if (controls.view === 'top' || controls.mode === 'orbit') setCutaway(true);
@@ -1419,6 +1778,7 @@ export async function createVillar({
     texturesSettled = true;
     bakeFresh();
     invalidate(3);
+    preloadSkies();
   });
   void DEG; void TIERS;
   return api;
