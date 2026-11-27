@@ -5,6 +5,17 @@
   "installCommand": "",
   "outputDirectory": "site",
   "cleanUrls": true,
+  "functions": {
+    "api/photo.js": {
+      "maxDuration": 60
+    },
+    "api/plate.js": {
+      "maxDuration": 60
+    },
+    "api/photo-hook.js": {
+      "maxDuration": 30
+    }
+  },
   "redirects": [
     {
       "source": "/lab",
@@ -23,7 +34,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'sha256-NutSaoNeHmtgPTLEDasezHLMqjFAq1OSEgA+/X0vykc='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self' 'sha256-NutSaoNeHmtgPTLEDasezHLMqjFAq1OSEgA+/X0vykc='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://hdhwkvbecuzzrugogutd.supabase.co; media-src 'self' blob: https://hdhwkvbecuzzrugogutd.supabase.co; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
         },
         {
           "key": "X-Content-Type-Options",

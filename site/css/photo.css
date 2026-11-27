@@ -1,0 +1,48 @@
+/* Live → Photo: the developed photo over the live 3D frame, and its quiet label. Owner: photo.
+   Loaded by site/js/photo/index.js only when the feature is on. */
+
+/* the photo: same box as the WebGL canvas (both fill the stage), between the canvas and the stage controls */
+.vp-photo {
+  position: absolute; inset: 0; z-index: 2;
+  pointer-events: none; user-select: none;
+  opacity: 0;
+  transition: opacity var(--vp-dur, 140ms) cubic-bezier(0.33, 0, 0.2, 1), filter var(--vp-dur, 140ms) cubic-bezier(0.2, 0.7, 0.2, 1);
+  will-change: opacity;
+}
+.vp-photo.is-on { opacity: 1; }
+.vp-photo-img { display: block; width: 100%; height: 100%; }
+
+/* the "develop": a breath of softness and lower saturation that clears as the photo arrives (desktop only) */
+@media (min-width: 735px) {
+  .vp-photo.is-developing { filter: blur(1.2px) saturate(0.86) brightness(1.02); }
+  .vp-photo.is-developing.is-on { filter: none; }
+}
+
+/* the label: small glass chip, top-left (under the style chip on wide screens) */
+.vp-label {
+  position: absolute; z-index: 3; left: 16px; top: 60px;
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 26px; padding: 0 11px 0 9px; border-radius: 999px;
+  font: 500 12px/1 var(--font-text, system-ui); letter-spacing: -0.005em; color: #1d1d1f;
+  white-space: nowrap; pointer-events: none !important;
+  opacity: 0; transform: translateY(-3px);
+  transition: opacity 260ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.vp-label.is-on { opacity: 0.94; transform: none; transition-duration: 420ms; transition-delay: 520ms; }
+.vp-label .vp-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff4dc, #e0a85c 70%);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12);
+}
+.stage.is-focus .vp-label { top: 16px; }
+@media (max-width: 1068px) { .vp-label { top: 16px; } }
+@media (max-width: 734px) {
+  .vp-label { left: 12px; top: 12px; height: 24px; font-size: 11.5px; padding: 0 10px 0 8px; }
+}
+.stage.is-plan .vp-photo, .stage.is-plan .vp-label, .stage.is-photo .vp-photo, .stage.is-photo .vp-label { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-photo, .vp-photo.is-developing { filter: none !important; }
+  .vp-label, .vp-label.is-on { transition-delay: 0ms; transform: none; }
+}
+@media (forced-colors: active) { .vp-label { border: 1px solid CanvasText; } }

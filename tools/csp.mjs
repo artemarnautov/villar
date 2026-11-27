@@ -9,6 +9,10 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const html = readFileSync(resolve(root, 'site/index.html'), 'utf8');
 
+// Live → Photo: developed photos and window plates are public objects in the Villar Supabase project's Storage
+// (bucket `photos`, api/photo.js · api/plate.js). Images only: the browser never calls Supabase or a model API.
+const PHOTO_ORIGIN = 'https://hdhwkvbecuzzrugogutd.supabase.co';
+
 const hashes = [];
 for (const m of html.matchAll(/<script(?<attrs>[^>]*)>(?<body>[\s\S]*?)<\/script>/g)) {
   if (/\bsrc\s*=/.test(m.groups.attrs)) continue;
@@ -21,7 +25,8 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' ${hashes.join(' ')}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  `img-src 'self' data: blob: ${PHOTO_ORIGIN}`,
+  `media-src 'self' blob: ${PHOTO_ORIGIN}`,     // optional window-plate video loops
   "font-src 'self'",
   "connect-src 'self'",
   "worker-src 'self' blob:",
@@ -38,6 +43,12 @@ const config = {
   installCommand: '',
   outputDirectory: 'site',
   cleanUrls: true,
+  // model calls wait up to ~55 s in-function (Higgsfield jobs are async: longer ones are polled by the client)
+  functions: {
+    'api/photo.js': { maxDuration: 60 },
+    'api/plate.js': { maxDuration: 60 },
+    'api/photo-hook.js': { maxDuration: 30 },
+  },
   redirects: [
     // Dev/test pages are not part of the public product.
     { source: '/lab', destination: '/', permanent: false },

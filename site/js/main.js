@@ -219,6 +219,10 @@ async function boot() {
   // Expose UI hooks for QA (no engine internals).
   window.villarUI = { store, stage, hud, card, order, setLang, switchStyle, toast, slider };
 
+  // ── Live → Photo (owner: photo · docs/PHOTOREAL.md «Live → Photo»). Optional: without it the page is unchanged. ──
+  import('./photo/index.js').then((m) => m.mountPhoto({ root: stageEl, store, stage })).catch((err) => warn('photo unavailable', err?.message || err));
+  // ── end Live → Photo ──
+
   // AI assistant under the stage (owned by the assistant agent; mounted only when its module exists).
   async function mountAssistant() {
     const slot = $('#assistant');
