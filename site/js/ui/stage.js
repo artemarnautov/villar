@@ -233,15 +233,20 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
     clearInterval(watchdog);
     startedAt = lastProgressAt = lastTick = performance.now();
     lastProgress = -1;
+    // Only time the page is on screen counts: a background tab is throttled to a crawl, and a visitor who opened
+    // the site in a tab and came back later must still get the 3D apartment, not the fallback plan.
+    let elapsed = 0, wasHidden = document.hidden;
     watchdog = setInterval(() => {
       if (gen !== generation || mode !== 'loading') return clearInterval(watchdog);
-      const now = performance.now();
-      // A late tick means the main thread was busy (the engine is working), not stalled.
-      if (now - lastTick > 3000) lastProgressAt = now;
+      const now = performance.now(), dt = now - lastTick, hidden = document.hidden;
       lastTick = now;
-      if (now - lastProgressAt > stallMs || now - startedAt > hardMs) {
+      if (hidden || wasHidden) { wasHidden = hidden; lastProgressAt = now; return; }
+      // A late tick means the main thread was busy (the engine is working), not stalled.
+      if (dt > 3000) lastProgressAt = now;
+      elapsed += dt;
+      if (now - lastProgressAt > stallMs || elapsed > hardMs) {
         clearInterval(watchdog);
-        fail(new Error(now - startedAt > hardMs ? 'took too long' : 'loading stalled'), { quiet: true });
+        fail(new Error(elapsed > hardMs ? 'took too long' : 'loading stalled'), { quiet: true });
       }
     }, 1000);
   }
