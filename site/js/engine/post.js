@@ -490,7 +490,9 @@ export function createPost({ renderer, scene, camera, quality = 'high', aoBox = 
   function syncSSAO() {
     const on = gtao.enabled;
     SSAO.villarSSAO.value = on ? gtao.pdRenderTarget.texture : WHITE;
-    renderer.getDrawingBufferSize(sizeV);
+    // the size the beauty pass renders at (a capture renders at its own size, not the canvas's: with the canvas
+    // size here every captured frame carried a mis-scaled AO image, visible as ghost outlines)
+    sizeV.set(rt.width, rt.height);
     SSAO.villarSSAOInv.value.set(1 / Math.max(1, sizeV.x), 1 / Math.max(1, sizeV.y));
   }
   syncSSAO();
