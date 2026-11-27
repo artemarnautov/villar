@@ -1,159 +1,299 @@
 {
-  "version": 1,
-  "source": "research/budget-tiers.md, 2026-11-27",
-  "keys": "Stylepack selection keys, resolved the way store.keyOfSlotIn does it (slot id, else group, else slot type). Paired slots share one key: nightstand (x2), table_lamp (x2), dining_chair (x2).",
-  "tiers": {
-    "bed": 0,
-    "mattress": 0,
-    "bedding": 0,
-    "sofa": 0,
-    "curtains": 0,
-    "tv_unit": 0,
-    "nightstand": 1,
-    "dining_table": 1,
-    "dining_chair": 1,
-    "coffee_table": 1,
-    "table_lamp": 2,
-    "rug": 2,
-    "floor_lamp": 2,
-    "tableware": 2,
-    "cushions": 3,
-    "art_sofa": 3,
-    "throw": 3,
-    "pendant_lamp": 3,
-    "mirror": 3,
-    "side_table": 3,
-    "plant": 4,
-    "art_bed": 4,
-    "decor_coffee": 4,
-    "centerpiece": 4,
-    "decor_tv": 4,
-    "nightstand_decor": 4,
-    "kitchen_decor": 4,
-    "art_dining": 4,
-    "runner": 4,
-    "armchair": 4
-  },
-  "order": {
-    "0": ["bed", "mattress", "bedding", "sofa", "curtains", "tv_unit"],
-    "1": ["nightstand", "dining_table", "dining_chair", "coffee_table"],
-    "2": ["@curtains-blackout", "table_lamp", "rug", "floor_lamp", "tableware"],
-    "3": ["cushions", "art_sofa", "throw", "pendant_lamp", "mirror", "side_table"],
-    "4": [
-      "plant", "art_bed", "decor_coffee", "centerpiece", "decor_tv", "nightstand_decor", "kitchen_decor",
-      "art_dining", "runner", "armchair"
-    ]
-  },
-  "groups": [["dining_table", "dining_chair"]],
-  "requires": {
-    "mattress": ["bed"],
-    "bedding": ["mattress"],
-    "table_lamp": ["nightstand"],
-    "nightstand_decor": ["nightstand"],
-    "cushions": ["sofa"],
-    "throw": ["sofa"],
-    "side_table": ["sofa"],
-    "decor_coffee": ["coffee_table"],
-    "decor_tv": ["tv_unit"],
-    "dining_chair": ["dining_table"],
-    "dining_table": ["dining_chair"],
-    "tableware": ["dining_table"],
-    "centerpiece": ["dining_table"],
-    "pendant_lamp": ["dining_table"]
-  },
-  "after": {
-    "art_bed": ["art_sofa"],
-    "art_dining": ["art_bed"],
-    "centerpiece": ["tableware"],
-    "side_table": ["coffee_table"],
-    "armchair": ["floor_lamp"]
-  },
-  "furniture": [
-    "bed", "mattress", "sofa", "curtains", "tv_unit", "nightstand", "dining_table", "dining_chair",
-    "coffee_table", "rug", "side_table", "armchair"
+ "version": 1,
+ "source": "research/budget-tiers.md, 2026-11-27",
+ "keys": "Stylepack selection keys, resolved the way store.keyOfSlotIn does it (slot id, else group, else slot type). Paired slots share one key: nightstand (x2), table_lamp (x2), dining_chair (x2).",
+ "tiers": {
+  "bed": 0,
+  "mattress": 0,
+  "bedding": 0,
+  "sofa": 0,
+  "curtains": 0,
+  "tv_unit": 0,
+  "nightstand": 1,
+  "dining_table": 1,
+  "dining_chair": 1,
+  "coffee_table": 1,
+  "table_lamp": 2,
+  "rug": 2,
+  "floor_lamp": 2,
+  "tableware": 2,
+  "cushions": 3,
+  "art_sofa": 3,
+  "throw": 3,
+  "pendant_lamp": 3,
+  "mirror": 3,
+  "side_table": 3,
+  "plant": 4,
+  "art_bed": 4,
+  "decor_coffee": 4,
+  "centerpiece": 4,
+  "decor_tv": 4,
+  "nightstand_decor": 4,
+  "kitchen_decor": 4,
+  "art_dining": 4,
+  "runner": 4,
+  "armchair": 4
+ },
+ "order": {
+  "0": [
+   "bed",
+   "mattress",
+   "bedding",
+   "sofa",
+   "curtains",
+   "tv_unit"
   ],
-  "entry": {
-    "tier0": "cheapest",
-    "furniture": "cheapest, unless a furniture item already in the room has a pairing for this key: then the paired item",
-    "details": "curated",
-    "tieBreak": "equal prices: the curated item first",
-    "rug": {"preferWidthCmAtLeast": 290, "ifPriceAtMost": 1.25}
-  },
-  "functional": [
-    {
-      "id": "curtains-blackout",
-      "key": "curtains",
-      "match": {"field": "nameEn", "pattern": "blackout"},
-      "when": "first step after Essentials (start of tier 2)",
-      "keepAboveCurated": true
-    }
+  "1": [
+   "nightstand",
+   "dining_table",
+   "dining_chair",
+   "coffee_table"
   ],
-  "heroes": [
-    "sofa", "bed", "mattress", "rug", "armchair", "dining_table", "dining_chair", "coffee_table", "side_table",
-    "tv_unit", "nightstand", "bedding", "curtains"
+  "2": [
+   "@curtains-blackout",
+   "table_lamp",
+   "rug",
+   "floor_lamp",
+   "tableware"
   ],
-  "premiumOrder": [
-    "sofa", "bed", "mattress", "rug", "armchair", "dining_table", "dining_chair", "coffee_table", "side_table",
-    "tv_unit", "nightstand", "bedding", "curtains", "pendant_lamp", "floor_lamp", "table_lamp", "art_sofa",
-    "cushions", "throw", "plant", "mirror", "art_bed", "art_dining", "tableware", "decor_coffee", "decor_tv",
-    "centerpiece", "nightstand_decor", "kitchen_decor", "runner"
+  "3": [
+   "cushions",
+   "art_sofa",
+   "throw",
+   "pendant_lamp",
+   "mirror",
+   "side_table"
   ],
-  "pairings": {
-    "scope": "furniture keys only (both sides in `furniture`); pairings on textiles and accessories are ignored by the slider because the curated room itself breaks some of them",
-    "onAdd": "forward only: the entering item follows the items already in the room, never the reverse",
-    "onHeroUpgrade": "the hero's furniture companions that are already in the room move to its paired items in the same step",
-    "onPremium": "skip any premium option that would break a furniture pairing or force a companion to a cheaper item; try the next priciest option"
-  },
-  "rule": {
-    "en": "Complete first, then better. Add slots in ladder order and never upgrade while a slot of the current or a lower tier is empty. The only exception is the blackout curtain layer, taken right after Essentials. Once all 33 slots are filled, upgrade heroes to the designer's pick, hero-first, with their companions in the same step. This lands exactly on the designer room. Above it, go to premium options: heroes first, then details.",
-    "ru": "Сначала — всё, потом — лучше. Добавляем места по порядку лестницы и не улучшаем вещи, пока в текущем или более раннем уровне есть пустое место. Единственное исключение — блэкаут-слой штор сразу после «Самого нужного». Когда заполнены все 33 места, меняем главные вещи на выбор дизайнера, начиная с дивана, вместе с их парами — так лестница приходит точно в комнату дизайнера. Дальше — премиальные варианты: сначала главные вещи, потом детали."
-  },
-  "levels": [
-    {
-      "id": "essentials",
-      "name": "Самое нужное",
-      "nameEn": "Essentials",
-      "milestone": "endOfTier:1",
-      "blurb": "Спать, сидеть, есть, хранить, шторы.",
-      "blurbEn": "Sleep, sit, eat, store, curtains."
-    },
-    {
-      "id": "comfortable",
-      "name": "Удобно жить",
-      "nameEn": "Comfortable",
-      "milestone": "endOfTier:2",
-      "blurb": "Блэкаут, свет у кровати и у дивана, ковёр, посуда.",
-      "blurbEn": "Blackout, bedside and sofa light, a rug, tableware."
-    },
-    {
-      "id": "move-in",
-      "name": "Под ключ",
-      "nameEn": "Move-in ready",
-      "milestone": "endOfTier:3",
-      "blurb": "Всё для жизни и уюта: шторы, ковёр, свет, текстиль, картина. Заезжайте с чемоданом.",
-      "blurbEn": "Everything to live in and feel at home: curtains, rug, lights, textiles, art. Move in with a suitcase."
-    },
-    {
-      "id": "magazine",
-      "name": "Как в журнале",
-      "nameEn": "Magazine-ready",
-      "milestone": "designer",
-      "blurb": "Ровно комната дизайнера: стайлинг, растение, кресло, материалы как на фото.",
-      "blurbEn": "Exactly the designer's room: styling, plant, armchair, materials as in the photos."
-    },
-    {
-      "id": "no-compromise",
-      "name": "Без компромиссов",
-      "nameEn": "No compromises",
-      "milestone": "premium",
-      "blurb": "Лучшие варианты в каждом месте.",
-      "blurbEn": "The best option in every place."
-    }
+  "4": [
+   "plant",
+   "art_bed",
+   "decor_coffee",
+   "centerpiece",
+   "decor_tv",
+   "nightstand_decor",
+   "kitchen_decor",
+   "art_dining",
+   "runner",
+   "armchair"
+  ]
+ },
+ "groups": [
+  [
+   "dining_table",
+   "dining_chair"
+  ]
+ ],
+ "requires": {
+  "mattress": [
+   "bed"
   ],
-  "minimum": {
-    "milestone": "tier:0",
-    "label": null,
-    "note": "The slider's left end, plus pins and whatever the pins require. Not a named level."
+  "bedding": [
+   "mattress"
+  ],
+  "table_lamp": [
+   "nightstand"
+  ],
+  "nightstand_decor": [
+   "nightstand"
+  ],
+  "cushions": [
+   "sofa"
+  ],
+  "throw": [
+   "sofa"
+  ],
+  "side_table": [
+   "sofa"
+  ],
+  "decor_coffee": [
+   "coffee_table"
+  ],
+  "decor_tv": [
+   "tv_unit"
+  ],
+  "dining_chair": [
+   "dining_table"
+  ],
+  "dining_table": [
+   "dining_chair"
+  ],
+  "tableware": [
+   "dining_table"
+  ],
+  "centerpiece": [
+   "dining_table"
+  ],
+  "pendant_lamp": [
+   "dining_table"
+  ]
+ },
+ "after": {
+  "art_bed": [
+   "art_sofa"
+  ],
+  "art_dining": [
+   "art_bed"
+  ],
+  "centerpiece": [
+   "tableware"
+  ],
+  "side_table": [
+   "coffee_table"
+  ],
+  "armchair": [
+   "floor_lamp"
+  ]
+ },
+ "furniture": [
+  "bed",
+  "mattress",
+  "sofa",
+  "curtains",
+  "tv_unit",
+  "nightstand",
+  "dining_table",
+  "dining_chair",
+  "coffee_table",
+  "rug",
+  "side_table",
+  "armchair"
+ ],
+ "entry": {
+  "tier0": "cheapest",
+  "furniture": "cheapest, unless a furniture item already in the room has a pairing for this key: then the paired item",
+  "details": "curated",
+  "tieBreak": "equal prices: the curated item first",
+  "rug": {
+   "preferWidthCmAtLeast": 290,
+   "ifPriceAtMost": 1.25
+  }
+ },
+ "functional": [
+  {
+   "id": "curtains-blackout",
+   "key": "curtains",
+   "match": {
+    "field": "nameEn",
+    "pattern": "blackout"
+   },
+   "when": "first step after Essentials (start of tier 2)",
+   "keepAboveCurated": true
+  }
+ ],
+ "heroes": [
+  "sofa",
+  "bed",
+  "mattress",
+  "rug",
+  "armchair",
+  "dining_table",
+  "dining_chair",
+  "coffee_table",
+  "side_table",
+  "tv_unit",
+  "nightstand",
+  "bedding",
+  "curtains"
+ ],
+ "premiumOrder": [
+  "sofa",
+  "bed",
+  "mattress",
+  "rug",
+  "armchair",
+  "dining_table",
+  "dining_chair",
+  "coffee_table",
+  "side_table",
+  "tv_unit",
+  "nightstand",
+  "bedding",
+  "curtains",
+  "pendant_lamp",
+  "floor_lamp",
+  "table_lamp",
+  "art_sofa",
+  "cushions",
+  "throw",
+  "plant",
+  "mirror",
+  "art_bed",
+  "art_dining",
+  "tableware",
+  "decor_coffee",
+  "decor_tv",
+  "centerpiece",
+  "nightstand_decor",
+  "kitchen_decor",
+  "runner"
+ ],
+ "pairings": {
+  "scope": "furniture keys only (both sides in `furniture`); pairings on textiles and accessories are ignored by the slider because the curated room itself breaks some of them",
+  "onAdd": "forward only: the entering item follows the items already in the room, never the reverse",
+  "onHeroUpgrade": "the hero's furniture companions that are already in the room move to its paired items in the same step",
+  "onPremium": "skip any premium option that would break a furniture pairing or force a companion to a cheaper item; try the next priciest option"
+ },
+ "rule": {
+  "en": "Complete first, then better. Add slots in ladder order and never upgrade while a slot of the current or a lower tier is empty. The only exception is the blackout curtain layer, taken right after Essentials. Once all 33 slots are filled, upgrade heroes to the designer's pick, hero-first, with their companions in the same step. This lands exactly on the designer room. Above it, go to premium options: heroes first, then details.",
+  "ru": "Сначала — всё, потом — лучше. Добавляем места по порядку лестницы и не улучшаем вещи, пока в текущем или более раннем уровне есть пустое место. Единственное исключение — блэкаут-слой штор сразу после «Самого нужного». Когда заполнены все 33 места, меняем главные вещи на выбор дизайнера, начиная с дивана, вместе с их парами — так лестница приходит точно в комнату дизайнера. Дальше — премиальные варианты: сначала главные вещи, потом детали."
+ },
+ "levels": [
+  {
+   "id": "essentials",
+   "name": "Самое нужное",
+   "nameEn": "Essentials",
+   "milestone": "endOfTier:1",
+   "blurb": "Спать, сидеть, есть, хранить, шторы.",
+   "blurbEn": "Sleep, sit, eat, store, curtains."
   },
-  "ticks": {"mergeIfWithinShare": 0.03, "keep": "higher"}
+  {
+   "id": "comfortable",
+   "name": "Удобно жить",
+   "nameEn": "Comfortable",
+   "milestone": "endOfTier:2",
+   "blurb": "Блэкаут, свет у кровати и у дивана, ковёр, посуда.",
+   "blurbEn": "Blackout, bedside and sofa light, a rug, tableware."
+  },
+  {
+   "id": "move-in",
+   "name": "Всё для жизни",
+   "nameEn": "Move-in ready",
+   "milestone": "endOfTier:3",
+   "blurb": "Всё для жизни и уюта: шторы, ковёр, свет, текстиль, картина. Можно заезжать с чемоданом.",
+   "blurbEn": "Everything to live in and feel at home: curtains, rug, lights, textiles, art. Move in with a suitcase."
+  },
+  {
+   "id": "complete",
+   "name": "Полностью обставлено",
+   "nameEn": "Fully furnished",
+   "milestone": "endOfTier:4",
+   "blurb": "Все 33 места заняты: свет, текстиль, декор, растение, кресло — в доступных вариантах.",
+   "blurbEn": "All 33 places filled: lighting, textiles, decor, a plant, an armchair — in their accessible versions."
+  },
+  {
+   "id": "magazine",
+   "name": "Как в журнале",
+   "nameEn": "Magazine-ready",
+   "milestone": "designer",
+   "blurb": "Ровно комната дизайнера: стайлинг, растение, кресло, материалы как на фото.",
+   "blurbEn": "Exactly the designer's room: styling, plant, armchair, materials as in the photos."
+  },
+  {
+   "id": "no-compromise",
+   "name": "Без компромиссов",
+   "nameEn": "No compromises",
+   "milestone": "premium",
+   "blurb": "Лучшие варианты в каждом месте.",
+   "blurbEn": "The best option in every place."
+  }
+ ],
+ "minimum": {
+  "milestone": "tier:0",
+  "label": null,
+  "note": "The slider's left end, plus pins and whatever the pins require. Not a named level."
+ },
+ "ticks": {
+  "mergeIfWithinShare": 0.03,
+  "keep": "higher"
+ }
 }
