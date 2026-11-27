@@ -98,7 +98,8 @@ export function mountAssistant(opts = {}) {
   const engine = () => { try { const v = opts.villar; return (typeof v === 'function' ? v() : v) || null; } catch { return null; } };
   const dataSet = () => {
     const s = store.state || {};
-    return data || { catalog: s.catalog, layout: s.layout, packs: s.packs || (s.stylepack ? { [s.stylepack.id]: s.stylepack } : {}) };
+    // budget: the slider's ladder spec, so «уложись в N» plans exactly like the slider (core/budget.js).
+    return data || { catalog: s.catalog, layout: s.layout, packs: s.packs || (s.stylepack ? { [s.stylepack.id]: s.stylepack } : {}), budget: opts.budgetSpec || null };
   };
   let sim = createSim(dataSet());
   const styleNow = () => (typeof store.styleId === 'function' ? store.styleId() : store.state?.style || store.state?.stylepack?.id);
@@ -111,7 +112,8 @@ export function mountAssistant(opts = {}) {
     const e = engine();
     return { view: v || e?.view || lastView || null, time: t || e?.timeOfDay || lastTime || null };
   };
-  const stateNow = () => ({ style: styleNow(), selection: selectionNow(), total: store.total?.() ?? 0, ...sceneNow() });
+  const pinsNow = () => (typeof store.pins === 'function' ? store.pins() : []);
+  const stateNow = () => ({ style: styleNow(), selection: selectionNow(), pins: pinsNow(), total: store.total?.() ?? 0, ...sceneNow() });
 
   // ---------------------------------------------------------------- DOM
   const S = () => ui(getLang());
@@ -268,6 +270,7 @@ export function mountAssistant(opts = {}) {
   function apply(actions) {
     const lng = getLang();
     const before = { ...stateNow(), memory: store.snapshot?.().memory };
+    let styled = false;
     const lines = [];
     const safe = (fn) => { try { return fn(); } catch (err) { console.warn('[villar:ai] action failed', err); return false; } };
     for (const a of actions) {
@@ -279,17 +282,35 @@ export function mountAssistant(opts = {}) {
         const slots = store.style?.(a.styleId)?.slots || {};
         const hadPicks = a.styleId !== before.style && Object.entries(mem).some(([k, id]) => slots[k] && slots[k].default !== id && !(a.anchor && (a.anchor.key === k)));
         if (safe(() => store.setStyle(a.styleId, { anchor: a.anchor || undefined, fresh: true }))) {
+          styled = true;
           lines.push({ kind: 'style', text: `${lng === 'en' ? 'Style' : 'Стиль'}: ${quoted(lng, styleName(lng, sim.pack(a.styleId)))}`, delta: store.total() - t0, freshNote: hadPicks });
         }
       } else if (a.type === 'reset') {
         const t0 = store.total(); const was = JSON.stringify(store.state.selection);
         safe(() => store.reset());
         if (JSON.stringify(store.state.selection) !== was) lines.push({ kind: 'reset', text: lng === 'en' ? 'Original set' : 'Исходная подборка', delta: store.total() - t0 });
+      } else if (a.type === 'budget') {
+        // Moves the budget slider: the same ladder and pins as dragging it to `amount` (after a style switch in
+        // the same answer, the new style's ladder without pins — as the server planned it).
+        const t0 = store.total();
+        const amount = Number(a.amount);
+        if (!Number.isFinite(amount) || amount <= 0) continue;
+        let plan = null;
+        if (!styled && typeof opts.budget?.setBudget === 'function') plan = safe(() => opts.budget.setBudget(amount));
+        else if (typeof store.applyPlan === 'function') {
+          plan = sim.planBudget?.(styleNow(), amount, { selection: selectionNow(), pins: styled ? [] : pinsNow() }) || null;
+          if (plan) safe(() => store.applyPlan(plan.selection, { reason: 'budget' }));
+        }
+        if (plan) {
+          const lvl = plan.level ? (lng === 'en' ? plan.level.nameEn || plan.level.name : plan.level.name) : (lng === 'en' ? 'Minimum' : 'Минимум');
+          lines.push({ kind: 'budget', text: `${lng === 'en' ? 'Budget' : 'Бюджет'}: ${quoted(lng, lvl)}`, delta: store.total() - t0 });
+        }
       } else if (a.type === 'select') {
         const prev = store.selected(a.key);
         const q = store.qty?.(a.key) || 1;
         if (prev?.id === a.itemId) continue;
-        if (safe(() => store.select(a.key, a.itemId, { reason: 'assistant' }))) {
+        // 'ai' pins the pick: the budget slider plans around it (docs/BUDGET.md).
+        if (safe(() => store.select(a.key, a.itemId, { reason: 'ai' }))) {
           const next = store.item(a.itemId);
           const type = sim.typeOfKey(styleNow(), store.keyOf ? store.keyOf(a.key) : a.key);
           lines.push({ kind: 'select', key: a.key, text: `${keyLabel(lng, a.key, type)}: ${itemName(lng, next, { afterLabel: true }).split(' — ')[0]}`, delta: ((+next?.price || 0) - (+prev?.price || 0)) * q });
@@ -317,12 +338,18 @@ export function mountAssistant(opts = {}) {
         // since then stay remembered there — nothing is lost).
         store.restore({ style: b.before.style, selection: b.before.selection, memory: b.before.memory });
       } else if (!styleChanged || styleNow() === b.before.style) {
-        // Same style: revert only the picks the AI made that the customer hasn't changed since.
+        // Same style: revert only the picks the AI made that the customer hasn't changed since — in one burst.
+        const diff = {};
         for (const [key, itemId] of Object.entries(b.before.selection || {})) {
           const aiSet = b.after?.selection?.[key];
-          const now = store.state.selection[key];
-          if (now !== itemId && (aiSet === undefined || now === aiSet)) store.select(key, itemId, { reason: 'undo' });
+          const now = store.state.selection[key] ?? null;
+          if (now !== itemId && (aiSet === undefined || now === aiSet)) diff[key] = itemId;
         }
+        if (typeof store.applyPlan === 'function') store.applyPlan(diff, { reason: 'undo' });
+        else for (const [key, itemId] of Object.entries(diff)) store.select(key, itemId, { reason: 'undo' });
+        // The pins the AI's picks made go with them.
+        const was = new Set(b.before.pins || []);
+        for (const k of b.after?.pins || []) if (!was.has(k) && k in diff) store.unpin?.(k);
       }
       if (b.lines.some((l) => l.kind === 'time') && b.before.time) callTime(b.before.time);
       if (b.lines.some((l) => l.kind === 'view') && b.before.view) callView(b.before.view);
@@ -346,7 +373,7 @@ export function mountAssistant(opts = {}) {
       return el('li', { class: `vai-chg vai-chg-${l.kind}` }, icon('check', 'vai-chg-ico'), el('span', { class: 'vai-chg-text' }, l.text),
         d ? el('span', { class: `vai-chg-delta${l.delta < 0 ? ' is-down' : ''}` }, d) : null);
     });
-    if (budget) {
+    if (budget && !batch.lines.some((l) => l.kind === 'budget')) {
       const t = aed(lng, store.total());
       items.push(el('li', { class: `vai-chg vai-chg-budget${budget.ok ? ' is-ok' : ''}` },
         el('span', { class: 'vai-chg-text' }, budget.ok ? S().budgetOk(t, num(lng, budget.target)) : S().budgetMin(t))));
@@ -360,7 +387,7 @@ export function mountAssistant(opts = {}) {
       sumBtn.dataset.mode = 'list';
       sumBtn.hidden = false;
     } else sumBtn.hidden = true;
-    const undoable = batch.lines.some((l) => ['select', 'style', 'reset', 'time', 'view'].includes(l.kind));
+    const undoable = batch.lines.some((l) => ['select', 'style', 'reset', 'time', 'view', 'budget'].includes(l.kind));
     if (undoable && batch.lines.length) {
       const btn = el('button', { type: 'button', class: 'vai-undo' }, icon('undo'), el('span', { class: 'lbl' }, S().undo));
       btn.addEventListener('click', () => {
@@ -510,7 +537,10 @@ export function mountAssistant(opts = {}) {
     sim = createSim(dataSet()); // packs may have changed (styles loaded later)
     const st = stateNow();
     const prevStyle = lastBatch && !lastBatch.undone && lastBatch.before?.style !== lastBatch.after?.style && styleNow() === lastBatch.after?.style ? lastBatch.before.style : null;
-    const local = parseLocal(text, { data: dataSet(), sim, style: st.style, selection: st.selection, view: st.view, time: st.time, lang: getLang(), prevStyle });
+    const local = parseLocal(text, { data: dataSet(), sim, style: st.style, selection: st.selection, pins: st.pins, view: st.view, time: st.time, lang: getLang(), prevStyle });
+    // «уложись в 25 000, диван оставь»: the kept pieces are pinned first, so the budget (here, on the server and
+    // on the slider) plans around them.
+    if (local.keep?.length && typeof store.pin === 'function') for (const k of local.keep) if (store.included?.(k) !== false) store.pin(k);
 
     // Instant path: undo, and pure camera/light commands the local parser fully understood.
     if (local.undo || local.confidence === 'high') return runLocal(text, local);

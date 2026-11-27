@@ -472,7 +472,7 @@ export default async function handler(req, res) {
     total = sim.total(v.state.style, v.state.selection);
     const b = v.actions.find((a) => a.type === 'budget');
     const plan = sim.planBudget(v.state.style, target, { selection: v.state.style === st.style ? st.selection : v.state.selection, pins: v.state.style === st.style ? st.pins : [] });
-    const lvl = plan?.level ? (lang === 'en' ? plan.level.nameEn : plan.level.name) : '';
+    const lvl = plan?.level ? (lang === 'en' ? plan.level.nameEn : plan.level.name) : (lang === 'en' ? 'Minimum' : 'Минимум');
     reply = b && total <= target ? TEXT[lang].budgetPlan(aed(lang, target), lvl, aed(lang, total)) : TEXT[lang].budgetMin(aed(lang, plan?.min ?? total));
     budget = { target, total, ok: total <= target, min: plan?.min ?? total, level: plan?.level?.id || null };
   } else if (target) {

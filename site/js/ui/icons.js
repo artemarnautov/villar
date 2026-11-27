@@ -5,6 +5,8 @@ const s = (body, extra = '') =>
 export const ICONS = {
   mark: `<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="8.5" fill="currentColor"/><path d="M9.2 9.5 16 22.6l6.8-13.1" fill="none" stroke="#f6f1ea" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   close: s('<path d="M6 6l12 12M18 6 6 18"/>', 'stroke-width="2"'),
+  pin: s('<path d="M9.4 3.6h5.2l-.9 5.1 2.9 2.9v1.6H7.4v-1.6l2.9-2.9z"/><path d="M12 13.2v7.2"/>', 'stroke-width="1.8"'),
+  plus: s('<path d="M12 5.5v13M5.5 12h13"/>', 'stroke-width="2"'),
   check: s('<path d="M5 12.5l4.2 4.2L19 7"/>', 'stroke-width="2.2"'),
   chevronDown: s('<path d="M6 9l6 6 6-6"/>', 'stroke-width="2.2"'),
   chevronRight: s('<path d="M9 6l6 6-6 6"/>', 'stroke-width="2"'),

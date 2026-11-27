@@ -188,7 +188,7 @@ const cases = [
   ['уложись в 25 000', (r) => r.budget && r.budget.total <= 25000 && r.budget.ok],
   ['уложись в 30 000, диван оставь', (r) => r.budget?.ok && !sel(r, 'sofa')],
   ['budget 26k', (r) => r.budget?.ok && r.budget.total <= 26000, { lang: 'en' }],
-  ['уложись в 5 000', (r) => r.budget && !r.budget.ok && r.budget.total === sim.minTotal(base.id)],
+  ['уложись в 5 000', (r) => r.budget && !r.budget.ok && r.budget.total === (sim.hasBudget() ? sim.planBudget(base.id, 5000).min : sim.minTotal(base.id))],
   ['сбрось', (r) => types(r).join() === 'reset' || r.reply.length > 0],
   ['отмени', (r) => r.undo === true],
   ['что ты умеешь?', (r) => r.understood && r.actions.length === 0],
@@ -224,7 +224,13 @@ for (const [text, check, extra] of cases) {
   for (const a of r.actions) {
     if (a.type === 'style') valid = store.setStyle(a.styleId, { anchor: a.anchor || undefined }) && valid;
     else if (a.type === 'reset') store.reset();
-    else if (a.type === 'select') valid = store.select(a.key, a.itemId) && valid;
+    else if (a.type === 'select') valid = store.select(a.key, a.itemId, { reason: 'ai' }) && valid;
+    else if (a.type === 'budget') {
+      // Same as the client: the slider's planner around the store's pins.
+      const plan = sim.planBudget(store.styleId(), a.amount, { selection: store.state.selection, pins: store.pins() });
+      valid = !!plan && valid;
+      if (plan) store.applyPlan(plan.selection, { reason: 'budget' });
+    }
   }
   ok(valid, `local actions apply cleanly: ${JSON.stringify(text)}`);
   if (r.budget) ok(store.total() === r.budget.total, `budget total matches store: ${JSON.stringify(text)}`, [store.total(), r.budget.total]);

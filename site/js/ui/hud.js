@@ -140,7 +140,18 @@ export function createHud({ el, shell, stage, store, palettes, thumbs, onOpen, o
         h('div', { class: 'hud-price' }, h('span', { class: 'num' }, price(item, qty)), note ? h('small', null, note) : null),
         totalEl),
       meta.length ? h('div', { class: 'hud-meta' }, meta) : null,
-      setNote ? h('p', { class: 'hud-setnote' }, typo(setNote)) : null);
+      setNote ? h('p', { class: 'hud-setnote' }, typo(setNote)) : null,
+      renderPin());
+  }
+
+  /** The customer's own pick: the budget slider plans around it. One quiet line with «Открепить». */
+  function renderPin() {
+    if (!store.isPinned?.(ref())) return null;
+    const un = h('button', { type: 'button', class: 'hud-unpin' }, t('hud.unpin'));
+    un.addEventListener('click', () => { if (cur) store.unpin(ref()); });
+    return h('div', { class: 'hud-pin' },
+      h('span', { class: 'hud-pin-ico', 'aria-hidden': 'true', html: icon('pin') }),
+      h('span', { class: 'hud-pin-text' }, t('hud.pinned')), un);
   }
 
   function renderSame(item, qty) {
@@ -221,6 +232,7 @@ export function createHud({ el, shell, stage, store, palettes, thumbs, onOpen, o
     const focusedItem = active?.dataset?.item || null;
     const focusedGroup = active?.classList?.contains('hud-more-btn') ? active.closest('.hud-group')?.dataset.style : null;
     const focusedSummary = active?.tagName === 'SUMMARY';
+    const focusedUnpin = active?.classList?.contains('hud-unpin');
 
     panel.replaceChildren(...[renderHead(item, qty), renderSame(item, qty), renderOther(qty), renderDetails(item, qty), confirm].filter(Boolean));
     renderConfirm();
@@ -244,6 +256,7 @@ export function createHud({ el, shell, stage, store, palettes, thumbs, onOpen, o
         || (focusedItem && panel.querySelector(`.tile[data-item="${CSS.escape(focusedItem)}"]`))
         || (focusedGroup && panel.querySelector(`.hud-group[data-style="${CSS.escape(focusedGroup)}"] .hud-more-btn`))
         || (focusedSummary && panel.querySelector('.hud-details summary'))
+        || (focusedUnpin && (panel.querySelector('.hud-unpin') || panel.querySelector('.hud-name')))
         || panel.querySelector('.tile.is-current') || el;
       target.focus({ preventScroll: true });
     }
@@ -366,6 +379,7 @@ export function createHud({ el, shell, stage, store, palettes, thumbs, onOpen, o
     if (mine) render({ keepScroll: true });
   });
   store.on('style', () => { if (cur) { pending = null; openGroups.clear(); render(); } });
+  store.on('pins', () => { if (cur) render({ keepScroll: true }); });
   onLang(() => { if (cur) render({ keepScroll: true }); });
 
   // QA-01: on touch, the browser's synthesized click lands right after the tap that opened the HUD; if the

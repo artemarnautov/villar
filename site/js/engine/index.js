@@ -256,6 +256,8 @@ export async function createVillar({
   scene.add(arch.group);
   const skyline = createSkyline({ center: new THREE.Vector3(S.x / 2, 0, S.z) });
   scene.add(skyline.group);
+  // a facade photo landed: redraw (the path tracer's snapshot is stale too)
+  skyline.onTextures = () => { if (disposed) return; sceneVersion++; invalidate(2); };
   const lighting = createLighting({ renderer, scene, arch, layout, quality: Q });
   // parallax-corrected room reflections (box = apartment incl. the window wall)
   patchReflectionChunks({ min: [-0.02, -0.02, -0.02], max: [S.x + 0.02, S.ceiling + 0.02, S.z + 0.25], probe: lighting.capturePoint.toArray() });
@@ -334,7 +336,7 @@ export async function createVillar({
   decorate(arch.group); decorate(furnisher.root);
   refreshNoAO();
   const fader = createFader({ renderer, scene, camera, target: () => post.rt, decorate: attachSSAO, onShadow: () => { renderer.shadowMap.needsUpdate = true; invalidate(2); } });
-  const thumbs = createThumbnailer({ renderer, materials, buildItem, releaseItem: mods.releaseItem, quality: Q, software: /swiftshader|llvmpipe|software/i.test(String(gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info')?.UNMASKED_RENDERER_WEBGL ?? 0x1F01))), shouldWait: () => controls.moving || fader.active || controls.isDragging() });
+  const thumbs = createThumbnailer({ renderer, materials, buildItem, releaseItem: mods.releaseItem, quality: Q, software: /swiftshader|llvmpipe|software/i.test(String(gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info')?.UNMASKED_RENDERER_WEBGL ?? 0x1F01))), shouldWait: () => controls.moving || fader.active || controls.isDragging() || budget.dragging });
 
   // ---------------------------------------------------------------- state & helpers
   let framesToRender = 3;
@@ -575,7 +577,7 @@ export async function createVillar({
     if (cutaway) giInterior();
     return c.sig === sceneSig() ? 'fresh' : 'stale';
   }
-  const busyScene = () => !!styleWave || fader.active;
+  const busyScene = () => !!styleWave || fader.active || budgetBusy();
   const bakePrepare = () => {
     const hidden = [];
     const hide = (o) => { if (o.visible) { o.visible = false; hidden.push(o); } };
@@ -1012,7 +1014,7 @@ export async function createVillar({
       && (typeof document === 'undefined' || document.visibilityState !== 'hidden')
       && now - Math.max(REFINE.lastInput, REFINE.lastActive) >= REST_MS
       && !controls.moving && !controls.isDragging() && !fader.active && !styleWave && !probes.baking
-      && !photo.active && !photo.busy && !pendingPhoto && !thumbs.busy && pendingChanges.size === 0;
+      && !photo.active && !photo.busy && !pendingPhoto && !thumbs.busy && pendingChanges.size === 0 && !budgetBusy(now);
   }
   function startRefine() {
     const my = ++REFINE.gen;
@@ -1088,8 +1090,95 @@ export async function createVillar({
     refineInput(true);
     if (photo.active || photo.busy || pendingPhoto) stopPhoto();
     const ids = Array.isArray(e.slots) && e.slots.length ? e.slots : furnisher.slotsOfType(e.slotType).map((s) => s.id);
+    if (e.reason === 'budget' && !styleWave) { budgetQueue(ids); return; }
     for (const id of ids) pendingChanges.set(id, true);
     if (!changeFlush) changeFlush = Promise.resolve().then(flushChanges);
+  }
+
+  // ---------------------------------------------------------------- budget slider (docs/BUDGET.md)
+  // 'plan' bursts (up to ~30/s while dragging) are coalesced per slot: a slot that is mid-dissolve keeps only
+  // its latest wish and is rebuilt from the store's CURRENT selection when its dissolve ends (latest wins).
+  // A host carries its attached items (decor, lamps, tableware) in the same rebuild. Up to BUDGET_MAX slots
+  // dissolve at once, their starts staggered by ≤ 60 ms, nearest first. GI re-bakes (local probes) only after
+  // the slider has settled: ≥ 350 ms without a plan event, not dragging, nothing pending.
+  const budget = { dragging: false, lastPlan: 0, pending: new Set(), inflight: new Set(), runs: 0, timer: 0, primed: null };
+  const BUDGET_SETTLE = 350, BUDGET_STAGGER = 45, BUDGET_MAX = 8, BUDGET_MS = 220;
+  const slotOf = new Map(layout.slots.map((q) => [q.id, q]));
+  const ancestorsOf = (id) => { const out = []; for (let q = slotOf.get(id); q?.attach; q = slotOf.get(q.attach.slot)) out.push(q.attach.slot); return out; };
+  const descendantsOf = (id) => { const out = []; const walk = (h) => { for (const q of layout.slots) if (q.attach?.slot === h) { out.push(q.id); walk(q.id); } }; walk(id); return out; };
+  function budgetBusy(now = performance.now()) {
+    return budget.dragging || budget.runs > 0 || budget.pending.size > 0 || now - budget.lastPlan < BUDGET_SETTLE;
+  }
+  function onPlan(e) {
+    if (!e || e.reason !== 'budget') return;
+    budget.lastPlan = performance.now();
+    refineInput(true);
+    primeBudget();
+  }
+  /** First touch of the slider: the active pack's options are built off-thread so drags only clone. */
+  function primeBudget() {
+    const sid = store?.styleId?.() ?? 'default';
+    if (budget.primed === sid || !store?.options) return;
+    budget.primed = sid;
+    const seen = new Set(), items = [];
+    for (const q of layout.slots) for (const o of store.options(q.id) || []) {
+      const it = typeof o === 'string' ? store.item?.(o) : (o?.item || o);
+      if (it?.id && !seen.has(it.id)) { seen.add(it.id); items.push(it); }
+    }
+    // not the ones already in the room (warmed at ready); cheapest first — the left end of the slider comes first
+    const inRoom = new Set([...furnisher.placed.values()].map((r) => r.item.id));
+    warmItemQueue(items.filter((it) => !inRoom.has(it.id)).sort((a, b) => (a.price || 0) - (b.price || 0)).slice(0, 60));
+  }
+  function budgetQueue(ids) {
+    budget.lastPlan = Math.max(budget.lastPlan, performance.now());
+    for (const id of ids) budget.pending.add(id);
+    if (!budget.timer) budget.timer = setTimeout(pumpBudget, 0);
+  }
+  function pumpBudget() {
+    budget.timer = 0;
+    if (disposed) return;
+    const busy = (id) => budget.inflight.has(id) || ancestorsOf(id).some((a) => budget.inflight.has(a)) || descendantsOf(id).some((d) => budget.inflight.has(d));
+    const ready = [];
+    for (const id of budget.pending) {
+      if (busy(id)) continue;
+      // already what the store wants (A → B → A within a burst): nothing to do
+      const rec = furnisher.placed.get(id), want = store.selected(id);
+      if ((rec?.item.id ?? null) === (want?.id ?? null) && !ancestorsOf(id).some((a) => budget.pending.has(a))) { budget.pending.delete(id); continue; }
+      ready.push(id);
+    }
+    // a host's rebuild carries its attached items: start only the topmost of each family
+    const readySet = new Set(ready);
+    const roots = ready.filter((id) => !ancestorsOf(id).some((a) => readySet.has(a)));
+    const cam = camera.position;
+    const posOf = (id) => { const q = slotOf.get(id); return q?.pos ? new THREE.Vector3(...q.pos) : (furnisher.boxOf(id)?.getCenter(new THREE.Vector3()) || cam); };
+    roots.sort((a, b) => posOf(a).distanceTo(cam) - posOf(b).distanceTo(cam));
+    const n = Math.max(0, Math.min(roots.length, BUDGET_MAX - budget.runs));
+    const step = Math.min(60, BUDGET_STAGGER);
+    for (let i = 0; i < n; i++) {
+      const id = roots[i];
+      const fam = [id, ...descendantsOf(id)];
+      for (const f of fam) { budget.pending.delete(f); budget.inflight.add(f); }
+      budget.runs++;
+      setTimeout(() => {
+        Promise.resolve(disposed ? null : swapSlots([id], { ms: BUDGET_MS })).catch((err) => console.warn('[villar] budget swap', err)).finally(() => {
+          for (const f of fam) budget.inflight.delete(f);
+          budget.runs--;
+          if (budget.pending.size && !budget.timer) budget.timer = setTimeout(pumpBudget, 0);
+        });
+      }, i * step);
+    }
+    // more waiting (busy families or over the cap): try again shortly
+    if (budget.pending.size && !budget.timer) budget.timer = setTimeout(pumpBudget, 80);
+    invalidate(2);
+  }
+  /** The UI holds the slider: no thumbnails, bakes or camera moves until it lets go. */
+  function setDragging(on) {
+    on = !!on;
+    if (budget.dragging === on) return;
+    budget.dragging = on;
+    if (on) { refineInput(true); primeBudget(); controls.setEnabled(false); }
+    else { budget.lastPlan = Math.max(budget.lastPlan, performance.now() - BUDGET_SETTLE + 120); controls.setEnabled(true); }
+    invalidate(2);
   }
   async function flushChanges() {
     changeFlush = null;
@@ -1109,6 +1198,7 @@ export async function createVillar({
       await Promise.all(jobs);
       if (styleWave === wave) { styleWave = null; resumeGI(); }
       queueWarm([...furnisher.placed.values()].map((r) => r.group));
+      if (ready) idle(primeBudget); // the new pack's slider ladder
       return;
     }
     await swapSlots(ids, { ms: 260 });
@@ -1146,6 +1236,7 @@ export async function createVillar({
     invalidate(3);
   }
   const unsubStore = store?.on ? store.on('change', onStoreChange) : () => {};
+  const unsubPlan = store?.on ? store.on('plan', onPlan) : () => {};
   // 'style' (user / AI switch) and 'restore' (undo) are staged the same way
   const unsubStyle = store?.on ? store.on('style', (e) => {
     const wave = styleWave = { t0: performance.now(), id: e?.styleId, started: false };
@@ -1573,6 +1664,14 @@ export async function createVillar({
         if (it && (rootTypes.has(it.type) || rootTypes.has(key)) && !queue.some((q) => q.id === it.id)) queue.push(it);
       }
     }
+    warmItemQueue(queue);
+  }
+  /**
+   * Build each item (off-thread first, then a cached clone), compile its programs for both light sets and its
+   * dissolve, one item per idle slice, only while nothing else is going on (T8; budget slider ladder).
+   */
+  function warmItemQueue(queue) {
+    if (!queue.length || !canWarm()) return;
     const step = async (deadline) => {
       if (disposed || contextLost || !queue.length) return;
       if (!step.built) { step.built = true; await workerPrebuild(queue); }
@@ -1592,7 +1691,8 @@ export async function createVillar({
 
   function markReady() {
     ready = true;
-    idle(() => prewarm().then(() => idle(prebuildPacks)));
+    // after the room: the active pack's slider ladder (all its options), then the other packs' defaults
+    idle(() => prewarm().then(() => idle(() => { primeBudget(); prebuildPacks(); })));
     loadProgress(1, 'ready');
     window.villar = api;
     window.__villarReady = true;
@@ -1657,6 +1757,8 @@ export async function createVillar({
     get photoActive() { return photo.active; },
     highlight(slotId) { highlightSlot(slotId); },
     focus, unfocus, setInsets,
+    /** Budget slider held (true) / released (false): defers thumbnails, bakes and camera input meanwhile. */
+    setDragging,
     /** Accessible name of the canvas (follows the UI language, PT-05). */
     setLabel(text) { if (text) canvas.setAttribute('aria-label', String(text)); },
     get focused() { return focusedSlot; },
@@ -1721,7 +1823,7 @@ export async function createVillar({
     clearInterval(progTimer);
     clearTimeout(giState.timer); clearTimeout(lostTimer);
     pendingPhoto = null;
-    unsubStore?.(); unsubStyle?.();
+    unsubStore?.(); unsubStyle?.(); unsubPlan?.(); clearTimeout(budget.timer);
     ro?.disconnect();
     photo.dispose();
     fader.dispose();

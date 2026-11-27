@@ -140,9 +140,57 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
     return list;
   }
 
+  // ---------------------------------------------------------------- light reserve (empty slots)
+  // A slot that can hold lights keeps the SAME light set when it is empty (budget slider: a lamp or a candle
+  // set comes and goes): placeholder lights at intensity 0 — same types, same shadow candidacy — so the
+  // evening light count, and with it every shader program, never changes (no synchronous recompiles).
+  const LAMP_TYPES = new Set(['table_lamp', 'floor_lamp', 'pendant_lamp']);
+  const ghosts = new Map(); // slotId → [lights]
+  const lightKind = (slot) => (LAMP_TYPES.has(slot.type) ? 'lamp' : quality === 'high' && FLAME_PAD[slot.type] ? FLAME_PAD[slot.type] : null);
+  function makeGhost(slot) {
+    const kind = lightKind(slot);
+    if (!kind) return null;
+    const host = slot.attach ? byId.get(slot.attach.slot) : null;
+    const at = new THREE.Vector3(...(slot.pos || host?.pos || [S.x / 2, 0, S.z / 2])).setY(((slot.pos || host?.pos || [0, 0, 0])[1] || 0) + 1.0);
+    const list = [];
+    const mk = (l, prio = 0) => {
+      l.castShadow = false; l.intensity = 0;
+      l.userData.lampLight = true; l.userData.baseIntensity = 0; l.userData.shadowPriority = prio; l.userData.ghost = true;
+      l.name = 'lamp-light-reserve';
+      l.position.copy(at);
+      root.add(l);
+      if (l.target) { l.target.position.copy(at).y -= 1; root.add(l.target); }
+      list.push(l);
+    };
+    if (kind === 'lamp') {
+      const down = new THREE.SpotLight(0xffffff, 0, 0, 55 * DEG, 0.35, 2);
+      down.shadow.camera.near = 0.12;
+      mk(down, 0.5);              // below every real lamp: only takes a shadow slot a real lamp leaves free
+      mk(new THREE.SpotLight(0xffffff, 0, 0, 45 * DEG, 0.4, 2));
+      mk(new THREE.PointLight(0xffffff, 0, 0, 2));
+    } else for (let i = 0; i < kind; i++) mk(new THREE.PointLight(0xffffff, 0, 2.5, 2));
+    return list;
+  }
+  function dropGhost(slotId) {
+    const g = ghosts.get(slotId);
+    if (!g) return;
+    for (const l of g) { l.removeFromParent(); l.target?.removeFromParent(); l.dispose?.(); }
+    ghosts.delete(slotId);
+  }
+  /** Placed slot with lights → no reserve; empty (or light-less) light-capable slot → its reserve. */
+  function syncGhosts() {
+    for (const slot of slots) {
+      if (!lightKind(slot)) continue;
+      const rec = placed.get(slot.id);
+      if (rec && rec.lights.length) dropGhost(slot.id);
+      else if (!ghosts.has(slot.id)) { const g = makeGhost(slot); if (g) ghosts.set(slot.id, g); }
+    }
+  }
+  const ghostLights = () => [...ghosts.values()].flat();
+
   /** Pick the `max` highest-priority shadow candidates (constant count → no recompiles on swaps). */
   function assignLampShadows(max) {
-    const lights = [...placed.values()].flatMap((r) => r.lights).filter((l) => l.userData.shadowPriority > 0);
+    const lights = [...placed.values()].flatMap((r) => r.lights).concat(ghostLights()).filter((l) => l.userData.shadowPriority > 0);
     lights.sort((a, b) => b.userData.shadowPriority - a.userData.shadowPriority);
     lights.forEach((l, i) => {
       const on = i < max;
@@ -325,6 +373,7 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
 
   function placeAll() {
     for (const id of ordered(slots.map((s) => s.id))) build(byId.get(id));
+    syncGhosts();
   }
 
   /**
@@ -348,6 +397,7 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
     }
     const incoming = [];
     for (const id of all) { const rec = build(byId.get(id)); if (rec) incoming.push(rec); }
+    syncGhosts(); // same frame: the light count never changes, whatever came and went
     return { ids: all, outgoing, incoming };
   }
   /** Slots aligned to any of `ids` (not rebuilt, only moved) with their attached children. */
@@ -400,7 +450,7 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
     return out;
   }
 
-  function lampLights() { return [...placed.values()].flatMap((r) => r.lights); }
+  function lampLights() { return [...placed.values()].flatMap((r) => r.lights).concat(ghostLights()); }
 
   function meshesOf(slotId) {
     const rec = placed.get(slotId);

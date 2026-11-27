@@ -3,7 +3,7 @@
 // The page keeps working (budget, swaps, styles, 2D plan) if the engine is missing, throws, stalls or loses WebGL.
 import { loadData } from './core/data.js';
 import { createStore } from './core/store.js';
-import { $, isCompact, quoted } from './ui/dom.js';
+import { $, isCompact, quoted, aed } from './ui/dom.js';
 import { t, getLang, setLang, onLang, applyStatic } from './ui/i18n.js';
 import { applyAccent } from './ui/accent.js';
 import { setupReveal, setupNav, scrollToEl } from './ui/motion.js';
@@ -11,6 +11,7 @@ import { renderStyle, renderHeroNote } from './ui/sections.js';
 import { createHoverCard } from './ui/hovercard.js';
 import { createHud } from './ui/hud.js';
 import { createBudget } from './ui/budget.js';
+import { createBudgetController } from './ui/budget-slider.js';
 import { createOrderModal } from './ui/order-modal.js';
 import { createStage } from './ui/stage.js';
 import { createStylePicker } from './ui/stylepicker.js';
@@ -136,8 +137,11 @@ async function boot() {
     onClose: () => { stage.unfocus(); budget?.setSheetOpen(false); popLayer('hud'); card.quiet(600); },
   });
 
+  // Budget slider (docs/BUDGET.md): one controller over the style's ladder; the bar and the phone dock render it.
+  let slider = null;
+  try { slider = createBudgetController({ store, spec: data.budget }); } catch (err) { warn('budget slider unavailable', err); }
   budget = createBudget({
-    el: $('#budget'), store, stage: stageEl, announce,
+    el: $('#budget'), store, stage: stageEl, announce, slider,
     onOrder: () => order.open(),
     onLine: (slotId, from) => {
       const slot = store.placed().find((p) => p.slotId === slotId);
@@ -178,6 +182,26 @@ async function boot() {
     }, 0));
   }
   const picker = createStylePicker({ el: $('#style-picker'), store, palettes, onPick: (id) => switchStyle(id) });
+
+  // Grabbing the budget: the whole room comes back into view (no focused item), the engine keeps the camera
+  // still and defers its heavy work; letting go offers one quiet Undo for the whole gesture.
+  slider?.on('grab', () => {
+    if (hud.isOpen) hud.close({ restoreFocus: false });
+    card.hide();
+    toast.hide();
+    stage.setDragging(true);
+  });
+  slider?.on('release', (g) => {
+    stage.setDragging(false);
+    if (!g.changed) return;
+    toast.show(t('toast.budget', { level: slider.levelName(g.level), total: aed(g.total) }), {
+      actionLabel: t('toast.undo'),
+      onAction: () => {
+        store.restore(g.snap);
+        toast.show(t('toast.budgetUndone'), { ms: 2400 });
+      },
+    });
+  });
   // Any other change after a switch retires the undo offer (it would no longer restore just the style).
   store.on('change', ({ reason }) => { if (reason !== 'style' && reason !== 'restore') toast.hide(); });
 
@@ -196,7 +220,7 @@ async function boot() {
   setupReveal();
 
   // Expose UI hooks for QA (no engine internals).
-  window.villarUI = { store, stage, hud, card, order, setLang, switchStyle, toast };
+  window.villarUI = { store, stage, hud, card, order, setLang, switchStyle, toast, slider };
 
   // AI assistant under the stage (owned by the assistant agent; mounted only when its module exists).
   async function mountAssistant() {
@@ -209,6 +233,8 @@ async function boot() {
       document.documentElement.classList.add('has-assistant');
       await mod.mountAssistant({
         container: slot, store, lang: getLang(),
+        // The AI's «уложись в N» moves this same slider (same ladder, same pins).
+        budget: slider, budgetSpec: data.budget || null,
         get villar() { return stage.engine; },
         getView: () => ({ view: stage.view, time: stage.time, focus: hud.current?.slotId || null, lang: getLang() }),
         // Keep the dock / time controls and the HUD in sync with what the assistant does.

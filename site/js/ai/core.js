@@ -190,7 +190,8 @@ export function createSim({ catalog, layout, packs, budget: budgetSpec = null })
         // Same planner as the budget slider: the richest designer-correct room ≤ amount, around the customer's pins.
         const amount = Math.round(Number(a.amount ?? a.value ?? a.total));
         if (hadBudget || !Number.isFinite(amount) || amount <= 0 || amount > 10_000_000) { dropped.push({ action: a, why: 'bad amount' }); continue; }
-        const plan = planBudget(style, amount, { selection, pins: style === state0?.style ? pins : [] });
+        // A style switch or a reset earlier in the same answer clears the customer's pins (as the client does).
+        const plan = planBudget(style, amount, { selection, pins: style === state0?.style && !hadReset ? pins : [] });
         if (!plan) { dropped.push({ action: a, why: 'no budget spec' }); continue; }
         hadBudget = true; selection = plan.selection;
         out.push({ type: 'budget', amount, total: plan.total, level: plan.level?.id || null, ok: plan.ok });

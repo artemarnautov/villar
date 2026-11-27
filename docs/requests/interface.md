@@ -31,6 +31,29 @@ fallback.
    The catalog is unchanged. If you standardise the names at the source, the display rules simply stop matching.
 2. `uiAccent` per palette (D2-20) is still optional. Until it ships, `ui/accent.js` keeps its fallbacks.
 
+## Budget slider (round 5): status and requests
+
+UI side is in: `ui/budget-slider.js` (controller + views), the bar beside the total, the phone dock, the list
+(«Не входит в бюджет · Добавить», pins with «Открепить»), the HUD pin line, one Undo per gesture, the AI client.
+
+To coordinator:
+1. `tools/test-ai.mjs` (5 failures, all expectations of the old fitBudget path):
+   - the local-actions loop applies `style`, `reset` and `select` only. Add `budget`:
+     `const p = sim.planBudget(store.styleId(), a.amount, { selection: store.state.selection, pins: store.pins() }); store.applyPlan(p.selection);`
+   - «уложись в 5 000» expects `sim.minTotal()` (all-cheapest room, 21 875). The planner's minimum is the tier-0 room
+     (7 852): compare with `sim.planBudget(base.id, 5000).min`.
+2. `api/assistant.js` `budgetPlan`: when the plan lands below Essentials, `plan.level` is null and the reply reads
+   «Собрал комнату под 10 000 AED: «», итог 8 570 AED». The client says «Минимум» / "Minimum" there.
+3. `ai/core.js` `applyActions`: after a `reset` in the same answer, the budget still plans around `state0.pins`, but
+   `store.reset()` clears the pins on the client, so the two rooms can differ. Suggest pins = [] after a reset.
+4. «уложись в 30 000, диван оставь»: the client pins the kept pieces before it calls the server (so `state.pins`
+   already contains them); no server change needed.
+
+To engine (tested with the working tree, software GL):
+- Desktop and phone: min → Essentials → designer → max, no errors. Two quick plans (designer → Move-in → Comfortable)
+  leave 4 stale slots after 15 s and converge by 45 s on software GL (`villar.debug.furnisher.placed` vs the store).
+- `setDragging` is called on grab and release; the HUD is closed (unfocus) on grab.
+
 ## To coordinator
 
 1. **CSP:** the only inline script is still the import map, with its hash unchanged

@@ -178,6 +178,8 @@ const P = {
     budgetOk: (k, t) => `Готово: ${k} ${plural('ru', k, ['замена', 'замены', 'замен'])}, итог ${t}.`,
     budgetAlready: (t) => `Вы уже укладываетесь: итог ${t}.`,
     budgetMin: (m) => `Ниже ${m} в этом стиле не получится — вот самый экономный вариант.`,
+    budgetPlan: (n, lvl, t) => `Собрал комнату под ${n}: «${lvl}», итог ${t}.`,
+    budgetMinLevel: 'Минимум',
     style: (n, k) => `Стиль ${n}: обновлено ${k} ${plural('ru', k, ITEMS.ru)}.`,
     styleCantKeep: (a) => `Оставить ${a.noun.toLowerCase()} «${a.from}» не получится: в этом стиле такой модели нет. Вместо него — «${a.to}»${a.diff ? ` (${a.diff})` : ''}.`,
     styleSame: (n) => `Стиль ${n} уже выбран.`,
@@ -217,6 +219,8 @@ const P = {
     budgetOk: (k, t) => `Done: ${k} ${plural('en', k, ['swap', 'swaps'])}, total ${t}.`,
     budgetAlready: (t) => `You’re already within budget: total ${t}.`,
     budgetMin: (m) => `This style can’t go below ${m} — here is the most economical set.`,
+    budgetPlan: (n, lvl, t) => `Room set for ${n}: “${lvl}”, total ${t}.`,
+    budgetMinLevel: 'Minimum',
     style: (n, k) => `${n} style: ${k} ${plural('en', k, ITEMS.en)} updated.`,
     styleCantKeep: (a) => `${a.label} isn’t part of this style, so ${a.toFull} takes its place${a.diff ? ` (${a.diff})` : ''}.`,
     styleSame: (n) => `${n} is already the active style.`,
@@ -264,7 +268,8 @@ export function parseLocal(text, ctx) {
   const sim = ctx?.sim || createSim(data);
   let style = sim.pack(ctx?.style) ? ctx.style : sim.packIds[0];
   let selection = sim.normalizeSelection(style, ctx?.selection);
-  const state0 = { style, selection };
+  const pins0 = Array.isArray(ctx?.pins) ? ctx.pins : [];
+  const state0 = { style, selection, pins: pins0 };
   const total0 = sim.total(style, selection);
   const h = { t: ` ${foldText(text)} ` };
   const out = { understood: false, confidence: 'low', reply: '', actions: [], chips: [], intents: [] };
@@ -400,7 +405,22 @@ export function parseLocal(text, ctx) {
 
   // ---- budget
   let budgetInfo = null;
-  if (target) {
+  if (target && sim.hasBudget?.()) {
+    // The budget slider's planner (core/budget.js): the richest designer-correct room ≤ target, around the
+    // customer's pins — exactly where dragging the slider to `target` lands. Pins count only in the same style.
+    // «…, диван оставь»: the kept pieces become pins (the client pins them before it asks the server), so the
+    // planner keeps them at every budget.
+    const keep = protectTypes.flatMap((t) => keysFor(t)).filter((k) => selection[k] != null);
+    const pins = style === state0.style ? [...new Set([...pins0, ...keep])] : [];
+    state0.pins = pins;
+    const plan = sim.planBudget(style, target, { selection, pins });
+    if (plan) {
+      raw.push({ type: 'budget', amount: target });
+      selection = plan.selection;
+      budgetInfo = { target, total: plan.total, ok: plan.ok, min: plan.min, level: plan.level || null, plan: true, keep: style === state0.style ? keep : [] };
+      intents.push('budget');
+    }
+  } else if (target) {
     const protect = protectTypes.flatMap((t) => keysFor(t));
     const fit = sim.fitBudget(style, selection, target, { protect });
     for (const s of fit.swaps) raw.push({ type: 'select', key: s.key, itemId: s.to });
@@ -594,7 +614,11 @@ export function parseLocal(text, ctx) {
       offers.push({ label: p.resetBackChip(prevName), undo: true });
     } else replyParts.push(changedKeys.length || intents.includes('style') ? p.reset(quoted(lang, styleName(lang, sim.pack(res.state.style)))) : p.resetSame);
   }
-  if (budgetInfo) {
+  if (budgetInfo?.plan) {
+    // Same words as the server: «Собрал комнату под 25 000 AED: «Удобно жить», итог 24 993 AED».
+    const lvl = budgetInfo.level ? (lang === 'en' ? budgetInfo.level.nameEn || budgetInfo.level.name : budgetInfo.level.name) : p.budgetMinLevel;
+    replyParts.push(budgetInfo.ok ? p.budgetPlan(aed(lang, budgetInfo.target), lvl, aed(lang, total1)) : p.budgetMin(aed(lang, budgetInfo.min)));
+  } else if (budgetInfo) {
     const t = aed(lang, budgetInfo.total);
     replyParts.push(budgetInfo.already ? p.budgetAlready(t) : budgetInfo.ok ? p.budgetOk(budgetInfo.swaps, t) : p.budgetMin(aed(lang, budgetInfo.min)));
   }
@@ -639,7 +663,8 @@ export function parseLocal(text, ctx) {
     intents,
     total: total1,
     chips: offers.length ? [...offers, ...defaultChips(lang, { total: total1, time: ctx?.time, view: ctx?.view }).filter((c) => foldText(c) !== foldText(text)).slice(0, 2)] : undefined,
-    budget: budgetInfo ? { target: budgetInfo.target, total: budgetInfo.total, ok: budgetInfo.ok, min: budgetInfo.min } : undefined,
+    budget: budgetInfo ? { target: budgetInfo.target, total: budgetInfo.total, ok: budgetInfo.ok, min: budgetInfo.min, level: budgetInfo.level?.id || null } : undefined,
+    keep: budgetInfo?.keep?.length ? budgetInfo.keep : undefined,
   });
 }
 

@@ -553,6 +553,12 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
       call('setInsets', { right: 0, bottom: 0 });
     },
     syncStyle() { syncChip(); syncPoster(); },
+    /** The budget slider is held: the engine keeps the camera still and defers thumbnails and bakes. */
+    setDragging(on) {
+      if (on) { hideHint(); thumbHoldUntil = Math.max(thumbHoldUntil, performance.now() + 60_000); }
+      else { thumbHoldUntil = performance.now() + 400; pumpThumbs(); }
+      call('setDragging', !!on);
+    },
     /** Quiet glass chip at the top of the stage while something heavy happens (style switch). Returns hide(). */
     busy(text) {
       busyLbl.textContent = text;
