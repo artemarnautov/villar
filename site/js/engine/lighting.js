@@ -84,7 +84,8 @@ export function createLighting({ renderer, scene, arch, layout, quality = 'high'
   // ---------------------------------------------------------------- evening lights (always present)
   const downlights = [];
   for (const p of arch.downlights) {
-    const s = new THREE.SpotLight(WARM, 0, 0, 38 * DEG, 0.65, 2);
+    // 48° with a 0.9 penumbra: soft-edged pools on the walls (38° / 0.65 drew hard discs; real flats at night, eng-6)
+    const s = new THREE.SpotLight(WARM, 0, 0, 48 * DEG, 0.9, 2);
     s.position.copy(p);
     s.target.position.set(p.x, 0, p.z);
     s.castShadow = false;

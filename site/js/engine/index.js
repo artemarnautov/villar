@@ -508,9 +508,13 @@ export async function createVillar({
   /** Focus metering on/off (target colour from the item's catalogue colour). */
   function setSpot(slotId) {
     const item = slotId ? furnisher.info(slotId)?.item : null;
-    ae.spot = slotId && ae.enabled ? { slotId, Y: clamp(linY(item?.colorHex || '#b8b0a4'), 0.04, 0.8) } : null;
+    // a hosted set (cushions, throw, decor, tableware) is metered with what it rests on in frame: its one catalogue
+    // colour (often the darkest cushion) must not pull the whole close-up down ("murky" evening cushions, eng-6)
+    const slot = slotId ? layout.slots.find((q) => q.id === slotId) : null;
+    const floorY = slot && (slot.attach || SET_TYPES.has(slot.type)) ? 0.3 : 0.04;
+    ae.spot = slotId && ae.enabled ? { slotId, Y: clamp(linY(item?.colorHex || '#b8b0a4'), floorY, 0.8) } : null;
     if (!ae.spot) ae.target = 0;
-    applyWhiteBalance();
+    applyExposure(); applyWhiteBalance();
     post.meter.material.uniforms.useRect.value = ae.spot ? 1 : 0;
     invalidate(2);
   }
@@ -518,6 +522,13 @@ export async function createVillar({
   function stepExposure(dt) {
     if (!Number.isFinite(ae.ev) || Math.abs(ae.ev) > 4) ae.ev = 0;
     if (!(dt > 0)) return false;
+    // focus white balance blend (evening close-ups): time-based, same 0.3 s constant as the exposure
+    const wbT = ae.spot && !cutaway ? 1 : 0, wbK = ae.wbK || 0;
+    if (wbK !== wbT) {
+      ae.wbK = Math.abs(wbT - wbK) < 0.02 ? wbT : wbK + (wbT - wbK) * (1 - Math.exp(-Math.min(dt, 1) / (mqReduced?.matches || softwareGL ? 0.02 : 0.3)));
+      applyWhiteBalance();
+      if (ae.wbK !== wbT) invalidate(1);
+    }
     const d = ae.target - ae.ev;
     if (Math.abs(d) < 0.03) { if (ae.ev !== ae.target) { ae.ev = ae.target; applyExposure(); if (!ae.spot) applyWhiteBalance(); } return false; }
     ae.ev += d * (1 - Math.exp(-Math.min(dt, 1) / (mqReduced?.matches || softwareGL ? 0.02 : 0.3)));
@@ -533,18 +544,24 @@ export async function createVillar({
     renderer.toneMappingExposure = Number.isFinite(v) ? v : base * TOD[currentTime].exposure;
     // dodge deep interior shadows (corridor, kitchen) by up to ~0.9 EV; off in the dollhouse and at night
     // night: a gentler dodge keeps dark wood legible (walnut ≥ 45, R3-01) without flattening the lamp pools
-    const lift = (cutaway ? 0 : TOD[currentTime].lamps ? 0.7 : 1.4) * (1 - stageK); // no shadow dodge on the stage: it erased the item's contact shadow
+    // no shadow dodge on the stage (it erased the item's contact shadow) nor in a focus close-up (it flattened the
+    // item: "murky, low contrast" at evening); evening room views get more of it (ceiling, far walls hold detail)
+    const lift = (cutaway || ae.spot ? 0 : TOD[currentTime].lamps ? 1.1 : 1.4) * (1 - stageK);
     post.setLift(Math.log(0.11 / Math.max(1e-4, renderer.toneMappingExposure)), lift);
     // focus boost → highlight roll-off, in step with the boost (R3-04)
     post.setShoulder(cutaway ? 0 : ae.spot ? clamp(ae.ev / 0.4, 0, 1) : clamp(ae.ev / 0.8, 0, 1));
   }
   function applyWhiteBalance() {
-    const wbOf = (t, out) => whiteBalanceGain(TOD[t].wb, cutaway ? 0.4 : (WB_STRENGTH[t] ?? 0.8), out, cutaway ? 1 : (WB_TINT[t] ?? 1));
+    // focus close-up under the lamps: balance to them like a product photographer (0.85), not the room's 0.68
+    // (eased with the exposure: ae.wbK 0 → 1 while focused, so the colour glides instead of jumping on the click)
+    const wbOf = (t, out) => { const b = WB_STRENGTH[t] ?? 0.8; return whiteBalanceGain(TOD[t].wb, cutaway ? 0.4 : (TOD[t].lamps ? b + (0.85 - b) * (ae.wbK || 0) : b), out, cutaway ? 1 : (WB_TINT[t] ?? 1)); };
     if (lapse) { wbOf(lapse.from, wbGain); const g2 = wbOf(lapse.to, new THREE.Vector3()); wbGain.lerp(g2, lapse.k); }
     else wbOf(currentTime, wbGain);
     // the lifted view from the window (no sun in frame) leans warm like Entry instead of cool grey
     const warm = !ae.spot && !cutaway ? clamp(ae.ev / 0.8, 0, 1) : 0;
-    if (warm > 0) { wbGain.x *= 1 + 0.07 * warm; wbGain.z *= 1 - 0.09 * warm; }
+    // relative to the day camera balance; eng-5's 1.07 / 0.91 still read grey on a real GPU (measured gain
+    // [1.031, 1.004, 0.976] = that target, fully reached) → about Entry's sunlit-wall warmth
+    if (warm > 0) { wbGain.x *= 1 + 0.10 * warm; wbGain.y *= 1 + 0.01 * warm; wbGain.z *= 1 - 0.12 * warm; } // walls R/B ≈ 1.19 (Entry 1.14; 1.07 / 0.91 gave ≈ 1.12, ×1.13 / ×0.83 overshot to 1.30)
     post.setWhiteBalance(wbGain);
   }
 
@@ -1173,11 +1190,32 @@ export async function createVillar({
   const insp = { slotId: null, ids: [], homes: [], pivot: new THREE.Vector3(), angle: 0, vel: 0, target: 0, w: 14.5, coast: false,
     dragging: false, samples: [], ticked: true, spot: 0, last: '', returning: null, order: null, hideKey: '', hide: [], homeWaits: [], ghosts: null, rootId: null };
   const turnBlob = (() => {
-    const c = document.createElement('canvas'); c.width = c.height = 64;
-    const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    // full strength out to the footprint's edge (the quad is 1.5× the footprint), then a soft 15 % falloff
-    gr.addColorStop(0, '#fff'); gr.addColorStop(0.68, '#fff'); gr.addColorStop(0.8, '#c8c8c8'); gr.addColorStop(0.9, '#6a6a6a'); gr.addColorStop(0.97, '#1c1c1c'); gr.addColorStop(1, '#000');
-    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    // the quad is 1.6× the item's footprint: a dense core the shape of the footprint (rounded rectangle, a short
+    // blur: the plinth line reads grounded) over a wide, faint outer falloff (long blur). Manual box blurs (no
+    // ctx.filter: Safari < 18)
+    const N = 128, c = document.createElement('canvas'); c.width = c.height = N;
+    const g = c.getContext('2d');
+    const layer = (frac, radius, passes, alpha) => {
+      const a = new Float32Array(N * N), w = N * frac, x0 = (N - w) / 2, r = w * 0.12;
+      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+        const dx = Math.max(x0 + r - x - 0.5, 0, x + 0.5 - (x0 + w - r)), dy = Math.max(x0 + r - y - 0.5, 0, y + 0.5 - (x0 + w - r));
+        a[y * N + x] = Math.hypot(dx, dy) <= r ? 1 : 0;
+      }
+      const tmp = new Float32Array(N * N);
+      for (let p = 0; p < passes; p++) {
+        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { let s = 0, n = 0; for (let k = -radius; k <= radius; k++) { const xx = x + k; if (xx >= 0 && xx < N) { s += a[y * N + xx]; n++; } } tmp[y * N + x] = s / n; }
+        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { let s = 0, n = 0; for (let k = -radius; k <= radius; k++) { const yy = y + k; if (yy >= 0 && yy < N) { s += tmp[yy * N + x]; n++; } } a[y * N + x] = s / n; }
+      }
+      return a.map((v) => v * alpha);
+    };
+    const core = layer(0.62, 3, 2, 1), outer = layer(0.7, 9, 3, 0.55);
+    const img = g.createImageData(N, N);
+    for (let i = 0; i < N * N; i++) {
+      const edge = Math.min(1, Math.min(i % N, N - 1 - (i % N), (i / N) | 0, N - 1 - ((i / N) | 0)) / 6); // exact 0 at the quad's edge
+      const v = Math.round(255 * Math.min(1, Math.max(core[i], outer[i])) * edge);
+      img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.NoColorSpace;
     const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: 0x000000, roughness: 1, metalness: 0, envMapIntensity: 0, specularIntensity: 0, emissive: 0xffffff, emissiveIntensity: 1, alphaMap: t, transparent: true, opacity: 0, depthWrite: false }) /* specularIntensity 0: the 4 % dielectric reflection of a black Standard surface, × the focus exposure, filled the shadow back in with grey — that was why it never showed */);
     m.visible = false; m.renderOrder = -1; m.name = 'turntable-shadow'; m.userData.noPick = true; m.userData.noCapture = true;
@@ -1218,7 +1256,7 @@ export async function createVillar({
     const fw = lb ? (lb.max[0] - lb.min[0]) * root.scale.x : sz.x, fd = lb ? (lb.max[2] - lb.min[2]) * root.scale.z : sz.z;
     insp.blobYaw = lb ? root.rotation.y : 0;
     insp.blobHome = b.getCenter(new THREE.Vector3()); insp.blobHome.y = Math.max(0.004, b.min.y + 0.004);
-    turnBlob.scale.set(Math.max(0.3, fw) * 1.3, 1, Math.max(0.3, fd) * 1.45);
+    turnBlob.scale.set(Math.max(0.3, fw) * 1.6, 1, Math.max(0.3, fd) * 1.6); // the texture's core is 0.62 of the quad
     turnBlob.position.copy(insp.blobHome);
     // the radius the family sweeps round the pivot (a hosted item's host swings wide): the stage keeps clear of it
     const fb = new THREE.Box3(); for (const h of insp.homes) fb.expandByObject(h.g);
@@ -1436,9 +1474,11 @@ export async function createVillar({
       // the shadow is a TONE, not a multiplier: the floor behind is HDR and anything from a shaded corner to a sun
       // patch 25× white, so "let 6 % through" was black in one place and invisible in the next. It blends toward
       // a fixed dark display value (≈ 9 % linear, or a third of the frame's average when that is darker: evening)
-      turnBlob.material.opacity = 0.9 * k;
+      turnBlob.material.opacity = 0.96 * k;
       { const E = Math.max(1e-3, renderer.toneMappingExposure), avg = Number.isFinite(ae.lastLog) ? Math.exp(ae.lastLog) * E : 0.5;
-        const D = Math.min(0.09, 0.33 * avg); // (÷ the camera's white-balance gain: at evening the gain is ×1.9 on blue and tinted the shadow blue)
+        // core ≈ 4 % linear display (sRGB ≈ 56) on a light day backdrop, and at most a quarter of the frame's
+        // average: on a dark evening backdrop it stays a proportional darkening, not a black hole
+        const D = Math.min(0.04, 0.25 * avg); // (÷ the camera's white-balance gain: at evening the gain is ×1.9 on blue and tinted the shadow blue)
         turnBlob.material.emissive.setRGB(D / E * 1.0 / Math.max(0.2, wbGain.x), D / E * 0.93 / Math.max(0.2, wbGain.y), D / E * 0.86 / Math.max(0.2, wbGain.z)); }
       if (Math.abs(k - stageK) > 0.01 || (k === 0) !== (stageK === 0)) { stageK = k; applyExposure(); }
       if (insp.blobHome) {
@@ -1930,6 +1970,7 @@ export async function createVillar({
     if (highlighted && all.includes(highlighted)) post.setSelection(furnisher.meshesOf(highlighted));
     interaction.refresh();
     sceneVersion++;
+    holdTextures();
     await scansReady(incoming.map((r) => r.group));
     if (disposed) return;
     const inLights = TOD[currentTime].lamps ? incoming.flatMap((r) => r.lights) : [];
@@ -1965,7 +2006,7 @@ export async function createVillar({
     if (furnisher.placed.get(id) !== rec) { shell.removeFromParent(); return; } // swapped away meanwhile: it is in the cache
     budget.inflight.add(id);
     try {
-      decorate(rec.twin); hideForCutaway(rec); refreshNoAO(); interaction.refresh(); sceneVersion++; invalidate(3);
+      decorate(rec.twin); hideForCutaway(rec); refreshNoAO(); interaction.refresh(); sceneVersion++; holdTextures(); invalidate(3);
       await fader.swap({ inn: [rec.twin], out: [shell], ms: 350, settle: false }); // TWINS §2.5
     } finally { budget.inflight.delete(id); shell.removeFromParent(); shell.visible = true; if (budget.pending.size && !budget.timer) budget.timer = setTimeout(pumpBudget, 0); }
     if (disposed) return;
@@ -1982,6 +2023,7 @@ export async function createVillar({
   // 'style' (user / AI switch) and 'restore' (undo) are staged the same way
   const unsubStyle = store?.on ? store.on('style', (e) => {
     const wave = styleWave = { t0: performance.now(), id: e?.styleId, started: false };
+    holdTextures(12000);
     applyPackArchitecture(archOf(e?.styleId), e?.styleId);
     // the target style's converged GI (if visited before) is a far better stand-in than the old room's
     useCachedGI(1200);
@@ -2094,8 +2136,10 @@ export async function createVillar({
   const GI_CHROMA = { morning: 0.35, day: 0.5, golden: 0.55, evening: 0.6 }; // day 0.3 → 0.5: render review R4 (bounce colour reads)
   const GI_TO_CAMERA = { golden: true, evening: true }; // desaturate toward the camera's neutral (R3-01 / R3-11)
   // evening: no extrapolated tail and less indirect, so lamp pools read (far wall ≤ −1 EV vs next to a lamp)
-  const GI_TAIL = { morning: 0.35, day: 0.35, golden: 0.35, evening: 0 };
-  const GI_GAIN = { morning: 1, day: 1, golden: 1, evening: 0.6 };
+  // eng-6: evening 0 / 0.6 read gloomy (black ceiling, hard pools) — a flat at 9 pm with 3–4 lamps on has a soft
+  // warm fill from the walls; the pools still read (the lamps are 5–10× brighter than the bounce they cause)
+  const GI_TAIL = { morning: 0.35, day: 0.35, golden: 0.35, evening: 0.2 };
+  const GI_GAIN = { morning: 1, day: 1, golden: 1, evening: 1 };
   let appliedSky = null;
   function applyTimeOfDay(tod) {
     appliedSky = lighting.skyFor(tod);
@@ -2178,6 +2222,7 @@ export async function createVillar({
       const changed = tod !== currentTime;
       currentTime = tod;
       applyTimeOfDay(tod);
+      holdTextures(3000);
       // this time's sky plate is already decoded: the capture and bake below see it in its final state
       // (plate.snap), so its crossfade must not trigger a second room capture + full re-bake when it ends
       if (plate.state(tod) === 'ready') plateBaked = `${tod}|${plate.timeOf(tod)}`;
@@ -2704,7 +2749,7 @@ export async function createVillar({
     dispose,
     // debug / lab helpers (not part of the product contract)
     debug: {
-      renderer, scene, camera, lighting, post, arch, furnisher, plate, skyline, turnBlob, loadTimes, get lapse() { return lapse ? { k: +lapse.k.toFixed(2), switched: lapse.switched, to: lapse.to } : null; }, get time() { return currentTime; }, controls, materials, probes, fader, thumbs,
+      renderer, scene, camera, lighting, post, arch, furnisher, plate, skyline, turnBlob, loadTimes, busyReasons, get lapse() { return lapse ? { k: +lapse.k.toFixed(2), switched: lapse.switched, to: lapse.to } : null; }, get time() { return currentTime; }, controls, materials, probes, fader, thumbs,
       relight: () => bakeFresh(), rebakeAll, refreshEnvironment, applyPackArchitecture,
       get fps() { return perf.fps; }, get bakeMs() { return perf.bakeMs; }, get dpr() { return dpr; }, get quality() { return Q; },
       get worstFrame() { return perf.worst; }, resetWorst() { perf.worst = 0; },
@@ -2782,11 +2827,34 @@ export async function createVillar({
 
   // ---------------------------------------------------------------- photo pass support (Live → Photo)
   // busy: anything that changes the next frame on its own — the client develops a photo only from a stable frame.
+  /**
+   * Texture work counts as "busy" only while it can be for what is on screen: until the first good frame, and for
+   * 6 s after something visible changed (swap, style wave, twin, time of day). The slider-ladder warm-up and the
+   * other packs' prebuilds keep generating textures for items that are not in the room for minutes after load —
+   * that held `busy` (and so `rest` and Live → Photo) indefinitely (eng-6).
+   */
+  let texHoldUntil = 0;
+  const holdTextures = (ms = 6000) => { texHoldUntil = Math.max(texHoldUntil, performance.now() + ms); };
+  const texHold = () => !!(materials.pending && materials.pending() > 0 && (!texturesSettled || performance.now() < texHoldUntil));
+  /** Which conditions keep `villar.busy` true right now (debug / QA: read from production as villar.debug.busyReasons()). */
+  function busyReasons() {
+    const r = [];
+    const add = (k, v) => { if (v) r.push(k); };
+    add('camera', controls.moving || controls.mode === 'transition'); add('drag', controls.isDragging()); add('fade', fader.active);
+    add('styleWave', !!styleWave); add('pendingChanges', pendingChanges.size > 0); add('budget', budgetBusy());
+    add('plate', plate.animating); add('lapse', !!lapse); add('timeOfDay', todPending); add('giBake', probes.baking);
+    add('giLocal', giState.inflightLocal); add('giFresh', giState.inflightFresh); add('wall', !!wallAnim); add('glides', glides.length > 0);
+    add(`exposure(${ae.ev.toFixed(2)}→${ae.target.toFixed(2)})`, Math.abs(ae.target - ae.ev) > 0.03); add('focusWB', (ae.wbK || 0) !== (ae.spot && !cutaway ? 1 : 0)); add('notReady', !ready);
+    add('context', contextLost || restoring); add(`textures(${materials.pending ? materials.pending() : 0})`, texHold()); add('photo', photo.busy);
+    add('turntable', insp.dragging || insp.coast || insp.vel !== 0 || insp.angle !== insp.target || !!insp.returning);
+    add('spotFade', Math.abs(insp.spot - (focusedSlot && !cutaway ? 1 : 0)) > 0.01);
+    return r;
+  }
   function isBusy() {
     return !!(controls.moving || controls.isDragging() || controls.mode === 'transition' || fader.active || styleWave
       || pendingChanges.size || budgetBusy() || plate.animating || !!lapse || todPending || probes.baking || giState.inflightLocal || giState.inflightFresh
-      || wallAnim || glides.length || Math.abs(ae.target - ae.ev) > 0.03 || !ready || contextLost || restoring
-      || (materials.pending && materials.pending() > 0) || photo.busy
+      || wallAnim || glides.length || Math.abs(ae.target - ae.ev) > 0.03 || (ae.wbK || 0) !== (ae.spot && !cutaway ? 1 : 0) || !ready || contextLost || restoring
+      || texHold() || photo.busy
       || insp.dragging || insp.coast || insp.vel !== 0 || insp.angle !== insp.target || !!insp.returning || Math.abs(insp.spot - (focusedSlot && !cutaway ? 1 : 0)) > 0.01);
   }
   const rest = { busy: true, since: 0, emitted: false };
