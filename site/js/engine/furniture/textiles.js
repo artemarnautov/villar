@@ -168,7 +168,7 @@ function clothSlab(P, ns, nw, t) {
   // orient so that "up" side faces +Y on average
   let sy = 0; for (const n of nrm) sy += n.y;
   const flip = sy < 0; if (flip) for (const n of nrm) n.negate();
-  const pos = [], uv = [], idx = [];
+  const pos = [], uv = [], idx = [], nor = [];
   const m = (ns + 1) * (nw + 1);
   const len = []; // arc length along s for metre UVs
   for (let j = 0; j <= nw; j++) { let a = 0; for (let i = 0; i <= ns; i++) { if (i) a += at(i, j).distanceTo(at(i - 1, j)); len.push(a); } }
@@ -176,28 +176,46 @@ function clothSlab(P, ns, nw, t) {
   for (let k = 0; k < 2; k++) for (let j = 0; j <= nw; j++) for (let i = 0; i <= ns; i++) {
     const q = j * (ns + 1) + i; const p = top[q].clone().addScaledVector(nrm[q], k ? -t : 0);
     pos.push(p.x, p.y, p.z); uv.push(len[q], (j / nw) * wl);
+    nor.push(k ? -nrm[q].x : nrm[q].x, k ? -nrm[q].y : nrm[q].y, k ? -nrm[q].z : nrm[q].z);
   }
   for (let j = 0; j < nw; j++) for (let i = 0; i < ns; i++) {
     const a = j * (ns + 1) + i, b = a + 1, c = a + ns + 1, d = c + 1;
     if (!flip) { idx.push(a, c, b, b, c, d); idx.push(m + a, m + b, m + c, m + b, m + d, m + c); }
     else { idx.push(a, b, c, b, d, c); idx.push(m + a, m + c, m + b, m + b, m + c, m + d); }
   }
-  // rims: half-round between the sheets
+  // rims (R4-13): a real rolled hem — half-round of diameter t bulging OUTWARD from the edge (the outward in-sheet
+  // direction from the interior neighbours), with analytic normals, so the throw shows its thickness
+  const E = new THREE.Vector3(), d = new THREE.Vector3();
   const rim = (ids) => {
-    const base = pos.length / 3, R = 3;
+    const base = pos.length / 3, R = 5;
     for (const q of ids) {
       const p0 = top[q], n = nrm[q];
-      // outward direction in the sheet plane: from grid centre
+      const i = q % (ns + 1), j = Math.floor(q / (ns + 1));
+      E.set(0, 0, 0);
+      const away = (i2, j2) => { d.copy(p0).sub(at(i2, j2)); if (d.lengthSq() > 1e-12) E.add(d.normalize()); };
+      if (i === 0) away(1, j); if (i === ns) away(ns - 1, j); if (j === 0) away(i, 1); if (j === nw) away(i, nw - 1);
+      E.addScaledVector(n, -E.dot(n)); if (E.lengthSq() < 1e-12) E.set(0, 0, 1); E.normalize();
       for (let r = 0; r <= R; r++) {
-        const a = (r / R) * Math.PI;
-        const out = p0.clone().addScaledVector(n, -t / 2 + Math.cos(a) * t / 2);
+        const a = (r / R) * Math.PI, cn = Math.cos(a), sn = Math.sin(a);
+        const out = p0.clone().addScaledVector(n, -t / 2 + cn * t / 2).addScaledVector(E, sn * t / 2);
         pos.push(out.x, out.y, out.z); uv.push(len[q] || 0, r * t);
+        nor.push(n.x * cn + E.x * sn, n.y * cn + E.y * sn, n.z * cn + E.z * sn);
       }
     }
+    const i0 = idx.length;
     for (let e = 0; e < ids.length - 1; e++) for (let r = 0; r < R; r++) {
       const a = base + e * (R + 1) + r, b = a + 1, c = a + R + 1, d = c + 1;
       idx.push(a, b, c, b, d, c);
     }
+    // winding must agree with the analytic normals (front-side fabrics would cull the rim otherwise)
+    const v = (k) => new THREE.Vector3(pos[3 * k], pos[3 * k + 1], pos[3 * k + 2]);
+    let agree = 0;
+    for (let k = i0; k < idx.length; k += 3 * R) {
+      const A = v(idx[k]), B = v(idx[k + 1]), C = v(idx[k + 2]);
+      const gn = B.sub(A).cross(C.sub(A));
+      agree += gn.x * nor[3 * idx[k]] + gn.y * nor[3 * idx[k] + 1] + gn.z * nor[3 * idx[k] + 2];
+    }
+    if (agree < 0) for (let k = i0; k < idx.length; k += 3) { const tmp = idx[k + 1]; idx[k + 1] = idx[k + 2]; idx[k + 2] = tmp; }
   };
   const ring = [];
   for (let i = 0; i <= ns; i++) ring.push(i);
@@ -207,9 +225,9 @@ function clothSlab(P, ns, nw, t) {
   rim(ring);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
-  g.computeVertexNormals();
   return g;
 }
 
@@ -233,8 +251,8 @@ export function throwBlanket(c) {
       // woven cotton throws: a heavier, open weave (≈ 3 mm yarn), not bed percale
       : /cotton|weave|dense|textur/.test(fk) ? c.mat('fabric-weave', { color })
         : fabricMat(c, fk, color);
-  // R2-17: real cloth thickness (8–12 mm folded throw), rounded hems
-  const t = /knit|chunky|wool|bouc|waffle/.test(fk) ? 0.012 : /linen/.test(fk) ? 0.008 : 0.009;
+  // R2-17 / R4-13: a throw lies folded double — 11–15 mm of cloth with rounded rolled hems
+  const t = /knit|chunky|wool|bouc|waffle/.test(fk) ? 0.015 : /linen/.test(fk) ? 0.011 : 0.012;
   const host = c.host || {};
   const drape = String(p.drape || host.mode || 'arm').toLowerCase();
   if (drape === 'folded') {
@@ -259,11 +277,14 @@ export function throwBlanket(c) {
   const prof = new THREE.CatmullRomCurve3([
     V3(-armW / 2 - lie - 0.02, -inLen + t, 0),
     V3(-armW / 2 - 0.05, -inLen + t + 0.006, 0),
-    V3(-armW / 2 - 0.012, -inLen * 0.45, 0),
-    V3(-armW / 2 + 0.012, -0.006, 0),
-    V3(0, 0.002, 0),
-    V3(armW / 2 - 0.012, -0.006, 0),
-    V3(armW / 2 + 0.01, -0.07, 0),
+    V3(-armW / 2 - 0.016, -inLen * 0.45, 0),
+    // soft folds over the arm edges (R4-13): the cloth bridges each corner with a ≈ 3 cm radius instead of hugging it
+    V3(-armW / 2 - 0.006, -0.03, 0),
+    V3(-armW / 2 + 0.03, 0.004, 0),
+    V3(0, 0.006, 0),
+    V3(armW / 2 - 0.03, 0.004, 0),
+    V3(armW / 2 + 0.014, -0.035, 0),
+    V3(armW / 2 + 0.02, -0.09, 0),
     V3(armW / 2 + 0.016, -outLen * 0.6, 0),
     V3(armW / 2 + 0.03, -outLen, 0),
   ], false, 'catmullrom', 0.4);
@@ -297,7 +318,7 @@ export function throwBlanket(c) {
     else if (side < 0) {
       geo.scale(-1, 1, 1);
       if (geo.index) { const ix = geo.index.array; for (let k = 0; k < ix.length; k += 3) { const tmp = ix[k + 1]; ix[k + 1] = ix[k + 2]; ix[k + 2] = tmp; } }
-      geo.computeVertexNormals();
+      // (scale(−1, 1, 1) already mirrors the normals; recomputing would discard the analytic hem normals)
     }
     return geo;
   };

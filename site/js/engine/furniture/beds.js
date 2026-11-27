@@ -180,7 +180,7 @@ export function mattress(c) {
 const smin = (a, b, k) => { const h = clamp(0.5 + 0.5 * (b - a) / k, 0, 1); return b + (a - b) * h - k * h * (1 - h); };
 
 /** Low-frequency undulation (±1.5 cm, 25–40 cm wavelength) + soft creases, in metres, at flat coords (a, z). */
-function clothRelief(seed, { creases = [], amp = 1 } = {}) {
+function clothRelief(seed, { creases = [], amp = 1, rumples = [] } = {}) {
   const r = rng(seed);
   const ph = Array.from({ length: 6 }, () => r() * Math.PI * 2);
   return (a, z) => {
@@ -200,8 +200,30 @@ function clothRelief(seed, { creases = [], amp = 1 } = {}) {
       cs += fall * (-k.depth * Math.exp(-((across / w) ** 2)) + 0.35 * k.depth * Math.exp(-(((across - 1.7 * w) / w) ** 2)));
     }
     d += 0.007 * Math.tanh(cs / 0.007);
+    // rumples (R4-05): short soft ridges / troughs 10–25 cm long, 3–5 cm wide, ± 2.5 mm — the slept-in look between
+    // the long creases (≥ 2 grid rows across each)
+    let ru = 0;
+    for (const k of rumples) {
+      const px = a - k.x, pz = z - k.z;
+      if (Math.abs(px) > k.len || Math.abs(pz) > k.len) continue;
+      const along = px * k.dx + pz * k.dz, across = -px * k.dz + pz * k.dx;
+      const t = along / (k.len / 2);
+      if (t <= -1 || t >= 1) continue;
+      ru += k.depth * (1 - t * t) ** 2 * Math.exp(-((across / k.w) ** 2));
+    }
+    d += 0.004 * Math.tanh(ru / 0.004);
     return d * amp;
   };
+}
+
+function makeRumples(seed, hx, hz, z0, count = 40) {
+  const r = rng(seed + 101), out = [];
+  for (let i = 0; i < count; i++) {
+    const ang = r() * Math.PI;
+    // centres ≥ 13 cm below the turn-down edge: the folded part and its hem never sit on a rumple
+    out.push({ x: (r() - 0.5) * 2 * (hx + 0.1), z: z0 + 0.13 + r() * (hz - z0 - 0.03), dx: Math.sin(ang), dz: Math.cos(ang), len: 0.1 + r() * 0.15, w: 0.015 + r() * 0.012, depth: (r() < 0.6 ? 1 : -1) * (0.0012 + r() * 0.0018) });
+  }
+  return out;
 }
 
 function makeCreases(seed, hx, hz, z0, count = 8) {
@@ -265,7 +287,7 @@ function drapeMap({ z0, hx, hz, rc = 0.06, lift = 0.03, maxDrop = 0.3, footHang 
  * Thick cloth: top surface over a wFlat × lFlat grid (a ∈ [−w/2, w/2], s ∈ [0, l]) through `map`, and a rolled
  * hem of thickness t around the whole perimeter (semicircle from the top surface to the hidden underside).
  */
-function thickCloth(map, { wFlat, lFlat, nA = 56, nS = 60, t = 0.03, rimSeg = 6, headT = null, footT = null }) {
+function thickCloth(map, { wFlat, lFlat, nA = 56, nS = 60, t = 0.03, rimSeg = 6, headT = null, footT = null, softFoot = false }) {
   nA = segs(nA, 16); nS = segs(nS, 16); rimSeg = segs(rimSeg, 3);
   const m = nA + 1;
   const P = new Float32Array((nS + 1) * m * 3);
@@ -322,11 +344,16 @@ function thickCloth(map, { wFlat, lFlat, nA = 56, nS = 60, t = 0.03, rimSeg = 6,
     // footT: thin hem along the free edge (j = nS), easing over the last rows of the sides
     let tt = headT ? t + (headT - t) * Math.max(0, 1 - j / 2) : t;
     if (footT) { const k = Math.max(0, Math.min(1, (j - nS * 0.6) / (nS * 0.4))); tt = tt + (footT - tt) * k * k * (3 - 2 * k); }
+    // softFoot (R4-05): the free hem of a turn-down lying on the duvet shades like the cloth around it — its rim
+    // normals lean to the surface normal, so no bright / dark hairline traces the fold edge
+    const soft = softFoot ? Math.max(0, Math.min(1, (j - nS * 0.6) / (nS * 0.4))) * 0.85 : 0;
     for (let r2 = 0; r2 <= rimSeg; r2++) {
       const th = (r2 / rimSeg) * Math.PI;
       const cn = Math.cos(th), sn = Math.sin(th);
       pos.push(Pv.x - Nv.x * tt / 2 + (Nv.x * cn + E.x * sn) * tt / 2, Pv.y - Nv.y * tt / 2 + (Nv.y * cn + E.y * sn) * tt / 2, Pv.z - Nv.z * tt / 2 + (Nv.z * cn + E.z * sn) * tt / 2);
-      nor.push(Nv.x * cn + E.x * sn, Nv.y * cn + E.y * sn, Nv.z * cn + E.z * sn);
+      let nx = Nv.x * cn + E.x * sn, ny = Nv.y * cn + E.y * sn, nz = Nv.z * cn + E.z * sn;
+      if (soft) { nx += (Nv.x - nx) * soft; ny += (Nv.y - ny) * soft; nz += (Nv.z - nz) * soft; const L = Math.hypot(nx, ny, nz) || 1; nx /= L; ny /= L; nz /= L; }
+      nor.push(nx, ny, nz);
       uv.push(arc, th * tt / 2);
     }
   }
@@ -370,11 +397,11 @@ export function bedding(c) {
   const wFlat = mw + 2 * ((rc * Math.PI) / 2 - rc) + 2 * maxDrop * 0.85 + 0.02;
   // creases start below the turn-down (sampled finely there), so the fold edge stays a clean, smooth roll
   const fold = 0.27;
-  const relief = clothRelief(c.seed, { creases: makeCreases(c.seed, hx, hz, z0 + fold, 8) });
+  const relief = clothRelief(c.seed, { creases: makeCreases(c.seed, hx, hz, z0 + fold, 12), rumples: makeRumples(c.seed, hx, hz, z0 + fold, 46) });
   // open duvet starts inside the fold roll (its own head rim is hidden)
   const dz = t * 0.9;
   const dmap = drapeMap({ z0: z0 + dz, hx, hz, rc, lift: t, maxDrop, relief, seed: c.seed });
-  b.add(thickCloth(dmap, { wFlat, lFlat: lFlat - dz, nA: 96, nS: 80, t }), duvet, { uv: 'keep' });
+  b.add(thickCloth(dmap, { wFlat, lFlat: lFlat - dz, nA: 120, nS: 100, t }), duvet, { uv: 'keep' });
   // R2-17 turn-down: the duvet folded back over its head end — one duvet thickness lying 2 mm above the open
   // part (same relief, never intersecting), joined to the mattress by a rounded fold roll of full height (no
   // stair-stepped polyline: 96 segments across, no creases under it)
@@ -383,7 +410,7 @@ export function bedding(c) {
   const fmap0 = drapeMap({ z0, hx, hz, rc, lift: lift2, maxDrop: maxDrop - (lift2 - t), footHang: false, relief, seed: c.seed + 5 });
   // the folded part thins out toward its free edge (a duvet's sewn hem is ~1 cm) and comes down to REST on the open
   // duvet (0.5 mm above it): no gap under the hem, so no dark line and no sunlit white rim floating above (R3-07)
-  const hemT = 0.008; // resting on the duvet: a soft 8 mm folded edge, not a sunlit white rim (R3-07)
+  const hemT = 0.004; // resting on the duvet: a soft 4 mm folded edge whose rim shades like the duvet (R3-07, R4-05)
   const drop2 = lift2 - (t + hemT + 0.0005);
   const fmap = (a, s) => {
     const p = fmap0(a, s);
@@ -392,7 +419,7 @@ export function bedding(c) {
     p[1] -= (k * k * (3 - 2 * k)) * drop2 * onTop;
     return p;
   };
-  b.add(thickCloth(fmap, { wFlat: wFlat - 0.012, lFlat: fold, nA: 96, nS: 16, t: t * 0.9, headT: lift2, footT: hemT, rimSeg: 8 }), duvet, { uv: 'keep' });
+  b.add(thickCloth(fmap, { wFlat: wFlat - 0.012, lFlat: fold, nA: 120, nS: 16, t: t * 0.9, headT: lift2, footT: hemT, rimSeg: 8, softFoot: true }), duvet, { uv: 'keep' });
 
   // throw folded across the foot (knit), lying on the duvet
   if (p.throwColor !== null && p.throw !== false) {
@@ -400,8 +427,10 @@ export function bedding(c) {
     const tt = 0.018, tl = 0.5, tz0 = hz - 0.62;
     const tw = Math.min(wFlat, mw + 0.34);
     // rests on the duvet (1.5 mm air gap, was 4 mm → read as a dark hem line, R2-17)
-    const tmap = drapeMap({ z0: tz0, hx, hz, rc, lift: t + tt + 0.0015, maxDrop: maxDrop - 0.05, footHang: false, relief, seed: c.seed + 9 });
-    b.add(thickCloth(tmap, { wFlat: tw, lFlat: tl, nA: 64, nS: 16, t: tt, rimSeg: 6 }), throwFab, { uv: 'keep' });
+    // its coarser grid cannot follow every rumple: the slab reaches 4 mm deeper than the cloth (hidden inside the
+    // duvet's relief) instead of floating — no dashed dark gaps along its edges (R4-05)
+    const tmap = drapeMap({ z0: tz0, hx, hz, rc, lift: t + tt + 0.0055, maxDrop: maxDrop - 0.05, footHang: false, relief, seed: c.seed + 9 });
+    b.add(thickCloth(tmap, { wFlat: tw, lFlat: tl, nA: 80, nS: 20, t: tt + 0.004, rimSeg: 6 }), throwFab, { uv: 'keep' });
   }
 
   // pillows
@@ -424,7 +453,8 @@ export function bedding(c) {
       const x = n === 1 ? 0 : (i - (n - 1) / 2) * (mw / n) * (ri === 0 ? 0.98 : 0.86);
       const fab = fabricMat(c, ri === 0 ? 'cotton' : (p.pillowFabric || 'linen'), cols[ci++ % cols.length]);
       const dents = Array.from({ length: 2 + (rr() < 0.5 ? 1 : 0) }, () => [(rr() - 0.5) * pw * 0.6, (rr() - 0.5) * ph * 0.5, 0.012 + rr() * 0.012, 0.06 + rr() * 0.05]);
-      const g = pillowGeometry(pw, ph, pt, { n: 18, pinch: ri === 0 ? 0.05 : 0.08, plump: 0.5, sag: 0.05, seed: c.seed + ri * 10 + i, squash: 0.6, dents, ears: 0.6 });
+      // R4-05: crowned (lens section), concave sides between the corners, creases fanning from the corners
+      const g = pillowGeometry(pw, ph, pt, { n: 28, pinch: ri === 0 ? 0.08 : 0.1, plump: 0.75, sag: 0.06, seed: c.seed + ri * 10 + i, squash: 0.6, dents, ears: 0.8, creases: 1 });
       const cy = (ph / 2) * Math.cos(tilt) + (pt / 2) * Math.sin(tilt) * 0.7;
       const cz = zBase + (ph / 2) * (-Math.sin(tilt)) + 0.16 + (pt / 2) * Math.cos(tilt) * 0.5;
       const yaw = (i - (n - 1) / 2) * -0.05 * (ri + 1);

@@ -23,7 +23,12 @@ const QUIET = [/WebGLPathTracer.*deprecated/, /THREE\.Clock.*deprecated/, /iride
 function quietly(fn) {
   const warn = console.warn;
   console.warn = (...a) => { if (typeof a[0] === 'string' && QUIET.some((re) => re.test(a[0]))) return; warn.apply(console, a); };
-  try { return fn(); } finally { console.warn = warn; }
+  let r;
+  try { r = fn(); } catch (e) { console.warn = warn; throw e; }
+  // asynchronous builds (worker BVH) finish their scene update later: keep the filter until they settle
+  if (r && typeof r.then === 'function') return r.finally(() => { console.warn = warn; });
+  console.warn = warn;
+  return r;
 }
 
 const MAX_RADIANCE = 24; // per-pixel luminance clamp (pre-exposure HDR) — kills fireflies, never NaN
@@ -99,15 +104,32 @@ export function createPhoto({ renderer, scene, camera, emit, rasterRender, prepa
   const unity = new THREE.Vector3(1, 1, 1);
   const wb = new THREE.Vector3(1, 1, 1);
 
+  // The scene BVH is built in a module Worker: a worker-only copy of three-mesh-bvh whose imports point at the
+  // three URL (import maps don't apply in workers; vendor/three-mesh-bvh-worker). Without it the 1–2 s build
+  // ran on the main thread after every scene change.
+  let BVHWorker = null;
   async function load() {
     if (mod) return mod;
     mod = await import('three-gpu-pathtracer');
+    try {
+      const { GenerateMeshBVHWorker } = await import('/vendor/three-mesh-bvh/src/workers/GenerateMeshBVHWorker.js');
+      BVHWorker = class extends GenerateMeshBVHWorker {
+        getWorker() { return new Worker('/vendor/three-mesh-bvh-worker/workers/generateMeshBVH.worker.js', { type: 'module' }); }
+        getFallbackWorker() { throw new Error('no bundled BVH worker'); }
+      };
+    } catch (e) { console.debug('[villar] BVH worker unavailable — main-thread BVH', e); }
     return mod;
   }
+  let bvhWorker = null;
+  let lastUpdateMs = 0;
 
   function makeTracer() {
     // the WebGL tracer logs a deprecation notice in favour of the WebGPU one; we target WebGL2 on purpose
     quietly(() => { pt = new mod.WebGLPathTracer(renderer); });
+    if (BVHWorker) { try { bvhWorker = bvhWorker || new BVHWorker(); pt.setBVHWorker(bvhWorker); } catch (e) { bvhWorker = null; console.debug('[villar] BVH worker failed', e); } }
+    // the scene update after an asynchronous build (materials, texture atlas, environment CDF) also runs here
+    const upd = pt._updateFromResults.bind(pt);
+    pt._updateFromResults = (...a) => { const t = performance.now(); try { return upd(...a); } finally { lastUpdateMs = performance.now() - t; } };
     const ts = quality === 'high' ? 512 : 256;
     pt.textureSize.set(ts, ts);
     pt.tiles.set(2, 2);
@@ -286,12 +308,30 @@ export function createPhoto({ renderer, scene, camera, emit, rasterRender, prepa
     pt.bounces = 4; pt.transmissiveBounces = 4; // the interior's GI is ~converged by bounce 4; faster refining
     camera.updateMatrixWorld();
     const t0 = performance.now();
+    let blocked = 0;
     if (version === null || version !== snapshotVersion) {
+      // physical scene state for the snapshot. With the worker the build is asynchronous: the caller shows a held
+      // raster frame meanwhile (the state change is never drawn), and any input restores the scene at once
       const restore = prepare({ refine: true });
+      let restored = false;
+      const doRestore = () => { if (!restored) { restored = true; restore(); } };
+      refineRestore = doRestore;
+      snapshotVersion = null;
       try {
-        quietly(() => pt.setScene(scene, camera));
+        if (bvhWorker) {
+          const t1 = performance.now();
+          const p = quietly(() => pt.setSceneAsync(scene, camera));
+          blocked += performance.now() - t1;     // geometry merge, on this thread
+          await p;
+          blocked += lastUpdateMs;               // + the scene update once the worker returned the BVH
+        } else { quietly(() => pt.setScene(scene, camera)); blocked = performance.now() - t0; }
         exposureScale = restore.exposureScale || 1;
-      } finally { restore(); }
+      } catch (e) {
+        doRestore(); refineRestore = null;
+        if (my !== refineGen) return false;
+        throw e;
+      } finally { doRestore(); refineRestore = null; }
+      if (my !== refineGen) return false;   // cancelled mid-build: the snapshot may hold the raster state → rebuild next time
       snapshotVersion = version;
     } else quietly(() => pt.setCamera(camera));
     const ms = performance.now() - t0;
@@ -299,7 +339,7 @@ export function createPhoto({ renderer, scene, camera, emit, rasterRender, prepa
     pt.pausePathTracing = false;
     pt.reset();
     refining = true; refineSamples = -1;
-    return { snapshotMs: ms };
+    return { snapshotMs: ms, blockedMs: blocked, worker: !!bvhWorker };
   }
   /** One tile of path tracing; re-filters the estimate when a full sample completed. */
   function stepRefine(guide = null) {
@@ -386,8 +426,10 @@ export function createPhoto({ renderer, scene, camera, emit, rasterRender, prepa
       r.setRenderTarget(prev); r.autoClear = ac;
     }
   }
+  let refineRestore = null;
   function stopRefine() {
     refineGen++;
+    if (refineRestore) { const r = refineRestore; refineRestore = null; r(); } // a build in flight: raster state back now
     if (!refining) return false;
     refining = false;
     if (pt && !active) { pt.pausePathTracing = true; try { pt.reset(); } catch { /* lost context */ } }
@@ -411,6 +453,6 @@ export function createPhoto({ renderer, scene, camera, emit, rasterRender, prepa
     setQuality(q) { if (q !== quality) { quality = q; dropTracer(); } },
     /** WebGL context lost: stop and forget every GL object of the dead context. */
     onContextLost() { stop(); stopRefine(); outRT = null; dropTracer({ glAlive: false }); },
-    dispose() { stop({ silent: true }); stopRefine(); outRT?.dispose(); outRT = null; dropTracer(); },
+    dispose() { stop({ silent: true }); stopRefine(); outRT?.dispose(); outRT = null; dropTracer(); try { bvhWorker?.dispose?.(); } catch { /* gone */ } bvhWorker = null; },
   };
 }

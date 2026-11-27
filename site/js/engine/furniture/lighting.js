@@ -31,6 +31,9 @@ function shadeLights({ x = 0, z = 0, ly, yb, h, Rb, Rt = Rb, I = 1, kind = 'open
     const up = clamp(Math.atan2(Rt, Math.max(0.02, yb + h - ly)), 0.5, 1.2);
     out.push({ type: 'spot', position: [x, ly, z], target: [x, ly + 1, z], angle: up, penumbra: 0.4, color: col, intensity: I * 0.3, distance: distance * 0.8, decay: 2, shadow: false });
   }
+  // woven shades (R4-11): the glow leaks through the whole weave — a soft side/up point light lights the ceiling and
+  // the wall around the pendant (no shadow: the pattern needs a light cookie, see engine.md)
+  if (kind === 'woven') out.push({ type: 'point', position: [x, ly + h * 0.25, z], color: col, intensity: I * 0.3, distance: distance * 0.7, decay: 2, shadow: false });
   out.push({ type: 'point', position: [x, ly, z], color: col, intensity: I * 0.1, distance: 1.2, decay: 2, shadow: false });
   return out;
 }
@@ -112,6 +115,9 @@ function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null, o
     const gi = lathe(prof.map(([r, y]) => [r * 0.985, y - 0.002]).reverse(), seg);
     if (wave) { const pa = gi.attributes.position; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), z = pa.getZ(i), y = pa.getY(i); const a = Math.atan2(z, x); const k = 1 + wave * Math.sin(a * 6) * (1 - y / h); pa.setX(i, x * k); pa.setZ(i, z * k); } gi.computeVertexNormals(); }
     if (!woven) b.add(shadeUV(gi, R), inner || c.mat('metal-white'), { pos: [0, yb, 0], uv: 'keep' });
+    // R4-11: at night the bulb's glow fills the woven dome — an emissive inner shell (hidden by day, casts nothing),
+    // seen through the gaps and from below, behind the strands' own warm translucency
+    else b.add(lathe(prof.map(([r, y]) => [r * 0.95, y * 0.96 - 0.004]).reverse(), segs(48, 24)), c.mat('shade-glow'), { pos: [0, yb, 0], uv: 'none', cast: false });
     b.add(new THREE.TorusGeometry(R, 0.002, 6, seg).rotateX(Math.PI / 2), mat, { pos: [0, yb, 0] });
     return yb + h * 0.4;
   }
@@ -208,7 +214,7 @@ export function floorLamp(c) {
   const ly = addShade(b, c, { style, R, h: sh, yb, mat: shade, rimMat: rim });
   spider(b, rim, { R: style.includes('cone') ? R * 0.68 : style.includes('pleat') ? R * 0.8 : R, y: yb + sh, hubY: yb + sh * 0.55, style });
   bulb(b, c, ly + 0.02, 0.028);
-  const kind = /globe|sphere/.test(style) ? 'globe' : /dome|bell/.test(style) ? 'dome' : 'open';
+  const kind = /globe|sphere/.test(style) ? 'globe' : /dome|bell/.test(style) ? (/rattan/.test(shade?.name || '') ? 'woven' : 'dome') : 'open';
   return {
     group: b.build('floor_lamp'),
     lights: shadeLights({ ly: ly + 0.02, yb, h: sh, Rb: R, Rt: style.includes('cone') ? R * 0.68 : style.includes('pleat') ? R * 0.82 : R, I: p.lumens ? p.lumens / 800 : 1, kind }),
@@ -389,7 +395,7 @@ export function pendantLamp(c) {
     // dining pendant: a shadowed down spot pooling on the table (55°, soft edge) + up-light + shade glow
     lights = shadeLights({ ly, yb: top - h, h, Rb: R, Rt: shape.includes('cone') ? R * 0.68 : R, kind: 'open', distance: 5 });
     lights[0].angle = 0.96; lights[0].penumbra = 0.5;
-  } else lights = shadeLights({ ly, yb: top - h, h, Rb: R, kind: 'dome', distance: 5 });
+  } else lights = shadeLights({ ly, yb: top - h, h, Rb: R, kind: /rattan|wicker|hyacinth/.test(shape) ? 'woven' : 'dome', distance: 5 });
   return {
     group: b.build('pendant_lamp'),
     anchors: { mount: V3(0, 0, 0), bottom: V3(0, top - h, 0) },

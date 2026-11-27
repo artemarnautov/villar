@@ -28,7 +28,7 @@ export const MATERIAL_KEYS = [
   'metal-chrome', 'metal-nickel', 'marble-white', 'travertine', 'stone-worktop', 'ceramic-matte', 'ceramic-glazed', 'glass-clear', 'glass-frosted',
   'ash-light', 'oak-white', 'terrazzo', 'metal-brass-brushed', 'terracotta', 'stoneware', 'fabric-linen-washed', 'wax', 'flame', 'fruit', 'cork',
   'rattan', 'cane', 'rattan-wrap', 'fringe', 'lining', 'jute', 'wool-rug', 'glass-amber', 'opal-glass', 'plant-leaf', 'plant-stem', 'bark', 'soil', 'lamp-shade', 'paper-shade', 'bulb', 'kitchen-front', 'lacquer',
-  'mirror', 'canvas', 'paper', 'pages', 'cord', 'rubber', 'plastic-white',
+  'mirror', 'canvas', 'paper', 'pages', 'cord', 'rubber', 'plastic-white', 'shade-glow',
 ];
 
 /** Loose names → canonical keys (catalog params may use free-form material names). */
@@ -210,7 +210,8 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
   // texture resolution per tier (GPU memory: high ≈ 1, medium ¼, low ⅛ of the texels)
   T.setTextureQuality(quality === 'low' ? 0.35 : quality === 'medium' ? 0.5 : 1);
   // photoscans (lever 2): 2K where a 2K file exists on high, 1K medium, 512 low; uploaded one texture per slice
-  T.setScanTier(quality === 'low' ? 512 : quality === 'medium' ? 1024 : 2048);
+  // medium (tablets, ≤ 4 GB devices) 512: a 1 k set is ≈ 16 MB of GPU memory (R4-07); high keeps 1 k (+ the 2 k floor)
+  T.setScanTier(quality === 'high' ? 2048 : 512);
   if (renderer && typeof renderer.initTexture === 'function') T.setScanUploader((t) => renderer.initTexture(t));
   // CPU copies are released after upload; regenerate procedurally if the GL context comes back (T4).
   // The engine should call materials.restore() FIRST in its own 'webglcontextrestored' handler (before any render
@@ -240,7 +241,7 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
    * clone binds to the already uploaded GL texture instead of re-uploading — no regeneration of released pixels.
    * Still heals itself if it is ever uploaded after the pixels were released.
    */
-  const tclone = (t) => { const sv = t.source.version; const c = t.clone(); t.source.version = sv; c.onUpdate = T.healOnUpdate; return c; };
+  const tclone = (t) => { const sv = t.source.version; const c = t.clone(); t.source.version = sv; c.onUpdate = T.healOnUpdate; T.trackScanClone?.(t, c); return c; };
   /** Clone a texture bundle with a different tile scale (shares GPU source). */
   const scaled = (bundle, s = 1, off = null) => {
     if (s === 1 && !off) return bundle;
@@ -319,11 +320,12 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     return m;
   };
   let deferScan = null;
-  const swapIn = (m, b, { slots = ['map', 'normalMap', 'roughnessMap'], scale = 1, repeatFor = null, normalScale = null, roughness = null, color = null } = {}) => {
+  const swapIn = (m, b, { slots = ['map', 'normalMap', 'roughnessMap'], alias = {}, scale = 1, repeatFor = null, normalScale = null, roughness = null, color = null } = {}) => {
     const rep = new THREE.Vector2(...(repeatFor ? repeatFor(b) : [1 / (b.tile[0] * scale), 1 / (b.tile[1] * scale)]));
     for (const s of slots) {
-      if (!m[s] || !b[s]) continue; // never add a slot (would change the shader)
-      m[s] = T.shareTexture(b[s], rep, m[s].offset);
+      const src = b[alias[s] || s];
+      if (!m[s] || !src) continue; // never add a slot (would change the shader)
+      m[s] = T.shareTexture(src, rep, m[s].offset);
     }
     if (normalScale != null && m.normalMap) m.normalScale.set(Math.sign(m.normalScale.x || 1) * normalScale, Math.sign(m.normalScale.y || 1) * normalScale);
     if (roughness != null && m.roughnessMap && slots.includes('roughnessMap')) m.roughness = roughness / Math.max(0.08, b.roughMean);
@@ -385,6 +387,31 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     return m;
   };
 
+  /**
+   * R4-10: alpha-cut materials (cane, open rattan, fringe, leaves) cast their weave into the shadow maps. three's own
+   * depth variant alpha-TESTS the map at the shadow camera's (coarse) mip, where a 40–55 % open weave averages below
+   * the threshold — the whole panel vanished from the shadow. These depth materials alpha-HASH instead: coverage
+   * keeps its average at any mip (PCF turns it into the right partial shadow) and resolves into the weave up close.
+   * The furniture assembly puts them on every mesh of the material (Object3D.customDepthMaterial /
+   * customDistanceMaterial, via materials.shadowOf). three copies map / alphaMap / alphaTest from the rendered
+   * material at draw time (so scan swaps and engine clones need nothing); the patched shader ignores alphaTest and
+   * hashes against the sampled alpha. One depth material per source material (three refreshes uniforms per material).
+   * Kept in a WeakMap, never in userData (Material.copy JSON-serialises userData).
+   */
+  const HASH_DEPTH = (sh) => {
+    sh.fragmentShader = sh.fragmentShader
+      .replace('void main() {', 'float villarHash( vec2 p ) { return fract( sin( dot( floor( p ), vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ); }\nvoid main() {')
+      .replace('#include <alphatest_fragment>', 'if ( diffuseColor.a < 0.04 + 0.92 * villarHash( gl_FragCoord.xy ) ) discard;');
+  };
+  const SHADOW_OF = new WeakMap();
+  const alphaShadow = (m) => {
+    const d = new THREE.MeshDepthMaterial();
+    const di = new THREE.MeshDistanceMaterial();
+    for (const x of [d, di]) { x.onBeforeCompile = HASH_DEPTH; x.customProgramCacheKey = () => 'villar-hash-depth'; x.name = 'hash-depth'; }
+    SHADOW_OF.set(m, { depth: d, distance: di });
+    late(m, (mm) => { if (mm !== m) SHADOW_OF.set(mm, SHADOW_OF.get(m)); });
+    return m;
+  };
   let white = null;
   const WHITE = () => white || (white = T.dataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1));
   /**
@@ -499,7 +526,7 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       // paint takes its tonal mottling only (keeps the roller stipple); limewash plaster (mottle > 1) also its relief
       // limewash (R3-08): its own set — 0.3–1.2 m brushed clouds at ± 6–8 % and a faint trowel relief (normalScale 0.25)
       const lime = (o.mottle ?? 1) > 1;
-      return withScan(m, lime ? 'limewash' : 'plaster', { slots: lime ? ['map', 'normalMap', 'roughnessMap'] : ['map'], scale: o.scale || 1, normalScale: 0.25, roughness: o.roughness ?? 0.92, color: relDetail });
+      return withScan(m, lime ? 'limewash' : 'plaster', { slots: lime ? ['map', 'normalMap', 'roughnessMap'] : ['map'], scale: o.scale || 1, normalScale: 0.18, roughness: o.roughness ?? 0.92, color: relDetail });
     },
     'kitchen-front': (o) => {
       const b = tex('peel', () => T.orangePeelTextures(81, 0.15));
@@ -578,6 +605,7 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       const b = scaled(tex('cane', () => T.caneTextures(155)), o.scale || 1);
       const m = physical({ ...withTex(b, 0.9), color: detailColor(o.color, b, '#d2ad74'), roughness: 1, metalness: 0, alphaTest: 0.5, side: THREE.DoubleSide, clearcoat: 0.15, clearcoatRoughness: 0.35, specularIntensity: 0.55, sheen: 0.15, sheenRoughness: 0.5, sheenColor: new THREE.Color(o.color || '#d2ad74') });
       m.shadowSide = THREE.DoubleSide;
+      alphaShadow(m); // R4-10: the woven seat / back casts a dappled shadow
       return m;
     },
     // rattan / cane binding wrapped round frames and panel edges (u along the part)
@@ -590,6 +618,7 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       const b = tex('fringe', () => T.fringeTextures());
       const m = physical({ map: b.map, normalMap: b.normalMap, normalScale: new THREE.Vector2(0.6, 0.6), color: detailColor(o.color, b, '#D8CDBA'), roughness: 1, metalness: 0, alphaTest: 0.5, side: THREE.DoubleSide, sheen: 0.5, sheenRoughness: 0.9, sheenColor: new THREE.Color(o.color || '#D8CDBA'), specularIntensity: 0.1 });
       m.shadowSide = THREE.DoubleSide;
+      alphaShadow(m);
       return m;
     },
     // lamp-shade lining (styrene laminate inside fabric shades): matte, opaque, never glows → it is the shade's
@@ -602,9 +631,15 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       // so the bulb shows through and the shade throws a dappled shadow
       const open = !!o.open && T.scansEnabled();
       const m = physical({ ...withTex(b, 1), roughness: 1, metalness: 0, clearcoat: 0.08, clearcoatRoughness: 0.5, specularIntensity: 0.5, side: o.side ?? THREE.DoubleSide, ...(open ? { alphaMap: WHITE(), alphaTest: 0.5 } : {}) });
-      if (open) m.shadowSide = THREE.DoubleSide;
+      if (open) {
+        m.shadowSide = THREE.DoubleSide;
+        // R4-11: backlit rattan glows warm through the strands at night (emissive × the weave's own albedo map, so the
+        // weave stays visible: lit strands, darker crossings), driven by the lamps like the paper shades
+        m.emissive = new THREE.Color('#ffb46a'); m.emissiveMap = m.map; registerGlow(m, o, 0.5);
+        alphaShadow(m);
+      }
       const R = new THREE.Color(c);
-      return withScan(m, 'wicker', { slots: ['map', 'normalMap', 'roughnessMap', 'alphaMap'], scale: o.scale || 1, normalScale: 1, roughness: 0.6, color: toTarget([R.r, R.g, R.b]) });
+      return withScan(m, 'wicker', { slots: ['map', 'normalMap', 'roughnessMap', 'alphaMap', ...(open ? ['emissiveMap'] : [])], alias: { emissiveMap: 'map' }, scale: o.scale || 1, normalScale: 1, roughness: 0.6, color: toTarget([R.r, R.g, R.b]) });
     },
     // metals --------------------------------------------------
     'metal-black': (o) => {
@@ -681,6 +716,13 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       registerGlow(m, o, 9);
       return m;
     },
+    // inner glow of a woven shade (R4-11): seen through the weave's gaps and from below at night, hidden by day
+    'shade-glow': (o) => {
+      const m = physical({ color: 0x000000, emissive: new THREE.Color(o.color || '#ffc98c'), emissiveIntensity: 0, roughness: 1, metalness: 0, side: THREE.DoubleSide, specularIntensity: 0 });
+      m.userData.hideWhenOff = true; m.visible = lampsOn;
+      registerGlow(m, o, o.k ?? 1.4);
+      return m;
+    },
     // fruit skin: waxy, peel = 1 adds citrus pores
     'fruit': (o) => {
       const b = o.peel ? tex('peel-citrus', () => T.orangePeelTextures(83, 0.04)) : null;
@@ -694,8 +736,10 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     // tinted glass: amber (default) or smoke (pass a grey-brown tint and a longer distance → lighter)
     // R3-10: the tint must survive a thin tumbler wall — colour × transmission plus attenuation over ≈ one wall pair
     'glass-amber': (o) => {
+      // R4-13: reads as GLASS by day — a near-white surface colour (the tint lives in the volume, not on the skin), so
+      // what is behind shows through warm-tinted; 4 mm walls, attenuation ≈ #c58a3e at 1.5 wall thicknesses
       const tint = new THREE.Color(o.tint || '#c58a3e');
-      return physical({ color: o.color ? col(o.color) : tint.clone().lerp(new THREE.Color(0xffffff), 0.35), roughness: 0.05, metalness: 0, transmission: 0.92, thickness: Math.max(0.006, o.thickness ?? 0.006), ior: 1.5, attenuationColor: tint, attenuationDistance: Math.min(o.distance ?? 0.01, 0.012), specularIntensity: 1 });
+      return physical({ color: tint.clone().lerp(new THREE.Color(0xffffff), 0.8), roughness: 0.05, metalness: 0, transmission: 0.9, thickness: 0.004, ior: 1.5, attenuationColor: tint, attenuationDistance: 0.006, specularIntensity: 1, envMapIntensity: 1.2 });
     },
     'opal-glass': (o) => {
       const m = physical({ color: col(o.color, '#f6f3ee'), roughness: 0.25, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.05, emissive: new THREE.Color('#ffcf96'), emissiveIntensity: 0, specularIntensity: 0.8, side: THREE.DoubleSide });
@@ -719,6 +763,7 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       const scanned = o.scan === 'leaf' && T.scansEnabled();
       const m = physical({ map: b.map, normalMap: b.normalMap, normalScale: new THREE.Vector2(0.6, 0.6), color: col(o.color, '#ffffff'), vertexColors: !!o.vertexColors, roughness: o.roughness ?? 0.5, metalness: 0, side: THREE.DoubleSide, sheen: 0.35, sheenRoughness: 0.5, sheenColor: new THREE.Color('#b7cf8f'), specularIntensity: 0.5, ...(scanned ? { alphaMap: WHITE(), alphaTest: 0.5 } : {}) });
       m.shadowSide = THREE.DoubleSide;
+      if (scanned) alphaShadow(m);
       leafShading(m, o.under === 'olive' ? { trans: 0.5, under: [1.8, 1.75, 1.7], desat: 0.7 } : { trans: 0.6, under: [1.12, 1.12, 1.05], desat: 0.1 });
       if (scanned) withScan(m, 'leaf', { slots: ['map', 'normalMap', 'alphaMap'], repeatFor: () => [1, 1], normalScale: 0.8, color: (mm, bb) => mm.color.copy(col(o.color, '#ffffff')).multiplyScalar(1 / Math.max(0.05, bb.mean)) });
       return m;
@@ -884,7 +929,11 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     onChange(fn) { changeCbs.add(fn); return () => changeCbs.delete(fn); },
     get scanVersion() { return scanVersion; },
     scanStats: () => T.scanStats(),
+    /** GPU residency of photoscan sets (engine sweeps unused ones, R4-07). */
+    scanSets: () => T.scanSets(), scanIdOf: (t) => T.scanIdOf(t), evictScanSet: (id) => T.evictScanSet(id), restoreScanSet: (id) => T.restoreScanSet(id),
     scansEnabled: () => T.scansEnabled(),
+    /** R4-10: { depth, distance } hashed-alpha shadow materials for an alpha-cut material (else undefined). */
+    shadowOf: (m) => SHADOW_OF.get(m),
     get lampsOn() { return lampsOn; },
     keys: MATERIAL_KEYS.slice(),
     resolve: resolveMaterialKey,

@@ -213,11 +213,13 @@ function fixWinding(g) {
  * Throw pillow: footprint w (x) × h (y), thickness t (z), centred at origin.
  * pinch = concave edge amount, corner = corner pointiness.
  */
-export function pillowGeometry(w, h, t, { n: n0 = 18, pinch = 0.08, plump = 0.6, sag = 0.0, seed = 3, squash = 0, dents = null, ears = 0 } = {}) {
+export function pillowGeometry(w, h, t, { n: n0 = 18, pinch = 0.08, plump = 0.6, sag = 0.0, seed = 3, squash = 0, dents = null, ears = 0, creases = 0, seam = true } = {}) {
   const n = segs(n0, 8);
   const pos = [], idx = [];
   const r = rng(seed);
   const ph = [r() * 6.28, r() * 6.28, r() * 6.28];
+  // corner creases (R4-05): 2–3 soft folds fanning from each corner toward the crown, per corner phase / strength
+  const cr = creases ? [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([cs, cu]) => ({ cs, cu, ph: r() * 6.28, k: 0.6 + r() * 0.6, f: 7 + r() * 4 })) : null;
   const side = (sgn) => {
     const b = pos.length / 3;
     for (let j = 0; j <= n; j++) for (let i = 0; i <= n; i++) {
@@ -228,6 +230,18 @@ export function pillowGeometry(w, h, t, { n: n0 = 18, pinch = 0.08, plump = 0.6,
       let z = sgn * t / 2 * prof;
       // soft wrinkles + gravity sag
       z += sgn * t * 0.04 * prof * Math.sin(s * 5 + ph[0]) * Math.sin(u * 4 + ph[1]);
+      if (cr) {
+        let cz = 0;
+        for (const q of cr) {
+          const dx = (q.cs - s) * w / 2, du = (q.cu - u) * h / 2; // metres from the corner, inward ≥ 0
+          if (dx < 0 || du < 0) continue;
+          const d = Math.hypot(dx, du), L = 0.3 * Math.min(w, h);
+          if (d > 2.2 * L) continue;
+          const th = Math.atan2(du, dx) - Math.PI / 4; // ± π/4 across the corner wedge
+          cz += q.k * Math.sin(th * q.f + q.ph) * Math.exp(-d / L) * Math.min(1, d / 0.025);
+        }
+        z += sgn * creases * t * 0.06 * cz * Math.min(1, prof * 3);
+      }
       // shallow dents (someone leaned on it) — front face only
       if (dents && sgn > 0) for (const [dx, dy, dd, dr] of dents) z -= dd * prof * Math.exp(-(((x - dx) ** 2) + ((y - dy) ** 2)) / (dr * dr));
       let yy = y - sag * h * prof * (1 - u * u) * 0.5;
@@ -246,7 +260,8 @@ export function pillowGeometry(w, h, t, { n: n0 = 18, pinch = 0.08, plump = 0.6,
   let g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setIndex(idx);
-  g = mergeVertices(g, 1e-6);
+  // seam: the two faces keep their own normals along the edge → a crisp sewn seam line instead of a rounded foam bead
+  if (!seam) g = mergeVertices(g, 1e-6);
   g.computeVertexNormals();
   return g;
 }

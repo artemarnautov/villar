@@ -22,7 +22,18 @@ const SSAO = {
   villarSSAO: { value: null },
   villarSSAOInv: { value: new THREE.Vector2(1, 1) },
   villarSSAOIntensity: { value: 0 },
+  // contact occlusion from furniture footprints (index.js updateContact): R = blurred occupancy, G = height / 3 m
+  villarFoot: { value: null },
+  villarFootBox: { value: new THREE.Vector4(0, 0, 1, 1) },   // min x, min z, size x, size z (m)
+  villarFootK: { value: 0 },
 };
+/** Furniture footprint map for contact occlusion of the indirect light (null / k 0 = off). */
+export function setContactMap(texture, box, k = 0.75) {
+  SSAO.villarFoot.value = texture || WHITE_TEX();
+  if (box) SSAO.villarFootBox.value.set(box[0], box[1], box[2], box[3]);
+  SSAO.villarFootK.value = texture ? k : 0;
+}
+const WHITE_TEX = () => WHITE;
 let chunksPatched = false;
 function patchChunks() {
   if (chunksPatched) return; chunksPatched = true;
@@ -32,6 +43,9 @@ function patchChunks() {
 	uniform sampler2D villarSSAO;
 	uniform vec2 villarSSAOInv;
 	uniform float villarSSAOIntensity;
+	uniform sampler2D villarFoot;
+	uniform vec4 villarFootBox;
+	uniform float villarFootK;
 #endif`;
   C.aomap_fragment = `#ifdef VILLAR_SSAO
 	{

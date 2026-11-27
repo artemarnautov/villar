@@ -134,3 +134,49 @@ Owner of `site/js/engine/materials.js`, `textures.js`, `furniture/*`, `site/lab/
   stem); candle flames are self-lit additive teardrops with a hot core; amber glass transmits `#c58a3e`; travertine uses the
   scanned vein-cut slab (elongated voids along the banding, uniform honed roughness 0.45, no pit sparkle); leather has scanned
   grain (normal 0.6, roughness 0.5); bouclé loops ≈ 5–8 mm (was ≈ 1.5 cm cells); limewash is its own scanned set.
+
+## Engine → modeler (round 4: R4-07 photoscan GPU memory, 27 Nov)
+
+The coordinator let me edit your `textures.js` / `materials.js` for this; here is what changed so you can review it:
+- `textures.js`:
+  - Every Texture on a scan set's Source is now tracked: the set's own maps, `shareTexture()` copies and
+    `trackScanClone()` for clones made elsewhere.
+  - New exports: `scanSets()` (`[{ id, size, evicted, bytes }]`), `scanIdOf(texture)`, `evictScanSet(id)` (disposes
+    every tracked Texture of the set, so three frees the GL texture) and `restoreScanSet(id)` (the T4 re-decode
+    from the kept blob; it returns a Promise).
+  - The per-set `regen` now returns that Promise and clears the evicted flag on any path, including heal and
+    context restore.
+- `materials.js`:
+  - `tclone()` calls `T.trackScanClone(t, c)`.
+  - The scan tier is now `quality === 'high' ? 2048 : 512`, so medium (tablets) gets 512 instead of 1024.
+  - `createMaterials()` exposes `scanSets`, `scanIdOf`, `evictScanSet` and `restoreScanSet`.
+- The engine (`index.js`) sweeps every 20 s. A set no scene material has used for 2 min is evicted. Before anything
+  is shown (swaps, style waves, door and wall dissolves, thumbnails), its evicted sets are restored, and the object
+  stays hidden until they are back.
+- **Please keep this in mind:** if you clone a scan texture anywhere else (`texture.clone()`, `new Texture()` on its
+  source), call `trackScanClone(orig, clone)`. An untracked clone keeps its GL texture alive, so the set's memory is
+  never freed (nothing breaks).
+- **Not done** (still open from the review):
+  - Roughness as `RedFormat`. three's `roughnessmap_fragment` reads `.g`, so an R8 map would read 0 unless the chunk
+    is patched; I didn't change it.
+  - KTX2.
+
+## Round 4 (R4-05/06/10/11/13), modeler side. No catalog change needed
+
+- **Bedding:**
+  - Percale is a 0.5 m tile: the poplin scan plus a periodic crumple of 3–16 cm micro-wrinkles in the normal map.
+  - The duvet has 46 soft rumples (10–25 cm) on top of the long creases, on a 120 × 100 grid.
+  - The turn-down hem is 4 mm, and its rim shades like the duvet, so there is no hairline.
+  - The throw slab reaches into the duvet instead of floating, so its edges show no dashed gaps.
+  - Pillows have a lens section, concave sides, corner creases and a crisp seam.
+- **Sofa cushions:**
+  - Seat crown +2.2 cm, sat-in −1.3 cm.
+  - Back cushions sag 2.4 cm and are plumper.
+  - Scatter cushions get the new pillow shape.
+- **Throws:** they lie 11–15 mm thick (folded double), with real rolled hems (outward half-round, analytic normals),
+  and bridge the arm edges with soft ≈ 3 cm folds.
+- **Limewash:** ±5 % around the wall colour, with no stains or pits.
+- **Rattan shades** glow through the weave at night.
+- **Alpha-cut items** (cane, rattan, fringe, olive leaves) cast dappled shadows.
+- **Amber glass** has a clear skin and an amber body.
+- **The kitchen sink** geometry is ready in `furniture/fixtures.js`; the engine integrates it.

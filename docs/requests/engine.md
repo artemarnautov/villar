@@ -57,6 +57,25 @@
     landscape stage, so `object-fit: cover` on the poster matches the live framing.
   - Thumbnails render only while the camera and dissolves are idle, one per idle slice (T7) — request them freely.
   - The focus halo fades out ~1.2 s after a flight lands; the canvas focus ring shows only for keyboard focus.
+- Round 4 (tech review):
+  - **R4-05:** each slot group has at most one dissolve. A later wish (another style click, a slider step,
+    Reset/Undo) waits for that dissolve and then rebuilds from the store's current selection. Every `applyPlan`
+    origin (`budget`, `reset`, `restore`, `undo`) uses the slider's capped queue: 8 at a time, starts 45 ms apart.
+  - **R4-06:** the slider warm-up builds exactly the active style's ladder items (`core/budget.js` plus pins, nearest
+    step first). It re-runs on every style switch and `pins` change. The engine fetches `/data/budget.json` itself;
+    pass `createVillar({ budget: data.budget })` to skip that fetch.
+  - **R4-07:** photoscan sets unused for 2 min leave the GPU and come back before anything shows them. Medium tier
+    loads 512 scans. `villar.debug.scans` → `{ sets, resident, mb }`.
+  - **R4-09:** with `?pt=on`, a still is dropped when the scene changes without input (a scan or facade landing, a
+    wall animation). Refinement doesn't start while textures are still loading.
+  - **R4-10:** reserve (empty-slot) lamp lights only take a shadow slot when there are fewer real lamps than slots,
+    and then with a 1 × 1 map rendered once.
+- Idle refinement: the scene BVH is now built in a module Worker (`vendor/three-mesh-bvh-worker`: a worker-only
+  copy of three-mesh-bvh whose imports point at the three URL). While the snapshot builds, the held raster frame
+  stays on screen, so the path tracer's physical scene state is never drawn. Any input restores the scene at once.
+  It is still opt-in (`?pt=on`) until the coordinator turns it back on.
+- City: photographic CC0 facades (ambientCG) on the towers, darker gravel roofs with rooftop plant, and lit-window
+  night facades. `/assets/city/*.jpg` (654 KB) loads after start; the procedural stand-ins show until then.
 - Budget slider (docs/BUDGET.md), engine side:
   - `'change'` with `itemId: null` dissolves the model out, and null → item dissolves it in. Empty slots are
     skipped at load. An attached item whose host is empty is never placed.
@@ -173,3 +192,44 @@
    (crease depth soft-clamped to ±7 mm, creases ≥ 4 cm wide, duvet grid 96 × 80).
 7. **Budgets.** All 21 scan sets at their largest file: 12.1 MB (high: floor 2K + 1K rest); medium 10.6 MB; low (512) 2.5 MB.
    Measured per style in the engine lab, high: Dark Walnut 8.7 MB / 15 sets; Dark Walnut → Mediterranean adds 3.0 MB / 4 sets.
+
+## From modeler (round 4: R4-05/06/10/11/13) — engine changes needed
+
+1. **R4-13 sink (architecture.js).** The basin is in your kitchen builder, so I can't change it from my files. I've
+   written the replacement geometry: `sinkParts({ w, l, depth, r, rim })` from `furniture/index.js` (code in
+   `furniture/fixtures.js`).
+   - It returns `[{ geometry, key, opts, cast }]` in local metres. The origin is the centre of the cut-out, on the
+     worktop top. x runs across the counter (wall → front), z along the run, y up.
+   - The parts: a 17 cm drafted basin with a filleted floor falling 6 mm to the drain, a 15 mm brushed-steel rim
+     lying on the worktop (4 mm), a chrome drain ring, and a slotted strainer. About 2 k triangles.
+   - Suggested call, replacing the five `K(M.steel, …)` boxes and the `sinkDark` disc:
+     `for (const p of sinkParts({ w: sd1 - sd0, l: sz1 - sz0, depth: 0.17 })) { const g = p.geometry.clone().translate(X - (sd0 + sd1) / 2, wy1, sinkZ); B.add(materials.get(p.key, p.opts), g, { cast: p.cast }); }`
+     (adjust the axis if your X runs the other way; the basin is symmetric).
+   - The basin still needs light. It sits inside the cabinet volume, so with invalid probes there (as with R4-09) it
+     renders black. Please treat it like the bed base.
+2. **R4-06 limewash.** The scan is now ±5 % around the wall colour: a ±4 % cloud plus fine detail clamped to ±1.2 %.
+   The stains and pits are gone, and the normal is softened (normalScale 0.18).
+   - Its detail mean is now **0.92, the same as the paint set**. A raw hex written by `animateWalls` therefore
+     renders 8 % under the hex on every wall, paint or limewash alike (it was 15 % on limewash).
+   - To be exact, divide by `m.userData.detailMean` as before. The same mean on both sets means a
+     paint ↔ limewash style switch no longer jumps in brightness.
+3. **R4-10 cane / wicker shadows.** This is done on my side, and it needs nothing from the renderer.
+   - Alpha-cut materials (cane, open rattan, fringe, scanned leaves) now carry hashed-alpha depth and distance
+     materials, available as `materials.shadowOf(material)`.
+   - The furniture assembly sets `customDepthMaterial` / `customDistanceMaterial` on every such mesh, on every path:
+     direct build, cache instance, and worker re-assembly.
+   - Why the shadows were missing: three's own variant alpha-*tests* the map at the shadow camera's coarse mip. There
+     the open weave averages below 0.5, so the whole panel dropped out of the shadow map.
+   - **If you clone furniture meshes yourself** (thumbnails, dissolves): `Object3D.clone` does not copy
+     `customDepthMaterial`. Copy it across, or call `materials.shadowOf(mesh.material)`.
+4. **R4-11 rattan dome at night.** On my side:
+   - The strands glow warm, with emissive equal to the weave albedo, driven by `setLampsOn` like the paper shades.
+   - An emissive inner shell (`shade-glow`, hidden by day, casts nothing) shows through the gaps and from below.
+   - The light descriptors for woven domes now include a soft side/up `point` (30 % of the lamp, no shadow).
+   - The dappled weave pattern on the walls and ceiling needs a light cookie: a projected weave alpha on an up/side
+     spot. That is yours. The weave alpha is `site/assets/materials/wicker/alpha_1k.jpg`, metric tile 0.35 m × 0.3.
+5. **R4-09 bed-base blotch: my geometry does not contribute.**
+   - The foot and side rails are single smooth softBoxes. No duvet, throw or sheet vertex reaches below the rail top:
+     the duvet hang stops 6 cm above the deck.
+   - The disc in `crops/gl-golden-bedbase.png` sits mid-rail, away from any seam. It is the probe lookup inside the
+     closed bed volume (rails + deck + mattress), as diagnosed.

@@ -361,12 +361,49 @@ function uploadScans(list, done) {
  * A texture that shares `t`'s GPU storage with its own repeat / offset. Unlike Texture.clone() it does not bump the
  * shared Source's version, so the pixels are not uploaded again (and a released CPU copy is never needed).
  */
+// ---------------------------------------------------------------- scan GPU residency (R4-07, engine)
+// Every Texture object that shares a scan set's Source (the set's own maps, shareTexture / material clones) is
+// tracked, so a set no material in the scene has used for a while can really leave the GPU: three keeps one GL
+// texture per (Source, sampler) with a use count, freed only when EVERY Texture object on it is disposed. The CPU
+// copy is the kept JPEG blob; restoreScanSet() re-decodes and re-uploads it (the context-restore path).
+const SCAN_OF = new WeakMap(); // Source → { id, bundle, regen, textures: Set<Texture>, evicted }
+function trackScan(t, entry) { if (!t) return; entry.textures.add(t); SCAN_OF.set(t.source, entry); }
+/** Register a texture that shares a scan Source (call for clones made outside textures.js). */
+export function trackScanClone(orig, clone) { const e = orig && SCAN_OF.get(orig.source); if (e && clone) e.textures.add(clone); }
+/** Scan set id of a texture (null for procedural maps). */
+export function scanIdOf(t) { return (t && SCAN_OF.get(t.source)?.id) || null; }
+const SCAN_SETS = new Map(); // id → entry (one per loaded set)
+/** [{ id, size, evicted, bytes }] — bytes: RGBA8 + mips of every map, while on the GPU. */
+export function scanSets() {
+  return [...SCAN_SETS.values()].map((e) => {
+    const maps = ['map', 'normalMap', 'roughnessMap', 'alphaMap'].map((k) => e.bundle[k]).filter(Boolean);
+    const bytes = maps.reduce((sum, t) => { const im = t.source.data || {}; return sum + (im.width || 0) * (im.height || 0) * 4 * 4 / 3; }, 0);
+    return { id: e.id, size: e.bundle.size, evicted: e.evicted, bytes: e.evicted ? 0 : Math.round(bytes) };
+  });
+}
+/** Free a set's GPU textures (all Texture objects on its Sources). Its materials keep working: restore first. */
+export function evictScanSet(id) {
+  const e = SCAN_SETS.get(id);
+  if (!e || e.evicted || !e.bundle.done) return false;
+  QUIET++;
+  try { for (const t of e.textures) t.dispose(); } finally { QUIET--; }
+  e.evicted = true;
+  return true;
+}
+/** Bring an evicted set back (re-decode the kept blobs, upload). Resolves when it is on the GPU again. */
+export function restoreScanSet(id) {
+  const e = SCAN_SETS.get(id);
+  if (!e || !e.evicted) return Promise.resolve(false);
+  e.evicted = false;
+  return e.regen();
+}
 export function shareTexture(t, repeat = null, offset = null) {
   const c = new THREE.Texture();
   c.source = t.source;
   for (const k of ['name', 'mapping', 'channel', 'wrapS', 'wrapT', 'magFilter', 'minFilter', 'anisotropy', 'format', 'internalFormat', 'type', 'colorSpace', 'premultiplyAlpha', 'flipY', 'unpackAlignment', 'generateMipmaps', 'onUpdate']) c[k] = t[k];
   c.repeat.copy(repeat || t.repeat); c.offset.copy(offset || t.offset);
   c.version = 1; // first bind: initTexture() finds the source's GL texture under the same cache key → no pixel upload
+  trackScanClone(t, c);
   return c;
 }
 /**
@@ -422,21 +459,28 @@ export function scanTextures(id) {
     finish(true);
   })().catch((err) => { clearTimeout(timer); finish(false, err && err.message); });
   // T4: after a context restore re-decode the kept blobs (counted in pendingTextures() until uploaded again)
-  let healing = false;
+  let healing = null;
   const regen = () => {
-    if (!out.done || healing) return;
-    healing = true; SCAN_PENDING++;
+    if (!out.done) return Promise.resolve(false);
+    if (healing) return healing;
+    SCAN_PENDING++;
     const list = [];
-    Promise.all(Object.entries(blobs).map(async ([slot, blob]) => {
+    healing = Promise.all(Object.entries(blobs).map(async ([slot, blob]) => {
       const t = out[slot]; const bmp = await decodeScan(blob);
       reallocate(t); t.source.data = bmp; t.needsUpdate = true; list.push(t);
     }))
       .then(() => new Promise((res) => uploadScans(list, res)))
-      .catch((e) => console.warn('[textures] scan restore', id, e && e.message))
-      .finally(() => { healing = false; SCAN_PENDING--; settle(); });
+      .then(() => { if (out.__entry) out.__entry.evicted = false; return true; }) // on the GPU again (any path)
+      .catch((e) => { console.warn('[textures] scan restore', id, e && e.message); return false; })
+      .finally(() => { healing = null; SCAN_PENDING--; settle(); });
+    return healing;
   };
   out.ready.then(() => {
     if (!out.done) return;
+    const entry = { id: id + '@' + out.size, bundle: out, regen, textures: new Set(), evicted: false };
+    for (const k of ['map', 'normalMap', 'roughnessMap', 'alphaMap']) trackScan(out[k], entry);
+    SCAN_SETS.set(entry.id, entry);
+    out.__entry = entry;
     regen.textures = ['map', 'normalMap', 'roughnessMap', 'alphaMap'].map((s) => out[s]).filter(Boolean);
     for (const t of regen.textures) HEAL.set(t.source, regen);
     REGEN.add(regen);

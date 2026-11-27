@@ -243,12 +243,25 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
     const dur = duration ?? clamp(0.7 + dist * 0.05, 0.8, 1.3);
     const tr = { t: 0, dur, pose, onDone, liveUpright: null };
     if (fromUp && toUp) {
-      tr.kind = 'upright';
-      tr.fromPos = fromUp.pos.clone(); tr.toPos = toUp.pos.clone();
-      tr.fromYaw = fromUp.yaw; tr.dYaw = wrapAngle(toUp.yaw - fromUp.yaw);
-      tr.fromPitch = fromUp.pitch; tr.toPitch = toUp.pitch;
-      // lift over furniture when crossing the room at low height
-      tr.lift = Math.min(0.25, dist * 0.04);
+      // one critically damped spring per component (focus v2 §5): retargets keep the current velocity, so
+      // a new tap mid-flight bends the path instead of restarting it; no fixed-duration tween
+      const prev = state.transition && state.transition.kind === 'spring' ? state.transition : null;
+      tr.kind = 'spring';
+      tr.pos = (prev ? prev.pos : fromUp.pos).clone();
+      tr.yaw = prev ? prev.yaw : fromUp.yaw;
+      tr.pitch = prev ? prev.pitch : fromUp.pitch;
+      tr.vPos = prev ? prev.vPos.clone() : new THREE.Vector3();
+      tr.vYaw = prev ? prev.vYaw : 0;
+      tr.vPitch = prev ? prev.vPitch : 0;
+      tr.toPos = toUp.pos.clone();
+      tr.toYaw = tr.yaw + wrapAngle(toUp.yaw - tr.yaw);
+      tr.toPitch = toUp.pitch;
+      // ~98 % settled after `dur` (ω·T ≈ 5.8)
+      tr.w = 5.8 / dur;
+      // lift over furniture when crossing the room at low height (walk ↔ focus only; item → item glides straight)
+      const span = tr.pos.distanceTo(tr.toPos);
+      tr.lift = prev || (state.mode === 'focus' && pose.mode === 'focus') ? 0 : Math.min(0.25, span * 0.04);
+      tr.span = Math.max(1e-3, span);
     } else {
       tr.kind = 'free';
       tr.fromPos = camera.position.clone(); tr.fromQ = camera.quaternion.clone(); tr.fromShift = curShift;
@@ -306,25 +319,28 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
     const r = Math.max(0.15, radius ?? size * 0.6);
     const tv = Math.tan((camera.fov * DEG) / 2), th = tv * camera.aspect;
     const fh = Math.max(0.25, 1 - state.insetTarget), fw = Math.max(0.25, 1 - state.insetRTarget);
-    const half = Math.min(Math.atan(tv * fh), Math.atan(th * fw));
-    const dSphere = clamp((1.12 * r) / Math.sin(half), 0.9, 5.5);
-    const camY0 = clamp(center.y + 0.3 + r * 0.45, 0.95, 1.75);
-    const offs = [35, -35, 25, -25, 48, -48, 12, -12, 62, -62, 0, 80, -80, 100, -100].map((a) => a * DEG);
+    // focus v2 §1: the item fills ~55 % of the free height or 60 % of the free width, whichever binds first
+    const FILL_H = 0.55, FILL_W = 0.6;
+    const half = Math.min(Math.atan(tv * fh * FILL_H), Math.atan(th * fw * FILL_W));
+    const dSphere = clamp(r / Math.sin(half), 0.9, 6);
+    const tall = box ? box.max.y - box.min.y > 1.3 : false;
+    const BEAUTY = 27.5 * DEG;
+    const offs = [27.5, -27.5, 20, -20, 35, -35, 12, -12, 45, -45, 0, 60, -60, 80, -80, 100, -100].map((a) => a * DEG);
     let best = null;
     // every angle at its own fit distance, then closer steps; another angle is preferred to moving much
-    // closer, the usual eye height to a raised / lowered one, and views where furniture, walls or the
-    // object's own parts hide it score worse (occlusion 0..1, PT3-03) — so a blocked view falls back to
-    // another angle, a closer, a higher or a lower pose
-    for (const [hOff, hCost] of [[0, 0], [0.4, 0.35], [-0.3, 0.45]]) {
-      const camY = clamp(camY0 + hOff, 0.75, S.ceiling - 0.35);
-      if (hOff !== 0 && Math.abs(camY - camY0) < 0.1) continue;
-      const dy = camY - center.y;
-      const pitchAt = (d) => Math.atan2(dy, Math.sqrt(Math.max(0.04, d * d - dy * dy)));
+    // closer, the 17.5° elevation (eye level for tall items) to a higher / lower one, and views where
+    // furniture, walls or the object's own parts hide it score worse (occlusion 0..1, PT3-03) — so a blocked
+    // view falls back to another angle, a closer, a higher or a lower pose
+    for (const [elev, hCost] of [[17.5, 0], [26, 0.35], [9, 0.45]]) {
+      const pitchAt = (d) => {
+        if (tall && hCost === 0) return Math.asin(clamp((1.5 - center.y) / Math.max(0.3, d), -0.5, 0.8));
+        return clamp(elev * DEG, Math.asin(clamp((0.6 - center.y) / Math.max(0.3, d), -0.99, 0.99)), Math.asin(clamp((S.ceiling - 0.3 - center.y) / Math.max(0.3, d), -0.99, 0.99)));
+      };
       const fitAt = (yaw) => {
         if (!box) return dSphere;
         let d = 2.2;
-        for (let i = 0; i < 3; i++) d = boxFit(box, center, yaw, pitchAt(d), (th * fw) / 1.16, (tv * fh) / 1.16);
-        return clamp(d, 0.9, 5.5);
+        for (let i = 0; i < 3; i++) d = boxFit(box, center, yaw, pitchAt(d), th * fw * FILL_W, tv * fh * FILL_H);
+        return clamp(d, 0.9, 6);
       };
       for (const off of offs) {
         const yaw = base + off;
@@ -333,17 +349,17 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
           const dist = Math.max(0.7, dFit * k);
           const fo = { center: center.clone(), size, yaw, pitch: pitchAt(dist), dist };
           const p = focusPos(fo);
-          let score = Math.abs(Math.abs(off) - 35 * DEG) * 1.2 + (1 - k) * 4 + hCost + p.distanceTo(cam) * 0.04;
+          let score = Math.abs(Math.abs(off) - BEAUTY) * 1.2 + (1 - k) * 4 + hCost + p.distanceTo(cam) * 0.02;
           if (preferYaw !== null) score += Math.abs(wrapAngle(yaw - preferYaw)) * 2.5;
           if (best && score >= best.score) continue;
           if (!freeSpot(p) || !clear(p, center)) continue;
           let occ = 0;
           if (occlusion) { occ = occlusion(p); score += occ * 4; if (best && score >= best.score) continue; }
-          best = { fo, score, occ, hOff };
+          best = { fo, score, occ, hOff: elev - 17.5, k };
         }
       }
     }
-    state.focusInfo = best ? { score: +best.score.toFixed(2), occluded: +best.occ.toFixed(2), raised: best.hOff, dist: +best.fo.dist.toFixed(2) } : { fallback: true };
+    state.focusInfo = best ? { score: +best.score.toFixed(2), occluded: +best.occ.toFixed(2), raised: best.hOff, dist: +best.fo.dist.toFixed(2), fit: best.k, yawOff: +(wrapAngle(best.fo.yaw - base) / DEG).toFixed(1), elev: +(best.fo.pitch / DEG).toFixed(1) } : { fallback: true };
     let fo = best?.fo;
     if (!fo) {
       // nowhere better: stay, just turn toward the object
@@ -351,7 +367,8 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
       fo = { center: center.clone(), size, yaw: Math.atan2(d.x, d.z), pitch: Math.asin(clamp(d.y / Math.max(1e-6, d.length()), -0.99, 0.99)), dist: Math.max(0.6, d.length()) };
     }
     fo.yaw0 = fo.yaw; fo.dist0 = fo.dist; fo.pitch0 = fo.pitch; fo.yawVel = 0; fo.pitchVel = 0; fo.clear = clear;
-    flyTo({ mode: 'focus', focus: fo }, { duration: preferYaw !== null ? 0.6 : 0.9 });
+    const span = camera.position.distanceTo(focusPos(fo));
+    flyTo({ mode: 'focus', focus: fo }, { duration: preferYaw !== null ? 0.55 : clamp(0.55 + span * 0.035, 0.55, 0.7) });
     return true;
   }
   /** Back to where the camera was before focusing. */
@@ -511,6 +528,23 @@ export function createCameraController({ camera, dom, layout, colliders = [], on
       if (Math.abs(state.insetRTarget - state.insetR) < 1e-3) state.insetR = state.insetRTarget;
       applyCurrent();
       active = true;
+    }
+    if (state.transition && state.transition.kind === 'spring') {
+      const tr = state.transition;
+      // exact critically damped step (stable for any dt)
+      const h = Math.min(rawDt, 0.05), w = tr.w, a = Math.exp(-w * h);
+      const step = (x, v, g) => { const e = x - g, tmp = (v + w * e) * h; return [g + (e + tmp) * a, (v - w * tmp) * a]; };
+      for (const c of ['x', 'y', 'z']) { const [x, v] = step(tr.pos[c], tr.vPos[c], tr.toPos[c]); tr.pos[c] = x; tr.vPos[c] = v; }
+      [tr.yaw, tr.vYaw] = step(tr.yaw, tr.vYaw, tr.toYaw);
+      [tr.pitch, tr.vPitch] = step(tr.pitch, tr.vPitch, tr.toPitch);
+      const rem = tr.pos.distanceTo(tr.toPos), f = clamp(1 - rem / tr.span, 0, 1);
+      _live.pos.copy(tr.pos); _live.pos.y += 4 * f * (1 - f) * tr.lift;
+      _live.yaw = tr.yaw; _live.pitch = tr.pitch;
+      applyUpright(_live.pos, _live.yaw, _live.pitch);
+      tr.liveUpright = { pos: _live.pos.clone(), yaw: _live.yaw, pitch: _live.pitch };
+      const done = rem < 0.002 && tr.vPos.length() < 0.01 && Math.abs(tr.toYaw - tr.yaw) < 0.001 && Math.abs(tr.toPitch - tr.pitch) < 0.001 && Math.abs(tr.vYaw) + Math.abs(tr.vPitch) < 0.01;
+      if (done) { state.transition = null; commitPose(tr.pose); tr.onDone?.(); }
+      return true;
     }
     if (state.transition) {
       const tr = state.transition;

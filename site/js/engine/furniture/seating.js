@@ -206,9 +206,10 @@ function upholstered(c, o) {
     const compress = (pp, hx, hy, hz) => {
       if (pp.y <= 0) return;
       const fx = Math.max(0, 1 - (pp.x / (hx * 0.75)) ** 2), fz = Math.max(0, 1 - ((pp.z - hz * 0.25) / (hz * 0.8)) ** 2);
-      pp.y -= 0.007 * fx * fz * Math.min(1, pp.y / (hy * 0.6));
+      pp.y -= 0.013 * fx * fz * Math.min(1, pp.y / (hy * 0.6));
     };
-    const g = softBox(cw + 0.004, sct, sd, { r: rCush, seg: 4, cell: 0.07, bulge: { top: 0.015, front: 0.01, left: 0.004, right: 0.004 }, wrinkle: 0.0014, seed: c.seed + 10 + i, deform: compress });
+    // R4-05: crowned top (+2.2 cm) sat in toward the front centre (−1.3 cm), front boxing bellied
+    const g = softBox(cw + 0.004, sct, sd, { r: rCush, seg: 4, cell: 0.05, bulge: { top: 0.022, front: 0.014, left: 0.005, right: 0.005 }, wrinkle: 0.002, seed: c.seed + 10 + i, deform: compress });
     b.add(g, fab, { pos: [x, baseTop + sct / 2, seatZ] });
     // welts (self piping) where the top / bottom panels meet the boxing
     if (welts) {
@@ -233,11 +234,11 @@ function upholstered(c, o) {
       // back cushion: plump front, top sagging 1–2 cm in the middle, soft pinched top corners
       const sag = (pp, hx, hy, hz) => {
         const cx = Math.abs(pp.x) / hx, cy = (pp.y + hy) / (2 * hy);
-        if (cy > 0.55) pp.y -= 0.016 * (1 - cx * cx) * smoothstep(0.55, 1, cy);
+        if (cy > 0.55) pp.y -= 0.024 * (1 - cx * cx) * smoothstep(0.55, 1, cy); // R4-05: top sags 2.4 cm
         const k = smoothstep(0.65, 1, cx) * smoothstep(0.6, 1, cy);
         pp.z *= 1 - 0.28 * k; pp.y -= 0.012 * k; pp.x *= 1 - 0.02 * k;
       };
-      const g = softBox(bw + 0.004, bh, bt, { r: Math.min(rCush * 1.3, bt / 2.2), seg: 4, cell: 0.07, bulge: { front: 0.03, back: 0.005, top: 0.01, left: 0.006, right: 0.006 }, wrinkle: 0.002, seed: c.seed + 30 + i, taper: 0.0, deform: sag });
+      const g = softBox(bw + 0.004, bh, bt, { r: Math.min(rCush * 1.3, bt / 2.2), seg: 4, cell: 0.07, bulge: { front: 0.04, back: 0.006, top: 0.012, left: 0.008, right: 0.008 }, wrinkle: 0.0025, seed: c.seed + 30 + i, taper: 0.0, deform: sag });
       // pivot at bottom-back edge, lean backwards
       const cy = seatH - 0.02 + (bh / 2) * Math.cos(lean);
       const cz = -D / 2 + backT + bt / 2 - (bh / 2) * Math.sin(lean) + 0.02;
@@ -700,7 +701,8 @@ export function cushions(c) {
     const fab = fabricMat(c, fabrics[i] || (p.fabric === 'mixed' ? 'linen' : p.fabric) || 'linen', colors[i % colors.length]);
     const rr = rng(c.seed + i * 13);
     const dents = Array.from({ length: 2 + (rr() < 0.5 ? 1 : 0) }, () => [(rr() - 0.5) * cw * 0.6, (rr() - 0.5) * ch * 0.6, 0.008 + rr() * 0.01, 0.05 + rr() * 0.05]);
-    const g = pillowGeometry(cw, ch, t * 1.25, { n: 18, pinch: 0.11, plump: 0.42, sag: 0.04, seed: c.seed + i * 7, squash: 0.6, dents, ears: 0.7 });
+    // R4-05: crowned, concave-sided, corner creases (a chopped cushion, not a rectangular box)
+    const g = pillowGeometry(cw, ch, t * 1.25, { n: 24, pinch: 0.12, plump: 0.6, sag: 0.05, seed: c.seed + i * 7, squash: 0.6, dents, ears: 0.8, creases: 0.9 });
     const x = slots[i];
     const second = (n >= 3) && (i === 1 || i === Math.ceil(n / 2) + 1);
     const yaw = (x < 0 ? 1 : -1) * (0.12 + (i % 2) * 0.08);

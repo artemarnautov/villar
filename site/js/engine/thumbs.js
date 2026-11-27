@@ -13,7 +13,7 @@ import { disposeObject, DEG } from './util.js';
 const BACKDROP = '#f2efe8';
 const FAR = new THREE.Vector3(-80, 0, -80); // outside the apartment box (no box-projected reflections)
 
-export function createThumbnailer({ renderer, materials, buildItem, releaseItem = null, quality = 'high', shouldWait = () => false, software = false }) {
+export function createThumbnailer({ renderer, materials, buildItem, releaseItem = null, quality = 'high', shouldWait = () => false, software = false, prepare = null }) {
   // thumbnails never compete with a camera flight or a dissolve: one per idle slice, when the scene is quiet (T7)
   const quiet = () => new Promise((resolve) => {
     const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 3000 }) : setTimeout(fn, 50));
@@ -121,7 +121,9 @@ export function createThumbnailer({ renderer, materials, buildItem, releaseItem 
     group.traverse((o) => { if (o.isMesh) { o.castShadow = !o.userData.noCastShadow; o.receiveShadow = true; } });
     res.scene.add(group);
     const pending = materials.pending ? materials.pending() : 0;
-    const texWait = pending > 0 && materials.ready ? Promise.race([materials.ready(), new Promise((r) => setTimeout(r, 4000))]) : Promise.resolve();
+    // released photoscan sets come back before the studio render (engine hook, R4-07)
+    const scanWait = prepare ? Promise.resolve(prepare(group)).catch(() => {}) : Promise.resolve();
+    const texWait = scanWait.then(() => (pending > 0 && materials.ready ? Promise.race([materials.ready(), new Promise((r) => setTimeout(r, 4000))]) : null));
     // the studio's light set differs from the room's: compile its variants off the main thread first
     const wait = texWait.then(() => {
       if (!renderer.extensions.has('KHR_parallel_shader_compile')) return null;

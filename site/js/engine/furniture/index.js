@@ -206,6 +206,7 @@ export function buildItem(item, ctx = {}) {
   fit(group, anchors, lights, info, arch, W, D, H, res.fit || null);
   if (res.mount) group.userData.mount = res.mount;
   group.traverse((o) => { if (o.isMesh) { o.castShadow = o.castShadow !== false; o.receiveShadow = true; o.userData.itemId = item?.id; } });
+  alphaShadows(group, ctx.materials);
   group.userData.anchors = anchors;
   group.userData.anchorInfo = info;
   group.userData.lights = lights;
@@ -315,6 +316,8 @@ function fit(group, anchors, lights, info, arch, W, D, H, override = null) {
 }
 
 export { triCount };
+// R4-13: inset sink geometry for the architecture's kitchen (see fixtures.js; engine integrates)
+export { sinkParts } from './fixtures.js';
 
 // ---------------------------------------------------------------- build cache (seamless swaps)
 //
@@ -343,6 +346,20 @@ function cacheFor(materials) {
   return m;
 }
 
+/**
+ * R4-10: alpha-cut meshes (cane, open rattan, fringe, scanned leaves) cast hashed-alpha shadows. Object3D.clone does
+ * not copy customDepthMaterial, so every assembly path (direct build, cache instance, worker re-assembly) calls this.
+ */
+function alphaShadows(root, materials) {
+  if (!materials || typeof materials.shadowOf !== 'function') return root;
+  root.traverse((o) => {
+    if (!o.isMesh || Array.isArray(o.material)) return;
+    const s = materials.shadowOf(o.material);
+    if (s) { o.customDepthMaterial = s.depth; o.customDistanceMaterial = s.distance; }
+  });
+  return root;
+}
+
 function instance(proto, key) {
   const g = proto.clone(true);
   const u = proto.userData;
@@ -364,7 +381,7 @@ export function buildItemCached(item, ctx = {}) {
   if (e) { cache.delete(key); cache.set(key, e); } // LRU touch
   else { e = { proto: buildItem(item, ctx), refs: 0 }; cache.set(key, e); }
   e.refs++;
-  const g = instance(e.proto, key);
+  const g = alphaShadows(instance(e.proto, key), ctx.materials);
   g.userData.cacheOwner = ctx.materials;
   trim(cache);
   return g;

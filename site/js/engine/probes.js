@@ -74,7 +74,34 @@ vec3 villarSHIrradiance( vec3 c0, vec3 c1, vec3 c2, vec3 c3, vec3 c4, vec3 c5, v
 	r += c8 * 0.429043 * ( x * x - y * y );
 	return max( r, vec3( 0.0 ) );
 }
+#ifdef VILLAR_SSAO
+// furniture footprint at a world point: x = blurred occupancy, y = height of what stands there (m)
+vec2 villarFootAt( vec3 p ) {
+	if ( villarFootK <= 0.0 ) return vec2( 0.0 );
+	vec2 uv = ( p.xz - villarFootBox.xy ) / villarFootBox.zw;
+	if ( any( lessThan( uv, vec2( 0.0 ) ) ) || any( greaterThan( uv, vec2( 1.0 ) ) ) ) return vec2( 0.0 );
+	vec2 f = texture2D( villarFoot, uv ).rg;
+	return vec2( f.r, f.g * 3.0 );
+}
+// contact occlusion of the indirect light: the floor around and under furniture, and the low, side- or
+// down-facing faces next to it (bed base, sofa plinth, wall behind a sideboard); faces higher up or facing
+// up stay open (a seat, a table top). The probe grid alone leaves these zones ~1 EV too bright (R4 A/B)
+float villarContact( vec3 p, vec3 n, vec2 f ) {
+	float h = max( 0.2, f.y );
+	float floorK = 1.0 - smoothstep( 0.02, 0.12, p.y );
+	float sideK = ( 1.0 - smoothstep( 0.0, h * 0.8, p.y ) ) * ( 1.0 - max( n.y, 0.0 ) );
+	return 1.0 - villarFootK * f.x * max( floorK, sideK );
+}
+#endif
 vec3 getLightProbeGridIrradiance( highp sampler3D probesSH, vec3 probesMin, vec3 probesMax, vec3 probesResolution, vec3 worldPos, vec3 worldNormal ) {
+	#ifdef VILLAR_SSAO
+		vec2 villarF = villarFootAt( worldPos );
+		// inside / next to furniture, invalid (buried) probes keep more weight: their dilated SH is closer to the
+		// truth there than a lone valid probe across the bed (the dark blotch on the bed base, R4-09)
+		float villarInvalid = mix( 0.25, 0.6, villarF.x );
+	#else
+		float villarInvalid = 0.25;
+	#endif
 	ivec3 res = ivec3( probesResolution + 0.5 );
 	vec3 spacing = ( probesMax - probesMin ) / probesResolution;
 	vec3 p = worldPos + worldNormal * spacing * 0.45;
@@ -102,13 +129,17 @@ vec3 getLightProbeGridIrradiance( highp sampler3D probesSH, vec3 probesMin, vec3
 		vec4 t5 = texelFetch( probesSH, ivec3( q.x, q.y, zb + 5 * pad ), 0 );
 		vec4 t6 = texelFetch( probesSH, ivec3( q.x, q.y, zb + 6 * pad ), 0 );
 		// soft validity: invalid probes hold dilated SH, so they still count (a hard 0/1 flips layers → seams)
-		w *= mix( 0.25, 1.0, clamp( t6.w, 0.0, 1.0 ) );
+		w *= mix( villarInvalid, 1.0, clamp( t6.w, 0.0, 1.0 ) );
 		s0 += w * t0.xyz; s1 += w * vec3( t0.w, t1.xy ); s2 += w * vec3( t1.zw, t2.x ); s3 += w * t2.yzw;
 		s4 += w * t3.xyz; s5 += w * vec3( t3.w, t4.xy ); s6 += w * vec3( t4.zw, t5.x ); s7 += w * t5.yzw; s8 += w * t6.xyz;
 		wsum += w;
 	}
 	float iw = 1.0 / max( wsum, 1e-6 );
-	return villarSHIrradiance( s0 * iw, s1 * iw, s2 * iw, s3 * iw, s4 * iw, s5 * iw, s6 * iw, s7 * iw, s8 * iw, worldNormal );
+	vec3 villarE = villarSHIrradiance( s0 * iw, s1 * iw, s2 * iw, s3 * iw, s4 * iw, s5 * iw, s6 * iw, s7 * iw, s8 * iw, worldNormal );
+	#ifdef VILLAR_SSAO
+		villarE *= villarContact( worldPos, worldNormal, villarF );
+	#endif
+	return villarE;
 }
 ` + src.slice(end);
 }
@@ -220,6 +251,11 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
   let atlas = null, floatRT = null, copyQuad = null, cam = null, basis = null, norm = 1;
   let atlasBuf = null, stripBuf = null;
   const shBuf = new Float32Array(N * 28), prevSH = new Float32Array(N * 28), outSH = new Float32Array(N * 28), subSH = new Float32Array(N * 28);
+  // first-bounce field (raw SH, direct light only) of the last complete bake: a local re-bake recomputes its
+  // probes exactly like a fresh bake (B1 from zero, B2 from the B1 field, same tail), never on top of a
+  // converged, tail-extrapolated result — repeated local bakes used to pile up energy (+1 EV, R4-01)
+  const firstSH = new Float32Array(N * 28);
+  let hasFirst = false;
   const gl = renderer.getContext();
   const dbg = gl.getExtension('WEBGL_debug_renderer_info');
   const software = /swiftshader|llvmpipe|software/i.test(dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '');
@@ -369,7 +405,8 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
     if (job) { job.cancelled = true; job.resolve(false); job = null; }
     if (!supported) return Promise.resolve(false);
     try { ensureResources(); classify(); } catch (e) { console.warn('[villar] GI unavailable', e); return Promise.resolve(false); }
-    const useSubset = only && hasBaked && !fresh;
+    // subset: incremental (legacy, !fresh) or fresh-equivalent (needs the stored first-bounce field, 2 bounces)
+    const useSubset = only && hasBaked && (!fresh || (hasFirst && bounces === 2));
     const list = (useSubset ? [...only] : [...Array(N).keys()]).filter((j) => valid[j]);
     let resolve;
     const done = new Promise((r) => { resolve = r; });
@@ -424,6 +461,13 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
           if (j0.cancelled) return;
           const sh = projectCPU();
           const last = j0.bounce === j0.bounces - 1;
+          if (j0.fresh && j0.bounce === 0) {
+            if (j0.subset) {
+              // the recaptured probes' first bounce into the stored field; the whole field lights bounce 2
+              for (const j of j0.subset) firstSH.set(sh.subarray(j * 28, j * 28 + 28), j * 28);
+              sh.set(firstSH);
+            } else { firstSH.set(sh); hasFirst = true; }
+          }
           if (j0.fresh && j0.bounce >= 1 && last) {
             for (let j = 0; j < N; j++) {
               const o = j * 28;
@@ -438,7 +482,9 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
           if (chroma < 1) desaturate(outSH, chroma);
           if (GAIN !== 1) for (let j = 0; j < N; j++) for (let i = 0; i < 27; i++) outSH[j * 28 + i] *= GAIN;
           let out = outSH;
-          if (j0.subset) {
+          // a fresh-equivalent subset shows the first-bounce FIELD between its bounces (it lights bounce 2);
+          // only its final result is merged into the converged grid
+          if (j0.subset && (last || !j0.fresh)) {
             // dirty subset: keep every other probe's converged value (incl. its extrapolated tail)
             subSH.set(lastOut);
             for (let j = 0; j < N; j++) if (j0.subset.has(j) || !valid[j]) subSH.set(outSH.subarray(j * 28, j * 28 + 28), j * 28);
@@ -504,12 +550,13 @@ export function createProbeVolume({ renderer, scene, box, res = [4, 3, 8], faceS
     /** A bake is waiting for its GPU readback (progress does not move meanwhile — not a stall). */
     get reading() { return !!(job && job.reading); },
     /** Copy of the last converged result (for a per-(style, time) cache). */
-    snapshot() { return hasBaked ? lastOut.slice() : null; },
+    snapshot() { if (!hasBaked) return null; const a = lastOut.slice(); if (hasFirst) a.first = firstSH.slice(); return a; },
     /** Show a cached converged result (blended) and use it as the base for later incremental bakes. */
     load(sh, { ms = 400 } = {}) {
       if (!sh || sh.length !== lastOut.length) return false;
       if (job) { job.cancelled = true; job.resolve(false); job = null; }
       lastOut.set(sh); hasBaked = true; writeTex(work, lastOut);
+      if (sh.first && sh.first.length === firstSH.length) { firstSH.set(sh.first); hasFirst = true; } else hasFirst = false;
       mode = 'baked'; present(lastOut, ms);
       return true;
     },

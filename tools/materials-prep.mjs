@@ -59,7 +59,9 @@ const SETS = [
   // bouclé: looped curly wool (teddy) — at sofa scale it is what bouclé upholstery looks like
   { id: 'boucle', title: 'curly looped wool (bouclé)', src: ph('polyhaven-textures-textiles-and-leather', 'curly_teddy_natural'), mode: 'detail', tile: [0.22, 0.22], flatten: { k: 1, cells: 8 }, contrast: 1.0, ao: 0.5, sizes: [1024, 512] },
   { id: 'velvet', title: 'velour velvet', src: ph('polyhaven-textures-textiles-and-leather-2', 'velour_velvet'), mode: 'detail', tile: [0.5, 0.5], flatten: { k: 0.6, cells: 6 }, contrast: 1.0, ao: 0.3, sizes: [1024, 512] },
-  { id: 'percale', title: 'cotton poplin / percale', src: ph('polyhaven-textures-textiles-and-leather-2', 'stretch_poplin'), mode: 'detail', tile: [0.12, 0.12], flatten: { k: 1, cells: 8 }, contrast: 1.0, ao: 0.4, sizes: [1024, 512] },
+  // percale (R4-05): the poplin scan is flat at 1–2 m (its weave is sub-pixel) → a 0.5 m tile with a periodic crumple
+  // of 1–8 cm micro-wrinkles (≈ 0.5 mm deep) pressed into the normal map and a faint shading in their valleys
+  { id: 'percale', title: 'cotton poplin / percale (+ crumple)', src: ph('polyhaven-textures-textiles-and-leather-2', 'stretch_poplin'), mode: 'detail', tile: [0.5, 0.5], flatten: { k: 1, cells: 8 }, contrast: 1.0, ao: 0.4, crumple: { count: 240, len: [0.03, 0.16], wid: [0.003, 0.01], depth: 0.0009, shade: 0.05, seed: 23 }, sizes: [1024, 512] },
   { id: 'leather', title: 'smooth leather', src: acg('ambientcg-materials-leather', 'Leather023'), mode: 'detail', tile: [0.6, 0.6], flatten: { k: 0.7, cells: 6 }, contrast: 0.5, ao: 0.4, sizes: [1024, 512] },
   // rugs
   { id: 'rug-pile', title: 'wool pile carpet', src: acg('ambientcg-materials-carpet', 'Carpet016'), mode: 'detail', tile: [0.6, 0.6], flatten: { k: 1, cells: 8 }, contrast: 1.1, ao: 0.6, sizes: [1024, 512] },
@@ -72,7 +74,9 @@ const SETS = [
   // painted walls: a quiet tonal unevenness only (± 2 %)
   { id: 'plaster', title: 'painted plaster', src: ph('polyhaven-textures-concrete-2', 'painted_plaster_wall'), mode: 'detail', detailMean: 0.92, tile: [2.4, 2.4], flatten: { k: 0.25, cells: 4 }, contrast: 0.3, ao: 0.4, sizes: [1024, 512] },
   // limewash (R3-08): the same plaster with its 0.3–1.2 m brushed clouds kept and lifted (± 6–8 %), trowel relief
-  { id: 'limewash', title: 'limewash plaster', src: ph('polyhaven-textures-concrete-2', 'painted_plaster_wall'), mode: 'detail', detailMean: 0.85, tile: [2.0, 2.0], flatten: { k: 1, cells: 2 }, contrast: 1.0, ao: 0.5, sizes: [1024, 512] },
+  // limewash (R4-06): ± 5 % around the wall colour — a soft brushed cloud (± 4 %) + fine texture clamped to ± 1.2 %
+  // (the scan's dark stains, pits and cracks are cut off), normal softened; detail mean 0.92 = the paint set's
+  { id: 'limewash', title: 'limewash plaster', src: ph('polyhaven-textures-concrete-2', 'painted_plaster_wall'), mode: 'detail', detailMean: 0.92, tile: [2.0, 2.0], flatten: { k: 0.6, cells: 2 }, remap: { cells: 6, cloud: 0.05, cloudGain: 0.8, fine: 0.012, lowClamp: -0.05, fineGain: 0.5 }, normalBlur: 2, ao: 0.3, sizes: [1024, 512] },
   // rattan / wicker
   { id: 'wicker', title: 'woven rattan', src: acg('ambientcg-materials-wicker', 'Wicker010A'), mode: 'color', tile: [0.35, 0.35], flatten: { k: 0.6, cells: 6 }, ao: 0.6, alpha: true, sizes: [1024, 512] },
   // plants: olive bark, lanceolate leaf atlas (2 clean leaves of the set, grey detail + alpha)
@@ -159,6 +163,59 @@ function lowpass(a, w, h, g) {
     }
   }
   return out;
+}
+
+/** Periodic separable box blur (radius r texels, 2 passes). */
+function boxBlur(a, w, h, r) {
+  let cur = Float32Array.from(a);
+  for (let pass = 0; pass < 2; pass++) {
+    const t = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let s = 0; for (let d = -r; d <= r; d++) s += cur[y * w + ((x + d + w) % w)]; t[y * w + x] = s / (2 * r + 1); }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let s = 0; for (let d = -r; d <= r; d++) s += t[((y + d + h) % h) * w + x]; cur[y * w + x] = s / (2 * r + 1); }
+  }
+  return cur;
+}
+
+/**
+ * Periodic crumple height field (metres) on a w × h texel tile covering `tile` metres: `count` soft creases (a narrow
+ * valley with a shoulder each side), lengths len[0..1] m, widths wid[0..1] m, depth ± depth m, orientations mostly
+ * along two loose families (cloth folds follow the way it was spread), plus a faint isotropic puckering.
+ */
+function crumpleField(w, h, tile, { count = 260, len = [0.012, 0.08], wid = [0.002, 0.006], depth = 0.0005, seed = 11 }) {
+  const r = rng(seed), H = new Float32Array(w * h);
+  const sx = w / tile[0], sy = h / tile[1];
+  const fam = [r() * Math.PI, r() * Math.PI];
+  for (let k = 0; k < count; k++) {
+    const cx = r() * tile[0], cy = r() * tile[1];
+    const ang = (r() < 0.75 ? fam[k % 2] + (r() - 0.5) * 0.9 : r() * Math.PI);
+    const L = len[0] + (len[1] - len[0]) * r() ** 1.5, W = wid[0] + (wid[1] - wid[0]) * r();
+    const D = depth * (0.4 + 0.6 * r()) * (r() < 0.8 ? 1 : -0.6);
+    const ux = Math.cos(ang), uy = Math.sin(ang);
+    const bend = (r() - 0.5) * 1.1 / Math.max(0.05, L); // gently curved folds, not scratches
+    const ext = L / 2 + 3 * W + Math.abs(bend) * L * L / 4;
+    const x0 = Math.floor((cx - ext) * sx), x1 = Math.ceil((cx + ext) * sx), y0 = Math.floor((cy - ext) * sy), y1 = Math.ceil((cy + ext) * sy);
+    for (let py = y0; py <= y1; py++) for (let px = x0; px <= x1; px++) {
+      const X = px / sx - cx, Y = py / sy - cy;
+      const along = X * ux + Y * uy, across = -X * uy + Y * ux - bend * along * along;
+      const t = Math.abs(along) / (L / 2);
+      if (t >= 1) continue;
+      const taper = (1 - t * t) ** 2;
+      const q = across / W;
+      const prof = -Math.exp(-q * q) + 0.45 * Math.exp(-((Math.abs(q) - 1.6) ** 2) * 1.5);
+      H[(((py % h) + h) % h) * w + (((px % w) + w) % w)] += D * taper * prof;
+    }
+  }
+  // soft puckers: gaussian bumps 1–3 cm, ± depth / 2
+  for (let k = 0; k < count * 2; k++) {
+    const cx = r() * tile[0], cy = r() * tile[1], R = 0.01 + r() * 0.02, D = depth * 0.5 * (r() * 2 - 1);
+    const x0 = Math.floor((cx - 2.5 * R) * sx), x1 = Math.ceil((cx + 2.5 * R) * sx), y0 = Math.floor((cy - 2.5 * R) * sy), y1 = Math.ceil((cy + 2.5 * R) * sy);
+    for (let py = y0; py <= y1; py++) for (let px = x0; px <= x1; px++) {
+      const d2 = ((px / sx - cx) ** 2 + (py / sy - cy) ** 2) / (R * R);
+      if (d2 > 6) continue;
+      H[(((py % h) + h) % h) * w + (((px % w) + w) % w)] += D * Math.exp(-d2);
+    }
+  }
+  return H;
 }
 
 /**
@@ -335,9 +392,24 @@ async function buildSet(s) {
     // grey detail, linear mean 0.5: catalogue colour × (L / mean)
     let mL = 0; for (let i = 0; i < n; i++) if (opaque(i)) mL += lum(i); mL /= cnt;
     const g = new Float32Array(n), c = s.contrast ?? 1, dm = s.detailMean ?? 0.5;
+    // remap (limewash, R4-06): relative deviation split into a soft cloud (low-pass, scaled to ± cloud) and the fine
+    // detail clamped to [−fine, +fine] — the scan's dark stains / pits / cracks can never go below −(cloud + fine)
+    let dev = null;
+    if (s.remap) {
+      const v0 = new Float32Array(n); for (let i = 0; i < n; i++) v0[i] = lum(i) / mL - 1;
+      const lo = lowpass(v0, w, h, s.remap.cells || 8);
+      let sd = 0; for (let i = 0; i < n; i++) sd += lo[i] * lo[i]; sd = Math.sqrt(sd / n) || 1;
+      const { cloud = 0.04, fine = 0.012, lowClamp = -0.06 } = s.remap;
+      dev = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const cl = cloud * Math.tanh((lo[i] / sd) * (s.remap.cloudGain ?? 0.45));
+        const hi = Math.max(-fine, Math.min(fine, (v0[i] - lo[i]) * (s.remap.fineGain ?? 0.5)));
+        dev[i] = Math.max(lowClamp, cl + hi);
+      }
+    }
     let clip = 0, mo = 0;
     for (let i = 0; i < n; i++) {
-      const v = opaque(i) ? dm * (1 + (lum(i) / mL - 1) * c) : dm;
+      const v = !opaque(i) ? dm : dev ? dm * (1 + dev[i]) : dm * (1 + (lum(i) / mL - 1) * c);
       if (v > 1) clip++;
       g[i] = toSRGB(v) * 255; mo += Math.min(1, v);
     }
@@ -350,6 +422,24 @@ async function buildSet(s) {
   }
   // transparent texels: flat normal, mean roughness (no halos in the mips)
   if (alpha) for (let i = 0; i < n; i++) if (!opaque(i)) { nor.P[0][i] = 128; nor.P[1][i] = 128; nor.P[2][i] = 255; }
+  // soften the normal map (limewash: brushed relief only, no crack / pit edges)
+  if (s.normalBlur) nor = { ...nor, P: nor.P.map((a, k) => (k < 2 ? boxBlur(a, w, h, s.normalBlur) : a)) };
+  // crumple (percale, R4-05): periodic micro-wrinkles 1–8 cm long pressed into the normal map (+ a faint tonal
+  // shading in the albedo), so a duvet / pillowcase reads as cotton at 1–2 m where the weave itself is sub-pixel
+  if (s.crumple) {
+    const H = crumpleField(w, h, s.tile, s.crumple);
+    const px = s.tile[0] / w; // metres per texel
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      const dx = (H[y * w + ((x + 1) % w)] - H[y * w + ((x - 1 + w) % w)]) / (2 * px);
+      const dy = (H[((y + 1) % h) * w + x] - H[((y - 1 + h) % h) * w + x]) / (2 * px);
+      // OpenGL normal: +R = +x, +G = up = −y (image rows go down)
+      let nx = (nor.P[0][i] / 127.5 - 1) - dx, ny = (nor.P[1][i] / 127.5 - 1) + dy, nz = nor.P[2][i] / 127.5 - 1;
+      const L = Math.hypot(nx, ny, nz) || 1; nx /= L; ny /= L; nz /= L;
+      nor.P[0][i] = (nx + 1) * 127.5; nor.P[1][i] = (ny + 1) * 127.5; nor.P[2][i] = (nz + 1) * 127.5;
+      if (outAlb.grey) outAlb.P[0][i] = toSRGB(Math.min(1, LIN[Math.max(0, Math.min(255, Math.round(outAlb.P[0][i])))] * (1 - s.crumple.shade * Math.max(0, -H[i] / s.crumple.depth)))) * 255;
+    }
+  }
   let planksInfo = null;
   if (s.planks) {
     const q = plankify(outAlb, nor, rou, w, h, s.planks);

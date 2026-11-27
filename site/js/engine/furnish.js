@@ -195,8 +195,14 @@ export function createFurnisher({ layout, store, materials, buildItem, releaseIt
     lights.forEach((l, i) => {
       const on = i < max;
       l.castShadow = on;
-      if (on) {
-        l.shadow.mapSize.set(1024, 1024);
+      if (!on) return;
+      if (l.userData.ghost) {
+        // a reserve keeps the shadow COUNT (program key) but costs nothing: 1 × 1 map, rendered once (R4-10)
+        if (l.shadow.mapSize.x !== 1) { l.shadow.mapSize.set(1, 1); l.shadow.map?.dispose(); l.shadow.map = null; }
+        l.shadow.autoUpdate = false; l.shadow.needsUpdate = true;
+      } else {
+        if (l.shadow.mapSize.x !== 1024) { l.shadow.mapSize.set(1024, 1024); l.shadow.map?.dispose(); l.shadow.map = null; }
+        l.shadow.autoUpdate = true;
         l.shadow.bias = -0.0006; l.shadow.normalBias = 0.02; l.shadow.radius = 4;
       }
     });
