@@ -28,7 +28,7 @@ import { createSim } from '../site/js/ai/core.js';
 import {
   env, PROMPT_VERSION, KEY_VERSION, modelList, modelConfig, providersAvailable, abModel, costOf, header, clientIp, ipHash, sha256, send, sameOrigin,
   readJson, createLimiter, authToken, GatewayError, isFatalGateway, generateImage, resumeImage, supa, objectPath, STYLES_RE, TIMES,
-  STYLE_WORDS, LIGHT_WORDS, GRADE_WORDS, GEMINI_ASPECTS, hfProbe, loadConfig, liveConfig, mayGenerate, dailyCaps, resetConfigForTests,
+  STYLE_WORDS, LIGHT_WORDS, GRADE_WORDS, GEMINI_ASPECTS, hfProbe, loadConfig, liveConfig, mayGenerate, dailyCaps, resetConfigForTests, HF_BASE, hfAuth
 } from './_photo.js';
 import { runPlateJob } from './plate.js';
 import { fromDataUrl, jpegSize, toStorableJpeg, sniff } from './_img.js';
@@ -433,6 +433,57 @@ async function pollKey(db, key, ipH, t0) {
   return completePending(db, row, { t0 });
 }
 
+
+// GET /api/photo?diag=1&probe=1 — which Higgsfield endpoints exist for this key, and what one call costs.
+// Uses the provider's free POST /estimate/{endpoint}; the candidate list is fixed here (the request supplies nothing).
+const PROBE_IMG = 'https://villar-blond.vercel.app/assets/og.jpg';
+const PROBE_PATHS = [
+  // documented image endpoints
+  ['marketing-studio/image', 'edit'], ['marketing-studio/image/flare', 'edit'], ['marketing-studio/image/sunburst', 'edit'],
+  ['xai/grok-imagine-image-2.0', 'edit'], ['alibaba/qwen-image-3/edit', 'edit'], ['alibaba/qwen-image-3/text-to-image', 't2i'],
+  ['ideogram/v4.0', 't2i'], ['reve/edit', 'edit1'], ['reve/text-to-image', 't2i'], ['z-image/turbo', 't2i'], ['higgsfield-ai/soul/v2/standard', 't2i'],
+  // guesses: Nano Banana / Seedream / GPT Image / FLUX
+  ['nano-banana', 'edit'], ['nano-banana/pro', 'edit'], ['nano-banana-pro', 'edit'], ['nano-banana/edit', 'edit'], ['nano-banana-pro/edit', 'edit'],
+  ['nano-banana-2', 'edit'], ['nano-banana-2/edit', 'edit'], ['nano-banana-2.1', 'edit'], ['nano-banana-2.1/edit', 'edit'],
+  ['google/nano-banana', 'edit'], ['google/nano-banana/edit', 'edit'], ['google/nano-banana-pro', 'edit'], ['google/nano-banana-pro/edit', 'edit'], ['google/nano-banana-pro/text-to-image', 't2i'],
+  ['google/nano-banana-2/edit', 'edit'], ['google/nano-banana-2.1/edit', 'edit'], ['google/nano-banana-2.1/text-to-image', 't2i'],
+  ['bytedance/seedream/v4/edit', 'edit'], ['bytedance/seedream/v4/text-to-image', 't2i'], ['bytedance/seedream/v4.5/edit', 'edit'], ['bytedance/seedream-5.0/edit', 'edit'], ['bytedance/seedream-5.5/edit', 'edit'], ['bytedance/seedream/v5.5/edit', 'edit'],
+  ['openai/gpt-image-2/edit', 'edit'], ['openai/gpt-image-2.6/edit', 'edit'], ['black-forest-labs/flux/v2', 'edit'], ['bfl/flux-2/pro/edit', 'edit'], ['flux-pro/kontext/max/text-to-image', 't2i'],
+  // 3D
+  ['tripo/h3.1/multiview-to-3d', 'multi'], ['tripo/h3.1/image-to-3d', 'img1'], ['tripo3d/h3.1/multiview-to-3d', 'multi'], ['tripo/p2/image-to-3d', 'img1'],
+  ['tencent/hunyuan3d/v3/image-to-3d', 'multi'], ['hunyuan3d/v3/image-to-3d', 'multi'], ['meshy/v7/image-to-3d', 'img1'], ['meshy/image-to-3d', 'img1'], ['meshy/multi-image-to-3d', 'multi'], ['meta/sam-3/3d-objects', 'img1'], ['sam-3/3d', 'img1'],
+  // video (window loop)
+  ['bytedance/seedance-2.5/image-to-video', 'i2v'], ['bytedance/seedance-2.0/image-to-video', 'i2v'], ['kling-video/o3/first-last-frame', 'flf'], ['kling-video/v3.0-turbo/image-to-video', 'i2v'], ['minimax/h3/image-to-video', 'i2v'], ['alibaba/wan-3.0/image-to-video', 'i2v'], ['pixverse/v6/image-to-video', 'i2v'],
+  ['google/veo-3.1/fast/image-to-video', 'i2v'], ['veo-3.1/fast/image-to-video', 'i2v'],
+];
+const probeBody = (kind) => {
+  const prompt = 'A quiet living room, natural window light.';
+  if (kind === 't2i') return { prompt };
+  if (kind === 'edit') return { prompt, image_urls: [PROBE_IMG] };
+  if (kind === 'edit1') return { prompt, image_url: PROBE_IMG };
+  if (kind === 'img1') return { image_url: PROBE_IMG };
+  if (kind === 'multi') return { image_urls: [PROBE_IMG, PROBE_IMG] };
+  if (kind === 'flf') return { prompt, first_frame_url: PROBE_IMG, last_frame_url: PROBE_IMG, duration: 5 };
+  return { prompt, image_url: PROBE_IMG, duration: 5 };
+};
+async function probeEndpoints() {
+  const auth = hfAuth();
+  if (!auth) return { error: 'not_configured' };
+  const one = async ([path, kind]) => {
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 7000);
+    try {
+      const r = await fetch(`${HF_BASE()}/estimate/${path}`, { method: 'POST', headers: { Authorization: auth, 'content-type': 'application/json' }, body: JSON.stringify(probeBody(kind)), signal: ctrl.signal });
+      const text = (await r.text()).slice(0, 400);
+      let usd = null; try { usd = JSON.parse(text).usd ?? null; } catch { /* not json */ }
+      return { path, status: r.status, ...(usd != null ? { usd } : r.status === 404 ? {} : { body: text.replace(/\s+/g, ' ').slice(0, 160) }) };
+    } catch (e) { return { path, status: 0, body: e?.name === 'AbortError' ? 'timeout' : 'network' }; }
+    finally { clearTimeout(t); }
+  };
+  const out = [];
+  for (let i = 0; i < PROBE_PATHS.length; i += 8) out.push(...await Promise.all(PROBE_PATHS.slice(i, i + 8).map(one)));
+  return { found: out.filter((x) => x.status !== 404 && x.status !== 0), missing: out.filter((x) => x.status === 404).length, failed: out.filter((x) => x.status === 0).length };
+}
+
 // ---------------------------------------------------------------------------------------------- handler
 export default async function handler(req, res) {
   const t0 = Date.now();
@@ -450,6 +501,7 @@ export default async function handler(req, res) {
     // GET /api/photo?diag=1 — setup check: booleans and status codes only, no secrets, nothing billable
     if (q.diag) {
       if (diagLimited(ipHash(clientIp(req)))) return send(res, 200, { error: 'rate_limited' });
+      if (q.probe) return send(res, 200, await probeEndpoints());
       const [higgsfield, storage, jobs] = await Promise.all([hfProbe(), db ? db.check() : Promise.resolve(null), db ? jobStats(db) : Promise.resolve(null)]);
       return send(res, 200, {
         providers: { higgsfield, gateway: { configured: !!authToken(req) } },
