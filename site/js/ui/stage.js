@@ -42,7 +42,13 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
   let quality = 'high';
   // T7: thumbnails are rendered one per idle frame, and not while the camera is flying to an object.
   const thumbCache = new Map();   // itemId → Promise<url|null>
-  let thumbQueue = [], thumbBusy = false, thumbHoldUntil = 0, thumbTimer = 0;
+  let thumbQueue = [], thumbBusy = false, thumbHoldUntil = 0, thumbTimer = 0, thumbSeq = 0;
+  // D3-10: tiles on screen go first, in the order they became visible; the rest keep their place behind them.
+  const nextThumb = () => {
+    let at = -1, best = Infinity;
+    thumbQueue.forEach((j, i) => { if (j.prio && j.prio < best) { best = j.prio; at = i; } });
+    return at >= 0 ? thumbQueue.splice(at, 1)[0] : thumbQueue.shift();
+  };
   function pumpThumbs() {
     if (thumbBusy || !thumbQueue.length || thumbTimer) return;
     const wait = thumbHoldUntil - performance.now();
@@ -50,7 +56,7 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
     thumbBusy = true;
     const run = () => {
       if (thumbHoldUntil > performance.now()) { thumbBusy = false; pumpThumbs(); return; }
-      const job = thumbQueue.shift();
+      const job = nextThumb();
       if (!job) { thumbBusy = false; return; }
       let p;
       try { p = Promise.resolve(villar?.thumbnail?.(job.id, { size: 256 })); } catch (e) { p = Promise.reject(e); }
@@ -79,9 +85,24 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
   const setMode = (m) => { mode = m; root.dataset.mode = m; onModeChange?.(m); };
   let focused = null; // { slotId, inset } while the HUD holds focus — replayed when the engine becomes ready
 
+  // Known issue 5: the poster is the saved style's frame (boot.js picks it); it follows a style switch made
+  // before the 3D is ready, and cross-fades to the canvas at 'ready' (CSS .is-ready).
+  const posterBase = poster?.dataset.posterBase || '';
+  const posterDefault = poster ? `${posterBase}${poster.dataset.posterDefault || ''}.jpg` : '';
   if (poster) {
-    poster.addEventListener('error', () => poster.remove(), { once: true });
+    poster.addEventListener('error', () => {
+      if (posterBase && !poster.src.endsWith(posterDefault)) poster.src = posterDefault;
+      else poster.remove();
+    });
   }
+  function syncPoster() {
+    if (!poster?.isConnected || !posterBase || root.classList.contains('is-ready')) return;
+    const id = store.styleId?.();
+    if (!id || !/^[a-z][a-z-]{1,40}$/.test(id)) return;
+    const next = `${posterBase}${id}.jpg`;
+    if (!poster.src.endsWith(next)) poster.src = next;
+  }
+  syncPoster();
 
   // ---------- Controls ----------
   const chipDot = h('span', { class: 'dot', 'aria-hidden': 'true' });
@@ -531,7 +552,7 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
       if (typeof villar?.unfocus === 'function') call('unfocus');
       call('setInsets', { right: 0, bottom: 0 });
     },
-    syncStyle() { syncChip(); },
+    syncStyle() { syncChip(); syncPoster(); },
     /** Quiet glass chip at the top of the stage while something heavy happens (style switch). Returns hide(). */
     busy(text) {
       busyLbl.textContent = text;
@@ -549,6 +570,8 @@ export function createStage({ root, store, layout, palettes, onHover, onSelect, 
         }
         return thumbCache.get(id);
       },
+      /** Move a queued thumbnail ahead of the ones nobody can see yet. */
+      bump(id) { const j = thumbQueue.find((x) => x.id === id && !x.prio); if (j) j.prio = ++thumbSeq; },
       /** Hold rendering (e.g. for the duration of a camera flight). */
       hold(ms) { thumbHoldUntil = Math.max(thumbHoldUntil, performance.now() + ms); },
     },

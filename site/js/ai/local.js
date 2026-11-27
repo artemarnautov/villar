@@ -216,7 +216,7 @@ const P = {
     cheapestAlready: 'This is already the most economical set.',
     budgetOk: (k, t) => `Done: ${k} ${plural('en', k, ['swap', 'swaps'])}, total ${t}.`,
     budgetAlready: (t) => `You’re already within budget: total ${t}.`,
-    budgetMin: (m) => `This style can't go below ${m} — here is the most economical set.`,
+    budgetMin: (m) => `This style can’t go below ${m} — here is the most economical set.`,
     style: (n, k) => `${n} style: ${k} ${plural('en', k, ITEMS.en)} updated.`,
     styleCantKeep: (a) => `${a.label} isn’t part of this style, so ${a.toFull} takes its place${a.diff ? ` (${a.diff})` : ''}.`,
     styleSame: (n) => `${n} is already the active style.`,
@@ -242,7 +242,7 @@ const EN_NOUNS = /\b(sofa|couch|armchair|chair|table|unit|bed|mattress|bedding|d
 function labelled(lang, key, type, item) {
   const name = itemName(lang, item).split(' — ')[0].trim();
   if (L(lang) === 'en' && EN_NOUNS.test(name)) return name;
-  return `${keyLabel(lang, key, type)}: ${name}`;
+  return `${keyLabel(lang, key, type)}: ${itemName(lang, item, { afterLabel: true }).split(' — ')[0].trim()}`;
 }
 
 /** How many selection keys of the new state differ from the old one (slot by slot, across packs). */
@@ -490,7 +490,9 @@ export function parseLocal(text, ctx) {
               const sName = quoted(lang, styleName(lang, sim.pack(alt.pid)));
               const short = itemName(lang, alt.item).split(' — ')[0].split(',')[0].trim();
               lines.push(p.elsewhere(lbl, sName, short, aed(lang, alt.item.price * (sim.qty(alt.pid, alt.key) || 1))));
-              if (!offers.length) offers.push({ label: p.elsewhereChip(sName, short), reply: p.elsewhereDone(sName, short), actions: [{ type: 'style', styleId: alt.pid, anchor: { key: alt.key, itemId: alt.item.id } }] });
+              // PT3-04: the line itself carries the decisive part — «Pebble · 1 799 AED · Перейти».
+              const what = `${short} · ${aed(lang, alt.item.price * (sim.qty(alt.pid, alt.key) || 1))}`;
+              if (!offers.length) offers.push({ label: p.elsewhereChip(sName, short), short: what, reply: p.elsewhereDone(sName, short), actions: [{ type: 'style', styleId: alt.pid, anchor: { key: alt.key, itemId: alt.item.id } }] });
             } else lines.push(p.noMatch(lbl));
           }
         } else if (primaryMod) {

@@ -138,7 +138,10 @@ export function createOrderModal({ el, store, palettes, onOpen, onClose }) {
     const sw = (palettes?.[pk?.id]?.swatches || []).slice().sort((a, b) => (b.share || 0) - (a.share || 0)).slice(0, 3);
     sumDots.replaceChildren(...sw.map((s) => h('i', { style: `--c:${s.hex}` })));
     const n = store.placed().length;
-    sumStyle.textContent = t('order.summary', { style: quoted(packName(pk)), n, items: itemsWord(n) });
+    // D3-06: two pieces, so a phone can put the count on its own line instead of wrapping after « · ».
+    sumStyle.replaceChildren(
+      h('span', { class: 'lead-sum-name' }, t('order.styleLine', { style: quoted(packName(pk)) })),
+      h('span', { class: 'lead-sum-count' }, t('order.count', { n, items: itemsWord(n) })));
     sumNote.textContent = t('order.totalNote');
     sumTotal.textContent = aed(store.total());
     lines.replaceChildren(...store.lines().map(({ item, qty, sum }) =>
@@ -160,6 +163,7 @@ export function createOrderModal({ el, store, palettes, onOpen, onClose }) {
     if (k === 'name') return nameIn.value.trim().replace(/\s+/g, ' ').length >= 2 ? null : 'lead.err.name';
     if (k === 'phone') {
       const raw = phoneIn.value.trim(); const d = raw.replace(/\D/g, '');
+      if (!raw) return 'lead.err.phoneEmpty';   // D3-06: «Укажите телефон»; «Проверьте номер» only for a malformed one
       return d.length >= 7 && d.length <= 15 && /^\+?[\d\s()-]+$/.test(raw) ? null : 'lead.err.phone';
     }
     if (k === 'email') {
@@ -239,7 +243,8 @@ export function createOrderModal({ el, store, palettes, onOpen, onClose }) {
       const map = { name: 'lead.err.name', phone: 'lead.err.phone', email: 'lead.err.email', consent: 'lead.err.consent' };
       if (map[f]) { setErr(fieldOf(f), map[f]); fieldOf(f).input.focus(); return; }
     }
-    setFormErr(res?.status === 429 ? 'lead.err.rate' : 'lead.err.fail'); // the form stays filled
+    // PT3-05: rate-limited, busy, timeout or a server error all get the same calm "try again"; the form stays filled.
+    setFormErr('lead.err.fail');
     sendBtn.focus({ preventScroll: true });
   }
   form.addEventListener('submit', submit);

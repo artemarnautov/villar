@@ -14,6 +14,24 @@
     for (var i = 0; i < list.length; i++) if (/^ru(\b|-)/i.test(list[i])) { lang = 'ru'; break; }
   }
   document.documentElement.lang = lang;
+
+  // Known issue 5: the loading poster shows the style the visitor last left, framed like the live view.
+  try {
+    var img = document.querySelector('.stage-poster[data-poster-key]');
+    // Store keys, newest first (v3, then the v2 fallback); `style` is top-level in both.
+    var keys = img ? img.getAttribute('data-poster-key').split(/\s+/) : [];
+    var style = '';
+    for (var k = 0; k < keys.length && !style; k++) {
+      var saved = keys[k] ? JSON.parse(localStorage.getItem(keys[k]) || 'null') : null;
+      if (saved && typeof saved.style === 'string') style = saved.style;
+    }
+    if (/^[a-z][a-z-]{1,40}$/.test(style) && style !== img.getAttribute('data-poster-default')) {
+      var fallback = img.getAttribute('src');
+      img.onerror = function () { img.onerror = null; img.src = fallback; };
+      img.src = img.getAttribute('data-poster-base') + style + '.jpg';
+    }
+  } catch (e) { /* storage blocked or bad JSON: keep the default poster */ }
+
   if (lang !== 'en') return;
   document.title = 'Villar — a home ready to live in. In one day.';
   var swap = function (sel, fn) { var n = document.querySelectorAll(sel); for (var j = 0; j < n.length; j++) fn(n[j]); };

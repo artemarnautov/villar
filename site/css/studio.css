@@ -290,14 +290,17 @@ html.has-assistant { --stage-reserve: 300px; }
   backdrop-filter: saturate(180%) blur(30px);
   box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 24px 60px -24px rgba(0, 0, 0, 0.35);
 }
+.hud-panel.glass-strong { background: rgba(251, 251, 253, 0.94); }   /* D3-03 */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass-strong { background: rgba(251, 251, 253, 0.98); }
+  .glass-strong, .hud-panel.glass-strong { background: rgba(251, 251, 253, 0.98); }
 }
 .hud { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
 .hud:focus-visible { outline: none; }
 .hud-grip { display: none; }
 .hud-panel {
   --hud-pad: 16px;
+  /* D3-03: secondary text stays ≥ 4.5:1 even when the glass samples a dark wall */
+  --text-2: #5f5f64;
   position: absolute; top: 12px; right: 12px; bottom: 12px;
   width: clamp(300px, 26vw, 360px);
   display: flex; flex-direction: column;
@@ -376,7 +379,14 @@ html.has-assistant { --stage-reserve: 300px; }
   width: 32px; height: 32px; border-radius: 50%; background: var(--c);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1), 0 6px 14px -6px rgba(0, 0, 0, 0.35);
 }
-.tile-vis.is-loading .tile-swatch { opacity: 0.6; }
+/* D3-10: loading reads as loading — a soft shimmer, no dot. The dot stays only as the no-3D fallback (.is-swatch). */
+.tile-vis.is-loading {
+  background: linear-gradient(100deg, #efebe4 30%, #f7f4ef 50%, #efebe4 70%) 0 0 / 200% 100%;
+  animation: tileShimmer 1.2s linear infinite;
+}
+.tile-vis.is-loading .tile-swatch { display: none; }
+@keyframes tileShimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .tile-vis.is-loading { animation: none; background: #f2efe8; } }
 .tile-check {
   position: absolute; top: 10px; right: 10px;
   width: 20px; height: 20px; border-radius: 50%;
@@ -635,6 +645,7 @@ html.has-assistant { --stage-reserve: 300px; }
 
   /* HUD → bottom sheet: medium detent keeps the object visible above it; drag up for the large detent */
   .hud {
+    --text-2: #5f5f64;
     position: fixed; inset: auto 0 0 0; z-index: 120;
     display: flex; flex-direction: column;
     max-height: min(48svh, 420px);

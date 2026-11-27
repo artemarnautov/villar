@@ -37,6 +37,8 @@ function icon(name, cls = '') {
     check: ['M5.5 12.5 10 17l8.5-9.5'],
     undo: ['M9 14 4.5 9.5 9 5', 'M5 9.5h9.5a5 5 0 0 1 0 10H11'],
     chevron: ['M7 10l5 5 5-5'],
+    arrow: ['M5 12h13', 'M13 6.5 18.5 12 13 17.5'],
+    clock: ['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z', 'M12 7.5V12l3 2'],
   }[name] || [];
   for (const d of paths) {
     const p = document.createElementNS(SVG_NS, 'path');
@@ -119,8 +121,8 @@ export function mountAssistant(opts = {}) {
   const replyText = el('span', { class: 'vai-reply-text' });
   const modeTag = el('span', { class: 'vai-mode', hidden: true });
   const reply = el('p', { class: 'vai-reply', id: `${id}-reply` }, icon('spark', 'vai-reply-glyph'), replyText, modeTag);
-  const histBtnLbl = el('span');
-  const histBtn = el('button', { type: 'button', class: 'vai-hist-btn', 'aria-expanded': 'false', 'aria-controls': `${id}-hist`, hidden: true }, histBtnLbl, icon('chevron'));
+  const histBtnLbl = el('span', { class: 'lbl' });
+  const histBtn = el('button', { type: 'button', class: 'vai-hist-btn', 'aria-expanded': 'false', 'aria-controls': `${id}-hist`, hidden: true }, icon('clock', 'vai-hist-clock'), histBtnLbl, icon('chevron', 'vai-hist-chev'));
   const applied = el('ul', { class: 'vai-applied', role: 'list', id: `${id}-applied` });
   // D2-07: one quiet line — the reply (ellipsised), a summary chip that expands the changes inline, Undo, History.
   const sumText = el('span', { class: 'vai-sum-text' });
@@ -214,7 +216,7 @@ export function mountAssistant(opts = {}) {
       replyText.replaceChildren(el('span', { class: 'vai-thinking' }, S().thinking, el('span', { class: 'vai-dots', 'aria-hidden': 'true' }, el('i'), el('i'), el('i'))));
       modeTag.hidden = true;
       applied.replaceChildren();
-      sumBtn.hidden = true; undoSlot.replaceChildren(); offerSlot.replaceChildren(); setOpen(false);
+      sumBtn.hidden = true; undoSlot.replaceChildren(); offerSlot.replaceChildren(); caption.classList.remove('is-two', 'has-offer'); setOpen(false);
     }
     syncChips();
   }
@@ -271,8 +273,13 @@ export function mountAssistant(opts = {}) {
     for (const a of actions) {
       if (a.type === 'style' && typeof store.setStyle === 'function') {
         const t0 = store.total();
+        // PT3-02: the AI lands on the style's curated set. If the customer had their own picks there, say so —
+        // Undo restores them (the snapshot carries every style's memory).
+        const mem = before.memory?.[a.styleId] || {};
+        const slots = store.style?.(a.styleId)?.slots || {};
+        const hadPicks = a.styleId !== before.style && Object.entries(mem).some(([k, id]) => slots[k] && slots[k].default !== id && !(a.anchor && (a.anchor.key === k)));
         if (safe(() => store.setStyle(a.styleId, { anchor: a.anchor || undefined, fresh: true }))) {
-          lines.push({ kind: 'style', text: `${lng === 'en' ? 'Style' : 'Стиль'}: ${quoted(lng, styleName(lng, sim.pack(a.styleId)))}`, delta: store.total() - t0 });
+          lines.push({ kind: 'style', text: `${lng === 'en' ? 'Style' : 'Стиль'}: ${quoted(lng, styleName(lng, sim.pack(a.styleId)))}`, delta: store.total() - t0, freshNote: hadPicks });
         }
       } else if (a.type === 'reset') {
         const t0 = store.total(); const was = JSON.stringify(store.state.selection);
@@ -285,7 +292,7 @@ export function mountAssistant(opts = {}) {
         if (safe(() => store.select(a.key, a.itemId, { reason: 'assistant' }))) {
           const next = store.item(a.itemId);
           const type = sim.typeOfKey(styleNow(), store.keyOf ? store.keyOf(a.key) : a.key);
-          lines.push({ kind: 'select', key: a.key, text: `${keyLabel(lng, a.key, type)}: ${itemName(lng, next).split(' — ')[0]}`, delta: ((+next?.price || 0) - (+prev?.price || 0)) * q });
+          lines.push({ kind: 'select', key: a.key, text: `${keyLabel(lng, a.key, type)}: ${itemName(lng, next, { afterLabel: true }).split(' — ')[0]}`, delta: ((+next?.price || 0) - (+prev?.price || 0)) * q });
         }
       } else if (a.type === 'time') {
         if (before.time !== a.name) { safe(() => callTime(a.name)); lines.push({ kind: 'time', text: TIME_LABELS[lng][a.name] || a.name }); }
@@ -355,7 +362,7 @@ export function mountAssistant(opts = {}) {
     } else sumBtn.hidden = true;
     const undoable = batch.lines.some((l) => ['select', 'style', 'reset', 'time', 'view'].includes(l.kind));
     if (undoable && batch.lines.length) {
-      const btn = el('button', { type: 'button', class: 'vai-undo' }, icon('undo'), S().undo);
+      const btn = el('button', { type: 'button', class: 'vai-undo' }, icon('undo'), el('span', { class: 'lbl' }, S().undo));
       btn.addEventListener('click', () => {
         if (undo()) {
           applied.replaceChildren(el('li', { class: 'vai-chg vai-chg-undone' }, el('span', { class: 'vai-chg-text' }, S().undone)));
@@ -405,6 +412,9 @@ export function mountAssistant(opts = {}) {
 
   function show({ text, batch, chips, budget, mode }) {
     caption.hidden = false;
+    const noted = !!batch?.lines?.some((l) => l.freshNote);
+    if (noted) text = `${String(text || '').trim()} ${S().freshNote}`.trim();
+    caption.classList.toggle('is-two', noted);
     replyText.replaceChildren(document.createTextNode(text || ''));
     modeTag.hidden = !mode;
     modeTag.textContent = mode || '';
@@ -418,10 +428,15 @@ export function mountAssistant(opts = {}) {
     if (chips) renderChips(chips);
     const offer = (chips || []).find((c) => c && typeof c === 'object' && (c.undo || (Array.isArray(c.actions) && c.actions.length)));
     if (offer) {
-      const b = el('button', { type: 'button', class: 'vai-undo vai-offer', 'aria-label': offer.label, title: offer.label }, offer.undo ? S().back : S().go);
+      // PT3-04: «Pebble · 1 799 AED · Перейти» — the item and price stay on the line even when the reply is cut.
+      const b = offer.short
+        ? el('button', { type: 'button', class: 'vai-undo vai-offer', 'aria-label': offer.label, title: offer.label },
+          el('span', { class: 'vai-offer-what' }, offer.short), el('span', { class: 'vai-offer-go' }, S().go), icon('arrow'))
+        : el('button', { type: 'button', class: 'vai-undo vai-offer', 'aria-label': offer.label, title: offer.label }, offer.undo ? S().back : S().go);
       b.addEventListener('click', () => runChip(offer));
       offerSlot.replaceChildren(b);
     } else offerSlot.replaceChildren();
+    caption.classList.toggle('has-offer', !!offer);
     log.push({ who: 'ai', text: text || '' });
     if (!history.hidden) renderHistory();
     syncHistBtn();

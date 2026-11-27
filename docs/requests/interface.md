@@ -1,42 +1,46 @@
 # Requests from interface (site UI + assistant client)
 
-Round 3 status. Everything below is optional for the UI: engine/data features are feature-detected or have a
+Round 4 status. Everything below is optional for the UI: engine and data features are feature-detected or have a
 fallback.
 
 ## To engine
 
-1. **Focus framing (D2-01):** the HUD is now one right-hand column on desktop. `focus(slotId, { inset })` and
-   `setInsets()` receive `{ right: <px covered from the stage's right edge, ≈ column width + 28>, bottom: 0 }` (≈ 360–390 px,
-   i.e. ≤ 28 % of the stage). Phones: `{ right: 0, bottom: <px of the stage covered by the bottom sheet> }`. Please frame
-   the whole object inside the free rect (FOV-aware distance, `setViewOffset`), as the review describes.
-2. **Canvas label (PT-05):** `index.js` hard-codes `aria-label="3D-вид квартиры"`. The UI now overwrites it on `ready` and on
-   every language switch (`t('stage.canvas')`); please drop the hard-coded string or accept a `label` option.
-3. **Thumbnails (T7):** the UI queues `thumbnail()` calls — one at a time, in idle callbacks, and none for 1.1 s after a
-   focus starts (the flight). Async readback / blob URLs on your side would remove the remaining long tasks.
-4. **Style switch (D2-08):** the UI paints the pressed chip and «Меняем стиль…» first, then calls `setStyle` a frame later.
-   Yielding between slot rebuilds (`await scheduler.yield?.()`) keeps every task under 50 ms.
-5. **Portrait Entry view (D2-19 engine part)** and **one poster per style** (PT-16): the stage shows `/assets/poster.jpg`
-   (Dark Walnut, Entry, day) until `ready`. If you render posters per style at the stage's Entry pose/FOV, name them
-   `/assets/poster-<styleId>.jpg` and tell me — the UI will then pick the saved style's poster before first paint.
-6. Keyboard scope (E15) — unchanged request.
+1. **Phone first view (D3-07):** the UI still asks for `view: 'eye'` on every viewport. At 390×844 the sofa projects to
+   x = −20. Please choose a portrait variant of `eye` inside the engine when the stage aspect is below 0.8. Either
+   turn about 12° toward the sofa or step back 0.5–0.6 m, so that at least 70 % of the sofa's box is in frame and the
+   window is still visible. Ship it as `layout.views.eyePortrait` (data) or compute it in `camera.js`. The UI needs
+   no change. If you would rather the UI pass `view: 'eyePortrait'`, tell me and I will add it behind a
+   feature check.
+2. **Sofa focus at 1280×800 (D3-02 / PT3-01):** `focus('sofa', { inset: { right: 361, bottom: 0 } })` returns true and
+   `villar.focused === 'sofa'`, but the camera stays near the entry, and the kitchen counter hides the sofa's end (no
+   outline is visible). The insets now come from the panel's resting position, not the slide-in frame (345 → 361 px).
+3. **Thumbnails (D3-10):** the UI renders a shimmer while thumbnails load. Tiles that are visible jump the queue
+   (`thumbs.bump`), in reading order. Calls still run one at a time in idle callbacks and wait 1.1 s after a focus
+   starts (T7). To reach "first 4 in ≤ 600 ms on a GPU", the flight wait could drop to about 0.6 s if `thumbnail()`
+   no longer blocks frames.
+4. **Canvas label:** the UI overwrites the hard-coded `aria-label` on `ready` and on every language switch.
+5. Keyboard scope (E15): unchanged request.
 
 ## To data (catalog / stylepacks / palettes)
 
-1. `uiAccent` per palette (D2-20). Until then `ui/accent.js` uses Light Oak `#4f5a46` and Mediterranean `#9a4a2c`.
-2. `consumerRules` / `consumerRulesEn` per pack (D2-14). Without them the «Правила стиля» block is hidden for that pack.
-3. `nameEn` on the Dark Walnut swatches + `summaryEn` (D2-03); `shortName` / `shortNameEn` (D2-13); optional `fact` / `factEn`.
-4. `layout.nameEn` (known #4). Until then the UI shows "Studio 38 m²" from `areaM2`.
+1. Names are tidied **at display level only** (`ui/labels.js` together with `ai/i18n.js`):
+   - "three-seat" → "3-seater";
+   - in EN, the category noun that the eyebrow already says is dropped;
+   - a set's own «Постель:» / "Bedding:" prefix is dropped after a slot label.
+
+   The catalog is unchanged. If you standardise the names at the source, the display rules simply stop matching.
+2. `uiAccent` per palette (D2-20) is still optional. Until it ships, `ui/accent.js` keeps its fallbacks.
 
 ## To coordinator
 
-1. **CSP:** still no inline script except the import map (hash unchanged: `sha256-NutSaoNeHmtgPTLEDasezHLMqjFAq1OSEgA+/X0vykc=`).
-   New: an **external** `/js/boot.js` (classic, sync, last in `<body>`) sets `<html lang>` and the English static text before
-   the first paint (PT-05). It is covered by `script-src 'self'`; no hash needed.
-2. `tools/test-ai.mjs`: 206/206 after the catalog update (the decor_set parity failure is gone).
-   (store/data, not the assistant client).
-3. Lead form: wired to `POST /api/lead` per your spec (honeypot `company`, `openedMs`, snapshot style + selection).
+1. **CSP:** the only inline script is still the import map, with its hash unchanged
+   (`sha256-NutSaoNeHmtgPTLEDasezHLMqjFAq1OSEgA+/X0vykc=`). The external `/js/boot.js` now also picks the poster
+   for the saved style (`/assets/posters/<style>.jpg`, read from `villar:v3:studio-38`, falling back to `v2`). It is still
+   covered by `script-src 'self'`.
+2. Lead form: every failure (429 rate_limited, 503, timeout, network) shows the same calm "try again" message and
+   keeps the form filled (PT3-05). There is no WhatsApp fallback, per the founder.
 
 ## Resolved
 
-- QA-01, QA-04, QA-11, QA-14, QA-16, QA-17, D2-01…D2-21 UI parts (see the round-3 report), PT-05 UI parts, PT-14, PT-15,
-  PT-17, PT-18 (lead form), T7 UI side, PT-01 UI side (style-switch undo toast).
+- D3-01, D3-03, D3-04, D3-05 (display side), D3-06, D3-08, D3-09, D3-10 (UI side), PT3-02 (reply note), PT3-04,
+  PT3-05, known issue 5 (per-style poster), plus everything listed in earlier rounds.

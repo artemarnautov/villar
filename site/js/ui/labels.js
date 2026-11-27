@@ -1,5 +1,6 @@
 // UI vocabulary (RU / EN): categories, palette roles, views, times, zones. Owner: interface.
-import { getLang, t } from './i18n.js';
+import { getLang, t, L } from './i18n.js';
+import { normName, shortEnName } from '../ai/i18n.js';
 
 const TYPES = {
   sofa: ['Диван', 'Sofa'], armchair: ['Кресло', 'Armchair'], coffee_table: ['Журнальный столик', 'Coffee table'],
@@ -17,6 +18,39 @@ const TYPES = {
 };
 const li = () => (getLang() === 'en' ? 1 : 0);
 export const typeLabel = (type) => TYPES[type]?.[li()] || t('item');
+
+// ---------- Item names, display level only (D3-05): the catalog keeps its names ----------
+// RU category words the eyebrow already says, stripped from the start of a name for the short form.
+const RU_PREFIXES = {
+  sofa: ['Диван'], armchair: ['Кресло'], coffee_table: ['Журнальный столик', 'Журнальный стол'],
+  side_table: ['Приставной столик', 'Приставной стол'], tv_unit: ['ТВ-тумба', 'Тумба под ТВ'],
+  bed: ['Кровать'], mattress: ['Матрас'], bedding: ['Постельное бельё', 'Постель'],
+  nightstand: ['Прикроватная тумба', 'Тумба'], table_lamp: ['Настольная лампа', 'Лампа'],
+  dining_table: ['Обеденный стол', 'Стол'], dining_chair: ['Обеденный стул', 'Стул'],
+  floor_lamp: ['Торшер'], pendant_lamp: ['Подвесной светильник', 'Светильник'], rug: ['Ковёр', 'Ковер'],
+  curtains: ['Шторы'], wall_art: ['Картина'], cushions: ['Подушки'], decor_set: ['Декор'],
+  kitchen_decor: ['Кухня'], nightstand_decor: ['У кровати'], mirror: ['Зеркало'], runner: ['Дорожка'], throw: ['Плед'],
+};
+const capFirst = (s) => String(s).replace(/^\p{Ll}/u, (c) => c.toUpperCase());
+/** Full name (budget, order list): one spelling for sofas in EN ("3-seater"). */
+export const displayName = (item) => normName(L(item?.name, item?.nameEn));
+/**
+ * Name under a category eyebrow, without repeating it: «Диван Lansbury, трёхместный» → «Lansbury, трёхместный»,
+ * "Lansbury 3-seater sofa" → "Lansbury 3-seater", "Bedding: white percale…" → "White percale…".
+ */
+export function displayShortName(item) {
+  const sn = L(item?.shortName, item?.shortNameEn);
+  if (sn) return sn;
+  const name = displayName(item);
+  if (getLang() === 'en') return capFirst(shortEnName(item?.type, name));
+  for (const p of RU_PREFIXES[item?.type] || []) {
+    if (name.toLowerCase().startsWith(p.toLowerCase())) {
+      const rest = name.slice(p.length).replace(/^[\s:,—–-]+/, '');
+      if (rest.length >= 2) return capFirst(rest);
+    }
+  }
+  return name;
+}
 
 /** Slots that share a type get their own name (two decor placements, three pieces of art). */
 const SLOTS = {

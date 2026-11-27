@@ -77,7 +77,10 @@ async function boot() {
   const paintStyle = () => renderStyle({ root: $('#style'), stylepack: store.style(), palette: activePalette() });
   paintStyle();
 
-  const card = createHoverCard({ el: $('#hovercard'), store, bounds: () => stageEl });
+  const card = createHoverCard({
+    el: $('#hovercard'), store, bounds: () => stageEl,
+    avoid: () => [...stageEl.querySelectorAll('.stage-dock .seg, .stage-top-l, .stage-top-r, .stage-back, .toast:not([hidden]), .busy-chip:not([hidden])')],
+  });
 
   // D2-19: on phones the system Back gesture closes the top layer (modal, then item panel) instead of the page.
   const layers = { hud: false, modal: false };
@@ -130,7 +133,7 @@ async function boot() {
       if (!same) requestAnimationFrame(() => requestAnimationFrame(() => { if (hud.isOpen) stage.focus(cur.slotId, hud.insets()); }));
     },
     onResize: (insets) => { if (hud.isOpen) stage.setInsets(insets); },
-    onClose: () => { stage.unfocus(); budget?.setSheetOpen(false); popLayer('hud'); },
+    onClose: () => { stage.unfocus(); budget?.setSheetOpen(false); popLayer('hud'); card.quiet(600); },
   });
 
   budget = createBudget({
@@ -180,6 +183,7 @@ async function boot() {
 
   // Style switch: accent, palette section, chip; the engine stages its own transition from the same event.
   store.on('style', ({ styleId: id }) => {
+    if (!switching) toast.hide();   // a switch made elsewhere (the AI, Undo) retires the chip's Undo offer
     applyAccent(palettes[id] || null);
     paintStyle();
     stage.syncStyle();

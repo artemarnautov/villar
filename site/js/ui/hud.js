@@ -40,16 +40,30 @@ export function createHud({ el, shell, stage, store, palettes, thumbs, onOpen, o
   const ref = () => cur.slotId || cur.slotType;
 
   // ---------- Pieces ----------
+  // D3-10: tiles the visitor can see jump the thumbnail queue (current first, in reading order); the rest follow.
+  const seen = typeof IntersectionObserver === 'function'
+    ? new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        seen.unobserve(e.target);
+        thumbs?.bump?.(e.target.dataset.thumb);
+      }
+    }, { threshold: 0.01 })
+    : null;
   function visual(item, cls) {
     const swatch = () => h('span', { class: 'tile-swatch', style: `--c:${colorHex(item)}` });
     if (!thumbs?.available?.()) return h('span', { class: `${cls} is-swatch`, 'aria-hidden': 'true' }, swatch());
-    const box = h('span', { class: `${cls} is-thumb is-loading`, 'aria-hidden': 'true' }, swatch());
+    const box = h('span', { class: `${cls} is-thumb is-loading`, 'aria-hidden': 'true', 'data-thumb': item.id }, swatch());
+    const fallback = () => { box.classList.remove('is-loading'); box.classList.add('is-swatch'); };
     Promise.resolve(thumbs.get(item.id)).then((url) => {
-      if (!url || !box.isConnected) return;
+      if (!box.isConnected) return;
+      if (!url) { fallback(); return; }
       const img = h('img', { src: url, alt: '', decoding: 'async', draggable: 'false' });
       img.addEventListener('load', () => box.classList.remove('is-loading'), { once: true });
+      img.addEventListener('error', () => { box.replaceChildren(swatch()); fallback(); }, { once: true });
       box.replaceChildren(img);
-    }).catch(() => {});
+    }).catch(fallback);
+    seen?.observe(box);
     return box;
   }
 
@@ -192,6 +206,9 @@ export function createHud({ el, shell, stage, store, palettes, thumbs, onOpen, o
 
   function render({ keepScroll = false } = {}) {
     if (!cur) return;
+    seen?.disconnect();
+    // A slot the plan leaves empty (selection null, store v3) has nothing to show: close instead of a stale card.
+    if (store.included?.(ref()) === false) { api.close(); return; }
     const item = store.selected(ref()) || cur.item;
     if (!item) return;
     const qty = store.qty(ref()) || 1;

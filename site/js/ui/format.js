@@ -2,6 +2,7 @@
 // Never surfaces ids, SKUs, links or supplier data — only display fields.
 import { h, safeHex, fmtNum, aed, NBSP } from './dom.js';
 import { L, t, isEn } from './i18n.js';
+import { displayName, displayShortName } from './labels.js';
 
 const X = `${NBSP}×${NBSP}`;
 
@@ -12,34 +13,11 @@ export const pretty = (s) => String(s || '').trim()
   .replace(/Ø\s*(\d)/g, `Ø${NBSP}$1`);
 
 /** Full display name (budget, order summary), in the interface language. */
-export const nameOf = (item) => pretty(L(item?.name, item?.nameEn)) || t('item');
+export const nameOf = (item) => pretty(displayName(item)) || t('item');
 
-// Category words the eyebrow already says. Stripped from the start of a name for the short form.
-const PREFIXES = {
-  sofa: ['Диван'], armchair: ['Кресло'], coffee_table: ['Журнальный столик', 'Журнальный стол'],
-  side_table: ['Приставной столик', 'Приставной стол'], tv_unit: ['ТВ-тумба', 'Тумба под ТВ'],
-  bed: ['Кровать'], mattress: ['Матрас'], bedding: ['Постельное бельё', 'Постель'],
-  nightstand: ['Прикроватная тумба', 'Тумба'], table_lamp: ['Настольная лампа', 'Лампа'],
-  dining_table: ['Обеденный стол', 'Стол'], dining_chair: ['Обеденный стул', 'Стул'],
-  floor_lamp: ['Торшер'], pendant_lamp: ['Подвесной светильник', 'Светильник'], rug: ['Ковёр', 'Ковер'],
-  curtains: ['Шторы'], wall_art: ['Картина'], cushions: ['Подушки'], decor_set: ['Декор'],
-};
+/** Short name under a category eyebrow (labels.js decides what the eyebrow already says). */
+export const shortNameOf = (item) => pretty(displayShortName(item)) || nameOf(item);
 const cap = (s) => s.replace(/^\p{Ll}/u, (c) => c.toUpperCase());
-
-/** Short name under a category eyebrow: "Диван Lansbury, трёхместный" → "Lansbury, трёхместный". */
-export function shortNameOf(item) {
-  const sn = L(item?.shortName, item?.shortNameEn);
-  if (sn) return pretty(sn);
-  const name = nameOf(item);
-  if (isEn()) return name; // English names read naturally ("Lansbury 3-seater sofa")
-  for (const p of PREFIXES[item?.type] || []) {
-    if (name.toLowerCase().startsWith(p.toLowerCase())) {
-      const rest = name.slice(p.length).replace(/^[\s:,—–-]+/, '');
-      if (rest.length >= 2) return cap(rest);
-    }
-  }
-  return name;
-}
 
 const priceOk = (item) => item && item.price !== '' && Number.isFinite(Number(item.price));
 /** Price for one piece or a set; never "NaN AED". */
