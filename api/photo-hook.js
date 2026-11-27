@@ -46,7 +46,7 @@ export default async function handler(req, res) {
   let row;
   try { row = await db.rowByRequest(requestId); } catch (e) { console.error(`[photo-hook] lookup failed: ${e.message}`); return send(res, 503, { error: 'store_failed' }); }
   if (!row || row.status !== 'pending') return send(res, 200, { ok: true, ignored: true }); // unknown or already finished (duplicate)
-  if (row.kind === 'edition') return send(res, 200, { ok: true, queued: true });            // the job queue resumes editions
+  if (row.kind !== 'photo' && row.kind !== 'plate') return send(res, 200, { ok: true, queued: true }); // editions, twin views …: the job queue resumes them
   try {
     const out = row.kind === 'plate' ? await completePlate(db, row) : await completePending(db, row);
     console.info(JSON.stringify({ ev: 'photo.hook', kind: row.kind, key: row.key.slice(0, 16), status: evt.status, result: out?.url || out?.done ? 'stored' : out?.pending ? 'pending' : 'failed' }));

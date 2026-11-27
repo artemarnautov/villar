@@ -28,13 +28,23 @@ function png(w, h, rgb = [180, 160, 140]) {
   for (let y = 0; y < h; y++) { raw[y * (w * 3 + 1)] = 0; for (let x = 0; x < w; x++) { const o = y * (w * 3 + 1) + 1 + x * 3; raw[o] = (rgb[0] + x) & 255; raw[o + 1] = (rgb[1] + y) & 255; raw[o + 2] = rgb[2]; } }
   return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
 }
+/** A small valid GLB: one mesh with `faces` triangles (indices accessor), optional extensions. */
+function glbFile({ faces = 1200, ext = null, binBytes = 300_000 } = {}) {
+  const json = Buffer.from(JSON.stringify({ asset: { version: '2.0', generator: 'mock-3d' }, ...(ext ? { extensionsUsed: [ext] } : {}), buffers: [{ byteLength: binBytes }], accessors: [{ count: faces * 3 }, { count: faces }], meshes: [{ primitives: [{ indices: 0, attributes: { POSITION: 1 } }] }], images: [{ bufferView: 0, mimeType: 'image/png' }] }));
+  const jpad = Buffer.concat([json, Buffer.alloc((4 - (json.length % 4)) % 4, 0x20)]);
+  const bin = Buffer.alloc(binBytes, 7);
+  const head = Buffer.alloc(12); head.write('glTF', 0, 'ascii'); head.writeUInt32LE(2, 4); head.writeUInt32LE(12 + 8 + jpad.length + 8 + bin.length, 8);
+  const jh = Buffer.alloc(8); jh.writeUInt32LE(jpad.length, 0); jh.writeUInt32LE(0x4e4f534a, 4);
+  const bh = Buffer.alloc(8); bh.writeUInt32LE(bin.length, 0); bh.writeUInt32LE(0x004e4942, 4);
+  return Buffer.concat([head, jh, jpad, bh, bin]);
+}
 const frameJpeg = (w = 320, h = 180) => { const d = new Uint8Array(w * h * 4).map((_, i) => (i % 4 === 3 ? 255 : (i * 7) % 255)); return encodeJPEG({ width: w, height: h, data: d }, 80); };
 const FRAME = `data:image/jpeg;base64,${frameJpeg().toString('base64')}`;
 const SEL = { sofa: 'sofa-lansbury-3' };
 const STATE = (over = {}) => ({ style: 'dark-walnut', time: 'day', selection: SEL, pose: 'c:2.31,1.55,0.42;d:0.12,-0.08,0.99;f:58.0;s:0,0;a:1.85;m:0', aspect: '16:9', size: '2K', ...over });
 
 // ------------------------------------------------------------------------------------------- mocks
-const db = { rows: new Map(), objects: new Map(), quota: new Map(), locks: new Map(), rpc: [], puts: 0, jobs: [], jobSeq: 0, config: new Map([['visitors', true]]), configFail: false, configReads: 0 };
+const db = { rows: new Map(), objects: new Map(), quota: new Map(), locks: new Map(), rpc: [], puts: 0, jobs: [], jobSeq: 0, config: new Map([['visitors', true]]), configFail: false, configReads: 0, streamed: 0 };
 const gw = { calls: [], mode: 'ok', bodies: [] };
 const hf = { calls: [], bodies: [], estimates: [], jobs: new Map(), mode: 'ok', uploads: 0, price: { '/xai/grok-imagine-image-2.0': 0.07, '/alibaba/qwen-image-3/edit': 0.04, '/alibaba/qwen-image-3/text-to-image': 0.04, '/marketing-studio/image': 0.452, '/z-image/turbo': 0.015 } };
 const realFetch = globalThis.fetch;
@@ -57,6 +67,8 @@ globalThis.fetch = async (url, opts = {}) => {
   if (url.startsWith('https://api.higgsfield.ai/') || url.startsWith('https://hf-')) {
     const u = new URL(url); const p = u.pathname; const method = opts.method || 'GET';
     if (u.host === 'hf-upload.test') { hf.uploads++; return new Response(null, { status: 200 }); }
+    if (u.host === 'hf-cdn.test' && p.endsWith('.mp4')) return new Response(Buffer.alloc(120_000, 3), { status: 200, headers: { 'content-type': 'video/mp4', 'content-length': '120000' } });
+    if (u.host === 'hf-cdn.test' && p.endsWith('.glb')) { const g = hf.glb || glbFile(); return new Response(g, { status: 200, headers: { 'content-type': 'model/gltf-binary', 'content-length': String(g.length) } }); }
     if (u.host === 'hf-cdn.test') return new Response(png(512, 288), { status: 200, headers: { 'content-type': 'image/png' } });
     if (opts.headers?.Authorization !== 'Key kid:ksec') return json(401, { detail: 'Invalid credentials' });
     hf.calls.push(`${method} ${p}`);
@@ -69,9 +81,10 @@ globalThis.fetch = async (url, opts = {}) => {
       if (mode === '403') return json(403, { detail: 'Insufficient balance' });
       if (mode === '404') return json(404, { detail: 'Model not found' });
       if (mode === '503') return json(503, { detail: 'model_disabled' });
+      if (mode === '422') return json(422, { detail: [{ loc: ['body', 'face_count'], msg: 'Additional properties are not allowed' }] });
       if (est) { hf.estimates.push({ path, body }); return json(200, { usd: String(hf.price[path] ?? 0.07) }); }
       hf.bodies.push({ path: p, body, idem: opts.headers['Idempotency-Key'], webhook: u.searchParams.get('hf_webhook') });
-      const id = randomUUID(); hf.jobs.set(id, { polls: 0, mode });
+      const id = randomUUID(); hf.jobs.set(id, { polls: 0, mode, kind: /to-3d/.test(p) ? '3d' : /video/.test(p) ? 'video' : 'image' });
       return json(200, { status: 'queued', request_id: id, status_url: `https://api.higgsfield.ai/requests/${id}/status`, cancel_url: `https://api.higgsfield.ai/requests/${id}/cancel`, expires_after: 604800 });
     }
     const m = p.match(/^\/requests\/([a-f0-9-]+)\/status$/);
@@ -81,6 +94,8 @@ globalThis.fetch = async (url, opts = {}) => {
       if (j.mode === 'nsfw') return json(200, { status: 'nsfw', request_id: m[1] });
       if (j.mode === 'slow' && !j.release) return json(200, { status: 'in_progress', request_id: m[1] });
       if (j.polls < 2) return json(200, { status: j.polls === 1 ? 'queued' : 'in_progress', request_id: m[1] });
+      if (j.kind === 'video') return json(200, { status: 'completed', request_id: m[1], video: { url: `https://hf-cdn.test/out/${m[1]}.mp4` } });
+      if (j.kind === '3d') return json(200, { status: 'completed', request_id: m[1], model_mesh: { url: `https://hf-cdn.test/out/${m[1]}.glb`, content_type: 'model/gltf-binary' }, rendered_image: { url: `https://hf-cdn.test/out/${m[1]}.png` } });
       return json(200, { status: 'completed', request_id: m[1], expires_at: '2026-12-04T00:00:00Z', images: [{ url: `https://hf-cdn.test/out/${m[1]}.png` }] });
     }
     return json(404, { detail: `mock: no hf route ${method} ${p}` });
@@ -93,6 +108,8 @@ globalThis.fetch = async (url, opts = {}) => {
     }
     if (opts.headers?.apikey !== 'sb_secret_test' || opts.headers?.authorization) return json(401, { message: 'bad key header' });
     if (p === '/storage/v1/bucket/photos') return json(200, { id: 'photos', name: 'photos', public: true });
+    if (p === '/storage/v1/object/copy' && opts.method === 'POST') { const c = JSON.parse(opts.body); const o = db.objects.get(c.sourceKey); if (!o) return json(404, { error: 'not found' }); db.objects.set(c.destinationKey, { ...o }); return json(200, { Key: `photos/${c.destinationKey}` }); }
+    if (p === '/storage/v1/object/photos' && opts.method === 'DELETE') { for (const k of JSON.parse(opts.body).prefixes || []) db.objects.delete(k); return json(200, []); }
     if (p === '/rest/v1/photo_config') { db.configReads++; return db.configFail ? json(404, { message: 'relation "public.photo_config" does not exist' }) : json(200, [...db.config].map(([name, value]) => ({ name, value }))); }
     if (p === '/rest/v1/photo_jobs' && opts.method === 'PATCH') {
       const id = Number(u.searchParams.get('id').replace('eq.', '')); const j = db.jobs.find((x) => x.id === id);
@@ -109,7 +126,9 @@ globalThis.fetch = async (url, opts = {}) => {
       const path = p.slice('/storage/v1/object/photos/'.length);
       if (db.objects.has(path) && opts.headers['x-upsert'] !== 'true') return json(400, { error: 'Duplicate' });
       if (gw.mode === 'slow' || hf.mode === 'slow') await new Promise((r) => setTimeout(r, 5));
-      db.objects.set(path, { bytes: Buffer.from(opts.body), type: opts.headers['content-type'] }); db.puts++;
+      const streamed = typeof opts.body?.getReader === 'function';
+      if (streamed) db.streamed++;
+      db.objects.set(path, { bytes: streamed ? Buffer.from(await new Response(opts.body).arrayBuffer()) : Buffer.from(opts.body), type: opts.headers['content-type'] }); db.puts++;
       return json(200, { Key: `photos/${path}` });
     }
     if (p === '/rest/v1/photo_renders' && (opts.method || 'GET') === 'GET' && u.searchParams.get('request_id')) {
@@ -501,7 +520,7 @@ r = await runQ();
 ok(job(jx).status === 'failed' && /not found/.test(job(jx).error), 'hero from a missing frame → failed');
 const jl = addJob('loop', {});
 r = await runQ();
-ok(job(jl).status === 'failed', 'loop → failed (photo-2)');
+ok(job(jl).status === 'failed' && /params.time/.test(job(jl).error), 'loop without a time → failed with the reason');
 
 section('Higgsfield plate job: concurrent runs, resume, failure leaves nothing cached');
 process.env.HIGGSFIELD_KEY = 'kid:ksec'; process.env.PHOTO_DEADLINE_MS = '9000';
@@ -589,6 +608,91 @@ const jh3 = addJob('hero', { from: fromKey, model: 'higgsfield:nano_banana_pro' 
 r = await runQ();
 ok(job(jh3).status === 'failed' && nbpCalls() === nbp && nbp > 0, 'a job naming a model that is off fails at once (no substitute, no call while its breaker is open)');
 photoMod._test.resetBreaker(); hf.mode = 'ok';
+delete process.env.HIGGSFIELD_KEY;
+
+section('twins: views job (one view per step, front first), twin job (estimate, submit, resume, streamed GLB)');
+process.env.HIGGSFIELD_KEY = 'kid:ksec'; photoMod._test.resetBreaker(); hf.mode = 'ok'; gw.mode = 'ok';
+for (const j of db.jobs) if (j.status === 'queued' || j.status === 'running') j.status = 'failed';
+db.rows.clear(); hf.bodies = []; hf.estimates = []; hf.price['/tripo3d/h3.1/multiview-to-3d'] = 0.35;
+const TID = 'sofa-lansbury-3';
+const jvd = addJob('views', { itemId: TID, dry: true });
+r = await runQ();
+ok(job(jvd).status === 'done' && job(jvd).result.dry && job(jvd).result.totalUsd === 0.28 && hf.bodies.length === 0, `views dry: 4 views × grok $0.07 (${JSON.stringify(job(jvd).result).slice(0, 160)})`);
+const jv = addJob('views', { itemId: TID, refs: [1], material: 'oatmeal woven fabric, walnut-tone wood base', seed: 3 });
+r = await runQ();
+ok(r.body.status === 'running' && db.objects.has(`twins/${TID}/front.jpg`) && !db.objects.has(`twins/${TID}/left.jpg`), 'step 1 stores the front view only');
+const v0 = hf.bodies[0];
+ok(v0.path === '/xai/grok-imagine-image-2.0' && v0.body.aspect_ratio === '1:1' && v0.body.resolution === '1k' && v0.body.image_urls.length === 1 && /^Product reference sheet image/.test(v0.body.prompt) && /Lansbury 3-seater sofa — oatmeal woven fabric/.test(v0.body.prompt) && /211 cm wide, 88 cm deep, 86 cm high/.test(v0.body.prompt) && /spans exactly 33 % of the image height/.test(v0.body.prompt) && /34 % above the bottom edge/.test(v0.body.prompt) && /View: FRONT\./.test(v0.body.prompt) && !/homecentre|amplience/i.test(v0.body.prompt), `front: prompt tv1 from the catalogue, 1:1, 1k, the product photo (${v0.body.prompt.slice(0, 80)}…)`);
+for (let i = 0; i < 3; i++) r = await runQ();
+const v1 = hf.bodies[1];
+ok(job(jv).status === 'done' && ['front', 'left', 'back', 'right'].every((v) => db.objects.has(`twins/${TID}/${v}.jpg`)) && v1.body.image_urls[0].endsWith(`/twins/${TID}/front.jpg`) && v1.body.image_urls.length === 2 && /^Image 1 is the approved FRONT view/.test(v1.body.prompt) && /View: LEFT SIDE/.test(v1.body.prompt), `4 steps → 4 views; later views get the stored front view as image 1 (${job(jv).status} ${job(jv).error || ''})`);
+ok(job(jv).cost === 0.28 && job(jv).result.made.length === 4 && job(jv).result.made[0].request_id && job(jv).result.views.back.endsWith('/back.jpg') && db.rows.get(`twinview:${TID}:front:s3`)?.kind === 'twin-view', `views result: urls, per-view model / usd / request id, cost $0.28 (${job(jv).cost})`);
+const nV = hf.bodies.length; const jv2 = addJob('views', { itemId: TID, refs: [1], seed: 3 });
+r = await runQ();
+ok(job(jv2).status === 'done' && hf.bodies.length === nV, 're-running the same seed costs nothing');
+const jbadv = addJob('views', { itemId: 'no-such-item' });
+r = await runQ();
+ok(job(jbadv).status === 'failed', 'views for an unknown item → failed');
+
+const jtw0 = addJob('twin', { itemId: 'armchair-emma', model: 'tripo_h3_1_multiview_to_3d' });
+r = await runQ();
+ok(r.body.status === 'running' && job(jtw0).result.waiting === 'views' && job(jtw0).result.missing.length === 4 && !hf.bodies.some((b) => b.path.includes('tripo')), 'twin waits for its views (never generates them)');
+job(jtw0).status = 'failed';
+const jtd = addJob('twin', { itemId: TID, dry: true });
+r = await runQ();
+ok(job(jtd).status === 'done' && job(jtd).result.usd === 0.35 && job(jtd).result.fields.includes('image_urls') && job(jtd).result.fields.includes('face_limit'), `twin dry: the estimate and the body fields (${JSON.stringify(job(jtd).result)})`);
+const jt = addJob('twin', { itemId: TID, model: 'tripo_h3_1_multiview_to_3d', seed: 5, as: 'model', options: { face_limit: 30000, enable_rigging: true } });
+r = await runQ();
+const tb = hf.bodies.at(-1);
+ok(r.body.status === 'running' && tb.path === '/tripo3d/h3.1/multiview-to-3d' && tb.body.image_urls.length === 4 && tb.body.image_urls.map((u) => u.split('/').pop()).join() === 'front.jpg,left.jpg,back.jpg,right.jpg' && tb.body.face_limit === 30000 && tb.body.texture_seed === 5 && !('enable_rigging' in tb.body) && job(jt).result.request_id && job(jt).result.estimate === 0.35, `twin submit: 4 views in the model's order, whitelisted options, request id + estimate recorded (${JSON.stringify(job(jt).result)})`);
+ok(db.streamed === 0 && !db.objects.has(`models/${TID}.glb`), 'nothing stored while the provider job runs');
+job(jt).locked_until = new Date(Date.now() - 1000).toISOString();
+r = await runQ();
+if (job(jt).status === 'running') { job(jt).locked_until = new Date(Date.now() - 1000).toISOString(); r = await runQ(); }
+const tr = job(jt).result;
+ok(job(jt).status === 'done' && db.streamed === 1 && db.objects.get(`twins/${TID}/tripo_h3_1_multiview_to_3d-s5.glb`)?.type === 'model/gltf-binary' && db.objects.get(`twins/${TID}/tripo_h3_1_multiview_to_3d-s5.glb`).bytes.length === tr.bytes && db.objects.has(`models/${TID}.glb`), `GLB streamed into Storage and copied to models/<id>.glb (${job(jt).status} ${job(jt).error || ''})`);
+ok(tr.faces === 1200 && tr.images === 1 && tr.generator === 'mock-3d' && tr.copiedTo === `models/${TID}.glb` && tr.outputKey === 'model_mesh.url' && tr.outputKeys.includes('rendered_image.url') && tr.usd === 0.35 && job(jt).cost === 0.35 && hf.bodies.filter((b) => b.path.includes('tripo')).length === 1, `twin result: faces, bytes, generator, output keys, cost; one submit only (${JSON.stringify({ faces: tr.faces, key: tr.outputKey, usd: tr.usd })})`);
+hf.glb = glbFile({ ext: 'KHR_draco_mesh_compression' });
+const jt2 = addJob('twin', { itemId: TID, seed: 6 });
+r = await runQ(); for (let i = 0; i < 3 && job(jt2).status === 'running'; i++) { job(jt2).locked_until = new Date(Date.now() - 1000).toISOString(); r = await runQ(); }
+ok(job(jt2).status === 'failed' && /KHR_draco_mesh_compression/.test(job(jt2).error) && !db.objects.has(`twins/${TID}/tripo_h3_1_multiview_to_3d-s6.glb`), `a Draco-compressed GLB is refused before anything is stored (${job(jt2).error?.slice(0, 90)})`);
+hf.glb = Buffer.from('this is not a glb file at all, just text ..........');
+const jt3 = addJob('twin', { itemId: TID, seed: 7 });
+r = await runQ(); for (let i = 0; i < 3 && job(jt3).status === 'running'; i++) { job(jt3).locked_until = new Date(Date.now() - 1000).toISOString(); r = await runQ(); }
+ok(job(jt3).status === 'failed' && /not a GLB/.test(job(jt3).error), 'a file that is not a GLB → failed');
+hf.glb = null;
+const jt4 = addJob('twin', { itemId: TID, model: 'meshy_v7_image_to_3d' });
+r = await runQ();
+ok(job(jt4).status === 'failed' && /photo_config row models/.test(job(jt4).error), 'a 3D model without a known path fails with the override to set');
+hf.mode = (p, body) => (p.includes('hunyuan') && 'face_count' in body ? '422' : 'ok'); hf.price['/hunyuan3d/v3/image-to-3d'] = 0.2;
+const jt5 = addJob('twin', { itemId: TID, model: 'hunyuan3d_v3_image_to_3d', dry: true });
+r = await runQ();
+ok(job(jt5).status === 'done' && job(jt5).result.optionsDropped === true && job(jt5).result.fields.join() === 'image_url' && job(jt5).result.attempts?.[0]?.status === 422, `options the endpoint refuses (free estimate) are dropped and reported (${JSON.stringify(job(jt5).result).slice(0, 200)})`);
+hf.mode = 'ok';
+delete process.env.HIGGSFIELD_KEY;
+
+section('window loop: Kling O3 first = last frame, estimate first, MP4 streamed, served by /api/plate');
+process.env.HIGGSFIELD_KEY = 'kid:ksec'; photoMod._test.resetBreaker(); hf.mode = 'ok';
+for (const j of db.jobs) if (j.status === 'queued' || j.status === 'running') j.status = 'failed';
+db.rows.clear(); hf.bodies = []; hf.price['/kling-video/o3/first-last-frame'] = 0.546; hf.price['/alibaba/wan-3.0/image-to-video'] = 0.6;
+const jl0 = addJob('loop', { time: 'day' });
+r = await runQ();
+ok(job(jl0).status === 'failed' && /plate is not stored/.test(job(jl0).error), 'loop before its plate → failed with the reason');
+const jpl = addJob('plate', { time: 'day' }); r = await runQ();
+const jld = addJob('loop', { time: 'day', model: 'wan_3', resolution: '480p', dry: true });
+r = await runQ();
+ok(job(jld).status === 'done' && job(jld).result.usd === 0.6 && job(jld).result.body.end_image_url === job(jld).result.body.image_url && job(jld).result.body.generate_audio === false && job(jld).result.body.resolution === '480p', `loop dry (wan_3): estimate + the body (${JSON.stringify(job(jld).result).slice(0, 200)})`);
+const nL = hf.bodies.length; const jlp = addJob('loop', { time: 'day' });
+r = await runQ(); for (let i = 0; i < 3 && job(jlp).status === 'running'; i++) { job(jlp).locked_until = new Date(Date.now() - 1000).toISOString(); r = await runQ(); }
+const lb = hf.bodies[nL];
+ok(lb.path === '/kling-video/o3/first-last-frame' && lb.body.first_frame_url === lb.body.last_frame_url && /plates\/v1\/day-/.test(lb.body.first_frame_url) && lb.body.sound === 'off' && lb.body.mode === 'std' && lb.body.duration === 8 && /Seamless loop/.test(lb.body.prompt), `kling body: first = last = the plate, sound off, std, 8 s (${JSON.stringify({ ...lb.body, prompt: '…' }).slice(0, 200)})`);
+ok(job(jlp).status === 'done' && job(jlp).cost === 0.546 && job(jlp).result.request_id && /day-loop-[a-f0-9]{8}\.mp4$/.test(job(jlp).result.url) && [...db.objects.entries()].some(([k, o]) => /day-loop-/.test(k) && o.type === 'video/mp4' && o.bytes.length === 120000), `MP4 streamed into Storage; cost = the estimate (${job(jlp).status} ${job(jlp).error || ''})`);
+r = await call(plate, { method: 'GET', body: { time: 'day' } });
+ok(/day-loop-.*\.mp4$/.test(r.body.video || ''), 'GET /api/plate → video url');
+hf.price['/kling-video/o3/first-last-frame'] = 0.9; const nL2 = hf.bodies.length;
+const jlx = addJob('loop', { time: 'day', mode: 'pro', replace: true });
+r = await runQ();
+ok(job(jlx).status === 'failed' && /over the limit/.test(job(jlx).error) && hf.bodies.length === nL2, 'a loop estimated above the limit is not submitted');
 delete process.env.HIGGSFIELD_KEY;
 
 section('diag: jobs');

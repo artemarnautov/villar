@@ -31,7 +31,8 @@ import {
   authToken, GatewayError, isFatalGateway, generateImage, resumeImage, supa, objectPath, STYLES_RE, TIMES, STYLE_WORDS, LIGHT_WORDS, GRADE_WORDS,
   hfProbe, loadConfig, liveConfig, mayGenerate, dailyCaps, resetConfigForTests, HF_BASE, hfAuth,
 } from './_photo.js';
-import { runPlateJob } from './plate.js';
+import { runPlateJob, runLoopJob } from './plate.js';
+import { runViewsJob, runTwinJob } from './_twins.js';
 import { fromDataUrl, jpegSize, toStorableJpeg, sniff } from './_img.js';
 
 const sim = createSim(INDEX);
@@ -408,7 +409,8 @@ async function runQueue(db, req) {
   catch (e) { console.error(`[photo] claim failed: ${e.message}`); return { error: 'store_failed' }; }
   if (!job) return { ok: true, idle: true };
   const finish = (patch) => jobPatch(db, job.id, { ...patch, locked_until: null, finished_at: new Date().toISOString() }).catch((e) => console.error(`[photo] job ${job.id} update failed: ${e.message}`));
-  if (job.attempts > JOB_MAX_ATTEMPTS) { await finish({ status: 'failed', error: 'too many attempts' }); return { job: job.id, kind: job.kind, status: 'failed' }; }
+  // 3D reconstructions run for minutes (each step is one status check on a 20 s lease)
+  if (job.attempts > (job.kind === 'twin' || job.kind === 'loop' ? 90 : JOB_MAX_ATTEMPTS)) { await finish({ status: 'failed', error: 'too many attempts' }); return { job: job.id, kind: job.kind, status: 'failed' }; }
   // every provider attempt of this step (provider, model, HTTP status, code, ≤ 200 chars): the coordinator reads the
   // job row, not the function logs. Earlier steps' attempts stay in result.attempts (last 12).
   const trace = [];
@@ -419,11 +421,14 @@ async function runQueue(db, req) {
   try {
     const out = job.kind === 'edition' ? await runEditionJob(db, job, { req, t0, trace })
       : job.kind === 'hero' || job.kind === 'preset' ? await runHeroJob(db, job, { req, t0, trace })
-      : job.kind === 'loop' ? (() => { throw new GatewayError('rejected', 'loop: not implemented yet (photo-2)'); })()
+      : job.kind === 'views' ? await runViewsJob(db, job, { req, t0, trace })
+      : job.kind === 'twin' ? await runTwinJob(db, job, { req, t0, trace })
+      : job.kind === 'loop' ? await runLoopJob(db, job, { req, t0, trace })
       : await runPlateJob(db, job, { req, t0, trace });
     if (out.pending) {
       // the provider job is still running: re-claimable in 20 s (the next ?run=1 call checks it, the webhook may finish it first)
-      await jobPatch(db, job.id, { result: withTrace({ ...(job.result || {}), ...(out.result || {}) }), locked_until: new Date(Date.now() + 20_000).toISOString() });
+      // (a step that stored something and has more to do — the next view, the next candidate — is claimable at once)
+      await jobPatch(db, job.id, { result: withTrace({ ...(job.result || {}), ...(out.result || {}) }), locked_until: new Date(Date.now() + (out.result?.stored ? -1000 : 20_000)).toISOString() });
       return { job: job.id, kind: job.kind, status: 'running', result: out.result || null, ms: Date.now() - t0 };
     }
     const result = withTrace({ ...(job.result?.request_id && !out.result?.request_id ? { request_id: job.result.request_id } : {}), ...(out.result || {}) });

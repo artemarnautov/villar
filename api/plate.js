@@ -14,15 +14,15 @@
 //   horizon — fraction of the image height where the horizon sits (asked of the model: 0.5)
 //   hfov    — intended horizontal field of view in degrees (asked of the model: ~100°)
 //   sun     — the engine's sun for that time (lighting.js TOD): az from the window normal toward +X, alt, colour temperature
+//   video   — an 8 s MP4 loop of the plate (job kind `loop`: first frame = last frame = the plate), else null
 //   mask    — 8-bit PNG, white = sky (job kind `mask`): lets the engine split sky (infinity) from the city (a cylinder)
 //           | { pending: true } while no plate is stored yet (queued, running, or not requested)
 // Morning maps to day, golden to sunset. Kill switch: PHOTO_DISABLED (any value but 0/false) or PLATE_DISABLED.
 // Models: PLATE_MODELS (default higgsfield:nano_banana_pro, then google/gemini-3-pro-image on the AI Gateway).
-// Video loops (Veo 3.1 first = last frame) are specified in docs/PHOTOREAL.md; not generated here (see there).
 import { randomBytes } from 'node:crypto';
 import {
   env, modelConfig, pickModels, bestSize, usableProviders, tryModels, dryRun, maxUsd, costOf, clientIp, ipHash, send, sameOrigin, createLimiter, authToken,
-  GatewayError, resumeImage, supa,
+  GatewayError, resumeImage, supa, hfEstimate, hfSubmit, hfStatus, attemptOf, liveConfig,
 } from './_photo.js';
 import { sniff, imageSize, decodePNG, downscale, encodeJPEG, encodeGrayPNG } from './_img.js';
 
@@ -94,14 +94,14 @@ async function readRows(db, keys, { pending = false } = {}) {
 const fresh = (r) => r && r.status === 'pending' && Date.now() - Date.parse(r.updated_at || 0) < PENDING_STALE_MS;
 
 function answer(db, time, rows, { small = false } = {}) {
-  const full = rows.get(plateKey(time)), two = rows.get(plateKey(time, '2k')), mask = rows.get(plateKey('day', 'mask'));
+  const full = rows.get(plateKey(time)), two = rows.get(plateKey(time, '2k')), mask = rows.get(plateKey('day', 'mask')), loop = rows.get(plateKey(time, 'loop'));
   if (!full) return null;
   const sun = SUN[time];
   const url = db.publicUrl(full.path), url2k = two ? db.publicUrl(two.path) : url;
   return {
     url: small ? url2k : url, url2k, time, width: small && two ? two.width : full.width, height: small && two ? two.height : full.height,
     horizon: 0.5, hfov: 100, sun: { ...sun, color: kelvinHex(sun.K) }, model: full.model,
-    ...(mask ? { mask: db.publicUrl(mask.path) } : {}), video: null,
+    ...(mask ? { mask: db.publicUrl(mask.path) } : {}), video: loop ? db.publicUrl(loop.path) : null,
   };
 }
 
@@ -199,7 +199,7 @@ export default async function handler(req, res) {
   const db = supa();
   if (!db) return send(res, 200, { error: 'not_configured' });
   let rows;
-  try { rows = await readRows(db, [plateKey(time), plateKey(time, '2k'), plateKey('day', 'mask')]); }
+  try { rows = await readRows(db, [plateKey(time), plateKey(time, '2k'), plateKey('day', 'mask'), plateKey(time, 'loop')]); }
   catch (e) { console.error(`[plate] read failed: ${e.message}`); return send(res, 200, { error: 'store_failed' }); }
   const out = answer(db, time, rows, { small });
   return out ? send(res, 200, out, { cache: 'public, max-age=300, s-maxage=3600' }) : send(res, 200, { pending: true, retryAfter: 600 });
@@ -270,6 +270,75 @@ export async function runPlateJob(db, job, { req, t0 = Date.now(), trace = [] } 
   const done = (await readRows(db, [plateKey(time)])).get(plateKey(time));
   if (!done) throw new GatewayError('gateway', `${time}: not stored`);
   return { done: true, result: describe(done), cost: done.cost_usd == null ? null : Number(done.cost_usd) };
+}
+
+// ---------------------------------------------------------------------------------------------- window loop
+// Facts (27 Nov 2026, this account's /estimate; schemas: docs.higgsfield.ai/docs/llms-full.txt):
+//   kling-video/o3/first-last-frame — first_frame_url (required), last_frame_url, prompt, mode std|pro|4k,
+//     sound on|off, duration 3–15, aspect_ratio 16:9|9:16|1:1 → video.url · ≈ $0.068/s (720p), $0.086/s (1080p)
+//   alibaba/wan-3.0/image-to-video — image_url (required), end_image_url, prompt, duration 2–30,
+//     resolution 480p|720p|1080p, aspect_ratio …|adaptive, generate_audio → video.url · ≈ $0.0375 / 0.075 / 0.15 per s
+export const LOOP_MODELS = {
+  kling_o3: { path: 'kling-video/o3/first-last-frame', body: (url, prompt, o) => ({ prompt, first_frame_url: url, last_frame_url: url, mode: ['std', 'pro', '4k'].includes(o.mode) ? o.mode : 'std', sound: 'off', duration: Math.max(3, Math.min(15, o.duration)) }) },
+  wan_3: { path: 'alibaba/wan-3.0/image-to-video', body: (url, prompt, o) => ({ prompt, image_url: url, end_image_url: url, duration: Math.max(2, Math.min(30, o.duration)), resolution: ['480p', '720p', '1080p'].includes(o.resolution) ? o.resolution : '720p', aspect_ratio: 'adaptive', generate_audio: false, enable_thinking: false }) },
+};
+const LOOP_PROMPT = {
+  day: 'The same view, alive and almost still: thin high clouds drift slowly, the marina water shimmers, a few distant boats and cars move.',
+  sunset: 'The same view at sunset, alive and almost still: the warm light breathes slightly, thin clouds drift slowly, the water shimmers, a few distant boats move.',
+  evening: 'The same view at blue hour, alive and almost still: a few windows switch on or off, tiny car lights move along the roads, reflections shimmer on the water.',
+};
+const LOOP_RULES = 'Locked-off camera on a tripod: no camera movement, no zoom, no pan. Every building keeps its exact position, shape and silhouette. Subtle, slow motion only. Seamless loop: the last frame is identical to the first frame.';
+const MAX_VIDEO = 40 * 1024 * 1024;
+
+/** One step of a `loop` job: params { time, model?: 'kling_o3' | 'wan_3', duration? (8), mode?, resolution?, dry?, maxUsd?, replace? }. */
+export async function runLoopJob(db, job, { t0 = Date.now(), trace = [] } = {}) {
+  const p = job.params || {};
+  const time = TIMES[String(p.time || '')];
+  if (!time) throw new GatewayError('rejected', 'loop: params.time must be day, sunset or evening');
+  const name = p.model == null ? 'kling_o3' : String(p.model).replace(/^higgsfield:/, '');
+  const lm = LOOP_MODELS[name];
+  if (!lm) throw new GatewayError('rejected', `loop: unknown model ${String(p.model).slice(0, 40)} (kling_o3 or wan_3)`);
+  const o = liveConfig().models?.[name] || {};
+  const path = typeof o.path === 'string' && /^[a-zA-Z0-9._/-]{3,120}$/.test(o.path) ? o.path : lm.path;
+  const model = { id: `higgsfield:${name}`, provider: 'higgsfield' };
+  const key = plateKey(time, 'loop');
+  const rows = await readRows(db, [plateKey(time), key]);
+  const have = rows.get(key);
+  const store = async (st, requestId, usd) => {
+    const url = st.video?.url;
+    if (!url) throw new GatewayError('empty', 'loop: the finished job has no video.url', 0, 'higgsfield');
+    const r = await fetch(url);
+    if (!r.ok || !r.body) throw new GatewayError('gateway', `loop: video download HTTP ${r.status}`);
+    const size = Number(r.headers.get('content-length')) || null;
+    if (size && size > MAX_VIDEO) throw new GatewayError('rejected', `loop: the video is ${(size / 1048576).toFixed(1)} MB (limit 40 MB)`);
+    const out = `plates/${PLATE_VERSION}/${time}-loop-${randomBytes(4).toString('hex')}.mp4`;
+    await db.putStream(out, r.body, 'video/mp4', { upsert: true, maxAge: 31536000 });
+    const cost = Number.isFinite(usd) && usd > 0 ? usd : null;
+    await db.upsertRow({ key, path: out, kind: 'plate-video', source: 'plate', status: 'ok', model: model.id, provider: 'higgsfield', request_id: requestId, prompt_version: PLATE_VERSION, time_of_day: time, bytes: size, cost_usd: cost, refs: 1, updated_at: new Date().toISOString() });
+    console.info(JSON.stringify({ ev: 'plate.loop', time, model: model.id, usd: cost, bytes: size }));
+    return { done: true, cost, result: { time, url: db.publicUrl(out), model: name, usd: cost, request_id: requestId, bytes: size } };
+  };
+  if (job.result?.request_id && !p.dry) {
+    const st = await hfStatus(job.result.request_id);
+    if (st?.status === 'completed') return store(st, job.result.request_id, Number(job.result.estimate));
+    if (['failed', 'nsfw', 'canceled'].includes(st?.status)) { const e = new GatewayError('gateway', `loop: the provider job ${st.status}${st.error ? `: ${String(st.error).slice(0, 160)}` : ''}`, 0, 'higgsfield'); trace.push(attemptOf(model, e)); throw e; }
+    return { pending: true, result: { request_id: job.result.request_id, status: st?.status || null } };
+  }
+  if (have && !p.replace && !p.dry) return { done: true, cost: 0, result: { time, url: db.publicUrl(have.path), model: have.model, cached: true } };
+  const plate = rows.get(plateKey(time));
+  if (!plate && !p.dry) throw new GatewayError('rejected', `loop: the ${time} plate is not stored yet (run the plate job first)`);
+  const frame = plate ? db.publicUrl(plate.path) : 'https://example.com/plate.jpg';
+  const body = lm.body(frame, `${LOOP_PROMPT[time]} ${LOOP_RULES}`, { duration: Number.isFinite(Number(p.duration)) ? Math.round(Number(p.duration)) : 8, mode: p.mode, resolution: p.resolution });
+  const usd = await hfEstimate(path, body, model.id).catch((e) => { trace.push(attemptOf(model, e)); throw e; });
+  const { prompt: _p, ...shape } = body;
+  if (p.dry === true) return { done: true, cost: 0, result: { dry: true, time, model: name, path, usd, body: { ...shape, ...(plate ? {} : { note: 'plate not stored yet: placeholder frame URL' }) } } };
+  const limit = Number.isFinite(Number(p.maxUsd)) && Number(p.maxUsd) > 0 ? Math.min(10, Number(p.maxUsd)) : maxUsd(false);
+  if (usd > limit) { const e = new GatewayError('too_expensive', `loop: estimate $${usd} is over the limit $${limit} (set params.maxUsd)`, 0, 'higgsfield'); trace.push(attemptOf(model, e)); throw e; }
+  const requestId = await hfSubmit(path, body, { model: model.id, idempotencyKey: `loop-${PLATE_VERSION}-${time}-${name}-${job.id}`.slice(0, 64) }).catch((e) => { trace.push(attemptOf(model, e)); throw e; });
+  await new Promise((r) => setTimeout(r, Math.min(4000, Math.max(0, DEADLINE_MS - (Date.now() - t0) - 20_000))));
+  const st = await hfStatus(requestId).catch(() => null);
+  if (st?.status === 'completed') return store(st, requestId, usd);
+  return { pending: true, result: { request_id: requestId, estimate: usd, model: name, status: st?.status || 'queued' } };
 }
 
 export const _test = { kelvinHex, renditions, skyMask, plateKey };

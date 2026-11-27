@@ -221,6 +221,15 @@ grant execute on function public.photo_reject(text, numeric) to service_role;
 grant execute on function public.photo_lock(text, text, integer) to service_role;
 grant execute on function public.photo_unlock(text, text) to service_role;
 
+-- ---------------------------------------------------------------------------------------------------- photo-2
+-- Digital twins (docs/TWINS.md): two more job kinds and their rows in the cost log. Idempotent.
+alter table public.photo_jobs drop constraint if exists photo_jobs_kind_check;
+alter table public.photo_jobs add constraint photo_jobs_kind_check
+  check (kind in ('plate', 'plate-edit', 'mask', 'edition', 'hero', 'preset', 'loop', 'views', 'twin'));
+alter table public.photo_renders drop constraint if exists photo_renders_kind_check;
+alter table public.photo_renders add constraint photo_renders_kind_check
+  check (kind in ('photo', 'plate', 'plate-video', 'plate-mask', 'edition', 'twin-view', 'twin'));
+
 -- ---------------------------------------------------------------------------------------------------- reporting
 -- Config (examples):
 --   insert into public.photo_config (name, value) values ('pilots', '["<session from villarUI.photo.session>"]')

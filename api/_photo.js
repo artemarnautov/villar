@@ -559,6 +559,25 @@ async function hfGenerate({ model, prompt, images = [], aspectRatio = null, imag
   return out ? { ...out, requestId, estimate, path } : { pending: { provider: 'higgsfield', requestId, estimate, path } };
 }
 
+/** Submit any Higgsfield endpoint (3D, video …): returns the request id. The caller estimates first. */
+export async function hfSubmit(path, body, { model = '', idempotencyKey = null } = {}) {
+  const sub = await hfFetch(`/${path}`, { method: 'POST', body, model, timeoutMs: 20000, headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {} });
+  if (!sub?.request_id) throw new GatewayError('gateway', `Higgsfield ${model}: no request_id`, 0, 'higgsfield');
+  return sub.request_id;
+}
+/** Every URL in a completed status, with the path of keys that leads to it: [{ key: 'model_mesh.url', url }]. */
+export function hfOutputs(st) {
+  const out = [];
+  const walk = (v, key, depth) => {
+    if (depth > 5 || v == null) return;
+    if (typeof v === 'string') { if (/^https:\/\//.test(v) && !/^(status_url|cancel_url)$/.test(key.split('.').pop())) out.push({ key, url: v }); return; }
+    if (Array.isArray(v)) { v.slice(0, 20).forEach((x, i) => walk(x, `${key}[${i}]`, depth + 1)); return; }
+    if (typeof v === 'object') for (const [k, x] of Object.entries(v)) walk(x, key ? `${key}.${k}` : k, depth + 1);
+  };
+  walk(st, '', 0);
+  return out;
+}
+
 // A provider that said "no balance / bad key" is skipped for 10 minutes (per instance).
 const providerBreaker = { higgsfield: 0, gateway: 0 };
 const PROVIDER_BREAKER_MS = 10 * 60_000;
@@ -683,6 +702,24 @@ export function supa() {
     },
     async upsertRow(row) {
       return call('/rest/v1/photo_renders?on_conflict=key', { method: 'POST', body: JSON.stringify(row), headers: { 'content-type': 'application/json', prefer: 'resolution=merge-duplicates,return=minimal' } });
+    },
+    /** Streamed upload (large files: GLB, MP4): `stream` is a web ReadableStream; nothing is buffered here. */
+    async putStream(path, stream, type, { upsert = true, maxAge = 3600, timeoutMs = 50000 } = {}) {
+      const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        const r = await fetch(`${url}/storage/v1/object/${BUCKET}/${path}`, { method: 'POST', body: stream, duplex: 'half', signal: ctrl.signal, headers: headers({ 'content-type': type, 'cache-control': `max-age=${maxAge}`, 'x-upsert': upsert ? 'true' : 'false' }) });
+        if (!r.ok) { const e = new Error(`supabase streamed upload ${path} HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`); e.status = r.status; throw e; }
+        return true;
+      } finally { clearTimeout(t); }
+    },
+    /** Server-side copy inside the bucket (no download): replaces the destination. */
+    async copy(from, to) {
+      try { await call(`/storage/v1/object/${BUCKET}`, { method: 'DELETE', body: JSON.stringify({ prefixes: [to] }), headers: { 'content-type': 'application/json' } }); } catch { /* nothing to replace */ }
+      return call('/storage/v1/object/copy', { method: 'POST', body: JSON.stringify({ bucketId: BUCKET, sourceKey: from, destinationKey: to }), headers: { 'content-type': 'application/json' }, timeoutMs: 30000 });
+    },
+    /** Does a public object exist? */
+    async exists(path) {
+      try { const r = await fetch(`${url}/storage/v1/object/public/${BUCKET}/${path}`, { method: 'HEAD' }); return r.ok; } catch { return false; }
     },
     /** Diagnostics only: does the bucket exist and is it public; are the tables there. Never throws. */
     async check() {

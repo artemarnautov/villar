@@ -10,7 +10,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const html = readFileSync(resolve(root, 'site/index.html'), 'utf8');
 
 // Live → Photo: developed photos and window plates are public objects in the Villar Supabase project's Storage
-// (bucket `photos`, api/photo.js · api/plate.js). Images only: the browser never calls Supabase or a model API.
+// (bucket `photos`, api/photo.js · api/plate.js). Public objects only (images, and the twins' GLB models by fetch):
+// the browser never calls the Supabase API or a model API.
 const PHOTO_ORIGIN = 'https://hdhwkvbecuzzrugogutd.supabase.co';
 
 const hashes = [];
@@ -28,7 +29,9 @@ const csp = [
   `img-src 'self' data: blob: ${PHOTO_ORIGIN}`,
   `media-src 'self' blob: ${PHOTO_ORIGIN}`,     // optional window-plate video loops
   "font-src 'self'",
-  "connect-src 'self'",
+  // digital twins (site/js/engine/twins.js): the GLB is fetched from Storage; GLTFLoader decodes its embedded
+  // textures through fetch(blob:) (ImageBitmapLoader), which 'self' does not cover
+  `connect-src 'self' blob: ${PHOTO_ORIGIN}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'none'",

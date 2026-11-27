@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Villar — twin QA</title>
+<link rel="icon" href="data:,">
+<style>
+  html, body { margin: 0; height: 100%; background: #e9e6e1; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, system-ui, sans-serif; color: #2b2724; }
+  #c { position: fixed; inset: 0; }
+  #panel { position: fixed; right: 12px; top: 12px; bottom: 12px; width: 352px; overflow: auto; background: rgba(255,255,255,.9); border-radius: 12px; padding: 14px 16px; font-size: 12px; line-height: 1.45; box-sizing: border-box; }
+  #panel h1 { font-size: 15px; margin: 0 0 2px; font-weight: 600; }
+  #panel h2 { font-size: 11px; margin: 14px 0 5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: #7b736b; }
+  #panel .sub { color: #7b736b; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 2px 0 2px 8px; font-weight: 400; }
+  th:first-child, td:first-child { text-align: left; padding-left: 0; color: #7b736b; }
+  thead th { color: #7b736b; font-size: 11px; border-bottom: 1px solid #ddd6cd; }
+  .ok { color: #1f7a3f; font-weight: 600; } .bad { color: #b3261e; font-weight: 600; } .warn { color: #9a6a00; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 4px 0; }
+  button, .btn { font: inherit; padding: 5px 10px; border-radius: 8px; border: 1px solid #cfc7bd; background: #fff; color: inherit; cursor: pointer; }
+  button[aria-pressed="true"] { background: #2b2724; color: #fff; border-color: #2b2724; }
+  button:disabled { opacity: .45; cursor: default; }
+  input[type="number"] { font: inherit; width: 58px; padding: 4px 6px; border-radius: 8px; border: 1px solid #cfc7bd; }
+  input[type="file"] { font: inherit; max-width: 100%; }
+  textarea { width: 100%; box-sizing: border-box; height: 132px; font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; border: 1px solid #ddd6cd; border-radius: 8px; padding: 6px; resize: vertical; background: #faf8f5; }
+  #verdict { font-size: 13px; margin: 8px 0 0; }
+  #hud { position: fixed; left: 12px; bottom: 10px; font-size: 11px; color: #5a534c; background: rgba(255,255,255,.8); padding: 4px 8px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+  #drop { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(43,39,36,.55); color: #fff; font-size: 22px; pointer-events: none; }
+  #sheetview { position: fixed; inset: 0; display: none; background: #1d1b19; z-index: 5; overflow: auto; text-align: center; }
+  #sheetview img { max-width: 100%; max-height: 100%; }
+  #sheetview.on { display: block; }
+  ul { margin: 2px 0; padding-left: 16px; }
+</style>
+<script type="importmap">{"imports":{
+  "three":"/vendor/three/three.module.js",
+  "three/addons/":"/vendor/three/addons/",
+  "three/examples/jsm/":"/vendor/three/addons/",
+  "three/webgpu":"/vendor/three/three.webgpu.js",
+  "three/tsl":"/vendor/three/three.tsl.js",
+  "three-mesh-bvh":"/vendor/three-mesh-bvh/src/index.js",
+  "three-mesh-bvh/webgpu":"/vendor/three-mesh-bvh/src/webgpu/index.js",
+  "three-gpu-pathtracer":"/vendor/three-gpu-pathtracer/src/index.js"
+}}</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"></div>
+<div id="panel">
+  <h1 id="title">Twin QA</h1>
+  <div class="sub" id="subtitle">docs/TWINS.md §4 — the fidelity gate</div>
+  <div id="verdict"></div>
+
+  <h2>File</h2>
+  <div class="row"><input type="file" id="file" accept=".glb,model/gltf-binary"></div>
+  <div class="sub">…or drop a .glb anywhere. Nothing is uploaded: the file is read in this tab.</div>
+
+  <h2>Orientation</h2>
+  <div class="row">
+    <span>yaw</span><input type="number" id="yaw" step="5" value="0">°
+    <button id="yawL" title="turn 90° left">⟲ 90</button><button id="yawR" title="turn 90° right">⟳ 90</button>
+    <button id="upZ" aria-pressed="false" title="the file is Z-up">Z-up</button>
+  </div>
+  <div class="row" id="glowRow" hidden>
+    <button id="glowUse" aria-pressed="false" title="lamps: the part of the height that is the shade glows at night (manifest: glow)">Shade glow</button>
+    <span class="sub" id="glowNote"></span>
+  </div>
+
+  <h2>View</h2>
+  <div class="row">
+    <button id="ghost" aria-pressed="false">Procedural ghost</button>
+    <button id="lamps" aria-pressed="false">Lamps on</button>
+    <button id="beauty">¾ view</button>
+  </div>
+  <div class="row">
+    <button id="sheet">Contact sheet (PNG)</button>
+    <button id="dissolve" title="the engine's swap: procedural first, then a 350 ms dissolve to the twin in the same slot group">Dissolve test</button>
+  </div>
+
+  <h2>Size (cm)</h2>
+  <table id="dims"><thead><tr><th></th><th>catalogue</th><th>twin</th><th>diff</th></tr></thead><tbody></tbody></table>
+  <div class="sub" id="dimsNote"></div>
+
+  <h2>Mesh and textures</h2>
+  <table id="stats"><tbody></tbody></table>
+  <div id="notes"></div>
+
+  <h2>Anchors (procedural → twin surface)</h2>
+  <table id="anchors"><tbody></tbody></table>
+
+  <h2>Manifest entry (site/data/twins.json)</h2>
+  <textarea id="manifest" readonly spellcheck="false"></textarea>
+</div>
+<div id="drop">Drop the GLB</div>
+<div id="sheetview" title="click to close"></div>
+<script type="module">
+// Twin QA page (docs/TWINS.md §4). Not linked; /lab is redirected away in production.
+//   ?id=<itemId>            the catalogue item the twin is checked against (dims, archetype, procedural ghost)
+//   &src=<glb url>          same-origin path or a file in the media bucket; without it the manifest's file is used,
+//                           or pick / drop a local .glb (works with no network at all)
+//   &yaw=<deg>  &up=z       orientation tester (what the manifest's `yaw` / `up` would do)
+//   &glow=0.78,1            lamp shade band (fraction of the height) → glows with "Lamps on"
+//   &tol=0.03               tolerance of the size check          &quality=high|medium|low   texture / face caps
+//   &ghost=1  &lit=1        start with the procedural ghost / the lamps on
+//   &az=<deg>&el=<deg>      camera angle (0° = front, 90° = from +X; match the reference photo, read it in the corner)
+//   &sheet=1                open the contact sheet when loaded       &dissolve=1  run the dissolve test when loaded
+// Every URL value is untrusted: plain tokens only, never rendered as HTML.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { createMaterials, planarUVs } from '/js/engine/materials.js';
+import { buildItem } from '/js/engine/furniture/index.js';
+import { createFader } from '/js/engine/fade.js';
+import { createTwins } from '/js/engine/twins.js';
+import { MEDIA_BASE } from '/js/ui/config.js';
+
+const RAW_Q = new URLSearchParams(location.search);
+const SAFE = /^[A-Za-z0-9 _.,:#\-\/]{0,400}$/;
+const Q = { has: (k) => RAW_Q.has(k), get: (k) => { const v = RAW_Q.get(k); return v == null ? null : SAFE.test(v) ? v : ''; } };
+const num = (k, d) => { const n = Number(Q.get(k)); return Number.isFinite(n) && Q.get(k) ? n : d; };
+const $ = (id) => document.getElementById(id);
+const quality = ['high', 'medium', 'low'].includes(Q.get('quality')) ? Q.get('quality') : 'high';
+
+// ------------------------------------------------------------------ the furniture lab's stage
+const canvas = $('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.AgXToneMapping;
+renderer.toneMappingExposure = num('exp', 1.05);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+
+const scene = new THREE.Scene();
+const BG_DAY = new THREE.Color('#e7e3dd'), BG_NIGHT = new THREE.Color('#2a2622');
+scene.background = BG_DAY.clone();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.55;
+
+const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.02, 200);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = false;
+
+const key = new THREE.DirectionalLight('#fff3e6', 2.4);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.bias = -0.0002;
+key.shadow.normalBias = 0.02;
+key.shadow.radius = 4;
+scene.add(key, key.target);
+const fill = new THREE.HemisphereLight('#f4f1ec', '#b9b0a4', 0.5);
+scene.add(fill);
+
+const materials = createMaterials(renderer, { quality });
+const floor = new THREE.Mesh(planarUVs(new THREE.PlaneGeometry(60, 60).rotateX(-Math.PI / 2), 'xz'), materials.get('paint', { color: '#d9d4cc' }));
+floor.receiveShadow = true;
+scene.add(floor);
+
+function setKey(span, center) {
+  key.position.set(center.x - span * 0.6, span * 1.3 + 2, center.z + span * 0.9);
+  key.target.position.copy(center);
+  const s = key.shadow.camera; const e = span * 0.8 + 1;
+  s.left = -e; s.right = e; s.top = e; s.bottom = -e; s.near = 0.1; s.far = span * 4 + 10; s.updateProjectionMatrix();
+}
+
+// ------------------------------------------------------------------ state
+const twins = createTwins({ THREE, renderer, baseUrl: MEDIA_BASE, quality });
+const fader = createFader({ renderer, scene, camera, onShadow: () => { renderer.shadowMap.needsUpdate = true; dirty = 3; } });
+const S = {
+  item: null, twin: null, report: null, error: null, source: null, sourceName: '',
+  yaw: num('yaw', 0), up: Q.get('up') === 'z' ? 'z' : 'y', glow: null, tol: num('tol', 0),
+  ghost: null, ghostOn: Q.has('ghost'), lit: Q.has('lit'), procedural: null, slot: null, busy: false, loads: 0, glowHint: null,
+};
+{ const g = (Q.get('glow') || '').split(',').map(Number); if (g.length === 2 && g.every(Number.isFinite)) S.glow = g; }
+const stage = new THREE.Group(); stage.name = 'stage'; scene.add(stage);
+let dirty = 3;
+const HOME = { az: num('az', 27), el: num('el', 17) };
+
+function boundsBox(obj) {
+  const b = obj?.userData?.bounds;
+  if (b) return new THREE.Box3(new THREE.Vector3(...b.min), new THREE.Vector3(...b.max)).applyMatrix4(obj.matrixWorld);
+  return new THREE.Box3().setFromObject(obj);
+}
+/** Camera on a sphere round the subject: az 0° = in front (+Z), 90° = from +X; el above the horizon. */
+function frame(az = HOME.az, el = HOME.el, cam = camera, aspect = null, fill2 = 0.9) {
+  const subject = S.twin || S.procedural || S.ghost;
+  const box = subject ? boundsBox(subject) : new THREE.Box3(new THREE.Vector3(-0.5, 0, -0.5), new THREE.Vector3(0.5, 1, 0.5));
+  const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+  const r = 0.5 * Math.hypot(size.x, size.y, size.z);
+  // the main view keeps the subject in the free area left of the panel
+  const pad = cam === camera && innerWidth > 900 ? 376 : 0;
+  if (cam === camera) { if (pad) cam.setViewOffset(innerWidth, innerHeight, pad / 2, 0, innerWidth, innerHeight); else cam.clearViewOffset(); }
+  const a = aspect ?? (cam === camera ? (innerWidth - pad) / innerHeight : cam.aspect);
+  const half = THREE.MathUtils.degToRad(cam.fov / 2), halfH = Math.atan(Math.tan(half) * a);
+  const dist = r / Math.sin(Math.min(half, halfH)) / fill2;
+  const A = THREE.MathUtils.degToRad(az), E = THREE.MathUtils.degToRad(el);
+  cam.position.set(c.x + dist * Math.sin(A) * Math.cos(E), c.y + dist * Math.sin(E), c.z + dist * Math.cos(A) * Math.cos(E));
+  cam.near = Math.max(0.01, dist / 60); cam.far = dist * 20;
+  cam.lookAt(c); cam.updateProjectionMatrix();
+  if (cam === camera) { controls.target.copy(c); controls.update(); }
+  setKey(Math.max(2, r * 3), c);
+  renderer.shadowMap.needsUpdate = true;
+  dirty = 3;
+}
+
+// ------------------------------------------------------------------ panel
+const cell = (tr, text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); return td; };
+const rows = (table, list) => {
+  const body = table.tBodies[0]; body.textContent = '';
+  for (const r of list) { const tr = document.createElement('tr'); for (const c of r) Array.isArray(c) ? cell(tr, c[0], c[1]) : cell(tr, c); body.appendChild(tr); }
+};
+const pct = (v) => (v == null ? '—' : `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)} %`);
+function paint() {
+  const it = S.item, R = S.report, E = S.error;
+  $('title').textContent = it ? (it.nameEn || it.name || it.id) : 'Twin QA';
+  $('subtitle').textContent = it ? `${it.id} · ${it.type}${S.sourceName ? ` · ${S.sourceName}` : ''} · tier ${quality}` : 'add ?id=<itemId>';
+  const v = $('verdict'); v.textContent = ''; v.className = '';
+  const d = R || E?.data;
+  if (S.busy) v.textContent = 'Loading…';
+  else if (R && R.ok) { v.textContent = `Size check passed (worst ${pct(R.worst)}, tolerance ±${(R.tol * 100).toFixed(1)} %)`; v.className = 'ok'; }
+  else if (R && !R.ok) { v.textContent = `REJECTED: size off by ${pct(R.worst)} (tolerance ±${(R.tol * 100).toFixed(1)} %). The engine would keep the procedural model.`; v.className = 'bad'; }
+  else if (E) { v.textContent = `REJECTED: ${E.reason}${E.detail ? ` — ${E.detail}` : ''}`; v.className = 'bad'; }
+  else v.textContent = it ? 'No twin loaded: pick or drop a GLB.' : '';
+  const cat = it?.dims ? { w: it.dims.w, d: it.dims.d ?? it.dims.w, h: it.dims.h } : null;
+  rows($('dims'), ['w', 'd', 'h'].map((k) => {
+    const e = d?.err?.[k];
+    return [k === 'w' ? 'width (x)' : k === 'd' ? 'depth (z)' : 'height (y)', cat ? String(cat[k]) : '—', d ? String(d.dims[k]) : '—',
+      [d ? (e == null ? 'not checked' : pct(e)) : '—', e == null ? 'sub' : Math.abs(e) <= (d.tol ?? 0.03) ? 'ok' : 'bad']];
+  }));
+  $('dimsNote').textContent = d ? `File extents ${d.native.x} × ${d.native.z} × ${d.native.y} (x × z × y, file units) · uniform scale ×${d.scale} by ${d.lead} · then per-axis ${['x', 'y', 'z'].map((a) => pct(d.residual?.[a] ?? 0)).join(' / ')}${d.hint ? ` · ${d.hint}` : ''}` : '';
+  const st = [];
+  if (R) {
+    st.push(['triangles', R.faces.toLocaleString('en')], ['vertices', R.vertices.toLocaleString('en')], ['meshes / materials', `${R.meshes} / ${R.materials}`]);
+    st.push(['file', `${(R.bytes / 1048576).toFixed(2)} MB${R.generator ? ` · ${R.generator}` : ''}`]);
+    for (const t of R.textures) st.push([t.slots, `${t.size[0]} × ${t.size[1]}${t.from[0] !== t.size[0] ? ` (from ${t.from[0]} × ${t.from[1]})` : ''}${t.clamped ? ` · ${(t.clamped * 100).toFixed(0)} % of texels raised` : ''}`]);
+    st.push(['textures on GPU', `${R.gpuMB} MB · longest edge ${R.texMax || 0}`]);
+    st.push(['load', `fetch ${R.ms.fetch} · parse ${R.ms.parse} · fit ${R.ms.fit} · textures ${R.ms.tex} ms`]);
+    if (R.glow) st.push(['shade (glow)', `${R.glow.band.join(' – ')} of the height · ${R.glow.faces.toLocaleString('en')} triangles`]);
+    if (S.procedural || S.ghost) st.push(['procedural', `${((S.procedural || S.ghost).userData.triangles || 0).toLocaleString('en')} triangles`]);
+  }
+  rows($('stats'), st);
+  const notes = $('notes'); notes.textContent = '';
+  if (R && (R.fixes.length || R.warnings.length)) {
+    const ul = document.createElement('ul');
+    for (const w of R.warnings) { const li = document.createElement('li'); li.textContent = w; li.className = 'warn'; ul.appendChild(li); }
+    for (const f of [...new Set(R.fixes)]) { const li = document.createElement('li'); li.textContent = `fixed: ${f}`; ul.appendChild(li); }
+    notes.appendChild(ul);
+  }
+  rows($('anchors'), S.anchors?.length ? S.anchors.map((a) => [a.name, `${(a.y * 100).toFixed(1)} cm`, a.twinY == null ? '—' : `${(a.twinY * 100).toFixed(1)} cm`, [a.twinY == null ? '' : `${a.twinY - a.y >= 0 ? '+' : ''}${((a.twinY - a.y) * 100).toFixed(1)}`, a.twinY != null && Math.abs(a.twinY - a.y) > 0.03 ? 'warn' : '']]) : [['none on this item']]);
+  $('glowRow').hidden = !S.glowHint && !S.glow;
+  $('glowUse').setAttribute('aria-pressed', String(!!S.glow));
+  $('glowNote').textContent = S.glow ? `band ${S.glow.join(' – ')} of the height` : S.glowHint ? `the procedural shade spans ${S.glowHint.join(' – ')}` : '';
+  $('yaw').value = String(S.yaw);
+  $('upZ').setAttribute('aria-pressed', String(S.up === 'z'));
+  $('ghost').setAttribute('aria-pressed', String(S.ghostOn));
+  $('lamps').setAttribute('aria-pressed', String(S.lit));
+  $('manifest').value = it && R ? JSON.stringify({ [it.id]: {
+    glb: `models/${it.id}.glb`, v: 1, faces: R.faces, dims: R.dims,
+    ...(S.yaw ? { yaw: S.yaw } : {}), ...(S.up === 'z' ? { up: 'z' } : {}), ...(S.glow ? { glow: S.glow } : {}), ...(S.tol ? { tol: S.tol } : {}),
+    ...(R.ok ? {} : { off: true }),
+  } }, null, 2) : '';
+}
+
+// ------------------------------------------------------------------ procedural model (ghost / dissolve)
+const GHOST = new THREE.MeshBasicMaterial({ color: 0x2a6df4, transparent: true, opacity: 0.16, depthTest: false, depthWrite: false, side: THREE.DoubleSide });
+const GHOST_EDGE = new THREE.LineBasicMaterial({ color: 0x1746b0, transparent: true, opacity: 0.55, depthTest: false, depthWrite: false });
+function buildProcedural() { return buildItem(S.item, { materials, quality }); }
+/** Lamps: where the procedural model's shade sits, as a band of the item's height → the manifest's `glow`. */
+function shadeBand(g) {
+  const b = g.userData.bounds; if (!b || !(g.userData.lights || []).length) return null;
+  const box = new THREE.Box3(); g.updateMatrixWorld(true);
+  g.traverse((o) => { if (o.isMesh && !o.userData.cord && (o.material?.userData?.glow || /shade|bulb/.test(o.material?.name || ''))) box.expandByObject(o); });
+  if (box.isEmpty()) return null;
+  const H = b.max[1] - b.min[1], r2 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 100) / 100;
+  return [r2((box.min.y - b.min[1]) / H - 0.01), r2((box.max.y - b.min[1]) / H + 0.01)];
+}
+function makeGhost() {
+  if (S.ghost || !S.item) return;
+  const g = buildProcedural();
+  S.glowHint = shadeBand(g);
+  const extra = [];
+  g.traverse((o) => {
+    if (!o.isMesh) return;
+    if (o.userData.cord) { o.visible = false; return; }
+    o.material = GHOST; o.castShadow = false; o.receiveShadow = false; o.renderOrder = 10;
+    const w = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry, 32), GHOST_EDGE); w.renderOrder = 11; extra.push([o, w]);
+  });
+  for (const [o, w] of extra) o.add(w);
+  g.name = 'ghost';
+  S.ghost = g; stage.add(g);
+}
+function showGhost(on, { sticky = true } = {}) {
+  if (sticky) S.ghostOn = !!on;
+  if (on) makeGhost();
+  if (S.ghost) S.ghost.visible = !!on;
+  dirty = 3; paint();
+}
+/** Where each procedural anchor (seat, top, deck…) meets the twin's real surface: a ray straight down. */
+function measureAnchors() {
+  S.anchors = [];
+  const src = S.ghost || S.procedural;
+  if (!src) return;
+  const ray = new THREE.Raycaster();
+  for (const [name, a] of Object.entries(src.userData.anchors || {})) {
+    const p = a.isVector3 ? a : new THREE.Vector3(...a);
+    let twinY = null;
+    if (S.twin) {
+      S.twin.updateMatrixWorld(true);
+      ray.set(new THREE.Vector3(p.x, 10, p.z), new THREE.Vector3(0, -1, 0));
+      const hit = ray.intersectObject(S.twin, true)[0];
+      if (hit) twinY = hit.point.y;
+    }
+    S.anchors.push({ name, y: p.y, twinY });
+  }
+}
+
+// ------------------------------------------------------------------ load
+function clearTwin() {
+  if (S.slot) { for (const o of [...S.slot.children]) o.removeFromParent(); S.slot.removeFromParent(); S.slot = null; S.procedural = null; }
+  if (S.twin) { twins.release(S.twin); S.twin = null; }
+  S.report = null; S.error = null;
+}
+/** src: File | Blob | ArrayBuffer | URL | null (null = the manifest's file for this item). */
+async function load(src = S.source, name = S.sourceName) {
+  if (!S.item) return null;
+  const n = ++S.loads;
+  S.source = src; S.sourceName = name || '';
+  S.busy = true; paint();
+  const entry = { yaw: S.yaw, up: S.up, ...(S.glow ? { glow: S.glow } : {}), ...(S.tol ? { tol: S.tol } : {}) };
+  const twin = await twins.load(S.item, src ? { src, entry, force: true } : { entry });
+  if (n !== S.loads) { if (twin) twins.release(twin); return null; }
+  clearTwin();
+  S.busy = false;
+  if (twin) {
+    S.twin = twin; S.report = twins.report(twin);
+    stage.add(twin);
+    twins.setLampsOn(S.lit, 1);
+  } else S.error = twins.lastError(S.item.id) || { reason: src ? 'error' : 'no twin', detail: src ? '' : 'the manifest has no usable file for this item' };
+  if (S.ghostOn || twin) makeGhost();
+  if (S.ghost) S.ghost.visible = S.ghostOn;
+  measureAnchors();
+  frame();
+  paint();
+  return twin;
+}
+function setLit(on) {
+  S.lit = !!on;
+  scene.environmentIntensity = S.lit ? 0.12 : 0.55;
+  scene.background = (S.lit ? BG_NIGHT : BG_DAY).clone();
+  key.intensity = S.lit ? 0.25 : 2.4; fill.intensity = S.lit ? 0.05 : 0.5;
+  materials.setLampsOn(S.lit); twins.setLampsOn(S.lit, 1);
+  dirty = 3; paint();
+}
+
+// ------------------------------------------------------------------ contact sheet: 8 angles × 2 tilts
+const SHEET = { angles: [0, 45, 90, 135, 180, 225, 270, 315], tilts: [12, 38], cell: 480 };
+const ANGLE_NAME = { 0: 'front', 90: 'left side (+X)', 180: 'back', 270: 'right side (−X)' };   // the product's own left / right
+async function contactSheet({ download = true, cell: C = SHEET.cell } = {}) {
+  if (!S.twin && !S.procedural) return null;
+  const cols = 4, rowsN = SHEET.angles.length * SHEET.tilts.length / cols, head = 44, lab = 22;
+  const out = document.createElement('canvas'); out.width = cols * C; out.height = head + rowsN * (C + lab);
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#f4f1ec'; ctx.fillRect(0, 0, out.width, out.height);
+  ctx.fillStyle = '#2b2724'; ctx.font = '600 18px system-ui, sans-serif'; ctx.textBaseline = 'middle';
+  const R = S.report;
+  ctx.fillText(`${S.item.id} — twin${R ? ` · ${R.faces.toLocaleString('en')} tris · ${R.dims.w} × ${R.dims.d} × ${R.dims.h} cm (catalogue ${R.catalogue.w} × ${R.catalogue.d} × ${R.catalogue.h}) · ${R.ok ? 'size ok' : 'SIZE REJECTED'}` : ''}`, 14, head / 2);
+  const keep = { pr: renderer.getPixelRatio(), size: renderer.getSize(new THREE.Vector2()), ghost: S.ghost?.visible };
+  if (S.ghost) S.ghost.visible = false;
+  const cam = new THREE.PerspectiveCamera(camera.fov, 1, 0.02, 200);
+  renderer.setPixelRatio(1); renderer.setSize(C, C, false);
+  try {
+    let i = 0;
+    for (const el of SHEET.tilts) for (const az of SHEET.angles) {
+      frame(az, el, cam, 1, 0.94);
+      renderer.shadowMap.needsUpdate = true;
+      renderer.render(scene, cam);
+      const x = (i % cols) * C, y = head + Math.floor(i / cols) * (C + lab);
+      ctx.drawImage(renderer.domElement, 0, 0, C, C, x, y, C, C);
+      ctx.fillStyle = '#5a534c'; ctx.font = '13px system-ui, sans-serif';
+      ctx.fillText(`${az}°${ANGLE_NAME[az] ? ` ${ANGLE_NAME[az]}` : ''} · tilt ${el}°`, x + 10, y + C + lab / 2);
+      i++;
+      if (i % 4 === 0) await new Promise((r) => setTimeout(r, 0));
+    }
+  } finally {
+    renderer.setPixelRatio(keep.pr); renderer.setSize(keep.size.x, keep.size.y);
+    if (S.ghost) S.ghost.visible = keep.ghost;
+    frame();
+  }
+  const url = out.toDataURL('image/png');
+  const view = $('sheetview'); view.textContent = '';
+  const img = new Image(); img.src = url; img.alt = 'contact sheet'; view.appendChild(img); view.classList.add('on');
+  if (download) { const a = document.createElement('a'); a.href = url; a.download = `twin-${S.item.id}-sheet.png`; a.click(); }
+  return { width: out.width, height: out.height, bytes: Math.round(url.length * 0.75) };
+}
+$('sheetview').addEventListener('click', () => $('sheetview').classList.remove('on'));
+
+// ------------------------------------------------------------------ dissolve test = the engine integration, verbatim
+// (docs/requests/engine.md "From twins"): the procedural model stands in a slot group; when the twin resolves it is
+// adopted into the SAME group and the fader dissolves procedural → twin; a null result leaves everything untouched.
+async function dissolveTest({ src = S.source, ms = 350, hold = 0 } = {}) {
+  if (!S.item) return null;
+  clearTwin();
+  if (S.ghost) S.ghost.visible = false;
+  const group = buildProcedural();
+  group.name = 'slot:test'; group.userData.slotId = 'test'; group.userData.slotType = S.item.type;
+  group.traverse((o) => { o.userData.slotId = 'test'; o.userData.slotType = S.item.type; });
+  stage.add(group); S.slot = group; S.procedural = group;
+  frame(); paint();
+  const before = { children: group.children.map((c) => c.uuid), meshes: 0, bounds: JSON.stringify(group.userData.bounds) };
+  group.traverse((o) => { if (o.isMesh && o.visible) before.meshes++; });
+  await new Promise((r) => setTimeout(r, hold));
+  const entry = { yaw: S.yaw, up: S.up, ...(S.glow ? { glow: S.glow } : {}), ...(S.tol ? { tol: S.tol } : {}) };
+  const twin = await twins.load(S.item, src ? { src, entry } : { entry });
+  if (!twin) {
+    S.error = twins.lastError(S.item.id); measureAnchors(); paint();
+    const same = group.children.length === before.children.length && group.children.every((c, i) => c.uuid === before.children[i]);
+    let meshes = 0; group.traverse((o) => { if (o.isMesh && o.visible) meshes++; });
+    return { twin: false, reason: S.error?.reason, untouched: same && meshes === before.meshes && JSON.stringify(group.userData.bounds) === before.bounds && group.parent === stage };
+  }
+  const shell = twins.adopt(group, twin);
+  S.twin = twin; S.report = twins.report(twin); twins.setLampsOn(S.lit, 1);
+  dirty = 3;
+  const t0 = performance.now();
+  let mid = null;
+  const probe = setInterval(() => { if (!mid && performance.now() - t0 > ms * 0.4 && fader.active) { const m = []; twin.traverse((o) => { if (o.isMesh) m.push(+o.material.opacity.toFixed(2)); }); mid = { twinOpacity: m[0], hashed: twin.children.length > 0 && (() => { let h = false; twin.traverse((o) => { if (o.isMesh && o.material.alphaHash) h = true; }); return h; })() }; } }, 16);
+  await fader.swap({ inn: [twin], out: [shell], ms, settle: false });
+  clearInterval(probe);
+  shell.removeFromParent(); shell.visible = true;
+  renderer.shadowMap.needsUpdate = true; dirty = 3;
+  measureAnchors(); paint();
+  let tagged = 0, twinMeshes = 0, procLeft = 0;
+  group.traverse((o) => { if (!o.isMesh) return; let p = o, inTwin = false; while (p) { if (p === twin) inTwin = true; p = p.parent; } if (inTwin) { twinMeshes++; if (o.userData.slotId === 'test') tagged++; } else procLeft++; });
+  return { twin: true, ms: Math.round(performance.now() - t0), mid, sameGroup: twin.parent === group, twinMeshes, tagged, proceduralMeshesLeft: procLeft, shellDetached: !shell.parent, bounds: group.userData.bounds, pivot: group.userData.pivot, front: group.userData.front, opaqueAgain: (() => { let ok = true; twin.traverse((o) => { if (o.isMesh && (o.material.alphaHash || o.material.opacity !== 1)) ok = false; }); return ok; })() };
+}
+
+// ------------------------------------------------------------------ wiring
+function sameOriginOrMedia(u) {
+  try { const url = new URL(u, location.href); return url.origin === location.origin || url.href.startsWith(MEDIA_BASE) ? url.href : null; } catch { return null; }
+}
+$('file').addEventListener('change', (e) => { const f = e.target.files?.[0]; if (f) load(f, f.name); });
+addEventListener('dragover', (e) => { e.preventDefault(); $('drop').style.display = 'flex'; });
+addEventListener('dragleave', () => { $('drop').style.display = 'none'; });
+addEventListener('drop', (e) => { e.preventDefault(); $('drop').style.display = 'none'; const f = e.dataTransfer?.files?.[0]; if (f) load(f, f.name); });
+const setYaw = (v) => { S.yaw = ((Math.round(v) % 360) + 360) % 360; if (S.yaw > 180) S.yaw -= 360; paint(); if (S.source || twins.has(S.item?.id)) load(); };
+$('yaw').addEventListener('change', (e) => setYaw(Number(e.target.value) || 0));
+$('yawL').addEventListener('click', () => setYaw(S.yaw + 90));
+$('yawR').addEventListener('click', () => setYaw(S.yaw - 90));
+$('upZ').addEventListener('click', () => { S.up = S.up === 'z' ? 'y' : 'z'; paint(); if (S.source || twins.has(S.item?.id)) load(); });
+$('glowUse').addEventListener('click', () => { S.glow = S.glow ? null : S.glowHint; paint(); if (S.source || twins.has(S.item?.id)) load(); });
+$('ghost').addEventListener('click', () => showGhost(!S.ghostOn));
+$('lamps').addEventListener('click', () => setLit(!S.lit));
+$('beauty').addEventListener('click', () => frame());
+$('sheet').addEventListener('click', () => contactSheet());
+$('dissolve').addEventListener('click', () => dissolveTest());
+controls.addEventListener('change', () => { dirty = 2; });
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); frame(); });
+
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (fader.step(now)) dirty = Math.max(dirty, 1);
+  if (dirty <= 0) return;
+  dirty--;
+  renderer.render(scene, camera);
+  const off = camera.position.clone().sub(controls.target), dist = off.length();
+  const az = (THREE.MathUtils.radToDeg(Math.atan2(off.x, off.z)) + 360) % 360, el = THREE.MathUtils.radToDeg(Math.asin(off.y / dist));
+  $('hud').textContent = `camera az ${az.toFixed(0)}° · el ${el.toFixed(0)}° · ${renderer.info.render.triangles.toLocaleString('en')} tris · ${renderer.info.render.calls} calls`;
+}
+
+async function main() {
+  await twins.ready;
+  const id = Q.get('id');
+  try {
+    const cat = await (await fetch('/data/catalog.json', { cache: 'no-cache' })).json();
+    S.item = (cat.items || cat).find((it) => it.id === id) || null;
+  } catch { S.item = null; }
+  if (!S.item && id && num('w', 0) && num('h', 0)) S.item = { id, type: Q.get('type') || 'decor_set', dims: { w: num('w', 0), d: num('d', num('w', 0)), h: num('h', 0) } };
+  if (S.lit) setLit(true);
+  frame(); paint();
+  requestAnimationFrame(loop);
+  if (!S.item) { $('verdict').textContent = id ? `Unknown item "${id}" (add &w=&d=&h= in cm for an ad-hoc check)` : 'Add ?id=<itemId>'; $('verdict').className = 'bad'; return; }
+  const src = Q.get('src') ? sameOriginOrMedia(Q.get('src')) : null;
+  if (Q.get('src') && !src) { S.error = { reason: 'src refused', detail: 'only this origin or the media bucket' }; paint(); }
+  else if (src || twins.has(S.item.id)) await load(src, src ? src.split('/').pop() : 'manifest');
+  else { showGhost(true, { sticky: false }); frame(); } // nothing to check yet: show what the twin has to match
+  if (Q.has('dissolve')) await dissolveTest();
+  if (Q.has('sheet')) await contactSheet({ download: false });
+}
+window.twinLab = { THREE, twins, S, scene, stage, camera, renderer, materials, fader, load, frame, contactSheet, dissolveTest, showGhost, setLit, buildProcedural, ready: main().then(() => true) };
+</script>
+</body>
+</html>
