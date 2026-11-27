@@ -302,8 +302,9 @@ export function mountAssistant(opts = {}) {
           if (plan) safe(() => store.applyPlan(plan.selection, { reason: 'budget' }));
         }
         if (plan) {
-          const lvl = plan.level ? (lng === 'en' ? plan.level.nameEn || plan.level.name : plan.level.name) : (lng === 'en' ? 'Minimum' : 'Минимум');
-          lines.push({ kind: 'budget', text: `${lng === 'en' ? 'Budget' : 'Бюджет'}: ${quoted(lng, lvl)}`, delta: store.total() - t0 });
+          const lvl = plan.label || (plan.level ? (lng === 'en' ? plan.level.nameEn || plan.level.name : plan.level.name)
+            : plan.index > 0 ? (lng === 'en' ? 'Basics' : 'Основа') : (lng === 'en' ? 'Minimum' : 'Минимум'));
+          lines.push({ kind: 'budget', text: `${lng === 'en' ? 'Budget' : 'Бюджет'}: ${lvl}`, delta: store.total() - t0 });
         }
       } else if (a.type === 'select') {
         const prev = store.selected(a.key);

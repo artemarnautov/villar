@@ -178,8 +178,8 @@ const P = {
     budgetOk: (k, t) => `Готово: ${k} ${plural('ru', k, ['замена', 'замены', 'замен'])}, итог ${t}.`,
     budgetAlready: (t) => `Вы уже укладываетесь: итог ${t}.`,
     budgetMin: (m) => `Ниже ${m} в этом стиле не получится — вот самый экономный вариант.`,
-    budgetPlan: (n, lvl, t) => `Собрал комнату под ${n}: «${lvl}», итог ${t}.`,
-    budgetMinLevel: 'Минимум',
+    budgetPlan: (n, lvl, t) => `Комната под ${n}: «${lvl}», итог ${t}.`,
+    budgetMinLevel: 'Минимум', budgetBasicsLevel: 'Основа',
     style: (n, k) => `Стиль ${n}: обновлено ${k} ${plural('ru', k, ITEMS.ru)}.`,
     styleCantKeep: (a) => `Оставить ${a.noun.toLowerCase()} «${a.from}» не получится: в этом стиле такой модели нет. Вместо него — «${a.to}»${a.diff ? ` (${a.diff})` : ''}.`,
     styleSame: (n) => `Стиль ${n} уже выбран.`,
@@ -219,8 +219,8 @@ const P = {
     budgetOk: (k, t) => `Done: ${k} ${plural('en', k, ['swap', 'swaps'])}, total ${t}.`,
     budgetAlready: (t) => `You’re already within budget: total ${t}.`,
     budgetMin: (m) => `This style can’t go below ${m} — here is the most economical set.`,
-    budgetPlan: (n, lvl, t) => `Room set for ${n}: “${lvl}”, total ${t}.`,
-    budgetMinLevel: 'Minimum',
+    budgetPlan: (n, lvl, t) => `Room for ${n}: ${lvl}, total ${t}.`,
+    budgetMinLevel: 'Minimum', budgetBasicsLevel: 'Basics',
     style: (n, k) => `${n} style: ${k} ${plural('en', k, ITEMS.en)} updated.`,
     styleCantKeep: (a) => `${a.label} isn’t part of this style, so ${a.toFull} takes its place${a.diff ? ` (${a.diff})` : ''}.`,
     styleSame: (n) => `${n} is already the active style.`,
@@ -417,7 +417,7 @@ export function parseLocal(text, ctx) {
     if (plan) {
       raw.push({ type: 'budget', amount: target });
       selection = plan.selection;
-      budgetInfo = { target, total: plan.total, ok: plan.ok, min: plan.min, level: plan.level || null, plan: true, keep: style === state0.style ? keep : [] };
+      budgetInfo = { target, total: plan.total, ok: plan.ok, min: plan.min, level: plan.level || null, index: plan.index, plan: true, keep: style === state0.style ? keep : [] };
       intents.push('budget');
     }
   } else if (target) {
@@ -615,8 +615,9 @@ export function parseLocal(text, ctx) {
     } else replyParts.push(changedKeys.length || intents.includes('style') ? p.reset(quoted(lang, styleName(lang, sim.pack(res.state.style)))) : p.resetSame);
   }
   if (budgetInfo?.plan) {
-    // Same words as the server: «Собрал комнату под 25 000 AED: «Удобно жить», итог 24 993 AED».
-    const lvl = budgetInfo.level ? (lang === 'en' ? budgetInfo.level.nameEn || budgetInfo.level.name : budgetInfo.level.name) : p.budgetMinLevel;
+    // Same words as the server: «Комната под 25 000 AED: «Удобно жить», итог 24 993 AED».
+    const lvl = budgetInfo.level ? (lang === 'en' ? budgetInfo.level.nameEn || budgetInfo.level.name : budgetInfo.level.name)
+      : (budgetInfo.index > 0 ? p.budgetBasicsLevel : p.budgetMinLevel);
     replyParts.push(budgetInfo.ok ? p.budgetPlan(aed(lang, budgetInfo.target), lvl, aed(lang, total1)) : p.budgetMin(aed(lang, budgetInfo.min)));
   } else if (budgetInfo) {
     const t = aed(lang, budgetInfo.total);

@@ -166,10 +166,17 @@ async function boot() {
     const hideBusy = stage.mode === '3d' ? stage.busy(t('switching')) : () => {};
     const t0 = performance.now();
     requestAnimationFrame(() => setTimeout(() => {
-      try { store.setStyle(id, anchor ? { anchor } : {}); } finally { switching = false; }
+      // PT4-02: a room set by the budget slider keeps its budget in the new style (one transition); from the
+      // designer room (or with an anchor from the item panel) the switch lands on the style's own room as before.
+      let kept = null;
+      try { kept = anchor ? null : slider?.planForStyle(id) || null; } catch (err) { warn('budget-preserving switch failed', err); }
+      try { store.setStyle(id, kept ? { selection: kept.selection } : anchor ? { anchor } : {}); } finally { switching = false; }
       const done = () => {
         hideBusy();
-        toast.show(t('toast.style', { style: quoted(packName(store.style(id))) }), {
+        const msg = kept
+          ? t('toast.styleBudget', { style: packName(store.style(id)), level: kept.label, total: aed(store.total()) })
+          : t('toast.style', { style: quoted(packName(store.style(id))) });
+        toast.show(msg, {
           actionLabel: t('toast.undo'),
           onAction: () => {
             store.restore(prev);
@@ -184,24 +191,14 @@ async function boot() {
   const picker = createStylePicker({ el: $('#style-picker'), store, palettes, onPick: (id) => switchStyle(id) });
 
   // Grabbing the budget: the whole room comes back into view (no focused item), the engine keeps the camera
-  // still and defers its heavy work; letting go offers one quiet Undo for the whole gesture.
+  // still and defers its heavy work. Letting go leaves one quiet «Вернуть» beside the slider itself (D4-05).
   slider?.on('grab', () => {
     if (hud.isOpen) hud.close({ restoreFocus: false });
     card.hide();
     toast.hide();
     stage.setDragging(true);
   });
-  slider?.on('release', (g) => {
-    stage.setDragging(false);
-    if (!g.changed) return;
-    toast.show(t('toast.budget', { level: slider.levelName(g.level), total: aed(g.total) }), {
-      actionLabel: t('toast.undo'),
-      onAction: () => {
-        store.restore(g.snap);
-        toast.show(t('toast.budgetUndone'), { ms: 2400 });
-      },
-    });
-  });
+  slider?.on('release', () => stage.setDragging(false));
   // Any other change after a switch retires the undo offer (it would no longer restore just the style).
   store.on('change', ({ reason }) => { if (reason !== 'style' && reason !== 'restore') toast.hide(); });
 

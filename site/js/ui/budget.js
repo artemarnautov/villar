@@ -23,16 +23,20 @@ export function createBudget({ el, store, stage, onOrder, onLine, announce, slid
   }, toggleLbl, svg(icon('chevronDown')));
   const order = h('button', { type: 'button', class: 'btn btn-primary btn-lg budget-cta' });
   const groups = h('div', { class: 'budget-groups' });
-  const foot = h('p', { class: 'budget-foot' });
+  const footNote = h('span', { class: 'budget-foot-note' });
   const label = h('div', { class: 'budget-label', id: 'budget-label' });
+  // D4-09: with the slider, «Сбросить к подборке стиля» is a list-level action and lives in the list's foot.
+  const foot = h('div', { class: 'budget-foot' }, footNote, slider ? reset : null);
   const list = h('div', { class: 'budget-list', id: 'budget-list', inert: true },
     h('div', { class: 'budget-list-inner' }, groups, foot));
-  const links = h('div', { class: 'budget-links' }, toggle, reset);
+  const links = h('div', { class: 'budget-links' }, toggle, slider ? null : reset);
 
-  // The slider (docs/BUDGET.md) sits beside the total; without a ladder spec the bar is the plain total.
-  const view = slider ? createSliderView(slider, { store, variant: 'bar', meta }) : null;
+  // The slider (docs/BUDGET.md) sits beside the total: «Бюджет · Level · N предметов», the track, the scale.
+  // Without a ladder spec the bar is the plain total.
+  const view = slider ? createSliderView(slider, { store, variant: 'bar', onPins: () => showPins() }) : null;
   const side = view
-    ? h('div', { class: 'budget-side has-slider' }, h('div', { class: 'bs-head' }, view.level, view.sub), links, view.rail)
+    ? h('div', { class: 'budget-side has-slider' },
+      h('div', { class: 'bs-head' }, view.name, view.level, view.line), links, view.rail, view.scale)
     : h('div', { class: 'budget-side' }, meta, links);
 
   el.replaceChildren(
@@ -50,12 +54,16 @@ export function createBudget({ el, store, stage, onOrder, onLine, announce, slid
   const pillDelta = h('span', { class: 'cartbar-delta', 'aria-hidden': 'true' });
   const pillBtn = h('button', { type: 'button', class: 'btn btn-primary cartbar-btn' });
   const pillLabel = h('span', { class: 'cartbar-label' });
-  const dockMeta = h('span', { class: 'bs-meta' });
-  const dockView = slider ? createSliderView(slider, { store, variant: 'dock', meta: dockMeta, number: true }) : null;
-  const pill = dockView
+  let pill = null;
+  const dockView = slider ? createSliderView(slider, {
+    store, variant: 'dock', number: true, compact: true,
+    isShown: () => !!pill?.classList.contains('is-visible'), onPins: () => showPins(),
+  }) : null;
+  if (dockView) dockView.scale.insertBefore(dockView.line, dockView.scale.querySelector('.bs-end-r'));
+  pill = dockView
     ? h('div', { class: 'cartbar bdock', role: 'region' },
-      h('div', { class: 'bdock-row' }, h('div', { class: 'bdock-l' }, dockView.level, dockView.sub), dockView.number),
-      dockView.rail)
+      h('div', { class: 'bdock-row' }, h('div', { class: 'bdock-l' }, dockView.name, dockView.level), dockView.number),
+      dockView.rail, dockView.scale)
     : h('div', { class: 'cartbar glass', role: 'region' },
       h('div', { class: 'cartbar-sum' }, pillLabel, pillVal, pillDelta), pillBtn);
   document.body.append(pill);
@@ -68,9 +76,12 @@ export function createBudget({ el, store, stage, onOrder, onLine, announce, slid
     // keeps it (the page doesn't scroll under a finger on the thumb, but the observers may still fire).
     const dragging = dockView?.dragging;
     const show = dragging || (stageOn && !budgetOn && !hudOn);
+    const was = pill.classList.contains('is-visible');
     pill.classList.toggle('is-visible', show);
     document.documentElement.classList.toggle('cartbar-on', show);
     pill.inert = !show;
+    if (dockView && show && !was) setTimeout(() => dockView.maybeHint(), 500);
+    if (dockView && !show) dockView.dropHint();
   };
   syncPill();
   if ('IntersectionObserver' in window && stage) {
@@ -89,13 +100,23 @@ export function createBudget({ el, store, stage, onOrder, onLine, announce, slid
   const setVal = (v) => { displayed = v; val.textContent = fmtNum(v); pillVal.textContent = aed(v); };
   setVal(shown);
 
-  toggle.addEventListener('click', () => {
-    const open = toggle.getAttribute('aria-expanded') !== 'true';
+  function setListOpen(open) {
     toggle.setAttribute('aria-expanded', String(open));
     toggleLbl.textContent = t(open ? 'budget.hide' : 'budget.show');
     list.classList.toggle('is-open', open);
     list.inert = !open;
-  });
+  }
+  toggle.addEventListener('click', () => setListOpen(toggle.getAttribute('aria-expanded') !== 'true'));
+  /** «Ваши вещи» under the slider: open the list at the pinned rows, focus the first «Открепить». */
+  function showPins() {
+    setListOpen(true);
+    const row = groups.querySelector('.line.is-pinned');
+    if (!row) return;
+    const nav = document.querySelector('.nav')?.offsetHeight || 0;
+    const y = window.scrollY + row.getBoundingClientRect().top - nav - 120;
+    window.scrollTo({ top: Math.max(0, y), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    row.querySelector('.line-act')?.focus({ preventScroll: true });
+  }
   order.addEventListener('click', () => onOrder?.());
   reset.addEventListener('click', () => {
     // PT-15: the link hides itself after use, so hand focus to the next control first.
@@ -107,7 +128,6 @@ export function createBudget({ el, store, stage, onOrder, onLine, announce, slid
   function renderMeta() {
     const placed = store.placed().length;
     meta.textContent = t('budget.meta', { n: placed, items: itemsWord(placed), style: quoted(packNameOf(store.style?.())) });
-    dockMeta.textContent = `${placed}${NBSP}${itemsWord(placed)}`;
     reset.hidden = !store.isCustomized?.() && !(store.pins?.().length);
   }
 
@@ -155,25 +175,37 @@ export function createBudget({ el, store, stage, onOrder, onLine, announce, slid
         });
         return h('li', { class: 'line is-pinned' }, b, un);
       });
+      // D4-06: what the budget leaves out, under one quiet subheading per zone; each «Добавить» says its price.
       const outRows = out.map(({ key, slotId, type, def }) => {
-        const name = keyLabel(lng, key, type);
-        const add = h('button', { type: 'button', class: 'line-act line-add', 'aria-label': t('budget.addAria', { name }) },
-          svg(icon('plus')), t('budget.add'));
+        const label = keyLabel(lng, key, type);
+        const full = nameOf(def);
+        // PT4-01: lamps need their nightstands, tableware a table and chairs — the price says so up front.
+        const deps = slider?.requires(key) || {};
+        const depKeys = Object.keys(deps);
+        const qtyOf = (k) => store.slotsFor?.(k)?.length || 1;
+        const sum = (Number(def.price) || 0) * qtyOf(key) + depKeys.reduce((a, k) => a + (Number(store.item(deps[k])?.price) || 0) * qtyOf(k), 0);
+        const price = aed(sum);
+        const lower = (s) => (/^\p{Lu}\p{Ll}/u.test(s) ? s[0].toLowerCase() + s.slice(1) : s);
+        const withText = depKeys.length ? t('budget.with', { list: depKeys.map((k) => lower(keyLabel(lng, k, store.state.layout.slots.find((s) => s.id === store.slotsFor?.(k)?.[0])?.type || k))).join(', ') }) : '';
+        const add = h('button', { type: 'button', class: 'line-act line-add', 'aria-label': t('budget.addAria', { name: full + (withText ? ` (${withText})` : ''), price }) },
+          svg(icon('plus')), t('budget.addPrice', { price }));
         add.addEventListener('click', () => {
           focusAfter = `[data-slot="${CSS.escape(slotId)}"].line-btn`;
-          store.select(key, def.id, { reason: 'user' });   // pins it: the slider plans around it from now on
-          announce?.(t('budget.added', { name }));
+          if (slider) slider.add(key, def.id);                    // dependencies first, then the piece (pinned)
+          else store.select(key, def.id, { reason: 'user' });
+          announce?.(t('budget.added', { name: label }) + (withText ? `, ${withText}` : ''));
         });
         return h('li', { class: 'line is-out' },
           h('div', { class: 'line-out' },
             h('span', { class: 'dot-c is-empty', 'aria-hidden': 'true' }),
-            h('span', { class: 'line-name' }, name),
-            h('span', { class: 'line-note' }, t('budget.out'))),
+            h('span', { class: 'line-name' }, full, withText ? h('span', { class: 'line-with' }, withText) : null)),
           add);
       });
       return h('section', { class: 'budget-group', 'aria-label': z.label },
-        h('h4', { class: 'group-head' }, h('span', null, z.label), h('span', { class: 'num' }, aed(sub))),
-        h('ul', { role: 'list' }, ...rows, ...outRows));
+        h('h4', { class: 'group-head' }, h('span', null, z.label), ls.length ? h('span', { class: 'num' }, aed(sub)) : null),
+        rows.length ? h('ul', { role: 'list' }, ...rows) : null,
+        outRows.length ? h('p', { class: 'out-head', id: `out-${z.id}` }, t('budget.out')) : null,
+        outRows.length ? h('ul', { role: 'list', class: 'out-list', 'aria-labelledby': `out-${z.id}` }, ...outRows) : null);
     }));
     // Keep keyboard focus on the row the action changed (it may move between renders: wait until it exists).
     if (focusAfter) {
@@ -217,7 +249,7 @@ export function createBudget({ el, store, stage, onOrder, onLine, announce, slid
     resetLbl.textContent = t('budget.reset');
     toggleLbl.textContent = t(toggle.getAttribute('aria-expanded') === 'true' ? 'budget.hide' : 'budget.show');
     order.textContent = t('budget.order');
-    foot.textContent = t('budget.foot');
+    footNote.textContent = t('budget.foot');
     pillLabel.textContent = t('cart.total');
     pillBtn.textContent = t('cart.order');
     pill.setAttribute('aria-label', dockView ? t('bs.label') : t('budget.label'));
@@ -239,7 +271,7 @@ export function createBudget({ el, store, stage, onOrder, onLine, announce, slid
       gestureBase = null;
       el.classList.remove('is-gesture');
       flashDelta(store.total() - g.startTotal);
-      if (g.changed) announce?.(t('bs.announce', { level: slider.levelName(g.level), total: aed(g.total) }));
+      if (g.changed && !g.aborted) announce?.(t('bs.announce', { level: g.label, total: aed(g.total) }));
       syncPill();
     });
   }

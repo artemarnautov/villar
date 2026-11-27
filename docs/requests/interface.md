@@ -31,28 +31,22 @@ fallback.
    The catalog is unchanged. If you standardise the names at the source, the display rules simply stop matching.
 2. `uiAccent` per palette (D2-20) is still optional. Until it ships, `ui/accent.js` keeps its fallbacks.
 
-## Budget slider (round 5): status and requests
+## Budget slider (round 6): status and requests
 
-UI side is in: `ui/budget-slider.js` (controller + views), the bar beside the total, the phone dock, the list
-(«Не входит в бюджет · Добавить», pins with «Открепить»), the HUD pin line, one Undo per gesture, the AI client.
-
-To coordinator:
-1. `tools/test-ai.mjs` (5 failures, all expectations of the old fitBudget path):
-   - the local-actions loop applies `style`, `reset` and `select` only. Add `budget`:
-     `const p = sim.planBudget(store.styleId(), a.amount, { selection: store.state.selection, pins: store.pins() }); store.applyPlan(p.selection);`
-   - «уложись в 5 000» expects `sim.minTotal()` (all-cheapest room, 21 875). The planner's minimum is the tier-0 room
-     (7 852): compare with `sim.planBudget(base.id, 5000).min`.
-2. `api/assistant.js` `budgetPlan`: when the plan lands below Essentials, `plan.level` is null and the reply reads
-   «Собрал комнату под 10 000 AED: «», итог 8 570 AED». The client says «Минимум» / "Minimum" there.
-3. `ai/core.js` `applyActions`: after a `reset` in the same answer, the budget still plans around `state0.pins`, but
-   `store.reset()` clears the pins on the client, so the two rooms can differ. Suggest pins = [] after a reset.
-4. «уложись в 30 000, диван оставь»: the client pins the kept pieces before it calls the server (so `state.pins`
-   already contains them); no server change needed.
-
-To engine (tested with the working tree, software GL):
-- Desktop and phone: min → Essentials → designer → max, no errors. Two quick plans (designer → Move-in → Comfortable)
-  leave 4 stale slots after 15 s and converge by 45 s on software GL (`villar.debug.furnisher.placed` vs the store).
-- `setDragging` is called on grab and release; the HUD is closed (unfocus) on grab.
+Done in the UI (D4-01…D4-09, R4-04, PT4-01, PT4-02, labels):
+- «Бюджет · <level> · N предметов»; AED ends under the track; a one-time hint (`localStorage villar:bs-hint`).
+- 6 px ticks; levels within 1.5 % (or 24 px on screen) merge to the later name; tick names on ≥ 1024 px.
+- A value bubble while dragging; the whisper shows two changes, then «+N ещё», one line at a time.
+- The pinned floor is a solid muted segment, «📍 Ваши вещи · 12 346 AED» under it, which opens the pinned rows.
+- The gesture's «Вернуть» sits beside the slider, 10 s; the stage toast is kept for style switches only.
+- Left-out rows say «Добавить · 571 AED» (dependencies included, «вместе с: журнальный столик»), under one
+  subheading per zone; a zone with nothing in it shows no «0 AED».
+- «Минимум» at step 0, «Основа» until Essentials (slider, aria, AI reply).
+- R4-04: a style switch during a gesture ends it; the next move uses the new style's ladder; the gesture's Undo
+  (old style snapshot) stays on offer.
+- PT4-01: Add = `requiredFor` deps via `applyPlan`, then `select` (pins).
+- PT4-02: a manual switch from an off-designer ladder step lands on the target's richest step ≤ the total
+  (`setStyle(id, { selection })`), toast «Светлый дуб · Всё для жизни, 19 673 AED · Вернуть».
 
 ## To coordinator
 
