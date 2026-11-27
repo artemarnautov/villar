@@ -759,8 +759,8 @@ export const TIME_WORDS = {
   evening: 'blue-hour evening: lamps and downlights on, warm 2700 K pools of light, the city lit outside',
 };
 export const WINDOW_WORDS = {
-  morning: 'a real photograph of a modern city seen from a high floor in clear morning light, pale blue sky, natural haze',
-  day: 'a real photograph of a modern city seen from a high floor under a clear blue midday sky with natural haze toward the horizon',
-  golden: 'a real photograph of a modern city seen from a high floor at sunset, the sky glowing amber to soft blue, warm light on the buildings',
-  evening: 'a real photograph of a modern city seen from a high floor at blue hour, a deep blue sky, lit windows and street lights',
+  morning: 'a real photograph of the open morning sky: pale blue with soft textured clouds, luminous haze low down, no buildings',
+  day: 'a real photograph of the open sky: deep blue with sculpted sunlit clouds, luminous haze low down, no buildings',
+  golden: 'a real photograph of the open sky at sunset: textured clouds in gold, coral and rose against teal and blue, no buildings',
+  evening: 'a real photograph of the open sky at blue hour: deep indigo with an ember afterglow and dark textured clouds, no buildings',
 };

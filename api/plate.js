@@ -11,7 +11,8 @@
 // Response: { url, url2k, time, width, height, horizon, hfov, sun: { az, alt, K, color }, model, mask?, video: null }
 //           | { pending: true, retryAfter } (another request is generating it) | { error }
 //   url    — full plate (≤ 4096 px wide JPEG);  url2k — 2048 px rendition for phones / low tier (`w=2048` picks it as url)
-//   horizon — fraction of the image height where the horizon sits (asked of the model: 0.5)
+//   horizon — fraction of the image height where the horizon sits (v3 sky plates: 1 = the bottom edge; `sky: true`:
+//             the engine continues the bottom rows downward as haze)
 //   hfov    — intended horizontal field of view in degrees (asked of the model: ~100°)
 //   sun     — the engine's sun for that time (lighting.js TOD): az from the window normal toward +X, alt, colour temperature
 //   video   — an 8 s MP4 loop of the plate (job kind `loop`: first frame = last frame = the plate), else null
@@ -26,7 +27,7 @@ import {
 } from './_photo.js';
 import { sniff, imageSize, decodePNG, downscale, encodeJPEG, encodeGrayPNG } from './_img.js';
 
-export const PLATE_VERSION = 'v2'; // v2: a neutral, anonymous city view (no named district, no landmark)
+export const PLATE_VERSION = 'v3'; // v3: sky only (founder, 27 Nov), one generated sky per time of day
 const DEADLINE_MS = 55_000;
 const LOCK_TTL_S = 120;
 const PENDING_STALE_MS = 20 * 60_000;
@@ -48,13 +49,13 @@ export function kelvinHex(K) {
   return `#${[r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('')}`;
 }
 
-const COMMON = 'Wide 21:9 panorama, about 100 degrees horizontal field of view, a level camera at standing eye height: vertical lines stay vertical and the horizon lies exactly across the middle of the image. No window frame, mullions, glass reflections, interior, balcony railing or people in the foreground. Natural colours as a professional architectural photographer would capture them, crisp detail into the distance, real atmospheric haze growing with distance. No text, no watermark.';
+const COMMON = 'Only sky fills the entire frame: no buildings, no land, no sea, no trees, no horizon line, no sun disc, no birds, no aircraft, no text, no watermark. The lowest part of the frame pales into a soft luminous haze. Wide 21:9 panorama, level camera looking straight out and slightly up, 35 mm lens. Rich natural colour and fine tonal detail in the clouds, like a fine-art landscape photograph; no HDR look, no oversaturation, no painterly smearing.';
 export const PLATE_PROMPTS = {
-  day: `A real photograph, not a render: the open view from a high floor, about the 25th, of a residential building in a modern Gulf city on a clear day. A neutral, anonymous view: no recognisable landmark, no famous or distinctive tower, no sea, no marina, no river, no desert dunes. Far below and stretching to the horizon lie quiet residential districts: low sand-coloured villas and mid-rise apartment blocks among green trees, small parks and palm-lined avenues. In the far distance a loose scatter of ordinary modern glass towers of different heights, small, softened by warm haze, none of them remarkable. The sky is the subject: deep clear blue at the top paling to a soft warm haze at the horizon, with a few thin high cirrus clouds; the sun high to the upper right, outside the frame, lighting the right-facing walls. ${COMMON}`,
-  sunset: `Edit this photograph. Keep every building, tree and street exactly: its position, size, shape and silhouette; keep the horizon, the camera and the framing unchanged. Change only the time of day to golden-hour sunset: the sun low on the right near the horizon, just outside the right edge; warm amber light raking across the right-facing walls with long soft shadows; the sky glowing amber and peach near the horizon on the right, fading to soft blue at the top, the thin clouds lit pink-gold from below; slightly warmer haze. ${COMMON}`,
-  evening: `Edit this photograph. Keep every building, tree and street exactly: its position, size, shape and silhouette; keep the horizon, the camera and the framing unchanged. Change only the time of day to blue hour, about 30 minutes after sunset: a deep blue sky with a faint warm afterglow low on the right; windows lit across the districts, a natural mix of warm and cool interiors, many dark; street lights along the avenues, a few car lights; the distant towers with scattered lit floors; no stars and no moon. ${COMMON}`,
+  day: `A real photograph of the open sky from a high floor on a bright day. A deep, clear blue above; sculpted fair-weather cumulus at several distances, their tops crisp and sunlit, their bases soft blue-grey, with real depth between near and far clouds; fine feathered cirrus very high above. The sun is high to the upper right, outside the frame, lighting the clouds from the right. ${COMMON}`,
+  sunset: `A real photograph of the open sky from a high floor at golden hour. Layers of textured altocumulus and long streaks of cirrus lit from below in gold, apricot, coral and rose, their shadowed sides mauve and slate; between them a clear sky turning from warm amber low on the right to teal and deep blue above. The sun is very low on the right, outside the frame. Deep, rich colour with real cloud texture. ${COMMON}`,
+  evening: `A real photograph of the open sky from a high floor at blue hour, about 25 minutes after sunset. Deep indigo and cobalt above; low on the right a band of ember orange and magenta afterglow; dark, textured cloud layers with softly glowing rims and violet undersides, a few high wisps still catching pink light. No stars, no moon. Calm, deep colour with real cloud texture. ${COMMON}`,
   // ≤ 800 characters: for draft models with a short prompt limit (z-image)
-  dayShort: 'A real photograph, not a render: the open view from about the 25th floor of a residential building in a modern Gulf city on a clear day. Anonymous view: no landmark, no famous tower, no sea, no marina. Far below, quiet districts of low sand-coloured villas and mid-rise blocks among green trees and palm-lined avenues; in the far distance a few ordinary glass towers softened by warm haze. The sky is the subject: deep blue paling to warm haze at the horizon, thin high cirrus; the sun high to the upper right, outside the frame. Wide panorama, level camera, vertical lines vertical, the horizon exactly across the middle. No window frame, no glass reflections, no interior, no railing, no people, no text. Natural colours, crisp detail, real atmospheric haze.',
+  dayShort: 'A real photograph of the open sky from a high floor on a bright day: deep clear blue, sculpted cumulus with sunlit tops at several distances, fine cirrus high above, the sun high to the upper right outside the frame. Only sky in the frame, pale luminous haze at the bottom. Wide panorama, natural colour, no HDR look.',
   mask: 'Edit this photograph. Replace the entire sky with a flat, pure green colour (#00FF00) everywhere the sky is visible, including between buildings. Keep every building, tree and everything else exactly as it is, with sharp edges. No other changes.',
 };
 
@@ -100,7 +101,7 @@ function answer(db, time, rows, { small = false } = {}) {
   const url = db.publicUrl(full.path), url2k = two ? db.publicUrl(two.path) : url;
   return {
     url: small ? url2k : url, url2k, time, width: small && two ? two.width : full.width, height: small && two ? two.height : full.height,
-    horizon: 0.5, hfov: 100, sun: { ...sun, color: kelvinHex(sun.K) }, model: full.model,
+    horizon: 1, sky: true, hfov: 100, sun: { ...sun, color: kelvinHex(sun.K) }, model: full.model,
     ...(mask ? { mask: db.publicUrl(mask.path) } : {}), video: loop ? db.publicUrl(loop.path) : null,
   };
 }
@@ -125,12 +126,13 @@ async function finishPlate(db, { time, model, bytes, ms, usd = NaN, requestId = 
 function platePlan({ req, auth, time, dayUrl, params = {}, t0 }) {
   const want = ['1K', '2K', '4K'].includes(params.resolution) ? params.resolution : '4K';
   let models = pickModels('plate', usableProviders(req), params.model);
-  models = time === 'day' ? models.filter((m) => !m.editOnly) : models.filter((m) => !m.t2iOnly);
-  const images = time === 'day' ? [] : [{ url: dayUrl, label: 'The photograph to edit:' }];
+  // v3 (sky only): every time of day is its own text-to-image sky; nothing is edited from the day plate
+  models = models.filter((m) => !m.editOnly);
+  const images = [];
   const seed = Number.isInteger(params.seed) ? params.seed : 7;
   const limit = Number.isFinite(Number(params.maxUsd)) && Number(params.maxUsd) > 0 ? Math.min(5, Number(params.maxUsd)) : maxUsd(false);
   const makeOpts = (model, n) => (n > 0 ? null : {
-    auth, prompt: time === 'day' && model.maxPrompt && PLATE_PROMPTS.day.length > model.maxPrompt ? PLATE_PROMPTS.dayShort : PLATE_PROMPTS[time],
+    auth, prompt: model.maxPrompt && PLATE_PROMPTS[time].length > model.maxPrompt ? (time === 'day' ? PLATE_PROMPTS.dayShort : PLATE_PROMPTS[time].slice(0, model.maxPrompt)) : PLATE_PROMPTS[time],
     images, aspectRatio: '21:9', imageSize: bestSize(model, want), quality: typeof params.quality === 'string' ? params.quality : null,
     timeoutMs: Math.max(5000, Math.min(50_000, DEADLINE_MS - (Date.now() - t0) - 3000)), deadlineAt: t0 + DEADLINE_MS - 6000,
     idempotencyKey: `plate-${PLATE_VERSION}-${time}-${model.id.replace(/[^a-z0-9]/gi, '')}-${Math.floor(Date.now() / 600_000)}`.slice(0, 64), seed, maxCost: limit,
@@ -244,7 +246,7 @@ export async function runPlateJob(db, job, { req, t0 = Date.now(), trace = [] } 
     if (!got) return { pending: true, result: { locked: true } };
     return { done: true, result: got, cost: got.usd };
   }
-  const time = job.kind === 'plate' ? 'day' : TIMES[String(p.time || '')];
+  const time = TIMES[String(p.time || (job.kind === 'plate' ? 'day' : ''))];
   if (!time || (job.kind === 'plate-edit' && time === 'day')) throw new GatewayError('rejected', `bad params.time for ${job.kind}`);
   const all = await readRows(db, [plateKey(time), plateKey('day')], { pending: true });
   const cur = all.get(plateKey(time));
@@ -283,11 +285,11 @@ export const LOOP_MODELS = {
   wan_3: { path: 'alibaba/wan-3.0/image-to-video', body: (url, prompt, o) => ({ prompt, image_url: url, end_image_url: url, duration: Math.max(2, Math.min(30, o.duration)), resolution: ['480p', '720p', '1080p'].includes(o.resolution) ? o.resolution : '720p', aspect_ratio: 'adaptive', generate_audio: false, enable_thinking: false }) },
 };
 const LOOP_PROMPT = {
-  day: 'The same view, alive and almost still: thin high clouds drift slowly, leaves stir, a few distant cars move.',
-  sunset: 'The same view at sunset, alive and almost still: the warm light breathes slightly, thin clouds drift slowly, leaves stir, a few distant cars move.',
-  evening: 'The same view at blue hour, alive and almost still: a few windows switch on or off, tiny car lights move along the avenues.',
+  day: 'The same sky, alive and almost still: the clouds drift very slowly to the left and evolve slightly.',
+  sunset: 'The same sunset sky, alive and almost still: the clouds drift very slowly, the warm light breathes slightly.',
+  evening: 'The same blue-hour sky, alive and almost still: the clouds drift very slowly, the afterglow fades almost imperceptibly.',
 };
-const LOOP_RULES = 'Locked-off camera on a tripod: no camera movement, no zoom, no pan. Every building keeps its exact position, shape and silhouette. Subtle, slow motion only. Seamless loop: the last frame is identical to the first frame.';
+const LOOP_RULES = 'Locked-off camera on a tripod: no camera movement, no zoom, no pan. Only sky, nothing enters the frame. Subtle, slow motion only. Seamless loop: the last frame is identical to the first frame.';
 const MAX_VIDEO = 40 * 1024 * 1024;
 
 /** One step of a `loop` job: params { time, model?: 'kling_o3' | 'wan_3', duration? (8), mode?, resolution?, dry?, maxUsd?, replace? }. */
