@@ -99,7 +99,8 @@ function table(c, kind) {
         const y0 = (i / n) * under, y1 = ((i + 1) / n) * under;
         for (let k = 0; k <= 10; k++) { const t = k / 10; prof.push([Math.max(rr * 0.35, rr * Math.sin(t * Math.PI)), y0 + (y1 - y0) * t]); }
       }
-      prof.push([rr * 0.6, under], [0.001, under]);
+      // the top bead runs 4 mm up into the top (its cap was coplanar with the top's underside: z-fight from low angles)
+      prof.push([rr * 0.6, under + 0.004], [0.001, under + 0.004]);
       b.add(lathe(prof, 48), legMat, { uv: 'cyl' });
     } else if (ps.includes('slat')) {
       // ring of vertical slats around a dark core, on a disc foot
@@ -132,17 +133,19 @@ function table(c, kind) {
   }
 
   if (legs.includes('pedestal') || legs.includes('drum') || legs.includes('column') || legs.includes('tulip') || legs.includes('cylinder')) {
-    const rBase = Math.min(W, D) * (kind === 'side' ? 0.36 : legs.includes('drum') ? 0.4 : 0.3);
+    const drumStyle = legs.includes('drum') || ps.includes('drum');
+    const rBase = Math.min(W, D) * (kind === 'side' ? 0.36 : drumStyle ? 0.4 : 0.3);
     if (legs.includes('tulip')) {
       const prof = smoothProfile([[0.001, 0], [rBase * 1.0, 0.0], [rBase * 0.95, 0.012], [rBase * 0.22, under * 0.12], [rBase * 0.16, under * 0.6], [rBase * 0.5, under * 0.96], [rBase * 0.55, under], [0.001, under]], 50);
       b.add(lathe(prof, 48), legMat, { uv: 'cyl' });
-    } else if (kind === 'side' && !legs.includes('drum')) {
+    } else if (kind === 'side' && !drumStyle) {
+      // column from the foot disc right up under the top (it stopped 1 cm short: the top floated, round 5)
       const rc = Math.min(0.045, rBase * 0.3);
-      b.add(new THREE.CylinderGeometry(rc, rc, under - 0.02, 32), legMat, { pos: [0, under / 2, 0], axis: 'y' });
+      b.add(new THREE.CylinderGeometry(rc, rc, under - 0.018, 32), legMat, { pos: [0, 0.018 + (under - 0.018) / 2, 0], axis: 'y' });
       b.add(slab(ellipseShape(rBase * 2, rBase * 2), 0.02, { bevel: 0.006 }), legMat, { pos: [0, 0, 0], axis: 'x' });
     } else {
       // drum / trumpet pedestal (optionally fluted)
-      const isDrum = legs.includes('drum');
+      const isDrum = drumStyle;
       const rc = isDrum ? Math.min(W, D) * 0.4 : Math.min(W, D) * (kind === 'dining' ? 0.115 : 0.25);
       const foot = kind === 'dining' && !isDrum ? Math.min(W, D) * 0.34 : 0;
       if (fluted) {
@@ -159,7 +162,8 @@ function table(c, kind) {
         const prof = smoothProfile([[0.001, 0], [foot, 0], [foot, 0.012], [foot * 0.92, 0.024], [rc * 1.9, 0.05], [rc * 1.15, under * 0.22], [rc, under * 0.5], [rc * 1.05, under - 0.03], [rc * 1.5, under - 0.004], [0.001, under - 0.004]], 60);
         b.add(lathe(prof, 64), legMat, { uv: 'cyl' });
       } else {
-        const prof = smoothProfile([[0.001, 0.012], [rc * 0.97, 0.012], [rc, 0.03], [rc * 0.95, under * 0.5], [rc, under - 0.012], [rc * 0.97, under], [0.001, under]], 40);
+        // (round 5) the drum runs 4 mm up into the top: its cap was coplanar with the top's underside
+        const prof = smoothProfile([[0.001, 0.012], [rc * 0.97, 0.012], [rc, 0.03], [rc * 0.95, under * 0.5], [rc, under - 0.012], [rc * 0.97, under], [rc * 0.9, under + 0.004], [0.001, under + 0.004]], 40);
         b.add(lathe(prof, 72), legMat, { uv: 'cyl' });
         // recessed shadow-gap plinth
         b.add(new THREE.CylinderGeometry(rc * 0.9, rc * 0.9, 0.012, 48), c.mat('metal-black', { color: '#1d1a18' }), { pos: [0, 0.006, 0] });
@@ -216,14 +220,33 @@ export function diningTable(c) { return table(c, 'dining'); }
 // ---------------------------------------------------------------- case goods
 
 /**
+ * One-piece drawer front with a routed finger notch (gw × gh) in its top edge: an extruded outline with a 2.5 mm
+ * eased edge all round, the notch included — no seams. Centred on the origin, depth along z.
+ */
+function notchedFront(w, h, t, gw, gh) {
+  const e = 0.0025, W2 = w / 2 - e, H2 = h / 2 - e, g2 = gw / 2 + e, d = gh, r = Math.min(0.006, gh * 0.45);
+  const s = new THREE.Shape();
+  s.moveTo(-W2, -H2); s.lineTo(W2, -H2); s.lineTo(W2, H2); s.lineTo(g2 + r, H2);
+  s.quadraticCurveTo(g2, H2, g2, H2 - r); s.lineTo(g2, H2 - d + r); s.quadraticCurveTo(g2, H2 - d, g2 - r, H2 - d);
+  s.lineTo(-g2 + r, H2 - d); s.quadraticCurveTo(-g2, H2 - d, -g2, H2 - d + r); s.lineTo(-g2, H2 - r); s.quadraticCurveTo(-g2, H2, -g2 - r, H2);
+  s.lineTo(-W2, H2); s.lineTo(-W2, -H2);
+  const g = new THREE.ExtrudeGeometry(s, { depth: t - 2 * e, bevelEnabled: true, bevelThickness: e, bevelSize: e, bevelSegments: 2, curveSegments: 6 });
+  g.translate(0, 0, -(t - 2 * e) / 2);
+  return g;
+}
+
+/**
  * Cabinet body with fronts. layout = array of columns, each { w (fraction), cells: [{ type:'drawer'|'door'|'open', h (fraction) }] }.
  */
 function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat', name, top = null }) {
   const p = c.params;
   handles = String(handles || 'none'); front = String(front || 'flat'); woodKey = typeof woodKey === 'string' ? woodKey : 'walnut-dark';
   const b = new Builder(c.seed);
-  const wood = c.mat(woodKey);
-  const frontWood = /herring|chevron/.test(front) ? c.mat(woodKey, { layout: 'chevron' }) : wood;
+  // painted case goods are satin-lacquered MDF in the catalogue colour — never the wall paint (round 5)
+  const painted = /^(paint|lacquer|mdf)/.test(woodKey);
+  const paintCol = p.woodColor || p.color || c.item?.colorHex || '#E6DFD3';
+  const wood = painted ? c.mat('kitchen-front', { color: paintCol, roughness: 0.48 }) : c.mat(woodKey);
+  const frontWood = painted ? wood : /herring|chevron/.test(front) ? c.mat(woodKey, { layout: 'chevron' }) : wood;
   const dark = c.mat('walnut-dark', { tint: '#5a4a40' });
   const lt = String(legType);
   const legH = lt === 'none' || lt.includes('hidden') ? 0 : lt.includes('plinth') ? clamp(cm(p.legHeight, 0.06), 0.03, 0.12) : clamp(cm(p.legHeight, H * 0.26), 0.04, 0.25);
@@ -235,10 +258,18 @@ function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat'
   const bodyD = D - frontT;
   const bz = -D / 2 + bodyD / 2;
   // carcass: top, bottom, sides, back as one soft box slightly inset
-  b.add(softBox(W, panelT, bodyD + frontT, { r: 0.004, seg: 2 }), top ? c.mat(top) : wood, { pos: [0, H - panelT / 2, 0] });
+  // a stone top (e.g. travertine) is a thicker slab of its own with a 2 mm eased edge
+  const topT = top && /travert|marble|stone|quartz|terrazzo/.test(String(top)) ? 0.02 : panelT;
+  b.add(softBox(W, topT, bodyD + frontT, { r: topT > panelT ? 0.002 : 0.004, seg: 2 }), top ? c.mat(top, p.topColor ? { match: p.topColor } : undefined) : wood, { pos: [0, H - topT / 2, 0] });
+  if (topT > panelT) b.add(softBox(W - 0.002, panelT, bodyD + frontT - 0.002, { r: 0.003, seg: 1 }), wood, { pos: [0, H - topT - panelT / 2 + 0.001, 0] });
   b.add(softBox(W, panelT, bodyD, { r: 0.003, seg: 1 }), wood, { pos: [0, legH + panelT / 2, bz] });
   for (const s of [-1, 1]) b.add(softBox(panelT, bodyH - panelT, bodyD + frontT, { r: 0.003, seg: 2 }), wood, { pos: [s * (W / 2 - panelT / 2), legH + (bodyH - panelT) / 2, 0], axis: 'y' });
-  b.add(new THREE.BoxGeometry(W - 2 * panelT, bodyH - 2 * panelT, 0.006), dark, { pos: [0, legH + bodyH / 2, -D / 2 + 0.01] });
+  // finished back (round 5, FOCUS turntable): a 9 mm veneered panel let in 3 mm between the sides, top and bottom
+  // (was a dark 6 mm sheet 7 mm deep — an unfinished hole from behind), vertical grain, its own eased edges
+  const backT = 0.009;
+  b.add(softBox(W - 2 * panelT + 0.002, bodyH - 1.5 * panelT, backT, { r: 0.0015, seg: 1 }), wood, { pos: [0, legH + bodyH / 2 - panelT * 0.25, -D / 2 + 0.003 + backT / 2], axis: 'y' });
+  // inside face of the back: the dark interior seen through the reveals of closed fronts
+  b.add(new THREE.BoxGeometry(W - 2 * panelT, bodyH - 2 * panelT, 0.002), dark, { pos: [0, legH + bodyH / 2, -D / 2 + 0.003 + backT + 0.0012], cast: false });
 
   // fronts
   const fx0 = -W / 2 + panelT, fw = W - 2 * panelT;
@@ -261,9 +292,13 @@ function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat'
       } else {
         // dark shadow plane behind the reveals of closed fronts
         b.add(new THREE.BoxGeometry(cw, ch, 0.004), recess, { pos: [cx, cy, D / 2 - frontT - 0.015] });
+        const ht = handles || 'none';
+        const groove = ht === 'cutout' || (ht === 'none' && cell.type === 'drawer');
         if (front === 'fluted') {
-          b.add(softBox(w, h, frontT * 0.6, { r: 0.002, seg: 2 }), wood, { pos: [cx, cy, zf - frontT * 0.2] });
-          addFlutes(b, wood, { cx, cy, z: zf + frontT * 0.1, w, h, pitch: 0.026, depth: 0.007 });
+          // a fluted drawer without a handle has a 14 mm finger gap along its top edge (the dark recess shows)
+          const gh = groove ? 0.014 : 0;
+          b.add(softBox(w, h - gh, frontT * 0.6, { r: 0.002, seg: 2 }), frontWood, { pos: [cx, cy - gh / 2, zf - frontT * 0.2] });
+          addFlutes(b, frontWood, { cx, cy: cy - gh / 2, z: zf + frontT * 0.1, w, h: h - gh, pitch: 0.026, depth: 0.007 });
         } else if (front === 'slatted' && cell.type === 'door') {
           b.add(new THREE.BoxGeometry(w, h, frontT * 0.5), dark, { pos: [cx, cy, zf - frontT * 0.25] });
           addSlats(b, wood, { cx, cy, z: zf - frontT * 0.1, w, h, pitch: 0.04, slatW: 0.026, depth: 0.014 });
@@ -276,16 +311,23 @@ function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat'
           b.add(softBox(fr, h - 2 * fr + 0.001, frontT, { r: 0.0025, seg: 2 }), wood, { pos: [cx + w / 2 - fr / 2, cy, zf], axis: 'y' });
           b.add(new THREE.PlaneGeometry(w - 2 * fr + 0.004, h - 2 * fr + 0.004), c.mat('cane'), { pos: [cx, cy, zf + 0.002] });
           b.add(new THREE.BoxGeometry(w - 2 * fr, h - 2 * fr, 0.004), dark, { pos: [cx, cy, zf - frontT / 2 + 0.002] });
-        } else {
+        }
+        const plain = !(front === 'fluted' || (front === 'slatted' && cell.type === 'door') || (front === 'cane' && cell.type === 'door'));
+        if (plain && groove) {
+          // routed finger pull (round 5): the front is cut down by 16 mm over the pull's width (three pieces with their
+          // own eased edges), the drawer box's dark inside shows through the notch
+          const gw = Math.min(0.14, w * 0.4), gh = 0.016;
+          b.add(notchedFront(w, h, frontT, gw, gh), frontWood, { pos: [cx, cy, zf] });
+          b.add(new THREE.BoxGeometry(gw + 0.004, gh + 0.004, 0.003), dark, { pos: [cx, y - reveal - gh / 2 + 0.002, zf - frontT / 2 - 0.004], cast: false });
+        } else if (plain) {
           // 2.5 mm eased edges: each front catches its own specular line (lever 3)
           b.add(softBox(w, h, frontT, { r: 0.0025, seg: 2 }), frontWood, { pos: [cx, cy, zf] });
         }
         // handle
-        const ht = handles || 'none';
         if (ht === 'cutout' || ht === 'none' || ht === 'push') {
-          if (ht === 'cutout' || (ht === 'none' && cell.type === 'drawer')) {
-            // finger groove: dark slot at top of the front
-            b.add(new THREE.BoxGeometry(Math.min(0.14, w * 0.4), 0.012, 0.004), dark, { pos: [cx, y - reveal - 0.012, zf + frontT / 2 + 0.0005] });
+          if (groove && !plain && front !== 'fluted') {
+            // fluted / slatted / cane fronts: a recessed dark slot in the top rail (sits in the reveal, not proud)
+            b.add(new THREE.BoxGeometry(Math.min(0.14, w * 0.4), 0.01, 0.004), dark, { pos: [cx, y - reveal - 0.008, zf + frontT * 0.1], cast: false });
           }
         } else if (cell.type === 'drawer') addHandle(b, c, ht, { x: cx, y: cy + (ht.includes('knob') ? 0 : h * 0.15), z: zf + frontT / 2, w: Math.min(0.16, w * 0.4), mat: handleMat });
         else addHandle(b, c, ht, { x: ci < layout.length / 2 ? cx + w / 2 - 0.04 : cx - w / 2 + 0.04, y: cy + h * 0.2, z: zf + frontT / 2, w: 0.14, vertical: true, mat: handleMat });
@@ -313,7 +355,7 @@ export function nightstand(c) {
   for (let i = 0; i < drawers; i++) cells.push({ type: 'drawer', h: 1 });
   if (doors) cells.push({ type: 'door', h: Math.max(1, 2 - drawers) });
   if (!cells.length) cells.push({ type: 'door', h: 1 });
-  return cabinet(c, { W, D, H, layout: [{ w: 1, cells }], legType: p.legs || 'wood-taper', woodKey: p.wood || p.frame || 'walnut-dark', handles: p.handles || 'none', front: String(p.fronts || p.front || (p.fluted ? 'fluted' : 'flat')), name: 'nightstand', top: p.top || null });
+  return cabinet(c, { W, D, H, layout: [{ w: 1, cells }], legType: p.legs || 'wood-taper', woodKey: p.wood || p.frame || 'walnut-dark', handles: p.handles || 'none', front: String(p.fronts || p.front || (p.fluted ? 'fluted' : 'flat')), name: 'nightstand', top: p.top || p.topMaterial || null });
 }
 
 export function tvUnit(c) {
@@ -334,5 +376,5 @@ export function tvUnit(c) {
   for (let i = half; i < doors; i++) cols.push({ w: 1, cells: [{ type: 'door', h: 1 }] });
   if (!cols.length) cols.push({ w: 1, cells: [{ type: 'open', h: 1 }] });
   const front = String(p.fronts || p.front || (p.fluted ? 'fluted' : p.slatted ? 'slatted' : 'flat'));
-  return cabinet(c, { W, D, H, layout: cols, legType: p.legs || 'wood-taper', woodKey: p.wood || 'walnut-dark', handles: p.handles || 'none', front, name: 'tv_unit', top: p.top || null });
+  return cabinet(c, { W, D, H, layout: cols, legType: p.legs || 'wood-taper', woodKey: p.wood || 'walnut-dark', handles: p.handles || 'none', front, name: 'tv_unit', top: p.top || p.topMaterial || null });
 }

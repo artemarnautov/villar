@@ -337,6 +337,8 @@ async function main() {
       console.error = oe;
       let bad = errs.length ? errs[0] : '';
       if (g) { const bb = new THREE.Box3().setFromObject(g); if (!isFinite(bb.min.x + bb.max.y + bb.max.z)) bad = 'non-finite bbox'; g.traverse((o) => { if (o.isMesh && o.geometry.attributes.position.array.some((v) => !isFinite(v))) bad = 'NaN vertex'; }); }
+      // NaN-tangent rule: normal-mapped / anisotropic materials need uvs (same check as tools/fuzz-furniture.mjs)
+      if (g && !bad) g.traverse((o) => { if (!o.isMesh || bad) return; const m = o.material; if (((m.anisotropy || 0) > 0 || m.normalMap || m.clearcoatNormalMap) && !o.geometry.attributes.uv) bad = 'no uv on ' + o.name; });
       if (bad) { fails++; console.log('FUZZ FAIL ' + a + ' ' + JSON.stringify(params) + ' ' + JSON.stringify(dims) + ' → ' + bad); }
     }
     console.log(`FUZZ DONE ${n} builds, ${fails} failures`);

@@ -107,17 +107,25 @@ const _n = new THREE.Vector3();
  * projection (no smearing across the 45° switch). `axis` = preferred U direction ('x' | 'y' | 'z'),
  * e.g. 'y' for vertical wood grain on legs. `offset` shifts the texture (randomise per piece).
  */
-export function boxProjectUVs(geometry, { axis = 'x', scale = 1, offset = [0, 0] } = {}) {
+export function boxProjectUVs(geometry, { axis = 'x', scale = 1, offset = [0, 0], edges = false } = {}) {
   const fa = geometry.userData && geometry.userData.faceAxis;
   if (fa && geometry.index && fa.length === geometry.attributes.position.count) {
     // per-face grids (softBox): project each vertex by its face's axis, keep the geometry indexed
     const pos = geometry.attributes.position, uv = new Float32Array(pos.count * 2), s = 1 / scale;
+    // round 5 (veneer edges): a thin face (an edge band: ≤ ¼ as wide as it is long) always runs its grain along its
+    // length — a vertical panel's top edge, a shelf's ends — instead of across the band
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    const bs = geometry.boundingBox.getSize(_n), ex = bs.x, ey = bs.y, ez = bs.z;
+    const thin = (a, b) => edges && Math.min(a, b) < 0.25 * Math.max(a, b);
+    const yLong = thin(ex, ez) ? (ez > ex ? 'z' : 'x') : null; // top / bottom faces (x × z)
+    const zLong = thin(ex, ey) ? (ey > ex ? 'y' : 'x') : null; // front / back faces (x × y)
+    const xLong = thin(ez, ey) ? (ey > ez ? 'y' : 'z') : null; // side faces (z × y)
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), dom = fa[i];
       let u, v;
-      if (dom === 1) { if (axis === 'z') { u = z; v = x; } else { u = x; v = z; } }
-      else if (dom === 2) { if (axis === 'y') { u = y; v = x; } else { u = x; v = y; } }
-      else { if (axis === 'y') { u = y; v = z; } else { u = z; v = y; } }
+      if (dom === 1) { const ax = yLong || axis; if (ax === 'z') { u = z; v = x; } else { u = x; v = z; } }
+      else if (dom === 2) { const ax = zLong || axis; if (ax === 'y') { u = y; v = x; } else { u = x; v = y; } }
+      else { const ax = xLong || axis; if (ax === 'y') { u = y; v = z; } else { u = z; v = y; } }
       uv[i * 2] = u * s + offset[0]; uv[i * 2 + 1] = v * s + offset[1];
     }
     geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
@@ -151,7 +159,7 @@ export function boxProjectUVs(geometry, { axis = 'x', scale = 1, offset = [0, 0]
  * Cylindrical projection around local Y (turned / lathe parts). u = height (grain runs along the
  * axis), v = |angle| × radius (mirrored → no seam). `ref` = reference radius in metres.
  */
-export function cylinderUVs(geometry, { ref = null, offset = [0, 0], swap = false } = {}) {
+export function cylinderUVs(geometry, { ref = null, offset = [0, 0], swap = false, metric = true } = {}) {
   const g = geometry; // |angle| mapping is seamless → stays indexed
   const pos = g.attributes.position;
   let R = ref;
@@ -159,7 +167,10 @@ export function cylinderUVs(geometry, { ref = null, offset = [0, 0], swap = fals
   const uv = new Float32Array(pos.count * 2);
   for (let i = 0; i < pos.count; i++) {
     const a = Math.abs(Math.atan2(pos.getX(i), pos.getZ(i)));
-    const u = pos.getY(i), v = a * R;
+    // metric (round 5): v = arc length at the vertex's own radius, so a turned stem keeps the grain spacing of its
+    // foot (a fixed reference radius squeezed the figure ×4 round the thin parts — fine stripes in close-up)
+    const rv = metric ? Math.max(Math.hypot(pos.getX(i), pos.getZ(i)), R * 0.2) : R;
+    const u = pos.getY(i), v = a * rv;
     uv[i * 2] = (swap ? v : u) + offset[0]; uv[i * 2 + 1] = (swap ? u : v) + offset[1];
   }
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
@@ -208,7 +219,8 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
   const maxAniso = renderer?.capabilities?.getMaxAnisotropy?.() || 8;
   T.setMaxAnisotropy(Math.min(16, maxAniso));
   // texture resolution per tier (GPU memory: high ≈ 1, medium ¼, low ⅛ of the texels)
-  T.setTextureQuality(quality === 'low' ? 0.35 : quality === 'medium' ? 0.5 : 1);
+  const TQ = quality === 'low' ? 0.35 : quality === 'medium' ? 0.5 : 1;
+  T.setTextureQuality(TQ);
   // photoscans (lever 2): 2K where a 2K file exists on high, 1K medium, 512 low; uploaded one texture per slice
   // medium (tablets, ≤ 4 GB devices) 512: a 1 k set is ≈ 16 MB of GPU memory (R4-07); high keeps 1 k (+ the 2 k floor)
   T.setScanTier(quality === 'high' ? 2048 : 512);
@@ -234,6 +246,16 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
   const tex = (name, fn) => {
     if (!texCache.has(name)) texCache.set(name, fn());
     return texCache.get(name);
+  };
+  /**
+   * T8 (round 5): the procedural stand-in of a furniture material that has a photoscan is only on screen until the
+   * scan lands (≈ 1 s), so with scans on it is generated at half resolution — a quarter of the placeholder buffers
+   * that materials.get() allocates and fills synchronously (a 1K bundle cost 10–17 ms of a prebuild slice).
+   */
+  const lite = (fn) => () => {
+    if (!T.scansEnabled()) return fn();
+    T.setTextureQuality(TQ * 0.5);
+    try { return fn(); } finally { T.setTextureQuality(TQ); }
   };
 
   /**
@@ -448,7 +470,7 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
   // --- builders -------------------------------------------------
   const wood = (species, o, extra = {}) => {
     const chevron = /chevron|herring/.test(String(o.layout || ''));
-    const b0 = chevron ? tex('chevron:' + species, () => T.chevronTextures(species)) : tex('wood:' + species, () => T.woodTextures(species, T.hashStr(species) % 97 + 3));
+    const b0 = chevron ? tex('chevron:' + species, () => T.chevronTextures(species)) : tex('wood:' + species, (WOOD_SCAN[species] ? lite : (f) => f)(() => T.woodTextures(species, T.hashStr(species) % 97 + 3)));
     const b = scaled(b0, o.scale || 1);
     const m = physical({
       ...withTex(b, 0.55), color: o.tint ? col(o.tint) : 0xffffff, roughness: o.roughness ?? 1, metalness: 0,
@@ -468,7 +490,7 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
   };
 
   const fabric = (bundleName, gen, o, defaults) => {
-    const b = o.sheer ? scaled(tex('voile', () => T.voileTextures()), o.scale || 1) : scaled(tex(bundleName, gen), o.scale || 1);
+    const b = o.sheer ? scaled(tex('voile', () => T.voileTextures()), o.scale || 1) : scaled(tex(bundleName, defaults.scan ? lite(gen) : gen), o.scale || 1);
     const c = detailColor(o.color, b, defaults.color);
     // sheen tinted by the fabric itself (fibre scatter), only slightly lifted — never a white satin highlight
     const sheenTint = new THREE.Color(o.color || defaults.color).lerp(new THREE.Color(0xffffff), defaults.sheenWhite ?? 0.08);
@@ -552,8 +574,10 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     'fabric-linen-washed': (o) => fabric('linen-washed', () => T.linenTextures(113, { washed: true }), o, { color: '#D6CBB8', sheen: 0.35, sheenRoughness: 0.85, normalScale: 1.1, specular: 0.14, scan: ['linen', 0.9, 1.8] }),
     'paper-cord': (o) => {
       const c = o.color || '#cdb58a';
-      const b = scaled(tex('cord:' + c, () => T.cordTextures(129, c)), o.scale || 1);
-      return physical({ ...withTex(b, 1), roughness: 1, metalness: 0, sheen: 0.3, sheenRoughness: 0.8, sheenColor: new THREE.Color(c), specularIntensity: 0.2 });
+      // T8 (round 5): one neutral cord bundle for every colour (a bundle per colour cost up to 21 ms in materials.get);
+      // the colour is the material's, compensated for the detail mean
+      const b = scaled(tex('cord:detail', () => T.cordTextures(129, '#ffffff')), o.scale || 1);
+      return physical({ ...withTex(b, 1), color: detailColor(c, b, '#cdb58a'), roughness: 1, metalness: 0, sheen: 0.3, sheenRoughness: 0.8, sheenColor: new THREE.Color(c), specularIntensity: 0.2 });
     },
     'leather-cognac': (o) => {
       const c = o.color || '#86471f';
@@ -568,7 +592,7 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     },
     'wool-rug': (o) => {
       const fine = /weave|flat|kilim/.test(String(o.texture || ''));
-      const pile = fine ? tex('linen-rug', () => T.linenTextures(117, { tile: 0.3, threads: 110 })) : tex('woolpile', () => T.woolPileTextures());
+      const pile = fine ? tex('linen-rug', lite(() => T.linenTextures(117, { tile: 0.3, threads: 110 }))) : tex('woolpile', lite(() => T.woolPileTextures()));
       const c = detailColor(o.color, pile, '#E3DACB');
       if (o.pattern && o.pattern !== 'none') {
         // pattern map in rug UV (0..1 over the rug); pile normal repeats in metres
@@ -588,13 +612,13 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       const c = o.color || '#b89a6c';
       if (o.pattern && o.pattern !== 'none' && o.pattern !== 'plain') {
         const w = o.w || 2.3, d = o.d || 1.6;
-        const jb = tex('jute:' + c, () => T.juteTextures(161, c));
+        const jb = tex('jute:' + c, lite(() => T.juteTextures(161, c)));
         const pattern = T.rugPatternTexture({ w, d, color: c, patternColor: o.patternColor || '#C2A77D', pattern: o.pattern, seed: o.seed || 1, shape: o.shape || 'rect' });
         const n = tclone(jb.normalMap); n.repeat.set(w / jb.tile[0], d / jb.tile[1]);
         const pm = physical({ map: pattern, normalMap: n, normalScale: new THREE.Vector2(1, 1), roughness: 0.95, metalness: 0, sheen: 0.3, sheenRoughness: 0.9, sheenColor: new THREE.Color(c), specularIntensity: 0.3 });
         return withScan(pm, 'jute', { slots: ['normalMap'], repeatFor: (b) => [w / b.tile[0], d / b.tile[1]], normalScale: 1 });
       }
-      const b = scaled(tex('jute:' + c, () => T.juteTextures(161, c)), o.scale || 1);
+      const b = scaled(tex('jute:' + c, lite(() => T.juteTextures(161, c))), o.scale || 1);
       const m = physical({ ...withTex(b, 1), roughness: 1, metalness: 0, sheen: 0.3, sheenRoughness: 0.9, sheenColor: new THREE.Color(c), specularIntensity: 0.3 });
       const J = new THREE.Color(c);
       return withScan(m, 'jute', { scale: o.scale || 1, normalScale: 1, roughness: 0.9, color: toTarget([J.r, J.g, J.b]) });
@@ -657,7 +681,8 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     // brushed / satin brass: stronger anisotropic streaks, broader highlight, slightly deeper colour
     'metal-brass-brushed': (o) => {
       const b = scaled(tex('brushed', () => T.brushedTextures()), o.scale || 1);
-      return physical({ ...withTex(b, 0.4), color: col(o.color, '#b8955c'), roughness: o.roughness ?? 1.25, metalness: 1, anisotropy: 0.85, anisotropyRotation: o.rotation ?? 0 });
+      // round 5: o.color is the albedo TARGET (compensated for the brushed map's mean), e.g. champagne #B8A27A
+      return physical({ ...withTex(b, 0.4), color: o.color ? detailColor(o.color, b, '#b8955c') : col(null, '#b8955c'), roughness: o.roughness ?? 1.25, metalness: 1, anisotropy: 0.85, anisotropyRotation: o.rotation ?? 0 });
     },
     'metal-chrome': (o) => physical({ color: col(o.color, '#e9eaec'), roughness: o.roughness ?? 0.07, metalness: 1 }),
     'metal-nickel': (o) => {
@@ -668,13 +693,13 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     // stone & ceramic ----------------------------------------
     // finish: polished (default) | satin (marble-look sintered ceramic, honed stone): broader, softer highlight
     'marble-white': (o) => {
-      const b0 = tex('marble', () => T.marbleTextures()); const b = scaled(b0, o.scale || 1);
+      const b0 = tex('marble', lite(() => T.marbleTextures())); const b = scaled(b0, o.scale || 1);
       const satin = o.finish === 'satin' || o.finish === 'honed';
       const m = matchColor(physical({ map: b.map, roughness: o.roughness ?? (satin ? 0.24 : 0.12), metalness: 0, clearcoat: satin ? 0.3 : 0.6, clearcoatRoughness: satin ? 0.16 : 0.06, specularIntensity: satin ? 0.65 : 0.8 }), b0, o.match, 0.5);
       return withScan(m, 'marble', { slots: ['map'], scale: o.scale || 1, color: stoneGain(o.match, 0.5) });
     },
     'travertine': (o) => {
-      const b0 = tex('travertine', () => T.travertineTextures()); const b = scaled(b0, o.scale || 1);
+      const b0 = tex('travertine', lite(() => T.travertineTextures())); const b = scaled(b0, o.scale || 1);
       const m = matchColor(physical({ ...withTex(b, 0.6), roughness: 1, metalness: 0, specularIntensity: 0.6 }), b0, o.match, 0.6);
       // honed travertine: the scan's colour + pits relief; the scan's roughness is polished → keep the procedural one
       // R3-10: no pepper pits, no sparkle — the scan's elongated voids along the banding, one honed roughness (0.45)
@@ -771,7 +796,7 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     'plant-stem': (o) => standard({ color: col(o.color, '#5d5a3c'), roughness: 0.7, metalness: 0, vertexColors: !!o.vertexColors }),
     // olive / tree bark (R2-17): grey-brown, darker than any pot, fissured; o.color tints it
     'bark': (o) => {
-      const b = tex('bark2', () => T.barkTextures());
+      const b = tex('bark2', lite(() => T.barkTextures()));
       // R3-06: the trunk read near-white in sun — bark albedo kept dark grey-brown (sRGB ≈ #5a5246, Y′ ≈ 82), so the
       // lit trunk stays ≤ 110; the procedural fallback is darkened the same way
       const m = standard({ map: b.map, normalMap: b.normalMap, normalScale: new THREE.Vector2(1.2, 1.2), roughnessMap: b.roughnessMap, roughness: 1, metalness: 0, color: col(o.color, '#ffffff').multiplyScalar(0.62) });
@@ -823,10 +848,22 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
       const w = o.w || 0.6, h = o.h || 0.8;
       const weave = tex('canvasweave', () => T.canvasWeaveTextures());
       const n = tclone(weave.normalMap); n.repeat.set(w / weave.tile[0], h / weave.tile[1]);
-      const art = o.map || T.artTexture({ motif: o.motif, colors: o.colors, aspect: w / h, seed: o.seed || 1, relief: !!o.relief });
-      // relief art (mirrored = the pair hung flipped: the relief's x slope flips with it)
-      if (art && art.normalMap) return standard({ map: art.map, normalMap: art.normalMap, normalScale: new THREE.Vector2(o.mirrored ? -0.9 : 0.9, -0.9), roughness: 0.86, metalness: 0 });
-      return standard({ map: art, normalMap: n, normalScale: new THREE.Vector2(0.35, 0.35), roughness: 0.88, metalness: 0 });
+      // Villar Editions (ART.md §5): o.image = a real artwork URL. The procedural motif is the placeholder and the
+      // permanent fallback (load error); never relief, so the canvas keeps its weave normal
+      const relief = !!o.relief && !o.image;
+      const make = () => T.artTexture({ motif: o.motif, colors: o.colors, aspect: w / h, seed: o.seed || 1, relief });
+      if (o.map) {
+        const art = o.map;
+        if (art && art.normalMap) return standard({ map: art.map, normalMap: art.normalMap, normalScale: new THREE.Vector2(o.mirrored ? -0.9 : 0.9, -0.9), roughness: 0.86, metalness: 0 });
+        return standard({ map: art, normalMap: n, normalScale: new THREE.Vector2(0.35, 0.35), roughness: 0.88, metalness: 0 });
+      }
+      // T8 (round 5): the artwork's full-size canvas (≈ 1024 × 1400 px) is allocated in an idle period of its own,
+      // never inside materials.get (10–20 ms there). Until then the canvas shows its ground colour, then the motif
+      // (painted in the worker), then — for an edition — the real image. Same map / normalMap slots throughout.
+      const m = standard({ map: groundTex(o.colors), normalMap: n, normalScale: new THREE.Vector2(o.image ? 0.22 : 0.35, o.image ? 0.22 : 0.35), roughness: o.image ? 0.84 : 0.88, metalness: 0 });
+      deferArt(m, make, relief, !!o.mirrored);
+      if (o.image) loadArtImage(m, String(o.image), o.aspect || w / h);
+      return m;
     },
   };
 
@@ -845,6 +882,104 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
     m.userData.followsLamps = true;
     glowMats.add(m);
     m.emissiveIntensity = lampsOn ? k * lampIntensity : 0;
+  }
+
+  // ---------------------------------------------------------------- artwork images (Villar Editions, ART.md §5)
+  // Loaded cross-origin ('anonymous'), decoded off the main thread where possible, downscaled to the tier's size,
+  // cover-cropped to the canvas aspect (never stretched; uv 0..1 spans the canvas or the whole diptych/triptych),
+  // uploaded through renderer.initTexture BEFORE the swap — the motif placeholder is replaced in the same map slot
+  // in one frame (no blank frame, no shader change). onChange() fires so baked GI / thumbnails refresh.
+  const ART_MAX = quality === 'high' ? 2048 : quality === 'medium' ? 1024 : 768;
+  const artImages = new Map(); // url → Promise<ImageBitmap|HTMLImageElement>
+  const fetchArt = (url) => {
+    if (!artImages.has(url)) {
+      artImages.set(url, new Promise((res, rej) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous'; img.decoding = 'async';
+        img.onload = () => {
+          const k = Math.min(1, ART_MAX / Math.max(img.naturalWidth, img.naturalHeight));
+          if (typeof createImageBitmap === 'function') {
+            createImageBitmap(img, k < 1 ? { resizeWidth: Math.round(img.naturalWidth * k), resizeHeight: Math.round(img.naturalHeight * k), resizeQuality: 'high', imageOrientation: 'flipY' } : { imageOrientation: 'flipY' })
+              .then((bmp) => res({ img: bmp, w: img.naturalWidth, h: img.naturalHeight, flipped: true }), () => res({ img, w: img.naturalWidth, h: img.naturalHeight, flipped: false }));
+          } else res({ img, w: img.naturalWidth, h: img.naturalHeight, flipped: false });
+        };
+        img.onerror = () => rej(new Error('art image failed: ' + url));
+        try { img.src = new URL(url, typeof location !== 'undefined' ? location.href : undefined).href; } catch (e) { rej(e); }
+      }));
+    }
+    return artImages.get(url);
+  };
+  let artPending = 0;
+  const artJobs = new Set();
+  // ground colour of a canvas (the lightest palette colour, like the motif's own ground): a shared 2 × 2 texture
+  const grounds = new Map();
+  function groundTex(colors) {
+    const list = Array.isArray(colors) ? colors : [];
+    const g = list.find((x) => { try { return new THREE.Color(x).getHSL({}).l > 0.75; } catch { return false; } }) || list[0] || '#efe8dc';
+    if (!grounds.has(g)) {
+      const cc = new THREE.Color(g), d = new Uint8Array(16);
+      for (let i = 0; i < 4; i++) { d[i * 4] = cc.r * 255; d[i * 4 + 1] = cc.g * 255; d[i * 4 + 2] = cc.b * 255; d[i * 4 + 3] = 255; }
+      const t = new THREE.DataTexture(d, 2, 2); t.colorSpace = THREE.SRGBColorSpace; t.needsUpdate = true; t.name = 'art-ground';
+      grounds.set(g, t);
+    }
+    return grounds.get(g);
+  }
+  // deferred artwork canvases: created one per idle period that still has ≥ the learned cost left (didTimeout after
+  // 10 s forces it), so the allocation never lands in a frame or in a prebuild slice
+  const artQueue = [];
+  let artCost = 14, artScheduled = false;
+  const ric = typeof requestIdleCallback === 'function' ? (fn) => requestIdleCallback(fn, { timeout: 10000 }) : (fn) => setTimeout(() => fn({ timeRemaining: () => 50, didTimeout: true }), 16);
+  function runArt(deadline) {
+    artScheduled = false;
+    while (artQueue.length && (deadline.didTimeout || deadline.timeRemaining() >= artCost + 2)) {
+      const job = artQueue.shift();
+      const t0 = performance.now();
+      try { job(); } catch (e) { console.debug('[materials] art', e); }
+      artCost = artCost * 0.6 + (performance.now() - t0) * 0.4;
+      if (deadline.didTimeout) break;
+    }
+    if (artQueue.length) { artScheduled = true; ric(runArt); }
+  }
+  function deferArt(m, make, relief, mirrored) {
+    artPending++;
+    let done;
+    const p = new Promise((r) => { done = r; });
+    artJobs.add(p);
+    artQueue.push(() => {
+      try {
+        const art = make();
+        if (!m.userData.artImage) {
+          if (art && art.normalMap) { m.map = art.map; m.normalMap = art.normalMap; m.normalScale.set(mirrored ? -0.9 : 0.9, -0.9); m.roughness = 0.86; }
+          else m.map = art;
+        }
+        m.userData.artMotif = art && art.normalMap ? art.map : art;
+        notify();
+      } finally { artPending--; artJobs.delete(p); done(); }
+    });
+    if (!artScheduled) { artScheduled = true; ric(runArt); }
+  }
+  function loadArtImage(m, url, aspect) {
+    artPending++;
+    const job = fetchArt(url).then(({ img, w, h, flipped }) => {
+      const t = new THREE.Texture(img);
+      t.flipY = !flipped; // an ImageBitmap is pre-flipped at decode (three cannot flip bitmaps on upload)
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = Math.min(16, renderer?.capabilities?.getMaxAnisotropy?.() || 8);
+      t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+      t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter;
+      t.name = 'art-image';
+      // cover-crop: centre the canvas aspect inside the image
+      const ia = w / Math.max(1, h);
+      if (ia > aspect) { t.repeat.set(aspect / ia, 1); t.offset.set((1 - aspect / ia) / 2, 0); } else { t.repeat.set(1, ia / aspect); t.offset.set(0, (1 - ia / aspect) / 2); }
+      t.needsUpdate = true;
+      try { renderer?.initTexture?.(t); } catch { /* uploads on first use */ }
+      const old = m.map;
+      m.map = t; m.userData.artImage = url;
+      if (old && old !== t && old.name && /^art:/.test(old.name)) { /* the motif stays cached for other items */ }
+      notify();
+    }).catch((e) => { console.debug('[materials]', e.message || e, '— keeping the motif'); m.userData.artImageFailed = url; })
+      .finally(() => { artPending--; artJobs.delete(job); });
+    artJobs.add(job);
   }
 
   const keyOf = (key, opts) => {
@@ -908,9 +1043,9 @@ export function createMaterials(renderer, { quality = 'high' } = {}) {
   return {
     get, setLampsOn, dispose, warm,
     /** Resolves when every queued procedural texture has been generated (await before photo mode). */
-    ready: () => T.whenTexturesReady(),
+    ready: () => Promise.all([T.whenTexturesReady(), ...[...artJobs].map((j) => Promise.race([j, new Promise((r) => setTimeout(r, 20000))]))]).then(() => T.whenTexturesReady()),
     /** Number of textures still generating. */
-    pending: () => T.pendingTextures(),
+    pending: () => T.pendingTextures() + artPending,
     /** Generate everything still queued synchronously (blocking). */
     flush: () => T.flushTextures(),
     /**

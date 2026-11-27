@@ -89,6 +89,11 @@
 //  wall_art    motif relief-waves|amphora|abstract-shapes|textured-*, panels [[w,h],…] + gap (one image across),
 //              mirrored (same painting flipped); the image depends on motif + colors, not on the id
 //  plant       pot ribbed|glazed-ribbed
+//  --- round 5 ---
+//  wall_art    image (URL; the engine resolves the Storage key) | images [URL, …] (one per panel) → Villar Editions:
+//              cover-cropped print on a 4 cm stretched canvas, float frame (frame wood key / metal / black / white /
+//              none, frameWidth) with a 7 mm shadow gap OUTSIDE the dims; motif + colors stay the placeholder/fallback
+//  every item  userData.pivot / front / bounds / radial (FOCUS turntable); lamp cords are meshes with userData.cord
 //  decor_set   items box|bud-vase|sprig|candle|candles|tray … (material hints matched by affinity)
 //  throw       fabric cotton-weave|dense|textured → open cotton weave; fringe → alpha tassel strips on both ends
 //  kitchen_decor / tableware / centerpiece: the catalogue's structured params (kettle: { color }, colors: { kettle, … },
@@ -205,12 +210,16 @@ export function buildItem(item, ctx = {}) {
   const info = res.anchorInfo || {};
   fit(group, anchors, lights, info, arch, W, D, H, res.fit || null);
   if (res.mount) group.userData.mount = res.mount;
+  // FOCUS turntable (round 5): rotation axis + front direction, local space (see docs/requests/engine.md)
+  turntable(group, arch, res, params, W, D);
   group.traverse((o) => { if (o.isMesh) { o.castShadow = o.castShadow !== false; o.receiveShadow = true; o.userData.itemId = item?.id; } });
   alphaShadows(group, ctx.materials);
   group.userData.anchors = anchors;
   group.userData.anchorInfo = info;
   group.userData.lights = lights;
   group.userData.archetype = arch;
+  group.userData.pivot = group.userData.pivot || [0, 0, 0];
+  group.userData.front = group.userData.front || [0, 0, 1];
   group.userData.itemId = item?.id;
   group.userData.triangles = triCount(group);
   return group;
@@ -269,13 +278,60 @@ function fallback(c) {
 }
 
 const _box = new THREE.Box3();
+const _gb = new THREE.Box3();
+
+/**
+ * Bounding box of the item's own body: meshes flagged `userData.noFit` (lamp cords and plugs lying on the floor or
+ * table behind the base) are left out, so they never stretch the fit, the pivot or the turntable framing.
+ */
+function visualBox(root, out = new THREE.Box3()) {
+  out.makeEmpty();
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    if (!o.isMesh || o.userData.noFit) return;
+    const g = o.geometry;
+    if (!g.boundingBox) g.computeBoundingBox();
+    _gb.copy(g.boundingBox).applyMatrix4(o.matrixWorld);
+    out.union(_gb);
+  });
+  return out;
+}
+
+/** Rotationally symmetric archetypes/shapes (the turntable may skip the rest-angle dial for these). */
+const ROUND_RE = /round|circle/;
+
+/**
+ * FOCUS turntable (round 5). The engine turns a focused item about a vertical axis through its footprint centre:
+ *   userData.pivot  [x, y, z]  local metres: footprint centre (x/z = centre of the visual bbox, cords excluded),
+ *                               y = bottom of the visual bbox (the floor / support contact; for wall and ceiling
+ *                               items the lowest point of the item)
+ *   userData.front  [x, y, z]  local unit vector the item faces (its "0°" rest angle); +Z for every archetype
+ *   userData.bounds { min: [x, y, z], max: [x, y, z] }  local visual bbox (cords excluded) — for framing
+ *   userData.radial true when the item looks the same at every angle about the pivot (round tables, lamps, plants)
+ */
+function turntable(group, arch, res, p = {}, W = 1, D = 1) {
+  const b = visualBox(group, new THREE.Box3());
+  if (b.isEmpty()) { group.userData.pivot = [0, 0, 0]; group.userData.front = [0, 0, 1]; return; }
+  const r6 = (v) => Math.round(v * 1e6) / 1e6;
+  group.userData.pivot = [r6((b.min.x + b.max.x) / 2), r6(b.min.y), r6((b.min.z + b.max.z) / 2)];
+  const f = res.front || [0, 0, 1];
+  const l = Math.hypot(f[0], f[1], f[2]) || 1;
+  group.userData.front = [r6(f[0] / l), r6(f[1] / l), r6(f[2] / l)];
+  group.userData.bounds = { min: b.min.toArray().map(r6), max: b.max.toArray().map(r6) };
+  if (res.radial != null) group.userData.radial = !!res.radial;
+  else {
+    const swing = /swing|arm/.test(String(p.stem || ''));
+    group.userData.radial = /^(plant|pendant_lamp|centerpiece)$/.test(arch) || (/^(floor_lamp|table_lamp)$/.test(arch) && !swing)
+      || (/_table$/.test(arch) && ROUND_RE.test(String(p.shape || '')) && Math.abs(W - D) < 0.02);
+  }
+}
 
 /** Scale/offset the generated content so its bbox matches dims exactly (per FIT rules). */
 function fit(group, anchors, lights, info, arch, W, D, H, override = null) {
   const rule = override || FIT[arch] || FIT.default;
   if (!rule.axes && rule.origin === 'none') return;
   group.updateMatrixWorld(true);
-  _box.setFromObject(group);
+  visualBox(group, _box);
   if (_box.isEmpty()) return;
   const size = _box.getSize(new THREE.Vector3());
   const s = new THREE.Vector3(1, 1, 1);
@@ -369,6 +425,8 @@ function instance(proto, key) {
     ...u, cacheKey: key, anchors,
     anchorInfo: JSON.parse(JSON.stringify(u.anchorInfo || {})),
     lights: (u.lights || []).map((L) => ({ ...L, position: [...L.position], ...(L.target ? { target: [...L.target] } : {}) })),
+    pivot: [...(u.pivot || [0, 0, 0])], front: [...(u.front || [0, 0, 1])],
+    ...(u.bounds ? { bounds: { min: [...u.bounds.min], max: [...u.bounds.max] } } : {}),
   };
   return g;
 }
@@ -486,6 +544,9 @@ function fromTree(n, materials, root = true) {
     o.userData.anchorInfo = u.anchorInfo || {}; o.userData.lights = u.lights || [];
     if (u.mount) o.userData.mount = u.mount;
     o.userData.archetype = u.archetype; o.userData.itemId = u.itemId; o.userData.triangles = u.triangles;
+    o.userData.pivot = u.pivot || [0, 0, 0]; o.userData.front = u.front || [0, 0, 1];
+    if (u.bounds) o.userData.bounds = u.bounds;
+    if (u.radial != null) o.userData.radial = u.radial;
   } else Object.assign(o.userData, n.ud);
   for (const ch of n.c) o.add(fromTree(ch, materials, false));
   return o;
@@ -493,6 +554,30 @@ function fromTree(n, materials, root = true) {
 
 // measured main-thread build cost per archetype (ms, EMA) — only used by the no-worker fallback
 const COST = new Map();
+// T8 (round 5): first-time materials.get cost, learned per canonical key (the last first-time creation of that key:
+// a fabric's later colours share its texture bundle and are cheap, every rug pattern paints its own canvas). A
+// descriptor already created for a library costs nothing. Unknown keys are assumed to be expensive, so they only
+// start in a slice that still has that much time left — gets never stack past the budget.
+const MAT_COST = new Map();
+const MAT_DONE = new WeakMap(); // materials library → Set of descriptor ids already created
+const MAT_DEFAULT = 4.5;
+const descId = (d) => d.key + '|' + JSON.stringify(d.opts || {});
+function matEstimate(materials, d) {
+  const done = MAT_DONE.get(materials);
+  if (done && done.has(descId(d))) return 0;
+  const canon = materials.resolve ? materials.resolve(d.key) : d.key;
+  return MAT_COST.get(canon) ?? MAT_DEFAULT;
+}
+function matCreate(materials, d) {
+  let done = MAT_DONE.get(materials);
+  if (!done) { done = new Set(); MAT_DONE.set(materials, done); }
+  const id = descId(d);
+  const t = performance.now();
+  try { materials.get(d.key, d.opts); } catch { /* fromTree reports */ }
+  const dt = performance.now() - t;
+  if (!done.has(id)) { done.add(id); const canon = materials.resolve ? materials.resolve(d.key) : d.key; MAT_COST.set(canon, dt < 0.4 ? Math.min(MAT_COST.get(canon) ?? 0.5, 0.5) : dt); }
+  return dt;
+}
 const STATS = { slices: 0, maxSlice: 0, totalMs: 0, worst: null, worstMs: 0 };
 let MS_PER_VERT = 0.00012; // re-assembly cost estimate (learned)
 /** Main-thread cost of prebuild idle slices so far (QA: maxSlice should stay ≤ budget). */
@@ -548,7 +633,14 @@ export function prebuildItems(items, ctx = {}, { budget = 8, shouldYield = null,
         const head = ready[0];
         if (head.r && head.r.tree) {
           if (!head.mats) head.mats = [...matsOf(head.r.tree).values()];
-          while (head.mats.length && left() > 0.3) { const d = head.mats.shift(); try { ctx.materials.get(d.key, d.opts); } catch { /* fromTree reports */ } first = false; }
+          // T8 (round 5): one material at a time, and only if its learned first-time cost fits what is left of the
+          // slice (the first piece of work in a fresh slice always runs) — creations no longer stack to ≈ 30 ms
+          while (head.mats.length && left() > 0.3) {
+            const est = matEstimate(ctx.materials, head.mats[0]);
+            if (!first && est > left()) break;
+            matCreate(ctx.materials, head.mats.shift());
+            if (est > 0.05) first = false;
+          }
           if (head.mats.length) break;
         }
         const est = (ready[0].r?.verts || 0) * MS_PER_VERT;

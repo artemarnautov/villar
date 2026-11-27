@@ -167,6 +167,79 @@ function bulb(b, c, y, r = 0.03) {
   b.add(new THREE.CylinderGeometry(r * 0.45, r * 0.45, r * 1.2, 12), c.mat('metal-brass'), { pos: [0, y - r * 1.2, 0], cast: false });
 }
 
+// ---------------------------------------------------------------- flex + plug (round 5: the FOCUS turntable shows backs)
+//
+// A real lamp's flex leaves the base at the back and lies on the floor / table. Cords are their own meshes tagged
+// 'cord' (userData.noFit + cord): the fit, pivot and bounds ignore them. Without a host they stay inside the
+// footprint and end in a UK (BS 1363) plug lying in a rear corner; on a host (table lamp on a nightstand) the flex
+// runs to the host's back edge and drops over it.
+
+/** Light flex for light bases, near-black otherwise. */
+function cordColor(c, baseKey, baseColor) {
+  const k = String(baseKey || '');
+  if (baseColor && /^#/.test(baseColor) && !/brass|gold|black|walnut|teak/.test(k)) {
+    const col = new THREE.Color(baseColor);
+    if (col.r * 0.3 + col.g * 0.59 + col.b * 0.11 > 0.45) return '#e9e5de';
+  }
+  return /white|ceram|paint|plaster|oak-white|ash-light|travert|marble|opal|paper|stone/.test(k) ? '#e9e5de' : '#1d1b19';
+}
+
+/**
+ * Flex along `pts` (Vector3[], the first point inside the base), a strain-relief sleeve at the exit and, if `plug`
+ * ({ x, z, yaw }), a plug lying flat at the end. All parts tagged 'cord'. r = flex radius (2.6 mm).
+ */
+function addCord(b, c, { pts, color, plug = null, r = 0.0026 }) {
+  const mat = c.mat('cord', { color });
+  let L = 0; for (let i = 1; i < pts.length; i++) L += pts[i].distanceTo(pts[i - 1]);
+  const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+  b.add(new THREE.TubeGeometry(curve, segs(Math.max(24, Math.round(L / 0.01)), 10), r, segs(8, 5), false), mat, { uv: 'none', tag: 'cord' });
+  // strain relief at the base exit (slightly fatter, tapered), along the first tangent
+  const t0 = curve.getTangentAt(0.0001), p0 = curve.getPointAt(Math.min(0.5, 0.012 / Math.max(L, 0.02)));
+  const sl = new THREE.CylinderGeometry(r * 1.25, r * 1.7, 0.016, segs(10, 6));
+  sl.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V3(0, -1, 0), t0)); // narrow end along the flex
+  b.add(sl, mat, { pos: [p0.x, p0.y, p0.z], uv: 'none', tag: 'cord' });
+  // the far end: rounded cap, or a plug
+  const end = pts[pts.length - 1];
+  if (!plug) { b.add(new THREE.SphereGeometry(r, segs(8, 5), segs(6, 4)), mat, { pos: [end.x, end.y, end.z], uv: 'none', tag: 'cord' }); return; }
+  const light = new THREE.Color(color).r > 0.5;
+  const body = c.mat(light ? 'plastic-white' : 'rubber', light ? {} : { color: '#1f1d1b' });
+  const pin = c.mat('metal-nickel');
+  const m = new THREE.Matrix4().makeRotationY(plug.yaw);
+  const at = (x, y, z) => V3(x, y, z).applyMatrix4(m).add(V3(plug.x, 0, plug.z));
+  // BS 1363 plug lying on its face: 45 × 51 mm body, 22 mm thick, cord grip at the back (−local z), pins forward
+  const bodyG = softBox(0.045, 0.022, 0.051, { r: 0.004, seg: 2 }); bodyG.applyMatrix4(m);
+  const bc = at(0, 0.011, 0);
+  b.add(bodyG, body, { pos: [bc.x, bc.y, bc.z], uv: 'none', tag: 'cord' });
+  const grip = new THREE.CylinderGeometry(0.0045, 0.006, 0.012, segs(10, 6)).rotateX(Math.PI / 2); grip.applyMatrix4(m);
+  const gc = at(0, 0.0075, -0.0305);
+  b.add(grip, body, { pos: [gc.x, gc.y, gc.z], uv: 'none', tag: 'cord' });
+  for (const [px, py, w, h, l] of [[-0.011, 0.006, 0.0063, 0.004, 0.0177], [0.011, 0.006, 0.0063, 0.004, 0.0177], [0, 0.017, 0.004, 0.008, 0.0227]]) {
+    const pg = new THREE.BoxGeometry(w, h, l); pg.applyMatrix4(m);
+    const q = at(px, py, 0.0255 + l / 2);
+    b.add(pg, pin, { pos: [q.x, q.y, q.z], uv: 'none', tag: 'cord' });
+  }
+  return at(0, 0.0075, -0.037); // where the flex enters the grip
+}
+
+/**
+ * Route a flex from the base exit (ex, ey, ez — at the base's back) to a plug in a rear corner of the footprint
+ * (W × D), lying on the surface y = 0. side = ±1 picks the corner.
+ */
+function floorCord(b, c, { ex, ey, ez, W, D, color, side = 1, via = null }) {
+  const r = 0.0026;
+  const cx = side * Math.max(0.03, W / 2 - 0.045), cz = -Math.max(0.04, D / 2 - 0.045);
+  // plug points away from the lamp, diagonally into the corner
+  const yaw = Math.atan2(cx - ex, cz - ez);
+  const plugEnd = V3(cx - Math.sin(yaw) * 0.037, r, cz - Math.cos(yaw) * 0.037);
+  const pts = [V3(ex, ey, ez + 0.006)];
+  if (via) pts.push(...via);
+  else pts.push(V3(ex, Math.max(r, ey * 0.45), ez - 0.012));
+  const mid = V3((pts[pts.length - 1].x + plugEnd.x) / 2 - side * 0.012, r, (pts[pts.length - 1].z + plugEnd.z) / 2 + 0.004);
+  pts.push(V3(pts[pts.length - 1].x + (mid.x - pts[pts.length - 1].x) * 0.4, r, pts[pts.length - 1].z - 0.02), mid, V3(plugEnd.x - Math.sin(yaw) * 0.018, r, plugEnd.z - Math.cos(yaw) * 0.018), plugEnd);
+  const plug = { x: cx - Math.sin(yaw) * 0.0005, z: cz, yaw };
+  addCord(b, c, { pts, color, plug, r });
+}
+
 export function floorLamp(c) {
   const { W, H, params: p } = c;
   const b = new Builder(c.seed);
@@ -196,6 +269,12 @@ export function floorLamp(c) {
     }
     b.add(new THREE.CylinderGeometry(0.016, 0.016, 0.05, 14), c.mat('metal-brass'), { pos: [0, legTop, 0] });
     b.add(new THREE.CylinderGeometry(0.006, 0.006, yb + sh * 0.4 - legTop, 10), c.mat('metal-brass'), { pos: [0, (legTop + yb + sh * 0.4) / 2, 0] });
+    // flex: out of the hub, down behind the rear leg (clipped to it), then across the floor to the plug
+    const a2 = (2 / 3) * Math.PI * 2 + Math.PI / 6, foot = V3(Math.cos(a2) * R * 0.95, 0, Math.sin(a2) * R * 0.95);
+    // (runs on the inner face of the leg: the flex stays inside the footprint)
+    const off = (t) => { const q = V3(0, legTop, 0).lerp(foot, t); return V3(q.x, q.y, q.z + 0.013); };
+    floorCord(b, c, { ex: 0, ey: legTop - 0.02, ez: -0.012, W: c.W, D: c.D, color: cordColor(c, baseKey, p.baseColor), side: 1,
+      via: [off(0.15), off(0.5), off(0.86), V3(foot.x + 0.012, 0.004, foot.z + 0.045)] });
   } else if (stem.includes('turn')) {
     // turned wooden column with beads on a round foot
     const top = yb + sh * 0.4;
@@ -204,11 +283,13 @@ export function floorLamp(c) {
     for (let i = 0; i < n; i++) { const y0 = 0.06 + (i / n) * (top - 0.08), y1 = 0.06 + ((i + 1) / n) * (top - 0.08); prof.push([0.022, y0 + (y1 - y0) * 0.15], [0.034, y0 + (y1 - y0) * 0.5], [0.022, y0 + (y1 - y0) * 0.85]); }
     prof.push([0.014, top], [0.001, top]);
     b.add(lathe(smoothProfile(prof, 90), 28), baseMat, { uv: 'cyl' });
+    floorCord(b, c, { ex: 0, ey: 0.012, ez: -0.122, W: c.W, D: c.D, color: cordColor(c, baseKey, p.baseColor) });
   } else {
     const br = clamp(R * 0.75, 0.11, 0.17);
     b.add(slab(ellipseShape(br * 2, br * 2), 0.024, { bevel: 0.007, bevelSeg: 4 }), baseMat, {});
     b.add(new THREE.CylinderGeometry(0.0095, 0.0095, yb + sh * 0.4 - 0.024, 14), baseMat, { pos: [0, 0.024 + (yb + sh * 0.4 - 0.024) / 2, 0], axis: 'y' });
     b.add(new THREE.CylinderGeometry(0.014, 0.016, 0.03, 14), baseMat, { pos: [0, 0.04, 0] });
+    floorCord(b, c, { ex: 0, ey: 0.01, ez: -br + 0.004, W: c.W, D: c.D, color: cordColor(c, baseKey, p.baseColor) });
   }
   const rim = c.mat(/brass|gold/.test(baseKey) ? 'metal-brass' : 'metal-black');
   const ly = addShade(b, c, { style, R, h: sh, yb, mat: shade, rimMat: rim });
@@ -250,6 +331,7 @@ function columnLamp(c) {
   b.add(insideOut(new THREE.CylinderGeometry(R - 0.004, R - 0.004, h - 0.01, segs(32, 12), 1, true)), paper, { pos: [0, foot + h / 2, 0], uv: 'none' });
   const dark = c.mat('metal-black', { color: '#2a2724', roughness: 0.6 });
   b.add(slab(ellipseShape(R * 2 + 0.01, R * 2 + 0.01), foot, { bevel: 0.004, bevelSeg: 2 }), dark, {});
+  floorCord(b, c, { ex: 0, ey: foot * 0.5, ez: -(R + 0.005) + 0.004, W: Math.max(c.W, 0.3), D: Math.max(c.D, 0.3), color: '#1d1b19' });
   b.add(new THREE.TorusGeometry(R - 0.002, 0.004, 6, segs(48, 16)).rotateX(Math.PI / 2), c.mat('metal-white', { color: p.capColor || color }), { pos: [0, foot + h, 0] });
   const ly = foot + h * 0.55;
   bulb(b, c, ly, 0.03);
@@ -271,6 +353,8 @@ function swingArmLamp(c, { b, baseMat, shade, style, R }) {
   const armL = Math.max(0.06, c.W - br - R);
   const stemTop = H - 0.02;
   b.add(slab(ellipseShape(br * 2, br * 2), 0.022, { bevel: 0.007, bevelSeg: 4 }), baseMat, { pos: [-armL / 2, 0, 0] });
+  { const g0 = new Builder(c.seed + 2); floorCord(g0, c, { ex: 0, ey: 0.01, ez: -br + 0.004, W: 2 * br + 0.08, D: c.D, color: cordColor(c, p.base || p.frame, p.baseColor), side: 1 });
+    const cg = g0.build('cord'); for (const m of cg.children) { m.geometry.translate(-armL / 2, 0, 0); b.addObject(m); } }
   b.add(new THREE.CylinderGeometry(0.009, 0.009, stemTop - 0.02, 14), baseMat, { pos: [-armL / 2, 0.02 + (stemTop - 0.02) / 2, 0], axis: 'y' });
   b.add(tube([V3(-armL / 2, stemTop - 0.03, 0), V3(-armL / 2 + 0.02, stemTop, 0), V3(armL / 2 - 0.02, stemTop, 0), V3(armL / 2, stemTop - 0.03, 0)], 0.007, { tubular: 24, radial: 8, tension: 0.2 }), baseMat, {});
   b.add(new THREE.SphereGeometry(0.014, 12, 8), baseMat, { pos: [-armL / 2, stemTop - 0.03, 0] });
@@ -296,6 +380,18 @@ const BASE_SHAPES = {
   turned: (h, r) => [[0.001, 0], [r * 0.85, 0], [r * 0.85, h * 0.05], [r * 0.4, h * 0.09], [r * 0.55, h * 0.2], [r * 0.25, h * 0.32], [r * 0.45, h * 0.46], [r * 0.22, h * 0.6], [r * 0.38, h * 0.74], [r * 0.2, h * 0.88], [r * 0.25, h], [0.001, h]],
 };
 
+/** Table-lamp flex: on a host top it runs to the host's back edge and drops over it; alone it ends in a plug. */
+function tableCord(b, c, { rb, color }) {
+  const r = 0.0026, ez = -rb + 0.004;
+  const hd = c.host && Number(c.host.d) > 0.15 ? Number(c.host.d) : 0;
+  if (!hd) { floorCord(b, c, { ex: 0, ey: 0.006, ez, W: Math.max(c.W, 0.22), D: Math.max(c.D, 0.22), color, side: 1 }); return; }
+  const edge = -hd / 2 + 0.004, k = 0.016; // rounds the back edge (bend radius ≈ 1.6 cm), then hangs 7 cm
+  const x1 = 0.035;
+  const pts = [V3(0, 0.006, ez + 0.006), V3(0.004, r, ez - 0.014), V3(x1 * 0.7, r, (ez + edge) / 2), V3(x1, r, edge + k),
+    V3(x1, r - k * 0.3, edge + k * 0.15), V3(x1 + 0.004, -k * 0.9, edge - k * 0.35), V3(x1 + 0.01, -0.075, edge - k * 0.55)];
+  addCord(b, c, { pts, color, r });
+}
+
 export function tableLamp(c) {
   const { W, H, params: p } = c;
   const b = new Builder(c.seed);
@@ -315,13 +411,16 @@ export function tableLamp(c) {
     const stemTop = H - dh * 0.35;
     const prof = smoothProfile([[0.001, 0], [R * 0.45, 0], [R * 0.45, 0.008], [R * 0.2, 0.03], [0.016, H * 0.25], [0.012, stemTop * 0.8], [0.014, stemTop], [0.001, stemTop]], 40);
     b.add(lathe(prof, 40), baseMat, { uv: 'cyl' });
+    tableCord(b, c, { rb: R * 0.45, color: cordColor(c, baseKey, p.baseColor) });
     const ly = addShade(b, c, { style: 'mushroom', R, h: dh * 0.75, yb: H - dh * 0.75, mat: shade, rimMat: baseMat });
     bulb(b, c, ly, 0.02);
     return { group: b.build('table_lamp'), lights: shadeLights({ ly, yb: H - dh * 0.75, h: dh * 0.75, Rb: R, I: 0.6, kind: 'dome', distance: 3 }) };
   }
   const fn = BASE_SHAPES[Object.keys(BASE_SHAPES).find((k) => shapeName.includes(k)) || 'gourd'];
   const br = Math.min(R * 0.55, 0.11);
-  const lg = lathe(smoothProfile(fn(bh, br), 36), shapeName.includes('rib') ? 96 : 44);
+  const bprof = fn(bh, br);
+  const lg = lathe(smoothProfile(bprof, 36), shapeName.includes('rib') ? 96 : 44);
+  tableCord(b, c, { rb: bprof[1][0] * (shapeName.includes('rib') ? 1.03 : 1), color: cordColor(c, baseKey, p.baseColor) });
   if (shapeName.includes('rib')) {
     // vertical ribs (fluted ceramic)
     const pa = lg.attributes.position;

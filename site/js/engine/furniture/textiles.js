@@ -4,6 +4,22 @@ import { Builder, roundedRectShape, ellipseShape, tube, softBox, V3, clamp, lerp
 import { rng, Noise } from '../textures.js';
 import { fabricMat } from './parts.js';
 
+/** Split a geometry's triangles by face normal: [rest, matching] (matching = null if none). Non-indexed output. */
+function splitFaces(g, pred) {
+  const src = g.index ? g.toNonIndexed() : g;
+  const P = src.attributes.position, N = src.attributes.normal, U = src.attributes.uv;
+  const A = { p: [], n: [], u: [] }, B = { p: [], n: [], u: [] };
+  const fn = new THREE.Vector3(), a = new THREE.Vector3(), b2 = new THREE.Vector3(), c2 = new THREE.Vector3();
+  for (let i = 0; i < P.count; i += 3) {
+    a.fromBufferAttribute(P, i); b2.fromBufferAttribute(P, i + 1); c2.fromBufferAttribute(P, i + 2);
+    fn.subVectors(c2, b2).cross(a.clone().sub(b2)).normalize();
+    const T = pred(fn) ? B : A;
+    for (let k = 0; k < 3; k++) { T.p.push(P.getX(i + k), P.getY(i + k), P.getZ(i + k)); T.n.push(N.getX(i + k), N.getY(i + k), N.getZ(i + k)); T.u.push(U.getX(i + k), U.getY(i + k)); }
+  }
+  const mk = (T) => { if (!T.p.length) return null; const o = new THREE.BufferGeometry(); o.setAttribute('position', new THREE.Float32BufferAttribute(T.p, 3)); o.setAttribute('normal', new THREE.Float32BufferAttribute(T.n, 3)); o.setAttribute('uv', new THREE.Float32BufferAttribute(T.u, 2)); return o; };
+  return [mk(A), mk(B)];
+}
+
 export function rug(c) {
   const { W, D, H, params: p } = c;
   const b = new Builder(c.seed);
@@ -39,7 +55,16 @@ export function rug(c) {
     if (lift) pos.setY(i, pos.getY(i) + lift);
   }
   g.computeVertexNormals();
-  b.add(g, mat, { uv: 'keep', cast: false });
+  // round 5 (tilted close-ups): the edge faces get their own UVs — along the edge × up (metric pile, no vertical
+  // streaks; a pattern keeps its border texel) — and the underside is the rug's backing, not the pile
+  const [top, under] = splitFaces(g, (n) => n.y < -0.6);
+  if (!usePattern) {
+    const tp = top.attributes.position, tn = top.attributes.normal, tu = top.attributes.uv;
+    for (let i = 0; i < tp.count; i++) if (Math.abs(tn.getY(i)) < 0.6) tu.setXY(i, Math.abs(tn.getX(i)) > Math.abs(tn.getZ(i)) ? tp.getZ(i) : tp.getX(i), tp.getY(i) * 2.5);
+  }
+  b.add(top, mat, { uv: 'keep', cast: false });
+  if (under) { const up = under.attributes.position, uu = under.attributes.uv; for (let i = 0; i < up.count; i++) uu.setXY(i, up.getX(i), up.getZ(i)); }
+  if (under) b.add(under, c.mat(isJute ? 'jute' : 'fabric-cotton', { color: isJute ? '#a88f68' : '#cfc5b3' }), { uv: 'keep', cast: false });
   // edge binding: a 3 mm rolled whip-stitch around the perimeter
   if (!isJute || p.binding) {
     const pts = (round ? ellipseShape(W - 0.006, D - 0.006) : roundedRectShape(W - 0.006, D - 0.006, 0.01)).getPoints(round ? 96 : 12).map((q) => {
@@ -100,7 +125,7 @@ export function curtains(c) {
       const left = panels === 1 ? true : k < perSide;
       const idx = left ? k : k - perSide;
       const cx = panels === 1 ? -span / 2 + gw0 / 2 : left ? -span / 2 + gw0 * (idx + 0.5) : span / 2 - gw0 * (idx + 0.5);
-      addPanel(b, fab, { cx, z, gw: gw0 * 0.995, hang, wave, amp, phase: r() * Math.PI, k: k + li * 7, cast: !sheer, sheer });
+      addPanel(b, fab, { cx, z, gw: gw0 * 0.995, hang, wave, amp, phase: r() * Math.PI, k: k + li * 7, cast: !sheer, sheer, glider: { top: H - 0.019, mat: c.mat('plastic-white') } });
     }
   });
   // ceiling track (one per layer)
@@ -109,7 +134,7 @@ export function curtains(c) {
   return { group: b.build('curtains') };
 }
 
-function addPanel(b, fab, { cx, z, gw, hang, wave, amp, phase, k, cast, sheer = false }) {
+function addPanel(b, fab, { cx, z, gw, hang, wave, amp, phase, k, cast, sheer = false, glider = null }) {
   const nx = Math.round(clamp(gw / 0.012, 30, 110));
   panelStrip(b, fab, { cx, z, gw, hang, wave, amp, phase, k, cast, nx, y0: 0.004, y1: hang, ny: 22 });
   // voile: doubled hem (6 cm) and heading tape (9 cm) read as denser bands, as in real sheers
@@ -120,6 +145,18 @@ function addPanel(b, fab, { cx, z, gw, hang, wave, amp, phase, k, cast, sheer = 
   const hp = [];
   for (let i = 0; i <= 40; i++) { const x = -gw / 2 + (i / 40) * gw; const ph = (x / wave) * Math.PI * 2 + phase; hp.push(V3(cx + x, hang - 0.004, z + Math.sin(ph) * amp * 0.85)); }
   b.add(tube(hp, 0.004, { tubular: 100, radial: 5 }), fab, { cast });
+  // round 5: wave gliders — the heading hung 13 mm under the track from nothing. A nylon glider stem wherever the
+  // wave crosses the track line (every half wave), from inside the heading up into the track
+  if (glider) {
+    for (let n = Math.ceil(((-gw / 2) / wave * 2 * Math.PI + phase) / Math.PI); ; n++) {
+      const x = (n * Math.PI - phase) * wave / (2 * Math.PI);
+      if (x > gw / 2) break;
+      if (x < -gw / 2 + 0.01) continue;
+      const zz = Math.sin(3.1 + k) * 0.004;
+      const len = glider.top - (hang - 0.014);
+      b.add(new THREE.CylinderGeometry(0.0032, 0.0038, len, 8), glider.mat, { pos: [cx + x, hang - 0.014 + len / 2, z + zz], uv: 'none', cast: false });
+    }
+  }
 }
 
 function panelStrip(b, fab, { cx, z, gw, hang, wave, amp, phase, k, cast, nx, y0, y1, ny, off = 0 }) {

@@ -50,8 +50,32 @@ function platformBed(c) {
   // integrated bedside shelves (optional)
   if (p.sideShelves) for (const s of [-1, 1]) b.add(softBox(0.42, deckT, 0.38, { r: 0.01, seg: 2 }), wood, { pos: [s * (W / 2 + 0.21), deckY - deckT / 2, -D / 2 + hbT + 0.2] });
   const zc = -D / 2 + hbT + (D - hbT) / 2;
-  b.add(new THREE.BoxGeometry(mw, 0.004, md), c.mat('walnut-dark', { tint: '#6b5d52' }), { pos: [0, deckY + 0.002, zc], cast: false });
+  slatBase(b, c, { mw, md, y: deckY + 0.004, zc, legH: deckY - deckT, flat: true });
   return { group: b.build('bed'), anchors: { deck: V3(0, deckY + 0.004, zc), top: V3(0, deckY + 0.004, zc) }, anchorInfo: { deck: { w: mw, d: md } } };
+}
+
+/**
+ * Sprung slat base under the mattress (round 5: a bed focused on its own showed a flat dark board): beech slats
+ * 63 mm at ≈ 9 cm pitch on two side bearers and a centre rail with a foot to the floor. Top of the slats at y.
+ */
+function slatBase(b, c, { mw, md, y, zc, legH = 0.1, flat = false }) {
+  const beech = c.mat('ash-light', { match: '#d8bf98' });
+  const st = 0.009, sw = 0.063, n = Math.max(8, Math.round(md / 0.09));
+  const pitch = (md - 0.04) / n;
+  for (let i = 0; i < n; i++) {
+    const z = zc - md / 2 + 0.02 + pitch * (i + 0.5);
+    // the slats bow up 4 mm (sprung)
+    const g = softBox(mw - 0.03, st, sw, { r: 0.0025, seg: 1, cell: 0.2, bulge: { top: 0.004, bottom: -0.004 } });
+    b.add(g, beech, { pos: [0, y - st / 2 - 0.002, z], axis: 'x' });
+  }
+  const rail = c.mat('ash-light', { match: '#c9ad84' });
+  for (const sx of [-1, 1]) b.add(softBox(0.035, 0.028, md, { r: 0.003, seg: 1 }), rail, { pos: [sx * (mw / 2 - 0.03), y - st - 0.016, zc], axis: 'z' });
+  b.add(softBox(0.05, 0.03, md, { r: 0.003, seg: 1 }), rail, { pos: [0, y - st - 0.017, zc], axis: 'z' });
+  if (!flat) {
+    const fh = y - st - 0.032;
+    if (fh > 0.03) for (const fz of [zc - md * 0.25, zc + md * 0.25]) b.add(new THREE.CylinderGeometry(0.018, 0.018, fh, 12), c.mat('metal-black', { color: '#1d1a18' }), { pos: [0, fh / 2, fz], uv: 'none' });
+  }
+  void legH;
 }
 
 export function bed(c) {
@@ -81,7 +105,7 @@ export function bed(c) {
   const rr = frameIsFabric ? 0.025 : 0.008;
   for (const s of [-1, 1]) b.add(softBox(sideT, railH, D - hbT + 0.01, { r: rr, seg: 3, cell: 0.1, bulge: frameIsFabric ? { left: 0.006, right: 0.006 } : null }), wood, { pos: [s * (W / 2 - sideT / 2), legH + railH / 2, -D / 2 + hbT + (D - hbT) / 2 - 0.005], axis: 'z' });
   b.add(softBox(W - 2 * sideT + 0.002, railH, footT, { r: rr, seg: 3 }), wood, { pos: [0, legH + railH / 2, D / 2 - footT / 2] });
-  b.add(new THREE.BoxGeometry(mw, 0.02, md), c.mat('walnut-dark', { tint: '#6b5d52' }), { pos: [0, deckY - 0.01, zc] });
+  slatBase(b, c, { mw, md, y: deckY, zc, legH });
 
   // headboard
   const hbBottom = legH;
@@ -458,7 +482,13 @@ export function bedding(c) {
       const cy = (ph / 2) * Math.cos(tilt) + (pt / 2) * Math.sin(tilt) * 0.7;
       const cz = zBase + (ph / 2) * (-Math.sin(tilt)) + 0.16 + (pt / 2) * Math.cos(tilt) * 0.5;
       const yaw = (i - (n - 1) / 2) * -0.05 * (ri + 1);
-      b.add(g, fab, { pos: [x, cy - 0.005 + 2 * t * 0, cz], rot: [-tilt, yaw, (i % 2 ? 1 : -1) * 0.02], uv: 'box' });
+      // round 5: rest the pillow ON the fitted sheet (top at y = 5 mm), its lowest edge pressed 4 mm in — the
+      // propped-up lens used to hover ≈ 2 cm above the sheet (a floating part on the turntable)
+      const rot = new THREE.Euler(-tilt, yaw, (i % 2 ? 1 : -1) * 0.02);
+      const pa = g.attributes.position, q = new THREE.Vector3();
+      let minY = Infinity;
+      for (let k = 0; k < pa.count; k++) { q.fromBufferAttribute(pa, k).applyEuler(rot); if (q.y < minY) minY = q.y; }
+      b.add(g, fab, { pos: [x, isFinite(minY) ? 0.001 - minY : cy - 0.005, cz], rot: [rot.x, rot.y, rot.z], uv: 'box' });
     }
   });
   return { group: b.build('bedding') };

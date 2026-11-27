@@ -39,11 +39,11 @@ const materials = {
   },
 };
 
-function udMesh(u) { return { ...(u.itemId != null ? { itemId: u.itemId } : {}), ...(u.noCastShadow ? { noCastShadow: true } : {}) }; }
+function udMesh(u) { return { ...(u.itemId != null ? { itemId: u.itemId } : {}), ...(u.noCastShadow ? { noCastShadow: true } : {}), ...(u.noFit ? { noFit: true } : {}), ...(u.cord ? { cord: true } : {}) }; }
 function udRoot(u) {
   const anchors = {};
   for (const [k, v] of Object.entries(u.anchors || {})) anchors[k] = [v.x, v.y, v.z];
-  return { anchors, anchorInfo: u.anchorInfo || {}, lights: u.lights || [], mount: u.mount, archetype: u.archetype, itemId: u.itemId, triangles: u.triangles };
+  return { anchors, anchorInfo: u.anchorInfo || {}, lights: u.lights || [], mount: u.mount, archetype: u.archetype, itemId: u.itemId, triangles: u.triangles, pivot: u.pivot, front: u.front, bounds: u.bounds, radial: u.radial };
 }
 
 function ser(o, transfer, root = false) {

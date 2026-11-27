@@ -36,9 +36,25 @@ export const isMetal = (k) => /metal|brass|chrome|iron|steel|gold|nickel|black/.
  * type: wood-taper | wood-short | wood-block | metal | metal-hairpin | metal-square | bun | splayed | none
  * legs hang from y = top down to 0.
  */
+/**
+ * Floor glide under a leg foot (round 5 close-up detail): a 3 mm felt / nylon pad on wood legs, a moulded end cap on
+ * metal tube legs (slightly wider than the tube, 4 mm), a brass ferrule ring on brass legs. foot = floor point.
+ */
+export function legGlide(b, c, { x, z, r, kind = 'felt', mat = null, square = 0 }) {
+  if (kind === 'ferrule') {
+    b.add(new THREE.CylinderGeometry(r * 1.06, r * 1.08, 0.012, 14), mat, { pos: [x, 0.006, z], uv: 'cyl' });
+    return;
+  }
+  const pad = kind === 'cap' ? c.mat('rubber', { color: '#1c1b1a' }) : c.mat('rubber', { color: '#3a3532' });
+  const h = kind === 'cap' ? 0.004 : 0.003;
+  if (square) b.add(softBox(square * 1.08, h, square * 1.08, { r: 0.0012, seg: 1 }), pad, { pos: [x, h / 2, z], uv: 'none' });
+  else b.add(new THREE.CylinderGeometry(r * (kind === 'cap' ? 1.08 : 0.95), r * (kind === 'cap' ? 1.08 : 0.95), h, 12), pad, { pos: [x, h / 2, z], uv: 'none' });
+}
+
 export function addLegs(b, c, { type = 'wood-taper', w, d, top, inset = 0.05, mat, metalMat, middle = false, middleInset = null, splay = 0, cx = 0, cz = 0 }) {
   if (!type || type === 'none' || top <= 0.002) return;
   const t = String(type).toLowerCase();
+  const brassy = (m) => /brass|gold/.test(String(m?.name || ''));
   const xs = [-(w / 2 - inset), w / 2 - inset];
   const zs = [-(d / 2 - inset), d / 2 - inset];
   const pts = [];
@@ -60,12 +76,16 @@ export function addLegs(b, c, { type = 'wood-taper', w, d, top, inset = 0.05, ma
     if (t.includes('slim') && (t.includes('metal') || t.includes('brass'))) {
       // thin tapered round metal leg
       const g = roundLeg(0.011, 0.0065, h, 12);
-      g.applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(sz * 0.06, 0, -sx * 0.06)));
+      const rm = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(sz * 0.06, 0, -sx * 0.06));
+      g.applyMatrix4(rm);
       b.add(g, metalMat || mat, { pos: [x, h, z], axis: 'y' });
+      const f = V3(0, -h, 0).applyMatrix4(rm);
+      legGlide(b, c, { x: x + f.x, z: z + f.z, r: 0.0065, kind: brassy(metalMat || mat) ? 'ferrule' : 'cap', mat: metalMat || mat });
       continue;
     }
     if (t.includes('metal') || t.includes('square-metal') || t.includes('iron')) {
       b.add(squareLeg(0.022, 0.018, h, 0.002), metalMat || mat, { pos: [x, h, z], axis: 'y' });
+      legGlide(b, c, { x, z, r: 0.009, kind: 'cap', square: 0.018 });
       continue;
     }
     if (t.includes('sled')) {
@@ -85,6 +105,7 @@ export function addLegs(b, c, { type = 'wood-taper', w, d, top, inset = 0.05, ma
     }
     if (t.includes('block') || t.includes('square')) {
       b.add(squareLeg(0.045, 0.04, h, 0.004), mat, { pos: [x, h, z], axis: 'y' });
+      legGlide(b, c, { x, z, r: 0.017, square: 0.034 });
       continue;
     }
     // tapered round wood leg (default), optional splay
@@ -95,6 +116,7 @@ export function addLegs(b, c, { type = 'wood-taper', w, d, top, inset = 0.05, ma
     g.applyMatrix4(m);
     // keep foot on floor & top under frame
     b.add(g, mat, { pos: [x, h, z], axis: 'y' });
+    if (h > 0.05) { const f = V3(0, -h, 0).applyMatrix4(m); legGlide(b, c, { x: x + f.x, z: z + f.z, r: rb }); }
   }
 }
 
@@ -104,23 +126,31 @@ export function addHandle(b, c, type, { x, y, z, w = 0.12, mat, vertical = false
   if (t === 'none' || t === 'push' || t === 'cutout') return;
   const m = mat || c.mat('metal-brass');
   if (t.includes('knob')) {
-    const g = new THREE.SphereGeometry(0.014, 16, 10); g.scale(1, 1, 0.7);
-    b.add(g, m, { pos: [x, y, z + 0.012] });
-    b.add(new THREE.CylinderGeometry(0.005, 0.006, 0.012, 10), m, { pos: [x, y, z + 0.006], rot: [Math.PI / 2, 0, 0] });
+    // turned knob (round 5 close-up): domed head with a soft edge, waisted stem, a thin rose against the front
+    const prof = [[0.0005, 0.0], [0.0075, 0.0], [0.0078, 0.0012], [0.0045, 0.0035], [0.004, 0.009], [0.0105, 0.0125], [0.0142, 0.0165], [0.0145, 0.0185], [0.0128, 0.0215], [0.007, 0.0238], [0.0005, 0.0242]];
+    const g = new THREE.LatheGeometry(prof.map(([r, yy]) => new THREE.Vector2(r, yy)), 24);
+    g.rotateX(Math.PI / 2);
+    b.add(g, m, { pos: [x, y, z], uv: 'box', axis: 'z' });
     return;
   }
   if (t.includes('leather') || t.includes('strap')) {
-    b.add(softBox(0.025, 0.07, 0.006, { r: 0.002, seg: 1 }), c.mat('leather-cognac'), { pos: [x, y - 0.02, z + 0.004] });
+    // folded leather tab with stitched-down ends: two layers, rounded edges, two screw heads
+    const lth = c.mat('leather-cognac');
+    b.add(softBox(0.025, 0.07, 0.006, { r: 0.0022, seg: 2 }), lth, { pos: [x, y - 0.02, z + 0.004] });
+    b.add(softBox(0.023, 0.03, 0.004, { r: 0.0018, seg: 2 }), lth, { pos: [x, y - 0.002, z + 0.0085] });
+    for (const yy of [y + 0.006, y - 0.046]) b.add(new THREE.CylinderGeometry(0.0028, 0.0028, 0.0016, 10).rotateX(Math.PI / 2), c.mat('metal-brass'), { pos: [x, yy, z + 0.0075 + (yy > y ? 0.0035 : 0)], uv: 'none' });
     return;
   }
-  // bar / pull / default: slim bar on two posts
+  // bar / pull / default: bar with rounded ends on two posts, each post on a small rose (round 5 close-up)
   const L = vertical ? Math.min(w, 0.2) : w;
-  const bar = new THREE.CylinderGeometry(0.005, 0.005, L, 12);
+  const bar = new THREE.CapsuleGeometry(0.005, Math.max(0.01, L - 0.01), 3, 12);
   if (!vertical) bar.rotateZ(Math.PI / 2);
-  b.add(bar, m, { pos: [x, y, z + 0.024] });
+  b.add(bar, m, { pos: [x, y, z + 0.026] });
   for (const s of [-1, 1]) {
-    const post = new THREE.CylinderGeometry(0.004, 0.004, 0.024, 8); post.rotateX(Math.PI / 2);
-    b.add(post, m, { pos: vertical ? [x, y + s * (L / 2 - 0.01), z + 0.012] : [x + s * (L / 2 - 0.01), y, z + 0.012] });
+    const px = vertical ? x : x + s * (L / 2 - 0.012), py = vertical ? y + s * (L / 2 - 0.012) : y;
+    const post = new THREE.CylinderGeometry(0.0035, 0.0042, 0.024, 10); post.rotateX(Math.PI / 2);
+    b.add(post, m, { pos: [px, py, z + 0.013] });
+    b.add(new THREE.CylinderGeometry(0.0062, 0.0066, 0.0018, 14).rotateX(Math.PI / 2), m, { pos: [px, py, z + 0.0009] });
   }
 }
 
@@ -129,7 +159,8 @@ export function addFlutes(b, mat, { cx, cy, z, w, h, pitch = 0.028, depth = 0.00
   const n = Math.max(2, Math.round(w / pitch));
   const p = w / n;
   for (let i = 0; i < n; i++) {
-    const g = new THREE.CylinderGeometry(p / 2, p / 2, h, seg, 1, true, -Math.PI / 2, Math.PI);
+    // half-round reed with closed ends (round 5: from a 40° tilt the open ends showed into the hollow reeds)
+    const g = new THREE.CylinderGeometry(p / 2, p / 2, h, seg, 1, false, -Math.PI / 2, Math.PI);
     g.scale(1, 1, (depth) / (p / 2));
     b.add(g, mat, { pos: [cx - w / 2 + p * (i + 0.5), cy, z], axis: 'y' });
   }

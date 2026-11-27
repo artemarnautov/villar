@@ -296,7 +296,11 @@ export function lathe(profile, seg = 32) {
 /** Smooth a polyline profile with Catmull-Rom and return [[r,y]...]. */
 export function smoothProfile(points, samples = 40) {
   const curve = new THREE.SplineCurve(points.map(([x, y]) => new THREE.Vector2(x, y)));
-  return curve.getPoints(samples).map((p) => [p.x, p.y]);
+  // round 5: the spline must not overshoot below the foot (or above the lip) — a vase whose base dipped 5 mm under
+  // y = 0 lifted every other piece of its decor set off the shelf after the fit
+  let y0 = Infinity, y1 = -Infinity;
+  for (const [, y] of points) { if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  return curve.getPoints(samples).map((p) => [Math.max(0, p.x), Math.min(y1, Math.max(y0, p.y))]);
 }
 
 /** Extruded rounded-rect / ellipse / circle slab (top surface at y = h, bottom at 0), with eased edge. */
@@ -377,20 +381,23 @@ export class Builder {
     this.rand = rng(seed);
     this.extra = [];
   }
-  add(geom, mat, { pos = null, rot = null, scale = null, uv = 'box', axis = 'x', uvScale = 1, uvOffset = null, matrix = null, cast = true, receive = true } = {}) {
+  add(geom, mat, { pos = null, rot = null, scale = null, uv = 'box', axis = 'x', uvScale = 1, uvOffset = null, matrix = null, cast = true, receive = true, tag = '' } = {}) {
     let g = geom;
     if (uv === 'box') {
       const off = uvOffset || [this.rand() * 3, this.rand() * 3];
-      g = boxProjectUVs(g, { axis, scale: uvScale, offset: off });
+      // wood: edge bands run their grain along the edge (round 5, veneer edges)
+      const edges = /walnut|oak|ash|teak|wood|bamboo|pine/.test(String(mat?.userData?.materialKey || mat?.name || ''));
+      g = boxProjectUVs(g, { axis, scale: uvScale, offset: off, edges });
     } else if (uv === 'cyl') {
       g = cylinderUVs(g, { offset: uvOffset || [this.rand() * 3, this.rand() * 3], swap: axis === 'around' });
       if (!g.attributes.normal) g.computeVertexNormals();
     } else {
-      if (!g.attributes.uv) {
-        g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
-      }
+      // round 5 (NaN-tangent rule): a part without uvs gets a box projection, never all-zero uvs — any material with a
+      // normal map or anisotropy derives its tangent frame from them (zero → NaN, spread by the env capture)
+      if (!g.attributes.uv) g = boxProjectUVs(g, { axis, scale: uvScale, offset: uvOffset || [0, 0] });
       if (!g.attributes.normal) g.computeVertexNormals();
     }
+    g = repairUVs(g);
     for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv', 'color'].includes(k)) g.deleteAttribute(k);
     if (matrix) g.applyMatrix4(matrix);
     else if (pos || rot || scale) {
@@ -401,17 +408,24 @@ export class Builder {
       _m.compose(_p, _q, _s);
       g.applyMatrix4(_m);
     }
-    const key = mat.uuid + (cast ? 'c' : '') + (receive ? 'r' : '') + (g.attributes.color ? 'v' : '');
-    if (!this.parts.has(key)) this.parts.set(key, { mat, geoms: [], cast, receive });
+    // tag: 'cord' = lamp flex / plug lying behind the base — its own mesh, flagged noFit (never part of the fitted bbox)
+    const key = mat.uuid + (cast ? 'c' : '') + (receive ? 'r' : '') + (g.attributes.color ? 'v' : '') + (tag ? '#' + tag : '');
+    if (!this.parts.has(key)) this.parts.set(key, { mat, geoms: [], cast, receive, tag });
     this.parts.get(key).geoms.push(g);
     return g;
+  }
+  /** Triangles collected so far (budgets). */
+  triangles() {
+    let n = 0;
+    for (const { geoms } of this.parts.values()) for (const g of geoms) n += (g.index ? g.index.count : g.attributes.position.count) / 3;
+    return n;
   }
   /** Add a ready-made Object3D (e.g. custom mesh). */
   addObject(o) { this.extra.push(o); }
   build(name = 'item') {
     const group = new THREE.Group();
     group.name = name;
-    for (const { mat, geoms, cast, receive } of this.parts.values()) {
+    for (const { mat, geoms, cast, receive, tag } of this.parts.values()) {
       const hasColor = geoms.some((g) => g.attributes.color);
       if (hasColor) for (const g of geoms) if (!g.attributes.color) {
         const c = new Float32Array(g.attributes.position.count * 3).fill(1); g.setAttribute('color', new THREE.BufferAttribute(c, 3));
@@ -423,13 +437,51 @@ export class Builder {
       const mesh = new THREE.Mesh(merged, mat);
       mesh.castShadow = cast; mesh.receiveShadow = receive;
       if (!cast) mesh.userData.noCastShadow = true;
-      mesh.name = mat.name || 'part';
+      if (tag === 'cord') { mesh.userData.noFit = true; mesh.userData.cord = true; }
+      mesh.name = (mat.name || 'part') + (tag ? '-' + tag : '');
       group.add(mesh);
       for (const g of geoms) if (g !== merged) g.dispose();
     }
     for (const o of this.extra) group.add(o);
     return group;
   }
+}
+
+/**
+ * Round 5 (NaN-tangent rule): triangles whose uvs have (near) zero area — flat caps of lathes / cylinder-mapped parts,
+ * pole fans, swept tube ends — get a box projection of their own (dominant face axis, metres). Independent of the
+ * material, so worker and main-thread builds stay identical. The geometry is de-indexed only if a repair is needed.
+ */
+export function repairUVs(g) {
+  const uv = g.attributes.uv, P = g.attributes.position;
+  if (!uv || !P) return g;
+  const ix = g.index ? g.index.array : null, n = ix ? ix.length / 3 : P.count / 3;
+  const bad = [];
+  const tri = (t, k) => (ix ? ix[t * 3 + k] : t * 3 + k);
+  for (let t = 0; t < n; t++) {
+    const a = tri(t, 0), b = tri(t, 1), c = tri(t, 2);
+    const e1x = P.getX(b) - P.getX(a), e1y = P.getY(b) - P.getY(a), e1z = P.getZ(b) - P.getZ(a);
+    const e2x = P.getX(c) - P.getX(a), e2y = P.getY(c) - P.getY(a), e2z = P.getZ(c) - P.getZ(a);
+    const nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+    const area = Math.hypot(nx, ny, nz);
+    if (area < 1e-12) continue;
+    const ua = Math.abs((uv.getX(b) - uv.getX(a)) * (uv.getY(c) - uv.getY(a)) - (uv.getY(b) - uv.getY(a)) * (uv.getX(c) - uv.getX(a)));
+    if (!(ua > area * 1e-4)) bad.push(t);
+  }
+  if (!bad.length) return g;
+  const out = ix ? g.toNonIndexed() : g;
+  const Q = out.attributes.position, U = out.attributes.uv;
+  for (const t of bad) {
+    const a = t * 3;
+    const e1 = [Q.getX(a + 1) - Q.getX(a), Q.getY(a + 1) - Q.getY(a), Q.getZ(a + 1) - Q.getZ(a)], e2 = [Q.getX(a + 2) - Q.getX(a), Q.getY(a + 2) - Q.getY(a), Q.getZ(a + 2) - Q.getZ(a)];
+    const nx = Math.abs(e1[1] * e2[2] - e1[2] * e2[1]), ny = Math.abs(e1[2] * e2[0] - e1[0] * e2[2]), nz = Math.abs(e1[0] * e2[1] - e1[1] * e2[0]);
+    for (let k = 0; k < 3; k++) {
+      const x = Q.getX(a + k), y = Q.getY(a + k), z = Q.getZ(a + k);
+      if (ny >= nx && ny >= nz) U.setXY(a + k, x, z); else if (nz >= nx) U.setXY(a + k, x, y); else U.setXY(a + k, z, y);
+    }
+  }
+  U.needsUpdate = true;
+  return out;
 }
 
 /** Triangle count of an object tree. */

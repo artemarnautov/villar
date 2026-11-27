@@ -2,7 +2,7 @@
 import * as THREE from '../../../vendor/three/three.module.js';
 import { rng } from '../textures.js';
 import { Builder, softBox, pillowGeometry, roundLeg, tube, roundedRectLoop, lathe, weldNormals, segs, V3, clamp, lerp, cm } from './geom.js';
-import { fabricMat, addLegs, isMetal } from './parts.js';
+import { fabricMat, addLegs, isMetal, legGlide } from './parts.js';
 
 const smoothstep = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
@@ -149,12 +149,13 @@ function upholstered(c, o) {
   const welts = p.piping !== false;
   const weltR = isBoucle ? 0.0028 : 0.004;
 
-  // base / deck
+  // base / deck (cane arms are open frames: the deck and back stop 3 mm inside the inner cane panel — they used to
+  // run into the arm cavity, coplanar with the cane, and z-fought through the weave)
+  const caneArms = armW > 0 && isCane(p.armPanel);
   const baseH = Math.max(0.05, baseTop - legH);
-  b.add(softBox(innerW + 0.04, baseH, D - 0.01, { r: 0.015, seg: 2 }), fab, { pos: [0, legH + baseH / 2, 0.0] });
+  b.add(softBox(caneArms ? innerW + 0.014 : innerW + 0.04, baseH, D - 0.01, { r: 0.015, seg: 2 }), fab, { pos: [0, legH + baseH / 2, 0.0] });
 
   // arms (cane-sided sofas: open wooden frames with cane on the outer AND inner faces, R2-13)
-  const caneArms = armW > 0 && isCane(p.armPanel);
   if (caneArms) {
     const caneCol = p.armPanelColor || p.caneColor || '#C4A57A';
     const frame = legMat;
@@ -179,7 +180,20 @@ function upholstered(c, o) {
   const bhK = p.backHeight === 'low' ? 0.16 : p.backHeight === 'high' ? 0.04 : 0.1;
   const backTop = looseBack ? Math.max(seatH + 0.15, H - bhK) : H;
   const bfh = backTop - legH;
-  b.add(softBox(innerW + 0.02, bfh, backT, { r: Math.min(0.04, backT / 2.2), seg: 3, cell: 0.1, bulge: looseBack ? null : { front: 0.02, top: 0.008 } }), fab, { pos: [0, legH + bfh / 2, -D / 2 + backT / 2] });
+  // back frame: the outside back is a stretched panel — a slight belly (7 mm) instead of a dead-flat slab (round 5)
+  const bfw = caneArms ? innerW + 0.006 : innerW + 0.02, rbf = Math.min(0.04, backT / 2.2);
+  b.add(softBox(bfw, bfh, backT, { r: rbf, seg: 3, cell: 0.1, bulge: looseBack ? { back: 0.007, top: 0.004 } : { front: 0.02, top: 0.008, back: 0.007 }, seed: c.seed + 3 }), fab, { pos: [0, legH + bfh / 2, -D / 2 + backT / 2] });
+  // outside-back welt: the seam where the outside back panel meets the top/side boxing (top edge and down the
+  // back corners to the base) — what the turntable shows from behind
+  if (welts && !caneArms && rbf < 0.06) {
+    const e = rbf * (1 - Math.SQRT1_2), rr = rbf * Math.SQRT1_2, hw = bfw / 2 - e, yT = legH + bfh - e, yB = legH + 0.012, zb = -D / 2 + e;
+    const pts = [V3(-hw, yB, zb), V3(-hw, yT - rr, zb)];
+    for (let k = 1; k < 4; k++) { const a = Math.PI - (k / 4) * Math.PI / 2; pts.push(V3(-hw + rr + Math.cos(a) * rr, yT - rr + Math.sin(a) * rr, zb)); }
+    pts.push(V3(-hw + rr, yT, zb), V3(hw - rr, yT, zb));
+    for (let k = 1; k < 4; k++) { const a = Math.PI / 2 - (k / 4) * Math.PI / 2; pts.push(V3(hw - rr + Math.cos(a) * rr, yT - rr + Math.sin(a) * rr, zb)); }
+    pts.push(V3(hw, yT - rr, zb), V3(hw, yB, zb));
+    b.add(tube(pts, weltR, { tubular: 160, radial: 6, tension: 0.05 }), fab, { uv: 'box' });
+  }
   if (!looseBack) {
     // tight back: padded panel in front of the frame, optionally horizontally channel-stitched
     const ph = H - seatH - 0.02, pt = clamp(D * 0.13, 0.08, 0.14);
@@ -238,11 +252,20 @@ function upholstered(c, o) {
         const k = smoothstep(0.65, 1, cx) * smoothstep(0.6, 1, cy);
         pp.z *= 1 - 0.28 * k; pp.y -= 0.012 * k; pp.x *= 1 - 0.02 * k;
       };
-      const g = softBox(bw + 0.004, bh, bt, { r: Math.min(rCush * 1.3, bt / 2.2), seg: 4, cell: 0.07, bulge: { front: 0.04, back: 0.006, top: 0.012, left: 0.008, right: 0.008 }, wrinkle: 0.0025, seed: c.seed + 30 + i, taper: 0.0, deform: sag });
+      const rb = Math.min(rCush * 1.3, bt / 2.2);
+      const g = softBox(bw + 0.004, bh, bt, { r: rb, seg: 4, cell: 0.07, bulge: { front: 0.04, back: 0.006, top: 0.012, left: 0.008, right: 0.008 }, wrinkle: 0.0025, seed: c.seed + 30 + i, taper: 0.0, deform: sag });
       // pivot at bottom-back edge, lean backwards
       const cy = seatH - 0.02 + (bh / 2) * Math.cos(lean);
       const cz = -D / 2 + backT + bt / 2 - (bh / 2) * Math.sin(lean) + 0.02;
       b.add(g, fab, { pos: [x, cy, cz], rot: [-lean, 0, 0] });
+      // round 5 close-up: self welts round the front and back panels of the back cushion, following the same sag
+      if (welts) {
+        const hx = (bw + 0.004) / 2, hy = bh / 2, hz = bt / 2, e = rb * (1 - Math.SQRT1_2);
+        for (const zf of [hz - e, -hz + e]) {
+          const loop = roundedRectLoop(2 * hx - 2 * e, 2 * hy - 2 * e, rb * Math.SQRT1_2, 0, 5).map((q) => { const pp = V3(q.x, q.z, zf); sag(pp, hx, hy, hz); return pp; });
+          b.add(tube(loop, weltR, { tubular: 120, radial: 6, closed: true, tension: 0.1 }), fab, { pos: [x, cy, cz], rot: [-lean, 0, 0], uv: 'box' });
+        }
+      }
     }
     backFrontZ = -D / 2 + backT + bt * 0.9;
   } else backFrontZ += clamp(D * 0.13, 0.08, 0.14);
@@ -502,6 +525,11 @@ function woodFrameChair(c) {
     const g = roundLeg(0.016, 0.014, bh + 0.05, 12); g.rotateX(-rake);
     b.add(g, wood, { pos: [s * (cw / 2 + 0.01), H - 0.01, zBack - (bh) * Math.sin(rake) + 0.02], axis: 'y' });
   }
+  // round 5 (seen from behind on the turntable): crest + lower back rails join the raked posts behind the cushions
+  for (const t of [0.86, 0.2]) {
+    const y = H - 0.01 - (1 - t) * (bh + 0.05) * Math.cos(rake), zp = zBack - bh * Math.sin(rake) + 0.02 + (1 - t) * (bh + 0.05) * Math.sin(rake);
+    b.add(softBox(cw + 0.02, t > 0.5 ? 0.045 : 0.035, 0.02, { r: 0.006, seg: 2 }), wood, { pos: [0, y, zp - 0.004], rot: [-rake, 0, 0] });
+  }
   const nCh = 3, chH = bh / nCh;
   for (let i = 0; i < nCh; i++) {
     const t = (i + 0.5) / nCh;
@@ -579,8 +607,12 @@ export function diningChair(c) {
   const apronH = 0.05;
   // legs
   for (const s of [-1, 1]) {
-    b.add(roundLeg(legR, legR * 0.72, frameTop, 14), wood, { pos: [s * lx, frameTop, lzF], rot: [0.04, 0, -s * 0.03], axis: 'y' });
-    b.add(roundLeg(legR, legR * 0.72, frameTop, 14), wood, { pos: [s * lx, frameTop, lzB], rot: [-0.08, 0, -s * 0.03], axis: 'y' });
+    for (const [lz, rx] of [[lzF, 0.04], [lzB, -0.08]]) {
+      b.add(roundLeg(legR, legR * 0.72, frameTop, 14), wood, { pos: [s * lx, frameTop, lz], rot: [rx, 0, -s * 0.03], axis: 'y' });
+      // floor glide under the foot (felt on wood, a moulded cap on metal) — round 5 close-up detail
+      const f = V3(0, -frameTop, 0).applyEuler(new THREE.Euler(rx, 0, -s * 0.03));
+      legGlide(b, c, { x: s * lx + f.x, z: lz + f.z, r: legR * 0.72, kind: metalFrame ? 'cap' : 'felt' });
+    }
   }
   // apron (seat frame)
   const aW = 2 * lx, aD = lzF - lzB;
@@ -708,7 +740,8 @@ export function cushions(c) {
     const yaw = (x < 0 ? 1 : -1) * (0.12 + (i % 2) * 0.08);
     const z = second ? 0.06 : 0;
     const roll = (x < 0 ? -1 : 1) * 0.05 * (i % 2 ? 1 : -1);
-    b.add(g, fab, { pos: [x, ch / 2 * Math.cos(lean) + 0.0, z - Math.sin(lean) * ch / 2 + 0.02], rot: [-lean, yaw, roll], uv: 'box' });
+    // (round 5) the lens edge sinks 8 mm into the crowned seat: it hovered ≈ 4–7 mm above it
+    b.add(g, fab, { pos: [x, ch / 2 * Math.cos(lean) - 0.008, z - Math.sin(lean) * ch / 2 + 0.02], rot: [-lean, yaw, roll], uv: 'box' });
   }
   return { group: b.build('cushions') };
 }

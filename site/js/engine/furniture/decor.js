@@ -6,8 +6,132 @@ import { objMat, addStems, addFlame } from './tabletop.js';
 
 // ---------------------------------------------------------------- wall art
 
+// ---------------------------------------------------------------- picture / mirror backs (round 5, FOCUS turntable)
+//
+// The turntable shows the back of everything that hangs. A framed picture gets a kraft dust cover let into the frame
+// with two D-rings and a hanging wire; a gallery-wrapped canvas shows its pine stretcher (and a cross brace on large
+// canvases), the folded canvas on the stretcher's back and the raw canvas between the bars. Hardware lies behind the
+// back plane (z ≤ 0, inside the wall once hung), never in front of it.
+
+/** Two D-rings on the side bars (at ¾ height) + a sagging picture wire between them. hw = half width to the rings. */
+function hangingWire(b, c, { hw, y, sag = 0.035, x0 = 0, z0 = 0 }) {
+  const steel = c.mat('metal-nickel');
+  for (const s of [-1, 1]) {
+    b.add(softBox(0.012, 0.024, 0.0012, { r: 0.0005, seg: 1 }), steel, { pos: [x0 + s * hw, y, z0 - 0.0006], uv: 'none' });
+    const ring = new THREE.TorusGeometry(0.0075, 0.0011, 5, 12, Math.PI);
+    ring.rotateZ(-s * Math.PI / 2 + Math.PI); // half ring opening toward the plate
+    b.add(ring, steel, { pos: [x0 + s * (hw - 0.006), y - 0.004, z0 - 0.0016], uv: 'none' });
+  }
+  const xw = hw - 0.012;
+  b.add(tube([V3(x0 - xw, y - 0.004, z0 - 0.0018), V3(x0 - xw * 0.45, y - 0.004 - sag * 0.8, z0 - 0.002), V3(x0, y - 0.004 - sag, z0 - 0.002), V3(x0 + xw * 0.45, y - 0.004 - sag * 0.8, z0 - 0.002), V3(x0 + xw, y - 0.004, z0 - 0.0018)], 0.0007, { tubular: 40, radial: 4 }), steel, { uv: 'none' });
+}
+
+/**
+ * Gallery-wrap canvas of w × h, depth d, centred at x0: painted (wrapped) sides, pine stretcher bars, the canvas fold
+ * on the bars' back, raw canvas inside, a cross brace above ~70 cm. The art plane itself is added by the caller.
+ */
+function stretcherBack(b, c, { x0 = 0, w, h, d, edge, z0 = 0, wrap = null }) {
+  const bar = Math.min(0.042, Math.min(w, h) * 0.12), t = 0.0012;
+  // wrap = { mat, u0, u1, v0, v1, flip }: the print runs round the edges (and onto the back folds) — the skins take
+  // the artwork's border texels (clamped UVs), else the painted edge colour
+  const skin = (g, pos, onEdge = true) => {
+    g.translate(pos[0], pos[1], pos[2] + z0);
+    if (!wrap) { b.add(g, edge, {}); return; }
+    const pa = g.attributes.position, uv = new Float32Array(pa.count * 2);
+    for (let i = 0; i < pa.count; i++) {
+      let u = clamp((pa.getX(i) - (x0 - w / 2)) / w, 0.003, 0.997), v = clamp((pa.getY(i) + h / 2) / h, 0.003, 0.997);
+      if (wrap.flip) u = 1 - u;
+      uv[i * 2] = wrap.u0 + u * (wrap.u1 - wrap.u0); uv[i * 2 + 1] = wrap.v0 + v * (wrap.v1 - wrap.v0);
+    }
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    b.add(g, wrap.mat, { uv: 'keep' });
+    void onEdge;
+  };
+  const pine = c.mat('ash-light', { match: '#d9c3a0' });
+  const raw = c.mat('fabric-linen', { color: '#ddd2bf' });
+  // wrapped sides (the painting runs round the edge) — thin skins over the stretcher's outer faces
+  const sk = d - 0.0006;
+  skin(softBox(w, t, sk, { r: 0.0005, seg: 1 }), [x0, h / 2 - t / 2, sk / 2]);
+  skin(softBox(w, t, sk, { r: 0.0005, seg: 1 }), [x0, -h / 2 + t / 2, sk / 2]);
+  skin(softBox(t, h - 2 * t + 0.0004, sk, { r: 0.0005, seg: 1 }), [x0 - w / 2 + t / 2, 0, sk / 2]);
+  skin(softBox(t, h - 2 * t + 0.0004, sk, { r: 0.0005, seg: 1 }), [x0 + w / 2 - t / 2, 0, sk / 2]);
+  // stretcher bars (bevelled away from the canvas: 2 mm off its back), 1 mm behind the wrap at the back
+  const sd = d - 0.004, sz = z0 + 0.001 + sd / 2;
+  b.add(softBox(w - 2 * t, bar, sd, { r: 0.002, seg: 1 }), pine, { pos: [x0, h / 2 - t - bar / 2, sz], axis: 'x' });
+  b.add(softBox(w - 2 * t, bar, sd, { r: 0.002, seg: 1 }), pine, { pos: [x0, -h / 2 + t + bar / 2, sz], axis: 'x' });
+  b.add(softBox(bar, h - 2 * t - 2 * bar + 0.002, sd, { r: 0.002, seg: 1 }), pine, { pos: [x0 - w / 2 + t + bar / 2, 0, sz], axis: 'y' });
+  b.add(softBox(bar, h - 2 * t - 2 * bar + 0.002, sd, { r: 0.002, seg: 1 }), pine, { pos: [x0 + w / 2 - t - bar / 2, 0, sz], axis: 'y' });
+  if (Math.max(w, h) > 0.7) {
+    if (w >= h) b.add(softBox(bar * 0.8, h - 2 * t - 2 * bar + 0.002, sd - 0.004, { r: 0.002, seg: 1 }), pine, { pos: [x0, 0, sz + 0.002], axis: 'y' });
+    else b.add(softBox(w - 2 * t - 2 * bar + 0.002, bar * 0.8, sd - 0.004, { r: 0.002, seg: 1 }), pine, { pos: [x0, 0, sz + 0.002], axis: 'x' });
+  }
+  // the canvas folded round onto the bars' back (≈ 2.5 cm), and the raw canvas back between the bars
+  const fold = Math.min(bar * 0.62, 0.026);
+  const e = 0.0006; // folds stop 0.6 mm inside the wrap (no coplanar faces with the skins)
+  for (const [fwid, fh, fx, fy] of [[w - 2 * e, fold, 0, h / 2 - e - fold / 2], [w - 2 * e, fold, 0, -h / 2 + e + fold / 2], [fold, h - 2 * fold - 2 * e, -w / 2 + e + fold / 2, 0], [fold, h - 2 * fold - 2 * e, w / 2 - e - fold / 2, 0]]) {
+    skin(new THREE.BoxGeometry(fwid, fh, 0.0008), [x0 + fx, fy, -0.0002]); // 0.6 mm proud of the skins' ends
+  }
+  const back = new THREE.PlaneGeometry(w - 2 * t - 0.004, h - 2 * t - 0.004).rotateY(Math.PI);
+  b.add(back, raw, { pos: [x0, 0, z0 + d - 0.0025], axis: 'x' });
+}
+
+/**
+ * Villar Editions (ART.md §5): a real artwork image on a 4 cm stretched canvas in a slim float frame.
+ *   params.image = URL (the engine resolves the Storage key), params.images = [URL, …] one per panel, else one image
+ *   across params.panels; params.frame = wood key / metal finish / black / white / none; frameWidth (face, m).
+ * The item's dims are the canvas (or the whole diptych/triptych block): the image is cover-cropped to it, never
+ * stretched; the frame stands 7 mm off the canvas (the shadow gap) and is outside the dims. The motif is the
+ * placeholder while the image loads, and the fallback if it fails. Origin = centre of the back plane (z = 0).
+ */
+function editionArt(c) {
+  const { W, H, params: p } = c;
+  const b = new Builder(c.seed);
+  const images = Array.isArray(p.images) ? p.images.filter((x) => typeof x === 'string' && x) : [];
+  const image = typeof p.image === 'string' && p.image ? p.image : images[0];
+  const artSeed = hashStr(String(p.motif || '') + (p.colors || []).join(',')) % 100000;
+  const fk = String(p.frame || 'oak-light').toLowerCase();
+  const framed = !/^(none|canvas|wrap|frameless)/.test(fk);
+  const frameMat = !framed ? null : fk.includes('white') ? c.mat('kitchen-front', { color: p.frameColor || '#f2efe9' }) : fk.includes('black') ? c.mat('lacquer', { color: p.frameColor || '#1c1b1a', roughness: 0.5 }) : /brass|gold|champagne/.test(fk) ? c.mat('metal-brass-brushed', p.frameColor ? { color: p.frameColor } : undefined) : c.mat(fk, p.frameColor ? { match: p.frameColor } : undefined);
+  const dc = 0.04, gap = 0.007, fw = clamp(cm(p.frameWidth, 0.01), 0.006, 0.02), tray = framed ? 0.005 : 0;
+  const panels = Array.isArray(p.panels) && p.panels.length > 1 ? p.panels.map((q) => (Array.isArray(q) ? q : [q?.w, q?.h]).map((v) => cm(v, 0.5))) : [[W, H]];
+  const pg = panels.length > 1 ? clamp(cm(p.gap, 0.04), 0, 0.2) : 0;
+  const tw = panels.reduce((a, q) => a + q[0], 0) + pg * (panels.length - 1), th = Math.max(...panels.map((q) => q[1]));
+  const k = Math.min(W / tw, H / th);
+  const one = images.length < panels.length; // one image across the block
+  const artFor = (i, pw, ph) => c.mat('canvas', { motif: p.motif, colors: p.colors, w: one ? tw * k : pw, h: one ? th * k : ph, seed: artSeed, image: one ? image : images[i], aspect: one ? tw / th : pw / ph, mirrored: p.mirrored ? true : undefined });
+  let x = -tw * k / 2;
+  panels.forEach(([pw0, ph0], i) => {
+    const pw = pw0 * k, ph = ph0 * k, cx = x + pw / 2;
+    const art = artFor(i, pw, ph);
+    const u0 = one ? (x + tw * k / 2) / (tw * k) : 0, u1 = one ? (x + pw + tw * k / 2) / (tw * k) : 1;
+    const v0 = one ? 0.5 - ph / (th * k) / 2 : 0, v1 = one ? 0.5 + ph / (th * k) / 2 : 1;
+    const face = new THREE.PlaneGeometry(pw, ph), fu = face.attributes.uv;
+    for (let j = 0; j < fu.count; j++) { const u = p.mirrored ? 1 - fu.getX(j) : fu.getX(j); fu.setXY(j, u0 + u * (u1 - u0), v0 + fu.getY(j) * (v1 - v0)); }
+    b.add(face, art, { pos: [cx, 0, tray + dc], uv: 'keep' });
+    stretcherBack(b, c, { x0: cx, w: pw, h: ph, d: dc, z0: tray, edge: art, wrap: { mat: art, u0, u1, v0, v1, flip: !!p.mirrored } });
+    if (framed) {
+      // float frame: an L profile — the face wall (fw thick, 2 mm proud of the canvas) and the tray it sits in,
+      // which runs under the 7 mm shadow gap and 2 cm in under the canvas
+      const ow = pw + 2 * (gap + fw), oh = ph + 2 * (gap + fw), fd = tray + dc + 0.002;
+      const bar = (w, h, bx, by, axis) => b.add(softBox(w, h, fd, { r: Math.min(0.0015, fw / 4), seg: 2 }), frameMat, { pos: [cx + bx, by, fd / 2], axis });
+      bar(ow, fw, 0, oh / 2 - fw / 2, 'x'); bar(ow, fw, 0, -oh / 2 + fw / 2, 'x');
+      bar(fw, oh - 2 * fw + 0.0004, -ow / 2 + fw / 2, 0, 'y'); bar(fw, oh - 2 * fw + 0.0004, ow / 2 - fw / 2, 0, 'y');
+      const lip = gap + 0.02, iw = ow - 2 * fw - 0.0004, ih = oh - 2 * fw - 0.0004;
+      for (const [w, h, bx, by] of [[iw, lip, 0, ih / 2 - lip / 2], [iw, lip, 0, -ih / 2 + lip / 2], [lip, ih - 2 * lip - 0.0004, -iw / 2 + lip / 2, 0], [lip, ih - 2 * lip - 0.0004, iw / 2 - lip / 2, 0]]) {
+        b.add(new THREE.BoxGeometry(w, h, tray), frameMat, { pos: [cx + bx, by, tray / 2], axis: w > h ? 'x' : 'y' });
+      }
+      hangingWire(b, c, { hw: ow / 2 - fw / 2, y: oh * 0.25, sag: Math.min(0.04, ow * 0.05), x0: cx });
+    } else hangingWire(b, c, { hw: pw / 2 - 0.045, y: ph * 0.25, sag: Math.min(0.04, pw * 0.05), x0: cx });
+    x += pw + pg * k;
+  });
+  return { group: b.build('wall_art'), fit: { axes: '', origin: 'none' } };
+}
+
 export function wallArt(c) {
   const { W, H, D, params: p } = c;
+  // Villar Editions: an edition is built as one (canvas + float frame + panels) even before its image exists — the
+  // motif is its face until the engine passes params.image (curator delta 1)
+  if ((typeof p.image === 'string' && p.image) || (Array.isArray(p.images) && p.images.length) || c.item?.edition === true || p.edition === true) return editionArt(c);
   const b = new Builder(c.seed);
   const frameKey = String(p.frame || 'walnut-dark').toLowerCase();
   const depth = clamp(D, 0.015, 0.06);
@@ -36,13 +160,15 @@ export function wallArt(c) {
         const u0 = (x + tw * k / 2) / (tw * k), u1 = (x + pw + tw * k / 2) / (tw * k), v0 = 0.5 - ph / (th * k) / 2;
         for (let i = 0; i < uv.count; i++) uv.setXY(i, u0 + uv.getX(i) * (u1 - u0), v0 + uv.getY(i) * (ph / (th * k)));
         b.add(flipU(g), art, { pos: [x + pw / 2, 0, depth], uv: 'keep' });
-        b.add(softBox(pw, ph, depth - 0.001, { r: 0.002, seg: 1 }), edge, { pos: [x + pw / 2, 0, depth / 2 - 0.0005] });
+        stretcherBack(b, c, { x0: x + pw / 2, w: pw, h: ph, d: depth, edge });
+        hangingWire(b, c, { hw: pw / 2 - 0.04, y: ph * 0.25, sag: Math.min(0.03, pw * 0.08), x0: x + pw / 2 });
         x += pw + gap * k;
       }
       return { group: b.build('wall_art') };
     }
     b.add(flipU(new THREE.PlaneGeometry(W, H)), art, { pos: [0, 0, depth], uv: 'keep' });
-    b.add(softBox(W, H, depth - 0.001, { r: 0.002, seg: 1 }), edge, { pos: [0, 0, depth / 2 - 0.0005] });
+    stretcherBack(b, c, { w: W, h: H, d: depth, edge });
+    hangingWire(b, c, { hw: W / 2 - 0.045, y: H * 0.25, sag: Math.min(0.04, W * 0.06) });
     return { group: b.build('wall_art') };
   }
   const frameMat = frameKey.includes('white') ? c.mat('kitchen-front', { color: '#f2efe9' }) : frameKey.includes('black') ? c.mat('lacquer', { color: '#1c1b1a', roughness: 0.45 }) : frameKey.includes('brass') || frameKey.includes('gold') ? c.mat('metal-brass') : c.mat(frameKey);
@@ -59,7 +185,10 @@ export function wallArt(c) {
     for (let i = 0; i < pa.count; i++) uv.setXY(i, (pa.getX(i) + iw / 2) / iw, (pa.getY(i) + ih / 2) / ih);
     const art = c.mat('canvas', { motif: p.motif, colors: p.colors, w: iw, h: ih, seed: artSeed, relief, mirrored: p.mirrored ? true : undefined });
     b.add(ag, art, { pos: [0, 0, depth - 0.006], uv: 'keep' });
-    b.add(new THREE.ShapeGeometry(inner, 24), c.mat('paper', { color: '#3b342e' }), { pos: [0, 0, 0.003], uv: 'keep' });
+    // dust cover: a 2.5 mm kraft board let into the frame back (a single-sided shape here was see-through from behind)
+    const kraft = new THREE.ExtrudeGeometry(archShape(W - 2 * fw + 0.004, H - 2 * fw + 0.004), { depth: 0.0025, bevelEnabled: false, curveSegments: 32 });
+    b.add(kraft, c.mat('paper', { color: '#9c805f' }), { pos: [0, 0, 0.0015], uv: 'box' });
+    hangingWire(b, c, { hw: W / 2 - fw / 2, y: H * 0.2, sag: Math.min(0.04, W * 0.06) });
     return { group: b.build('wall_art') };
   }
   // frame bars (mitred look via overlapping soft boxes)
@@ -69,8 +198,9 @@ export function wallArt(c) {
   bar(fw, H - 2 * fw + 0.0004, -W / 2 + fw / 2, 0, 'y');
   bar(fw, H - 2 * fw + 0.0004, W / 2 - fw / 2, 0, 'y');
   const iw = W - 2 * fw, ih = H - 2 * fw;
-  // backing
-  b.add(new THREE.BoxGeometry(iw, ih, 0.004), c.mat('paper', { color: '#3b342e' }), { pos: [0, 0, 0.004] });
+  // backing: a kraft dust cover let 1.5 mm into the frame back (it was a dark sheet), D-rings + wire on the back
+  b.add(new THREE.BoxGeometry(iw + 0.0006, ih + 0.0006, 0.003), c.mat('paper', { color: '#9c805f' }), { pos: [0, 0, 0.003] });
+  hangingWire(b, c, { hw: W / 2 - fw / 2, y: H * 0.25, sag: Math.min(0.04, W * 0.06) });
   if (isMirror) {
     b.add(new THREE.PlaneGeometry(iw, ih), c.mat('mirror'), { pos: [0, 0, depth - 0.006], uv: 'keep' });
     return { group: b.build('wall_art') };
@@ -125,10 +255,11 @@ function sweep(points, radius, { radial: radial0 = 7, tubular = null } = {}) {
 
 /** Merge many leaf instances into one geometry with per-leaf vertex colours. */
 class LeafBatch {
-  constructor() { this.pos = []; this.nor = []; this.uv = []; this.col = []; this.idx = []; this.v = 0; }
+  constructor() { this.pos = []; this.nor = []; this.uv = []; this.col = []; this.idx = []; this.v = 0; this.leaves = []; }
   /** cell = [index, count]: the leaf samples atlas column `index` of `count` (photoscanned leaf atlas). */
   add(tmpl, matrix, color, cell = null) {
     const p = tmpl.attributes.position, n = tmpl.attributes.normal, u = tmpl.attributes.uv;
+    this.leaves.push([this.v, p.count, this.idx.length, tmpl.index.array.length, matrix.elements[12], matrix.elements[13], matrix.elements[14]]);
     const nm = new THREE.Matrix3().getNormalMatrix(matrix);
     const v = new THREE.Vector3(), vn = new THREE.Vector3();
     for (let i = 0; i < p.count; i++) {
@@ -142,6 +273,31 @@ class LeafBatch {
     const ix = tmpl.index.array;
     for (let i = 0; i < ix.length; i++) this.idx.push(ix[i] + this.v);
     this.v += p.count;
+  }
+  get triangles() { return this.idx.length / 3; }
+  /**
+   * Round 5 triangle budget: keep at most maxTris (≤ 60 k per item on high). Leaves are thinned evenly (a fixed
+   * stride pattern, deterministic) and each kept leaf grows about its stalk by (1/f)^0.3 so the canopy keeps its mass.
+   */
+  cap(maxTris) {
+    if (!(maxTris > 0) || this.triangles <= maxTris || !this.leaves.length) return this;
+    const f = maxTris / this.triangles, grow = Math.pow(1 / f, 0.3);
+    const out = new LeafBatch();
+    let acc = 0;
+    for (const [v0, vn, i0, iN, ax, ay, az] of this.leaves) {
+      acc += f; if (acc < 1) continue; acc -= 1;
+      const base = out.v;
+      for (let i = 0; i < vn; i++) {
+        const k = (v0 + i) * 3;
+        out.pos.push(ax + (this.pos[k] - ax) * grow, ay + (this.pos[k + 1] - ay) * grow, az + (this.pos[k + 2] - az) * grow);
+        out.nor.push(this.nor[k], this.nor[k + 1], this.nor[k + 2]); out.col.push(this.col[k], this.col[k + 1], this.col[k + 2]);
+        out.uv.push(this.uv[(v0 + i) * 2], this.uv[(v0 + i) * 2 + 1]);
+      }
+      for (let i = 0; i < iN; i++) out.idx.push(this.idx[i0 + i] - v0 + base);
+      out.v += vn;
+      out.leaves.push([base, vn, out.idx.length - iN, iN, ax, ay, az]);
+    }
+    return out;
   }
   geometry() {
     const g = new THREE.BufferGeometry();
@@ -509,7 +665,9 @@ export function plant(c) {
     }
     b.add(blades.geometry(), snakeMat, { uv: 'keep' });
   }
-  const lg = leaves.geometry();
+  // triangle budget per item (round 5): high ≤ 58 k, medium ≤ 38 k, low ≤ 24 k — the canopy gives way first
+  const budget = [24000, 38000, 58000][getLOD()];
+  const lg = leaves.cap(budget - b.triangles()).geometry();
   b.add(lg, leafMat, { uv: 'keep' });
   const group = b.build('plant');
   // fit the foliage to the catalogue footprint exactly (scale branches + leaves about the trunk axis);
@@ -827,8 +985,15 @@ export function mirror(c) {
   const bk = new THREE.ShapeGeometry(mirrorShape(kind, W, H, Math.max(0.01, fw * 0.5)), 48);
   bk.rotateY(Math.PI); bk.translate(0, 0, 0.004);
   b.add(bk, back, { uv: 'none', cast: false });
-  const group = b.build('mirror');
   const mount = String(p.mount || 'wall').toLowerCase();
+  // wall mirrors hang on a wire between two D-rings (round 5: the turntable shows the back)
+  // (framed: the rings sit on the frame's back at z = 0; frameless: on the back board, 4 mm in)
+  if (!/lean|floor/.test(mount)) {
+    const rnd = /round|oval|organic/.test(String(kind)), yR = rnd ? H * 0.12 : H * 0.25;
+    const hw = frameless || rnd ? Math.max(0.05, Math.min(W / 2 - 0.05, Math.sqrt(Math.max(0, 1 - (2 * yR / H) ** 2)) * (W / 2) - Math.max(0.012, fw) - 0.03)) : W / 2 - fw / 2;
+    hangingWire(b, c, { hw, y: yR, sag: Math.min(0.04, W * 0.06), z0: frameless || rnd ? 0.004 : 0 });
+  }
+  const group = b.build('mirror');
   if (/lean|floor/.test(mount)) {
     const lean = clamp((p.lean ?? 7) * Math.PI / 180, 0.04, 0.2);
     // stand on the bottom edge: rotate about the bottom-front line, back top toward −Z
