@@ -483,7 +483,7 @@ let jd = addJob('plate', { time: 'day' }), js = addJob('plate-edit', { time: 'su
 r = await runQ();
 ok(r.body.status === 'done' && job(jd).status === 'done' && gw.calls.length === 1 && gw.bodies.at(-1).model === 'google/gemini-3-pro-image' && gw.bodies.at(-1).providerOptions.google.imageConfig.imageSize === '4K', `day plate job (gateway Pro 4K) → done (${JSON.stringify(r.body).slice(0, 120)})`);
 r = await runPost();
-ok(r.body.status === 'done' && job(js).status === 'done' && gw.bodies.at(-1).messages[0].content.some((p) => p.type === 'image_url' && /plates\/v1\/day-/.test(p.image_url.url)), 'POST ?run=1: sunset job = an edit of the stored day plate');
+ok(r.body.status === 'done' && job(js).status === 'done' && gw.bodies.at(-1).messages[0].content.some((p) => p.type === 'image_url' && /plates\/v2\/day-/.test(p.image_url.url)), 'POST ?run=1: sunset job = an edit of the stored day plate');
 r = await call(plate, { method: 'GET', body: { time: 'golden' } });
 ok(r.body.url && r.body.time === 'sunset' && r.body.sun?.az === -47, 'GET golden → the cached sunset plate + sun');
 r = await call(plate, { method: 'GET', body: { time: 'day', w: '2048' } });
@@ -685,7 +685,7 @@ ok(job(jld).status === 'done' && job(jld).result.usd === 0.6 && job(jld).result.
 const nL = hf.bodies.length; const jlp = addJob('loop', { time: 'day' });
 r = await runQ(); for (let i = 0; i < 3 && job(jlp).status === 'running'; i++) { job(jlp).locked_until = new Date(Date.now() - 1000).toISOString(); r = await runQ(); }
 const lb = hf.bodies[nL];
-ok(lb.path === '/kling-video/o3/first-last-frame' && lb.body.first_frame_url === lb.body.last_frame_url && /plates\/v1\/day-/.test(lb.body.first_frame_url) && lb.body.sound === 'off' && lb.body.mode === 'std' && lb.body.duration === 8 && /Seamless loop/.test(lb.body.prompt), `kling body: first = last = the plate, sound off, std, 8 s (${JSON.stringify({ ...lb.body, prompt: '…' }).slice(0, 200)})`);
+ok(lb.path === '/kling-video/o3/first-last-frame' && lb.body.first_frame_url === lb.body.last_frame_url && /plates\/v2\/day-/.test(lb.body.first_frame_url) && lb.body.sound === 'off' && lb.body.mode === 'std' && lb.body.duration === 8 && /Seamless loop/.test(lb.body.prompt), `kling body: first = last = the plate, sound off, std, 8 s (${JSON.stringify({ ...lb.body, prompt: '…' }).slice(0, 200)})`);
 ok(job(jlp).status === 'done' && job(jlp).cost === 0.546 && job(jlp).result.request_id && /day-loop-[a-f0-9]{8}\.mp4$/.test(job(jlp).result.url) && [...db.objects.entries()].some(([k, o]) => /day-loop-/.test(k) && o.type === 'video/mp4' && o.bytes.length === 120000), `MP4 streamed into Storage; cost = the estimate (${job(jlp).status} ${job(jlp).error || ''})`);
 r = await call(plate, { method: 'GET', body: { time: 'day' } });
 ok(/day-loop-.*\.mp4$/.test(r.body.video || ''), 'GET /api/plate → video url');
