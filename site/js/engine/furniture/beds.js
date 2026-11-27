@@ -187,15 +187,19 @@ function clothRelief(seed, { creases = [], amp = 1 } = {}) {
     let d = 0.008 * Math.sin((2 * Math.PI * a) / 0.34 + ph[0]) * Math.sin((2 * Math.PI * z) / 0.39 + ph[1])
       + 0.005 * Math.sin((2 * Math.PI * (0.7 * a + z)) / 0.27 + ph[2])
       + 0.003 * Math.sin((2 * Math.PI * (a - 0.6 * z)) / 0.23 + ph[3]);
+    // creases: summed, then soft-clamped to ±7 mm — crossing creases used to dig a pit narrower than the mesh spacing
+    // that shaded as a dark crumpled "dent" (R3-07)
+    let cs = 0;
     for (const k of creases) {
       const px = a - k.x, pz = z - k.z;
       const along = px * k.dx + pz * k.dz;
       if (along < 0 || along > k.len) continue;
       const across = Math.abs(-px * k.dz + pz * k.dx);
       const t = along / k.len, fall = Math.sin(Math.PI * Math.min(1, t * 1.15)) ** 0.8;
-      const w = k.w * (1 - 0.5 * t);
-      d += fall * (-k.depth * Math.exp(-((across / w) ** 2)) + 0.35 * k.depth * Math.exp(-(((across - 1.7 * w) / w) ** 2)));
+      const w = k.w * (1 - 0.35 * t);
+      cs += fall * (-k.depth * Math.exp(-((across / w) ** 2)) + 0.35 * k.depth * Math.exp(-(((across - 1.7 * w) / w) ** 2)));
     }
+    d += 0.007 * Math.tanh(cs / 0.007);
     return d * amp;
   };
 }
@@ -203,7 +207,8 @@ function clothRelief(seed, { creases = [], amp = 1 } = {}) {
 function makeCreases(seed, hx, hz, z0, count = 8) {
   const r = rng(seed + 77);
   const out = [];
-  const add = (x, z, ang, len, depth) => out.push({ x, z, dx: Math.sin(ang), dz: Math.cos(ang), len, depth, w: 0.022 + r() * 0.012 });
+  // ≥ 4 cm wide: always ≥ 2 mesh rows across a crease (the duvet grid is ≈ 2.4 cm)
+  const add = (x, z, ang, len, depth) => out.push({ x, z, dx: Math.sin(ang), dz: Math.cos(ang), len, depth: depth * 0.8, w: 0.04 + r() * 0.02 });
   // from the pillows toward the foot, fanning out
   for (let i = 0; i < Math.ceil(count * 0.6); i++) {
     const x = (r() - 0.5) * hx * 1.4;
@@ -369,16 +374,24 @@ export function bedding(c) {
   // open duvet starts inside the fold roll (its own head rim is hidden)
   const dz = t * 0.9;
   const dmap = drapeMap({ z0: z0 + dz, hx, hz, rc, lift: t, maxDrop, relief, seed: c.seed });
-  b.add(thickCloth(dmap, { wFlat, lFlat: lFlat - dz, nA: 64, nS: 64, t }), duvet, { uv: 'keep' });
+  b.add(thickCloth(dmap, { wFlat, lFlat: lFlat - dz, nA: 96, nS: 80, t }), duvet, { uv: 'keep' });
   // R2-17 turn-down: the duvet folded back over its head end — one duvet thickness lying 2 mm above the open
   // part (same relief, never intersecting), joined to the mattress by a rounded fold roll of full height (no
   // stair-stepped polyline: 96 segments across, no creases under it)
   const lift2 = 2 * t + 0.002;
-  const fmap0 = drapeMap({ z0, hx, hz, rc, lift: lift2, maxDrop: maxDrop - 0.012, footHang: false, relief, seed: c.seed + 5 });
-  // the folded part thins out toward its free edge (a duvet's sewn hem is ~1 cm): the top surface eases down over
-  // the last 40 % so the hem is a soft 12 mm edge lying on the open duvet, not a 3 cm sunlit step
-  const hemT = 0.012;
-  const fmap = (a, s) => { const p = fmap0(a, s); const k = Math.max(0, Math.min(1, (s - fold * 0.6) / (fold * 0.4))); p[1] -= (k * k * (3 - 2 * k)) * (t * 0.9 - hemT); return p; };
+  // the fold's side hem ends level with the open duvet's (no side step, R3-07)
+  const fmap0 = drapeMap({ z0, hx, hz, rc, lift: lift2, maxDrop: maxDrop - (lift2 - t), footHang: false, relief, seed: c.seed + 5 });
+  // the folded part thins out toward its free edge (a duvet's sewn hem is ~1 cm) and comes down to REST on the open
+  // duvet (0.5 mm above it): no gap under the hem, so no dark line and no sunlit white rim floating above (R3-07)
+  const hemT = 0.008; // resting on the duvet: a soft 8 mm folded edge, not a sunlit white rim (R3-07)
+  const drop2 = lift2 - (t + hemT + 0.0005);
+  const fmap = (a, s) => {
+    const p = fmap0(a, s);
+    const k = Math.max(0, Math.min(1, (s - fold * 0.55) / (fold * 0.45)));
+    const onTop = Math.max(0, Math.min(1, (p[1] + rc) / rc)); // the lowering fades out over the edge roll
+    p[1] -= (k * k * (3 - 2 * k)) * drop2 * onTop;
+    return p;
+  };
   b.add(thickCloth(fmap, { wFlat: wFlat - 0.012, lFlat: fold, nA: 96, nS: 16, t: t * 0.9, headT: lift2, footT: hemT, rimSeg: 8 }), duvet, { uv: 'keep' });
 
   // throw folded across the foot (knit), lying on the duvet

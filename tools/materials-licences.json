@@ -1,0 +1,1041 @@
+{
+ "walnut": {
+  "id": "walnut",
+  "title": "figured walnut veneer",
+  "asset": "smoked_walnut_veneer",
+  "repo": "polyhaven-textures-wood-3",
+  "kind": "ph",
+  "who": {
+   "name": "Smoked Walnut Veneer",
+   "author": "Jenelle van Heerden",
+   "page": "https://polyhaven.com/a/smoked_walnut_veneer"
+  },
+  "sources": [
+   {
+    "path": "smoked_walnut_veneer/2k/smoked_walnut_veneer_diff_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/smoked_walnut_veneer/2k/smoked_walnut_veneer_diff_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/smoked_walnut_veneer/smoked_walnut_veneer_diff_2k.jpg",
+    "sha256": "9b2fa1de2705058cc82d012d74ecb483597a2e90b0287a9f0254d8e2a931c036"
+   },
+   {
+    "path": "smoked_walnut_veneer/2k/smoked_walnut_veneer_nor_gl_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/smoked_walnut_veneer/2k/smoked_walnut_veneer_nor_gl_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/smoked_walnut_veneer/smoked_walnut_veneer_nor_gl_2k.jpg",
+    "sha256": "1ef44c50ecc6fabbc8c6252cc40d0ee4ace73a947623e98682a7ca4a239f75fa"
+   },
+   {
+    "path": "smoked_walnut_veneer/2k/smoked_walnut_veneer_rough_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/smoked_walnut_veneer/2k/smoked_walnut_veneer_rough_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/smoked_walnut_veneer/smoked_walnut_veneer_rough_2k.jpg",
+    "sha256": "e8245f6ec6dbe3064b1377c8eb443c60e964a4b62937e98019127a30303daebc"
+   },
+   {
+    "path": "smoked_walnut_veneer/2k/smoked_walnut_veneer_ao_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/smoked_walnut_veneer/2k/smoked_walnut_veneer_ao_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/smoked_walnut_veneer/smoked_walnut_veneer_ao_2k.jpg",
+    "sha256": "06c6386a1c84e8d3b305acfdb6d802a57948c4264e9c144496f9b596888b21c4"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "walnut/albedo_512.jpg",
+    "normal": "walnut/normal_512.jpg",
+    "rough": "walnut/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "walnut/albedo_1k.jpg",
+    "normal": "walnut/normal_1k.jpg",
+    "rough": "walnut/rough_1k.jpg"
+   }
+  }
+ },
+ "oak": {
+  "id": "oak",
+  "title": "oak veneer (crown cut)",
+  "asset": "oak_veneer_01",
+  "repo": "polyhaven-textures-wood-2",
+  "kind": "ph",
+  "who": {
+   "name": "Oak Veneer 01",
+   "author": "Jenelle van Heerden",
+   "page": "https://polyhaven.com/a/oak_veneer_01"
+  },
+  "sources": [
+   {
+    "path": "oak_veneer_01/2k/oak_veneer_01_diff_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-2/blob/HEAD/oak_veneer_01/2k/oak_veneer_01_diff_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/oak_veneer_01/oak_veneer_01_diff_2k.jpg",
+    "sha256": "0718c2e1a209afe6138ccb41d70e1a18cd825d1e73db33ad7cf80806fa9ce5a4"
+   },
+   {
+    "path": "oak_veneer_01/2k/oak_veneer_01_nor_gl_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-2/blob/HEAD/oak_veneer_01/2k/oak_veneer_01_nor_gl_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/oak_veneer_01/oak_veneer_01_nor_gl_2k.jpg",
+    "sha256": "e74a9d3ddcd86473a21815a28464f4dac4ceb8f86e7f170226dede8ed70d8eb9"
+   },
+   {
+    "path": "oak_veneer_01/2k/oak_veneer_01_rough_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-2/blob/HEAD/oak_veneer_01/2k/oak_veneer_01_rough_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/oak_veneer_01/oak_veneer_01_rough_2k.jpg",
+    "sha256": "5c81718ee172299c44e0754fadbe652758b6feed05a8fd88be6efff5aa70ca1e"
+   },
+   {
+    "path": "oak_veneer_01/2k/oak_veneer_01_ao_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-2/blob/HEAD/oak_veneer_01/2k/oak_veneer_01_ao_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/oak_veneer_01/oak_veneer_01_ao_2k.jpg",
+    "sha256": "9a5695ea39303690d66908f6ae1c4e5bc0e929ac4ecc7dcf4622438481849496"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "oak/albedo_512.jpg",
+    "normal": "oak/normal_512.jpg",
+    "rough": "oak/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "oak/albedo_1k.jpg",
+    "normal": "oak/normal_1k.jpg",
+    "rough": "oak/rough_1k.jpg"
+   }
+  }
+ },
+ "oak-white": {
+  "id": "oak-white",
+  "title": "white oak veneer (ash, white-oiled oak, black-stained ash)",
+  "asset": "white_oak_veneer",
+  "repo": "polyhaven-textures-wood-3",
+  "kind": "ph",
+  "who": {
+   "name": "White Oak Veneer",
+   "author": "Jenelle van Heerden",
+   "page": "https://polyhaven.com/a/white_oak_veneer"
+  },
+  "sources": [
+   {
+    "path": "white_oak_veneer/2k/white_oak_veneer_diff_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/white_oak_veneer/2k/white_oak_veneer_diff_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/white_oak_veneer/white_oak_veneer_diff_2k.jpg",
+    "sha256": "00e09e2f901fb76c6d206e7a0197f257f8a9d5f662d3cd863c2258c9b287131e"
+   },
+   {
+    "path": "white_oak_veneer/2k/white_oak_veneer_nor_gl_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/white_oak_veneer/2k/white_oak_veneer_nor_gl_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/white_oak_veneer/white_oak_veneer_nor_gl_2k.jpg",
+    "sha256": "262b2c0b9020e34abbba2f3d02a5d7184d5ef008f12499c5350187125929b053"
+   },
+   {
+    "path": "white_oak_veneer/2k/white_oak_veneer_rough_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/white_oak_veneer/2k/white_oak_veneer_rough_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/white_oak_veneer/white_oak_veneer_rough_2k.jpg",
+    "sha256": "1e325ebc77729c09afb9a2c6ed3bf51b2f0b3f8c1731642dca39b197c79097f0"
+   },
+   {
+    "path": "white_oak_veneer/2k/white_oak_veneer_ao_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/white_oak_veneer/2k/white_oak_veneer_ao_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/white_oak_veneer/white_oak_veneer_ao_2k.jpg",
+    "sha256": "901523349d23b2ee2985f5ced25c7af91965506e85f231483bded459c27e17e3"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "oak-white/albedo_512.jpg",
+    "normal": "oak-white/normal_512.jpg",
+    "rough": "oak-white/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "oak-white/albedo_1k.jpg",
+    "normal": "oak-white/normal_1k.jpg",
+    "rough": "oak-white/rough_1k.jpg"
+   }
+  }
+ },
+ "teak": {
+  "id": "teak",
+  "title": "teak veneer",
+  "asset": "teak_veneer",
+  "repo": "polyhaven-textures-wood-3",
+  "kind": "ph",
+  "who": {
+   "name": "Teak Veneer",
+   "author": "Jenelle van Heerden",
+   "page": "https://polyhaven.com/a/teak_veneer"
+  },
+  "sources": [
+   {
+    "path": "teak_veneer/2k/teak_veneer_diff_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/teak_veneer/2k/teak_veneer_diff_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/teak_veneer/teak_veneer_diff_2k.jpg",
+    "sha256": "9041a872e0125064e94433117491b97f69488d94e375bb0265084fb93b11ef59"
+   },
+   {
+    "path": "teak_veneer/2k/teak_veneer_nor_gl_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/teak_veneer/2k/teak_veneer_nor_gl_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/teak_veneer/teak_veneer_nor_gl_2k.jpg",
+    "sha256": "0d61c141daf97e3294cd52306f5ea852afe2325e0d8f5e34a794611bcbc27618"
+   },
+   {
+    "path": "teak_veneer/2k/teak_veneer_rough_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/teak_veneer/2k/teak_veneer_rough_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/teak_veneer/teak_veneer_rough_2k.jpg",
+    "sha256": "fde99c4f1db3bcd138d7bac857b63d512bff9e08a4926045e99c081692d3a53f"
+   },
+   {
+    "path": "teak_veneer/2k/teak_veneer_ao_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/teak_veneer/2k/teak_veneer_ao_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/teak_veneer/teak_veneer_ao_2k.jpg",
+    "sha256": "8b46ba19aa9f88f9c5a01c97aedd3c1db5f3410302f1f0ab28410478f334e0be"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "teak/albedo_512.jpg",
+    "normal": "teak/normal_512.jpg",
+    "rough": "teak/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "teak/albedo_1k.jpg",
+    "normal": "teak/normal_1k.jpg",
+    "rough": "teak/rough_1k.jpg"
+   }
+  }
+ },
+ "floor-oak": {
+  "id": "floor-oak",
+  "title": "oak wide-plank floor",
+  "asset": "oak_wood_planks",
+  "repo": "polyhaven-textures-wood-2",
+  "kind": "ph",
+  "who": {
+   "name": "Oak Wood Planks",
+   "author": "Dimitrios Savva",
+   "page": "https://polyhaven.com/a/oak_wood_planks"
+  },
+  "sources": [
+   {
+    "path": "oak_wood_planks/2k/oak_wood_planks_diff_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-2/blob/HEAD/oak_wood_planks/2k/oak_wood_planks_diff_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/oak_wood_planks/oak_wood_planks_diff_2k.jpg",
+    "sha256": "ec3d2deb1fe21150ede5f987b48c691b3c7dbffe4183850a9b8717e904917a46"
+   },
+   {
+    "path": "oak_wood_planks/2k/oak_wood_planks_nor_gl_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-2/blob/HEAD/oak_wood_planks/2k/oak_wood_planks_nor_gl_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/oak_wood_planks/oak_wood_planks_nor_gl_2k.jpg",
+    "sha256": "340a51d81e5ec2ead28a1c864637375becb00a1e11861e47a72dde4c03950968"
+   },
+   {
+    "path": "oak_wood_planks/2k/oak_wood_planks_rough_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-2/blob/HEAD/oak_wood_planks/2k/oak_wood_planks_rough_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/oak_wood_planks/oak_wood_planks_rough_2k.jpg",
+    "sha256": "18b2a97f44b18e1a794652dbb2ec4bbdfc35869e2f028e4bbb85441258da1018"
+   },
+   {
+    "path": "oak_wood_planks/2k/oak_wood_planks_ao_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-2/blob/HEAD/oak_wood_planks/2k/oak_wood_planks_ao_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/oak_wood_planks/oak_wood_planks_ao_2k.jpg",
+    "sha256": "576633bf0b497cfa39f799d92318b5e57d33c5ad6083abb1a0f69bdc9c13ba89"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "floor-oak/albedo_512.jpg",
+    "normal": "floor-oak/normal_512.jpg",
+    "rough": "floor-oak/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "floor-oak/albedo_1k.jpg",
+    "normal": "floor-oak/normal_1k.jpg",
+    "rough": "floor-oak/rough_1k.jpg"
+   },
+   "2048": {
+    "albedo": "floor-oak/albedo_2k.jpg",
+    "normal": "floor-oak/normal_2k.jpg",
+    "rough": "floor-oak/rough_2k.jpg"
+   }
+  }
+ },
+ "linen": {
+  "id": "linen",
+  "title": "rough linen",
+  "asset": "rough_linen",
+  "repo": "polyhaven-textures-textiles-and-leather-2",
+  "kind": "ph",
+  "who": {
+   "name": "Rough Linen",
+   "author": "Rico Cilliers, colormass",
+   "page": "https://polyhaven.com/a/rough_linen"
+  },
+  "sources": [
+   {
+    "path": "rough_linen/2k/rough_linen_diff_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather-2/blob/HEAD/rough_linen/2k/rough_linen_diff_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_linen/rough_linen_diff_2k.jpg",
+    "sha256": "e71016e08dfebea1dd4e8a2a675e3b617a889a782af782f1abb795906f4db1b4"
+   },
+   {
+    "path": "rough_linen/2k/rough_linen_nor_gl_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather-2/blob/HEAD/rough_linen/2k/rough_linen_nor_gl_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_linen/rough_linen_nor_gl_2k.jpg",
+    "sha256": "c5733ad50cfe0f90c546f3d4076590c1c78a4fd1a83c967cc9c92dc8175b99e6"
+   },
+   {
+    "path": "rough_linen/2k/rough_linen_rough_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather-2/blob/HEAD/rough_linen/2k/rough_linen_rough_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_linen/rough_linen_rough_2k.jpg",
+    "sha256": "48400d48fa203882bf5d984d5beb2f95edb1550309924601c018f2c4f3f80731"
+   },
+   {
+    "path": "rough_linen/2k/rough_linen_ao_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather-2/blob/HEAD/rough_linen/2k/rough_linen_ao_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_linen/rough_linen_ao_2k.jpg",
+    "sha256": "277399dfd364393c506fb35f7b868a2d3c0c388400439c327829cf787bc7c315"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "linen/albedo_512.jpg",
+    "normal": "linen/normal_512.jpg",
+    "rough": "linen/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "linen/albedo_1k.jpg",
+    "normal": "linen/normal_1k.jpg",
+    "rough": "linen/rough_1k.jpg"
+   }
+  }
+ },
+ "boucle": {
+  "id": "boucle",
+  "title": "curly looped wool (bouclé)",
+  "asset": "curly_teddy_natural",
+  "repo": "polyhaven-textures-textiles-and-leather",
+  "kind": "ph",
+  "who": {
+   "name": "Curly Teddy Natural",
+   "author": "Rico Cilliers, colormass",
+   "page": "https://polyhaven.com/a/curly_teddy_natural"
+  },
+  "sources": [
+   {
+    "path": "curly_teddy_natural/2k/curly_teddy_natural_diff_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather/blob/HEAD/curly_teddy_natural/2k/curly_teddy_natural_diff_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/curly_teddy_natural/curly_teddy_natural_diff_2k.jpg",
+    "sha256": "512aa3bf7839190eb805f5d095860622c84417449929dd8c5370880d4989b7c6"
+   },
+   {
+    "path": "curly_teddy_natural/2k/curly_teddy_natural_nor_gl_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather/blob/HEAD/curly_teddy_natural/2k/curly_teddy_natural_nor_gl_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/curly_teddy_natural/curly_teddy_natural_nor_gl_2k.jpg",
+    "sha256": "b3cfafe1e053c704b022bafb919889e465723db03da4d91494a7c5472805935f"
+   },
+   {
+    "path": "curly_teddy_natural/2k/curly_teddy_natural_rough_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather/blob/HEAD/curly_teddy_natural/2k/curly_teddy_natural_rough_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/curly_teddy_natural/curly_teddy_natural_rough_2k.jpg",
+    "sha256": "501cab3f6882f5e74d9026f6b3ddf0c53b533cf07e32027236e581864c1b61d7"
+   },
+   {
+    "path": "curly_teddy_natural/2k/curly_teddy_natural_ao_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather/blob/HEAD/curly_teddy_natural/2k/curly_teddy_natural_ao_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/curly_teddy_natural/curly_teddy_natural_ao_2k.jpg",
+    "sha256": "fbb7273457e384b80bd166b6ea33af07df8c487cec54ea6b876cd9fef208443a"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "boucle/albedo_512.jpg",
+    "normal": "boucle/normal_512.jpg",
+    "rough": "boucle/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "boucle/albedo_1k.jpg",
+    "normal": "boucle/normal_1k.jpg",
+    "rough": "boucle/rough_1k.jpg"
+   }
+  }
+ },
+ "velvet": {
+  "id": "velvet",
+  "title": "velour velvet",
+  "asset": "velour_velvet",
+  "repo": "polyhaven-textures-textiles-and-leather-2",
+  "kind": "ph",
+  "who": {
+   "name": "Velour Velvet",
+   "author": "Rico Cilliers, colormass",
+   "page": "https://polyhaven.com/a/velour_velvet"
+  },
+  "sources": [
+   {
+    "path": "velour_velvet/2k/velour_velvet_diff_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather-2/blob/HEAD/velour_velvet/2k/velour_velvet_diff_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/velour_velvet/velour_velvet_diff_2k.jpg",
+    "sha256": "7c81a1577f50a023825d8d5e26ec7f8596e47534d8ff601aa0b074980833e875"
+   },
+   {
+    "path": "velour_velvet/2k/velour_velvet_nor_gl_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather-2/blob/HEAD/velour_velvet/2k/velour_velvet_nor_gl_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/velour_velvet/velour_velvet_nor_gl_2k.jpg",
+    "sha256": "20207c7b1e4328f8b8b635435d33d5adf23c44f045d1f711b4105999d1883745"
+   },
+   {
+    "path": "velour_velvet/2k/velour_velvet_rough_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather-2/blob/HEAD/velour_velvet/2k/velour_velvet_rough_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/velour_velvet/velour_velvet_rough_2k.jpg",
+    "sha256": "23f0b2bfdf7f88bff072878bb763c6e825ab154da50b51040b607911b74154c3"
+   },
+   {
+    "path": "velour_velvet/2k/velour_velvet_ao_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather-2/blob/HEAD/velour_velvet/2k/velour_velvet_ao_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/velour_velvet/velour_velvet_ao_2k.jpg",
+    "sha256": "e39cabdddd4987c2e39188950f10e03c5950d36905be323effd1f34895c24300"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "velvet/albedo_512.jpg",
+    "normal": "velvet/normal_512.jpg",
+    "rough": "velvet/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "velvet/albedo_1k.jpg",
+    "normal": "velvet/normal_1k.jpg",
+    "rough": "velvet/rough_1k.jpg"
+   }
+  }
+ },
+ "percale": {
+  "id": "percale",
+  "title": "cotton poplin / percale",
+  "asset": "stretch_poplin",
+  "repo": "polyhaven-textures-textiles-and-leather-2",
+  "kind": "ph",
+  "who": {
+   "name": "Stretch Poplin",
+   "author": "Rico Cilliers, colormass",
+   "page": "https://polyhaven.com/a/stretch_poplin"
+  },
+  "sources": [
+   {
+    "path": "stretch_poplin/2k/stretch_poplin_diff_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather-2/blob/HEAD/stretch_poplin/2k/stretch_poplin_diff_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/stretch_poplin/stretch_poplin_diff_2k.jpg",
+    "sha256": "227e4a7d75c042fad254c1600e739c4a385eebbe905c8601e7c5c3a90316f523"
+   },
+   {
+    "path": "stretch_poplin/2k/stretch_poplin_nor_gl_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather-2/blob/HEAD/stretch_poplin/2k/stretch_poplin_nor_gl_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/stretch_poplin/stretch_poplin_nor_gl_2k.jpg",
+    "sha256": "ea063bf0ff330d4a76163588af4ad35f826d8a45505bf56abb26df51472bafbc"
+   },
+   {
+    "path": "stretch_poplin/2k/stretch_poplin_rough_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather-2/blob/HEAD/stretch_poplin/2k/stretch_poplin_rough_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/stretch_poplin/stretch_poplin_rough_2k.jpg",
+    "sha256": "fa5955b19dcb1be78ea18cac159f7f6ee4695965e971eb813bbae99ea4695a94"
+   },
+   {
+    "path": "stretch_poplin/2k/stretch_poplin_ao_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-textiles-and-leather-2/blob/HEAD/stretch_poplin/2k/stretch_poplin_ao_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/stretch_poplin/stretch_poplin_ao_2k.jpg",
+    "sha256": "bec08d4c84a0d3516133fb05809d90c788dc56505308c00c0c7630a30b32b7fa"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "percale/albedo_512.jpg",
+    "normal": "percale/normal_512.jpg",
+    "rough": "percale/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "percale/albedo_1k.jpg",
+    "normal": "percale/normal_1k.jpg",
+    "rough": "percale/rough_1k.jpg"
+   }
+  }
+ },
+ "leather": {
+  "id": "leather",
+  "title": "smooth leather",
+  "asset": "Leather023",
+  "repo": "ambientcg-materials-leather",
+  "kind": "acg",
+  "who": {
+   "name": "Leather 023",
+   "author": "ambientCG",
+   "page": "https://ambientcg.com/a/Leather023"
+  },
+  "sources": [
+   {
+    "path": "Leather023/2K-JPG/Leather023_2K-JPG_Color.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-leather/blob/HEAD/Leather023/2K-JPG/Leather023_2K-JPG_Color.jpg",
+    "source": "https://ambientcg.com/get?file=Leather023_2K-JPG.zip → Leather023_2K-JPG_Color.jpg",
+    "sha256": "a2a38fa8eca7a64bb693ba5d5b9690597f9874067ef2cd7ed6398fc506f2c1a2"
+   },
+   {
+    "path": "Leather023/2K-JPG/Leather023_2K-JPG_NormalGL.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-leather/blob/HEAD/Leather023/2K-JPG/Leather023_2K-JPG_NormalGL.jpg",
+    "source": "https://ambientcg.com/get?file=Leather023_2K-JPG.zip → Leather023_2K-JPG_NormalGL.jpg",
+    "sha256": "6f1ec3419fe8b43a0c4bb20772186a19fde67fcf225710f059eed2130ca3b538"
+   },
+   {
+    "path": "Leather023/2K-JPG/Leather023_2K-JPG_Roughness.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-leather/blob/HEAD/Leather023/2K-JPG/Leather023_2K-JPG_Roughness.jpg",
+    "source": "https://ambientcg.com/get?file=Leather023_2K-JPG.zip → Leather023_2K-JPG_Roughness.jpg",
+    "sha256": "d522f9c4adb2b91fdbdb6443420f9d8cbe0a6782f95874d22ec345147ccf7b3e"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "leather/albedo_512.jpg",
+    "normal": "leather/normal_512.jpg",
+    "rough": "leather/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "leather/albedo_1k.jpg",
+    "normal": "leather/normal_1k.jpg",
+    "rough": "leather/rough_1k.jpg"
+   }
+  }
+ },
+ "rug-pile": {
+  "id": "rug-pile",
+  "title": "wool pile carpet",
+  "asset": "Carpet016",
+  "repo": "ambientcg-materials-carpet",
+  "kind": "acg",
+  "who": {
+   "name": "Carpet 016",
+   "author": "ambientCG",
+   "page": "https://ambientcg.com/a/Carpet016"
+  },
+  "sources": [
+   {
+    "path": "Carpet016/2K-JPG/Carpet016_2K-JPG_Color.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-carpet/blob/HEAD/Carpet016/2K-JPG/Carpet016_2K-JPG_Color.jpg",
+    "source": "https://ambientcg.com/get?file=Carpet016_2K-JPG.zip → Carpet016_2K-JPG_Color.jpg",
+    "sha256": "3b22ad51cc1d4a081959e71f50b53f1a353a48252cbd6e3a7461b7a30fec001e"
+   },
+   {
+    "path": "Carpet016/2K-JPG/Carpet016_2K-JPG_NormalGL.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-carpet/blob/HEAD/Carpet016/2K-JPG/Carpet016_2K-JPG_NormalGL.jpg",
+    "source": "https://ambientcg.com/get?file=Carpet016_2K-JPG.zip → Carpet016_2K-JPG_NormalGL.jpg",
+    "sha256": "03d722fdddeec83dfd53c9d5df5a6ba83a11d406dec38c6bcbd856e840e86b8c"
+   },
+   {
+    "path": "Carpet016/2K-JPG/Carpet016_2K-JPG_Roughness.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-carpet/blob/HEAD/Carpet016/2K-JPG/Carpet016_2K-JPG_Roughness.jpg",
+    "source": "https://ambientcg.com/get?file=Carpet016_2K-JPG.zip → Carpet016_2K-JPG_Roughness.jpg",
+    "sha256": "90e161ca5512cff21caea08e891f242feb926ec82a0e38f3f176aa49d63ed31a"
+   },
+   {
+    "path": "Carpet016/2K-JPG/Carpet016_2K-JPG_AmbientOcclusion.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-carpet/blob/HEAD/Carpet016/2K-JPG/Carpet016_2K-JPG_AmbientOcclusion.jpg",
+    "source": "https://ambientcg.com/get?file=Carpet016_2K-JPG.zip → Carpet016_2K-JPG_AmbientOcclusion.jpg",
+    "sha256": "cefb82c369d7abca801b2836bf0d4be1965606b21d916d24dd1efd20e7bf36a0"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "rug-pile/albedo_512.jpg",
+    "normal": "rug-pile/normal_512.jpg",
+    "rough": "rug-pile/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "rug-pile/albedo_1k.jpg",
+    "normal": "rug-pile/normal_1k.jpg",
+    "rough": "rug-pile/rough_1k.jpg"
+   }
+  }
+ },
+ "rug-flat": {
+  "id": "rug-flat",
+  "title": "flat-weave (basket) carpet",
+  "asset": "Carpet014",
+  "repo": "ambientcg-materials-carpet",
+  "kind": "acg",
+  "who": {
+   "name": "Carpet 014",
+   "author": "ambientCG",
+   "page": "https://ambientcg.com/a/Carpet014"
+  },
+  "sources": [
+   {
+    "path": "Carpet014/2K-JPG/Carpet014_2K-JPG_Color.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-carpet/blob/HEAD/Carpet014/2K-JPG/Carpet014_2K-JPG_Color.jpg",
+    "source": "https://ambientcg.com/get?file=Carpet014_2K-JPG.zip → Carpet014_2K-JPG_Color.jpg",
+    "sha256": "c1281d3e69844ab8c5cb6cd3e8703b2312cd07ee4807e180bad4539f9b1813b1"
+   },
+   {
+    "path": "Carpet014/2K-JPG/Carpet014_2K-JPG_NormalGL.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-carpet/blob/HEAD/Carpet014/2K-JPG/Carpet014_2K-JPG_NormalGL.jpg",
+    "source": "https://ambientcg.com/get?file=Carpet014_2K-JPG.zip → Carpet014_2K-JPG_NormalGL.jpg",
+    "sha256": "e34678be43b068664700c4c9e274ac115764baeffec6fe6e42953a1500a653c0"
+   },
+   {
+    "path": "Carpet014/2K-JPG/Carpet014_2K-JPG_Roughness.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-carpet/blob/HEAD/Carpet014/2K-JPG/Carpet014_2K-JPG_Roughness.jpg",
+    "source": "https://ambientcg.com/get?file=Carpet014_2K-JPG.zip → Carpet014_2K-JPG_Roughness.jpg",
+    "sha256": "dee348880f1db25c9ca339484dacfbe5e78df3740e7aa1d01d2baed4b0731b59"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "rug-flat/albedo_512.jpg",
+    "normal": "rug-flat/normal_512.jpg",
+    "rough": "rug-flat/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "rug-flat/albedo_1k.jpg",
+    "normal": "rug-flat/normal_1k.jpg",
+    "rough": "rug-flat/rough_1k.jpg"
+   }
+  }
+ },
+ "jute": {
+  "id": "jute",
+  "title": "coarse woven carpet (jute / sisal)",
+  "asset": "Carpet015",
+  "repo": "ambientcg-materials-carpet",
+  "kind": "acg",
+  "who": {
+   "name": "Carpet 015",
+   "author": "ambientCG",
+   "page": "https://ambientcg.com/a/Carpet015"
+  },
+  "sources": [
+   {
+    "path": "Carpet015/2K-JPG/Carpet015_2K-JPG_Color.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-carpet/blob/HEAD/Carpet015/2K-JPG/Carpet015_2K-JPG_Color.jpg",
+    "source": "https://ambientcg.com/get?file=Carpet015_2K-JPG.zip → Carpet015_2K-JPG_Color.jpg",
+    "sha256": "80660f04ab614e357dbd12cd23741e3c104c0d2232d4394a84096ef5077d9860"
+   },
+   {
+    "path": "Carpet015/2K-JPG/Carpet015_2K-JPG_NormalGL.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-carpet/blob/HEAD/Carpet015/2K-JPG/Carpet015_2K-JPG_NormalGL.jpg",
+    "source": "https://ambientcg.com/get?file=Carpet015_2K-JPG.zip → Carpet015_2K-JPG_NormalGL.jpg",
+    "sha256": "54eb424c7a965630a373de83ce06541ad562b08fcfd9ce0b779be4bb37513500"
+   },
+   {
+    "path": "Carpet015/2K-JPG/Carpet015_2K-JPG_Roughness.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-carpet/blob/HEAD/Carpet015/2K-JPG/Carpet015_2K-JPG_Roughness.jpg",
+    "source": "https://ambientcg.com/get?file=Carpet015_2K-JPG.zip → Carpet015_2K-JPG_Roughness.jpg",
+    "sha256": "572b15e20469f95caf6ccd9909d1e7f3d5f41900408236da3b1d1294c9dc30b9"
+   },
+   {
+    "path": "Carpet015/2K-JPG/Carpet015_2K-JPG_AmbientOcclusion.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-carpet/blob/HEAD/Carpet015/2K-JPG/Carpet015_2K-JPG_AmbientOcclusion.jpg",
+    "source": "https://ambientcg.com/get?file=Carpet015_2K-JPG.zip → Carpet015_2K-JPG_AmbientOcclusion.jpg",
+    "sha256": "cd38f1b1786f05b459fe5d6ed55912be8b38f9d64215c7ae5f3a9bb55c235dbf"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "jute/albedo_512.jpg",
+    "normal": "jute/normal_512.jpg",
+    "rough": "jute/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "jute/albedo_1k.jpg",
+    "normal": "jute/normal_1k.jpg",
+    "rough": "jute/rough_1k.jpg"
+   }
+  }
+ },
+ "travertine": {
+  "id": "travertine",
+  "title": "travertine (vein cut)",
+  "asset": "Travertine009",
+  "repo": "ambientcg-materials-more-8",
+  "kind": "acg",
+  "who": {
+   "name": "Travertine 009",
+   "author": "ambientCG",
+   "page": "https://ambientcg.com/a/Travertine009"
+  },
+  "sources": [
+   {
+    "path": "Travertine009/2K-JPG/Travertine009_2K-JPG_Color.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-more-8/blob/HEAD/Travertine009/2K-JPG/Travertine009_2K-JPG_Color.jpg",
+    "source": "https://ambientcg.com/get?file=Travertine009_2K-JPG.zip → Travertine009_2K-JPG_Color.jpg",
+    "sha256": "d01dafb9087c7ab105307167748d922221c1de117864f2a03cb5f86243b82ecc"
+   },
+   {
+    "path": "Travertine009/2K-JPG/Travertine009_2K-JPG_NormalGL.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-more-8/blob/HEAD/Travertine009/2K-JPG/Travertine009_2K-JPG_NormalGL.jpg",
+    "source": "https://ambientcg.com/get?file=Travertine009_2K-JPG.zip → Travertine009_2K-JPG_NormalGL.jpg",
+    "sha256": "b551e18777872604bc4aaba2adc4d3212841caa0ac544c02136f27a89a05dc22"
+   },
+   {
+    "path": "Travertine009/2K-JPG/Travertine009_2K-JPG_Roughness.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-more-8/blob/HEAD/Travertine009/2K-JPG/Travertine009_2K-JPG_Roughness.jpg",
+    "source": "https://ambientcg.com/get?file=Travertine009_2K-JPG.zip → Travertine009_2K-JPG_Roughness.jpg",
+    "sha256": "c29534ccc277c598e17efa3f3abc9d6bda82f421f90b5abd340136fd3d82bebc"
+   },
+   {
+    "path": "Travertine009/2K-JPG/Travertine009_2K-JPG_AmbientOcclusion.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-more-8/blob/HEAD/Travertine009/2K-JPG/Travertine009_2K-JPG_AmbientOcclusion.jpg",
+    "source": "https://ambientcg.com/get?file=Travertine009_2K-JPG.zip → Travertine009_2K-JPG_AmbientOcclusion.jpg",
+    "sha256": "628fcabb7eac5e94578a3b096335509174b01d39fa58be60ef6a4408a646c6e0"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "travertine/albedo_512.jpg",
+    "normal": "travertine/normal_512.jpg",
+    "rough": "travertine/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "travertine/albedo_1k.jpg",
+    "normal": "travertine/normal_1k.jpg",
+    "rough": "travertine/rough_1k.jpg"
+   }
+  }
+ },
+ "marble": {
+  "id": "marble",
+  "title": "white marble",
+  "asset": "Marble001",
+  "repo": "ambientcg-materials-marble",
+  "kind": "acg",
+  "who": {
+   "name": "Marble 001",
+   "author": "ambientCG",
+   "page": "https://ambientcg.com/a/Marble001"
+  },
+  "sources": [
+   {
+    "path": "Marble001/2K-JPG/Marble001_2K-JPG_Color.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-marble/blob/HEAD/Marble001/2K-JPG/Marble001_2K-JPG_Color.jpg",
+    "source": "https://ambientcg.com/get?file=Marble001_2K-JPG.zip → Marble001_2K-JPG_Color.jpg",
+    "sha256": "440d5374c3142c60995bb041ff62ca8265911f46bb168a70f4878e808b3882de"
+   },
+   {
+    "path": "Marble001/2K-JPG/Marble001_2K-JPG_NormalGL.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-marble/blob/HEAD/Marble001/2K-JPG/Marble001_2K-JPG_NormalGL.jpg",
+    "source": "https://ambientcg.com/get?file=Marble001_2K-JPG.zip → Marble001_2K-JPG_NormalGL.jpg",
+    "sha256": "5ee180915cd8adc75bd62da2d5a321126548b8b6021a53536955dfbb99ca914d"
+   },
+   {
+    "path": "Marble001/2K-JPG/Marble001_2K-JPG_Roughness.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-marble/blob/HEAD/Marble001/2K-JPG/Marble001_2K-JPG_Roughness.jpg",
+    "source": "https://ambientcg.com/get?file=Marble001_2K-JPG.zip → Marble001_2K-JPG_Roughness.jpg",
+    "sha256": "75895b7d7bb0385dca60f52c7f6252cd15f90ae206838853912dfbaea20d1829"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "marble/albedo_512.jpg",
+    "normal": "marble/normal_512.jpg",
+    "rough": "marble/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "marble/albedo_1k.jpg",
+    "normal": "marble/normal_1k.jpg",
+    "rough": "marble/rough_1k.jpg"
+   }
+  }
+ },
+ "plaster": {
+  "id": "plaster",
+  "title": "painted plaster",
+  "asset": "painted_plaster_wall",
+  "repo": "polyhaven-textures-concrete-2",
+  "kind": "ph",
+  "who": {
+   "name": "Painted Plaster Wall",
+   "author": "Amal Kumar",
+   "page": "https://polyhaven.com/a/painted_plaster_wall"
+  },
+  "sources": [
+   {
+    "path": "painted_plaster_wall/2k/painted_plaster_wall_diff_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-concrete-2/blob/HEAD/painted_plaster_wall/2k/painted_plaster_wall_diff_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_plaster_wall/painted_plaster_wall_diff_2k.jpg",
+    "sha256": "6fd812ed8dd5be1873c29aeef38ce9bf1fb30a22c6d4b3a12db725e98c26a1be"
+   },
+   {
+    "path": "painted_plaster_wall/2k/painted_plaster_wall_nor_gl_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-concrete-2/blob/HEAD/painted_plaster_wall/2k/painted_plaster_wall_nor_gl_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_plaster_wall/painted_plaster_wall_nor_gl_2k.jpg",
+    "sha256": "2d601a46ed5ce2af866741c53cafa3cba472620c272e633b6484d4de16a80eb1"
+   },
+   {
+    "path": "painted_plaster_wall/2k/painted_plaster_wall_rough_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-concrete-2/blob/HEAD/painted_plaster_wall/2k/painted_plaster_wall_rough_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_plaster_wall/painted_plaster_wall_rough_2k.jpg",
+    "sha256": "35aad595469533cc3b7cc209cc6c7e065d660211f02c867f4492d3b371b1fee1"
+   },
+   {
+    "path": "painted_plaster_wall/2k/painted_plaster_wall_ao_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-concrete-2/blob/HEAD/painted_plaster_wall/2k/painted_plaster_wall_ao_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_plaster_wall/painted_plaster_wall_ao_2k.jpg",
+    "sha256": "3d89b5ea1f9d93d611ab0015d887b620ec9c6623e19effadba84ee9345c4c6fc"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "plaster/albedo_512.jpg",
+    "normal": "plaster/normal_512.jpg",
+    "rough": "plaster/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "plaster/albedo_1k.jpg",
+    "normal": "plaster/normal_1k.jpg",
+    "rough": "plaster/rough_1k.jpg"
+   }
+  }
+ },
+ "wicker": {
+  "id": "wicker",
+  "title": "woven rattan",
+  "asset": "Wicker010A",
+  "repo": "ambientcg-materials-wicker",
+  "kind": "acg",
+  "who": {
+   "name": "Wicker 010 A",
+   "author": "ambientCG",
+   "page": "https://ambientcg.com/a/Wicker010A"
+  },
+  "sources": [
+   {
+    "path": "Wicker010A/2K-JPG/Wicker010A_2K-JPG_Color.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-wicker/blob/HEAD/Wicker010A/2K-JPG/Wicker010A_2K-JPG_Color.jpg",
+    "source": "https://ambientcg.com/get?file=Wicker010A_2K-JPG.zip → Wicker010A_2K-JPG_Color.jpg",
+    "sha256": "db90ebc7416fc396dea61078f1ce871e10412e741b4cd474a73038461e912940"
+   },
+   {
+    "path": "Wicker010A/2K-JPG/Wicker010A_2K-JPG_NormalGL.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-wicker/blob/HEAD/Wicker010A/2K-JPG/Wicker010A_2K-JPG_NormalGL.jpg",
+    "source": "https://ambientcg.com/get?file=Wicker010A_2K-JPG.zip → Wicker010A_2K-JPG_NormalGL.jpg",
+    "sha256": "acc4106b42c4e722bd5e63da9a13c4383540099de7426b9c06c1018c67e92091"
+   },
+   {
+    "path": "Wicker010A/2K-JPG/Wicker010A_2K-JPG_Roughness.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-wicker/blob/HEAD/Wicker010A/2K-JPG/Wicker010A_2K-JPG_Roughness.jpg",
+    "source": "https://ambientcg.com/get?file=Wicker010A_2K-JPG.zip → Wicker010A_2K-JPG_Roughness.jpg",
+    "sha256": "2b0211aeb5d8b4748b7d3ca2b7c7c44bf00ad778d9bbc00fb8d8e3672d8f718c"
+   },
+   {
+    "path": "Wicker010A/2K-JPG/Wicker010A_2K-JPG_AmbientOcclusion.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-wicker/blob/HEAD/Wicker010A/2K-JPG/Wicker010A_2K-JPG_AmbientOcclusion.jpg",
+    "source": "https://ambientcg.com/get?file=Wicker010A_2K-JPG.zip → Wicker010A_2K-JPG_AmbientOcclusion.jpg",
+    "sha256": "7fecfa24fb372b2fd5571c44f46659ab3df53525eb331118a086480420b523a7"
+   },
+   {
+    "path": "Wicker010A/2K-JPG/Wicker010A_2K-JPG_Opacity.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-wicker/blob/HEAD/Wicker010A/2K-JPG/Wicker010A_2K-JPG_Opacity.jpg",
+    "source": "https://ambientcg.com/get?file=Wicker010A_2K-JPG.zip → Wicker010A_2K-JPG_Opacity.jpg",
+    "sha256": "3c073ddfbac002eb0b185dc53f9b85a6b8b3fc3e822294a04211386a06a262ff"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "wicker/albedo_512.jpg",
+    "normal": "wicker/normal_512.jpg",
+    "rough": "wicker/rough_512.jpg",
+    "alpha": "wicker/alpha_512.jpg"
+   },
+   "1024": {
+    "albedo": "wicker/albedo_1k.jpg",
+    "normal": "wicker/normal_1k.jpg",
+    "rough": "wicker/rough_1k.jpg",
+    "alpha": "wicker/alpha_1k.jpg"
+   }
+  }
+ },
+ "bark": {
+  "id": "bark",
+  "title": "fissured grey bark (olive trunk)",
+  "asset": "Bark001",
+  "repo": "ambientcg-materials-bark",
+  "kind": "acg",
+  "who": {
+   "name": "Bark 001",
+   "author": "ambientCG",
+   "page": "https://ambientcg.com/a/Bark001"
+  },
+  "sources": [
+   {
+    "path": "Bark001/2K-JPG/Bark001_2K-JPG_Color.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-bark/blob/HEAD/Bark001/2K-JPG/Bark001_2K-JPG_Color.jpg",
+    "source": "https://ambientcg.com/get?file=Bark001_2K-JPG.zip → Bark001_2K-JPG_Color.jpg",
+    "sha256": "81398acd5b1bfedc2194a4c8ec2637ee276d41a9a586b63c125ab68177c8e9a9"
+   },
+   {
+    "path": "Bark001/2K-JPG/Bark001_2K-JPG_NormalGL.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-bark/blob/HEAD/Bark001/2K-JPG/Bark001_2K-JPG_NormalGL.jpg",
+    "source": "https://ambientcg.com/get?file=Bark001_2K-JPG.zip → Bark001_2K-JPG_NormalGL.jpg",
+    "sha256": "2fbb448073ddda0fbfeb49e6214e6624419420d669aad07f75bdbdb24b5d5fc6"
+   },
+   {
+    "path": "Bark001/2K-JPG/Bark001_2K-JPG_Roughness.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-materials-bark/blob/HEAD/Bark001/2K-JPG/Bark001_2K-JPG_Roughness.jpg",
+    "source": "https://ambientcg.com/get?file=Bark001_2K-JPG.zip → Bark001_2K-JPG_Roughness.jpg",
+    "sha256": "23424fa512fe6bdf111a6db925fa51604b01a52cf1f4e5cfc77a3a45771530bc"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "bark/albedo_512.jpg",
+    "normal": "bark/normal_512.jpg",
+    "rough": "bark/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "bark/albedo_1k.jpg",
+    "normal": "bark/normal_1k.jpg",
+    "rough": "bark/rough_1k.jpg"
+   }
+  }
+ },
+ "leaf": {
+  "id": "leaf",
+  "title": "lanceolate leaf atlas (olive / eucalyptus leaves)",
+  "asset": "LeafSet013",
+  "repo": "ambientcg-atlases",
+  "kind": "acg",
+  "who": {
+   "name": "Leaf Set 013",
+   "author": "ambientCG",
+   "page": "https://ambientcg.com/a/LeafSet013"
+  },
+  "sources": [
+   {
+    "path": "LeafSet013/2K-JPG/LeafSet013_2K-JPG_Color.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-atlases/blob/HEAD/LeafSet013/2K-JPG/LeafSet013_2K-JPG_Color.jpg",
+    "source": "https://ambientcg.com/get?file=LeafSet013_2K-JPG.zip → LeafSet013_2K-JPG_Color.jpg",
+    "sha256": "6c26ae34936e532d84305327e407a4959663771f111e02cae18706f49568150a"
+   },
+   {
+    "path": "LeafSet013/2K-JPG/LeafSet013_2K-JPG_NormalGL.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-atlases/blob/HEAD/LeafSet013/2K-JPG/LeafSet013_2K-JPG_NormalGL.jpg",
+    "source": "https://ambientcg.com/get?file=LeafSet013_2K-JPG.zip → LeafSet013_2K-JPG_NormalGL.jpg",
+    "sha256": "7a00fc140b0e026163557c428941320081854175a7fabd42beaee60d2555df01"
+   },
+   {
+    "path": "LeafSet013/2K-JPG/LeafSet013_2K-JPG_Roughness.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-atlases/blob/HEAD/LeafSet013/2K-JPG/LeafSet013_2K-JPG_Roughness.jpg",
+    "source": "https://ambientcg.com/get?file=LeafSet013_2K-JPG.zip → LeafSet013_2K-JPG_Roughness.jpg",
+    "sha256": "e9652ea1fd08df6c13c0941640fd60db1eb3bfc9bd2c427b7b50129b739d14ec"
+   },
+   {
+    "path": "LeafSet013/2K-JPG/LeafSet013_2K-JPG_Opacity.jpg",
+    "mirror": "https://github.com/zuujis-cc0/ambientcg-atlases/blob/HEAD/LeafSet013/2K-JPG/LeafSet013_2K-JPG_Opacity.jpg",
+    "source": "https://ambientcg.com/get?file=LeafSet013_2K-JPG.zip → LeafSet013_2K-JPG_Opacity.jpg",
+    "sha256": "d2cbfec7d7484f29bda94689f77919afd5195ec0d9c3fba07df4e02bcff262e8"
+   }
+  ],
+  "files": {
+   "256": {
+    "albedo": "leaf/albedo_256.jpg",
+    "normal": "leaf/normal_256.jpg",
+    "alpha": "leaf/alpha_256.jpg"
+   },
+   "512": {
+    "albedo": "leaf/albedo_512.jpg",
+    "normal": "leaf/normal_512.jpg",
+    "alpha": "leaf/alpha_512.jpg"
+   }
+  }
+ },
+ "walnut-2": {
+  "id": "walnut-2",
+  "title": "walnut veneer (crown cut)",
+  "asset": "walnut_veneer_02",
+  "repo": "polyhaven-textures-wood-3",
+  "kind": "ph",
+  "who": {
+   "name": "Walnut Veneer 02",
+   "author": "Jenelle van Heerden",
+   "page": "https://polyhaven.com/a/walnut_veneer_02"
+  },
+  "sources": [
+   {
+    "path": "walnut_veneer_02/2k/walnut_veneer_02_diff_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/walnut_veneer_02/2k/walnut_veneer_02_diff_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/walnut_veneer_02/walnut_veneer_02_diff_2k.jpg",
+    "sha256": "e0fe7e76c288dae50a95a27ff7d3ab6040d3f0439f3eb6d61a3f53af84e132d7"
+   },
+   {
+    "path": "walnut_veneer_02/2k/walnut_veneer_02_nor_gl_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/walnut_veneer_02/2k/walnut_veneer_02_nor_gl_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/walnut_veneer_02/walnut_veneer_02_nor_gl_2k.jpg",
+    "sha256": "8bbcede06e2ca359d39f5d10c5b92778423abcd52ca87531bb1dfab131c5bc4e"
+   },
+   {
+    "path": "walnut_veneer_02/2k/walnut_veneer_02_rough_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/walnut_veneer_02/2k/walnut_veneer_02_rough_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/walnut_veneer_02/walnut_veneer_02_rough_2k.jpg",
+    "sha256": "0b078e64c9abed49a33c831b8b4820ebdc526623c05135b6d9954ad5064d7670"
+   },
+   {
+    "path": "walnut_veneer_02/2k/walnut_veneer_02_ao_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-wood-3/blob/HEAD/walnut_veneer_02/2k/walnut_veneer_02_ao_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/walnut_veneer_02/walnut_veneer_02_ao_2k.jpg",
+    "sha256": "38ac74c8f9bd8ec0f66691155329bf990f6a2a23dbb679fe3a384a4315020090"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "walnut-2/albedo_512.jpg",
+    "normal": "walnut-2/normal_512.jpg",
+    "rough": "walnut-2/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "walnut-2/albedo_1k.jpg",
+    "normal": "walnut-2/normal_1k.jpg",
+    "rough": "walnut-2/rough_1k.jpg"
+   }
+  }
+ },
+ "limewash": {
+  "id": "limewash",
+  "title": "limewash plaster",
+  "asset": "painted_plaster_wall",
+  "repo": "polyhaven-textures-concrete-2",
+  "kind": "ph",
+  "who": {
+   "name": "Painted Plaster Wall",
+   "author": "Amal Kumar",
+   "page": "https://polyhaven.com/a/painted_plaster_wall"
+  },
+  "sources": [
+   {
+    "path": "painted_plaster_wall/2k/painted_plaster_wall_diff_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-concrete-2/blob/HEAD/painted_plaster_wall/2k/painted_plaster_wall_diff_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_plaster_wall/painted_plaster_wall_diff_2k.jpg",
+    "sha256": "6fd812ed8dd5be1873c29aeef38ce9bf1fb30a22c6d4b3a12db725e98c26a1be"
+   },
+   {
+    "path": "painted_plaster_wall/2k/painted_plaster_wall_nor_gl_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-concrete-2/blob/HEAD/painted_plaster_wall/2k/painted_plaster_wall_nor_gl_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_plaster_wall/painted_plaster_wall_nor_gl_2k.jpg",
+    "sha256": "2d601a46ed5ce2af866741c53cafa3cba472620c272e633b6484d4de16a80eb1"
+   },
+   {
+    "path": "painted_plaster_wall/2k/painted_plaster_wall_rough_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-concrete-2/blob/HEAD/painted_plaster_wall/2k/painted_plaster_wall_rough_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_plaster_wall/painted_plaster_wall_rough_2k.jpg",
+    "sha256": "35aad595469533cc3b7cc209cc6c7e065d660211f02c867f4492d3b371b1fee1"
+   },
+   {
+    "path": "painted_plaster_wall/2k/painted_plaster_wall_ao_2k.jpg",
+    "mirror": "https://github.com/zuujis-cc0/polyhaven-textures-concrete-2/blob/HEAD/painted_plaster_wall/2k/painted_plaster_wall_ao_2k.jpg",
+    "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_plaster_wall/painted_plaster_wall_ao_2k.jpg",
+    "sha256": "3d89b5ea1f9d93d611ab0015d887b620ec9c6623e19effadba84ee9345c4c6fc"
+   }
+  ],
+  "files": {
+   "512": {
+    "albedo": "limewash/albedo_512.jpg",
+    "normal": "limewash/normal_512.jpg",
+    "rough": "limewash/rough_512.jpg"
+   },
+   "1024": {
+    "albedo": "limewash/albedo_1k.jpg",
+    "normal": "limewash/normal_1k.jpg",
+    "rough": "limewash/rough_1k.jpg"
+   }
+  }
+ }
+}

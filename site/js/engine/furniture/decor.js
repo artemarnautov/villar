@@ -126,13 +126,15 @@ function sweep(points, radius, { radial: radial0 = 7, tubular = null } = {}) {
 /** Merge many leaf instances into one geometry with per-leaf vertex colours. */
 class LeafBatch {
   constructor() { this.pos = []; this.nor = []; this.uv = []; this.col = []; this.idx = []; this.v = 0; }
-  add(tmpl, matrix, color) {
+  /** cell = [index, count]: the leaf samples atlas column `index` of `count` (photoscanned leaf atlas). */
+  add(tmpl, matrix, color, cell = null) {
     const p = tmpl.attributes.position, n = tmpl.attributes.normal, u = tmpl.attributes.uv;
     const nm = new THREE.Matrix3().getNormalMatrix(matrix);
     const v = new THREE.Vector3(), vn = new THREE.Vector3();
     for (let i = 0; i < p.count; i++) {
       v.fromBufferAttribute(p, i).applyMatrix4(matrix); vn.fromBufferAttribute(n, i).applyMatrix3(nm).normalize();
-      this.pos.push(v.x, v.y, v.z); this.nor.push(vn.x, vn.y, vn.z); this.uv.push(u.getX(i), u.getY(i));
+      this.pos.push(v.x, v.y, v.z); this.nor.push(vn.x, vn.y, vn.z);
+      this.uv.push(cell ? (cell[0] + u.getX(i)) / cell[1] : u.getX(i), u.getY(i));
       const k = tmpl.userData.shade ? tmpl.userData.shade[i] : 1;
       if (Array.isArray(k)) this.col.push(color.r * k[0], color.g * k[1], color.b * k[2]);
       else this.col.push(color.r * k, color.g * k, color.b * k);
@@ -311,16 +313,18 @@ export function plant(c) {
   const soilY = addPot(b, c, { r: potR, h: potH, style: p.pot, color: p.potColor });
   const leaves = new LeafBatch();
   const stems = [];
-  const leafMat = c.mat('plant-leaf', { vertexColors: true, roughness: species.includes('fiddle') || species.includes('rubber') ? 0.32 : 0.5 });
-  const stemMat = c.mat('plant-stem', { color: /monstera|philo|calathea|alocasia|bird|strelitzia|banana|musa/.test(species) ? '#5b6e3a' : '#6b6248' });
-  // grey-brown fissured bark (R2-17), always darker than the pot; fiddle/rubber stems are smoother and greener
-  const barkMat = c.mat('bark', { color: /fiddle|lyrata|rubber|elastica|audrey|ficus/.test(species) ? '#b9b39a' : '#ffffff' });
   let kind = 'olive';
   if (/fiddle|lyrata|rubber|elastica|audrey|benghal|ficus/.test(species)) kind = 'fiddle';
   else if (/bird|strelitzia|banana|musa|heliconia/.test(species)) kind = 'bird';
   else if (/monstera|philo|calathea|alocasia/.test(species)) kind = 'monstera';
   else if (/snake|sansev|zz|aloe|yucca|dracaena|cactus/.test(species)) kind = 'snake';
   else if (/palm|areca|kentia|fern/.test(species)) kind = 'palm';
+  // every leaf transmits light (back-lit translucency) and has its own underside tone (see materials 'plant-leaf');
+  // the olive uses the photoscanned lanceolate leaf atlas (alpha-cut blade) and a silver underside
+  const leafMat = c.mat('plant-leaf', { vertexColors: true, roughness: species.includes('fiddle') || species.includes('rubber') ? 0.32 : 0.5, ...(kind === 'olive' ? { scan: 'leaf', under: 'olive' } : {}) });
+  const stemMat = c.mat('plant-stem', { color: /monstera|philo|calathea|alocasia|bird|strelitzia|banana|musa/.test(species) ? '#5b6e3a' : '#6b6248' });
+  // grey-brown fissured bark (R2-17), always darker than the pot; fiddle/rubber stems are smoother and greener
+  const barkMat = c.mat('bark', { color: /fiddle|lyrata|rubber|elastica|audrey|ficus/.test(species) ? '#b9b39a' : '#ffffff', scale: 0.4 });
 
   // LOD: fewer but larger leaves keep the canopy mass on medium / low
   const dens = [0.34, 0.58, 1][getLOD()], leafK = 1 / Math.pow(dens, 0.35);
@@ -332,17 +336,20 @@ export function plant(c) {
     for (let i = 1; i <= 4; i++) { x += (r() - 0.5) * 0.035; z += (r() - 0.5) * 0.035; trunkPts.push(V3(x, lerp(soilY, crownY, i / 4), z)); }
     const tr = sweep(trunkPts, (t) => lerp(0.032, 0.02, t) * (1 + 0.12 * Math.sin(t * 17 + 1)), { radial: 10 });
     b.add(tr.geom, barkMat, { uv: 'keep' });
-    const tmpl = leafTemplate({ L: 0.075, Wd: 0.015, nu: 2, nv: 2, fold: 0.3, arch: 0.18 });
-    const cols = plantColors('#7f8f68', 32, r, 0.18);
+    // blade card a little wider than the leaf: the scanned alpha cuts the real lanceolate outline
+    const tmpl = leafTemplate({ L: 0.075, Wd: 0.018, outline: (v) => 0.32 + 0.68 * Math.pow(Math.sin(Math.PI * Math.min(1, v)), 0.5), nu: 2, nv: 3, fold: 0.22, arch: 0.17 });
+    // upper face: dark grey-green (the silver underside is the material's back-face tone)
+    const cols = plantColors('#5c6846', 32, r, 0.16);
     const canopy = { c: V3(0, lerp(crownY, top, 0.56), 0), rx: W / 2 * 0.8, ry: (top - crownY) * 0.52 };
     const leafAt = (lp, tan, k) => {
       const rel = lp.clone().sub(canopy.c);
       const e = Math.hypot(rel.x / canopy.rx, rel.y / canopy.ry, rel.z / canopy.rx);
-      if (e > 1.08) return;
+      if (e > 1.16) return;
       const side = k % 2 ? 1 : -1;
       const perp = V3(-tan.z, 0, tan.x).normalize().multiplyScalar(side);
-      const ld = tan.clone().multiplyScalar(0.55).add(perp).add(V3(0, -0.25 + r() * 0.5, 0)).normalize();
-      leaves.add(tmpl, leafMatrix(lp, ld, r() * Math.PI, (0.75 + r() * 0.5) * leafK), cols[(r() * cols.length) | 0]);
+      // olive leaves sit in opposite pairs at an acute angle to the twig (30–50°), tips up and out
+      const ld = tan.clone().multiplyScalar(0.9 + r() * 0.3).add(perp.multiplyScalar(0.75)).add(V3(0, -0.1 + r() * 0.45, 0)).normalize();
+      leaves.add(tmpl, leafMatrix(lp, ld, r() * Math.PI, (0.75 + r() * 0.5) * leafK), cols[(r() * cols.length) | 0], [r() < 0.5 ? 0 : 1, 2]);
     };
     const branch = (start, dir, len, rad, depth) => {
       const pts = [start.clone()];
@@ -354,7 +361,8 @@ export function plant(c) {
         // pull back inside the canopy envelope
         const rel = np.clone().sub(canopy.c);
         const e = Math.hypot(rel.x / canopy.rx, rel.y / canopy.ry, rel.z / canopy.rx);
-        if (e > 0.95) np.sub(rel.multiplyScalar(0.25 * (e - 0.95) / e));
+        // pull back inside the envelope (twigs never poke out bare past the foliage)
+        if (e > 0.95) np.sub(rel.multiplyScalar(0.7 * (e - 0.95) / e));
         pts.push(np);
       }
       const sw = sweep(pts, (t) => lerp(rad, rad * 0.5, t), { radial: depth === 0 ? 7 : depth === 1 ? 5 : 4, tubular: depth === 0 ? 14 : 6 });
@@ -371,7 +379,7 @@ export function plant(c) {
         }
       }
       if (depth >= 1) {
-        const count = Math.round((depth === 2 ? 36 : 18) * dens);
+        const count = Math.round((depth === 2 ? 42 : 20) * dens);
         for (let k = 0; k < count; k++) {
           const t = 0.2 + 0.8 * (k / count);
           leafAt(sw.curve.getPointAt(t), sw.curve.getTangentAt(t), k);

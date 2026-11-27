@@ -97,3 +97,40 @@ Owner of `site/js/engine/materials.js`, `textures.js`, `furniture/*`, `site/lab/
    `t.name` in `onUpdate` when `image.data === null` to find it.
 4. **Shade shadows (R2-08, milestone B on our side).** The engine will let shades cast sun shadows and push lamp
    shadow `near` past the shade; please keep only the bulb mesh `noCastShadow`, the shade opaque/translucent.
+
+## Photoreal (lever 2 + 3) — modeler notes for catalog / engine
+
+- **No catalog change is needed.** Every material key keeps its meaning and its colour parameters; the photoscans are tinted
+  to the same catalogue colours (wood: species mean + `woodColor` calibration as before; fabrics / leather / rugs / plaster:
+  grey scan detail × the item colour; stone: the scan's colour pulled toward `match`).
+- **Scanned sets** (CC0, `site/assets/materials/`, sources in `LICENSES.md`, rebuilt by `tools/materials-prep.mjs`):
+  walnut, oak, white oak (also ash / black ash), teak veneers; wide-plank oak floor (2K); linen, bouclé, velvet, percale,
+  leather; pile, flat-weave and jute rugs; travertine, marble; painted plaster / limewash; woven rattan; olive bark; a
+  lanceolate leaf atlas. Procedural stays for: cane, rattan binding, knit, waffle, voile, paper / lamp glow, metals, glass,
+  ceramics, terrazzo, kitchen fronts, chevron floors.
+- **Plants:** all leaves are translucent against the light and have a distinct underside; the olive uses the scanned leaf
+  (alpha outline, silver underside) and scanned bark.
+
+## Engine → modeler (photoreal round, 26 Nov)
+
+1. **`glTexSubImage2D: Offset overflows texture dimensions` (UI report) — not reproducible on the current tree.**
+   I hooked `texStorage2D` / `texImage2D` / `texSubImage2D` (per bound texture: allocated size vs upload rectangle) and
+   ran lab Day → Sunset → Evening → Morning plus the real index flow (HUD on the sofa with 7 thumbnails →
+   Mediterranean wave → Evening → Sunset, scan sets loaded): **0 overflowing uploads, 0 WebGL warnings**. Your
+   `tclone` (keeps the Source version) and `shareTexture` changes appear to have removed it.
+   - The mechanism that produced it: a second GL texture for the same `Source` (a clone with another sampler cache
+     key) gets its first upload while the canvas is released (1×1), so its storage is 1×1. `healOnUpdate` then
+     redraws the original and `reallocate()`s only the original. The clone's 1×1 storage survives, and the
+     full-size redraw is sub-uploaded into it.
+   - To close it for good: in `healOnUpdate(tex)`, also `reallocate(tex)` (the texture whose upload triggered the
+     heal), not only the original in `HEAL`.
+   - Hook for QA: `/tmp/eng/tools/gl-hook.js` (an `addInitScript`; it records offending uploads in
+     `window.__texOverflow`).
+2. **Sky files.** `site/assets/sky/*.hdr` (engine) are listed in `site/assets/materials/LICENSES.md` under "Skies". I
+   appended that section and did not touch your rows.
+- **Round-3 asset tells (R3-06/07/08/10) done in the modeler's files:** darker scanned olive bark (albedo ≈ #5a5246); matte
+  scanned percale (roughness 0.88, weave normal), crease dent removed, turn-down resting on the duvet with an 8 mm edge; rattan
+  shades woven (scan + alpha gaps, light through) with the wire spikes removed (dome / bell / globe shades hang from one inner
+  stem); candle flames are self-lit additive teardrops with a hot core; amber glass transmits `#c58a3e`; travertine uses the
+  scanned vein-cut slab (elongated voids along the banding, uniform honed roughness 0.45, no pit sparkle); leather has scanned
+  grain (normal 0.6, roughness 0.5); bouclé loops ≈ 5–8 mm (was ≈ 1.5 cm cells); limewash is its own scanned set.

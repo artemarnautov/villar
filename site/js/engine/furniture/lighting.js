@@ -6,11 +6,12 @@ import { Builder, softBox, lathe, smoothProfile, slab, ellipseShape, tube, round
 const WARM = '#ffd2a1';
 
 /** Shade UVs: u = arc length (m), v = 0..1 bottom→top (drives the lit-shade emissive falloff map). */
-function shadeUV(g, R) {
+/** u = metres around; v = 0..1 up the shade (glow maps), or metres up it when `metric` (woven rattan). */
+function shadeUV(g, R, metric = false) {
   const pos = g.attributes.position, uv = g.attributes.uv;
   let y0 = Infinity, y1 = -Infinity;
   for (let i = 0; i < pos.count; i++) { const y = pos.getY(i); if (y < y0) y0 = y; if (y > y1) y1 = y; }
-  const span = Math.max(1e-4, y1 - y0), L = 2 * Math.PI * R;
+  const span = metric ? 1 : Math.max(1e-4, y1 - y0), L = 2 * Math.PI * R;
   for (let i = 0; i < pos.count; i++) uv.setXY(i, uv.getX(i) * L, (pos.getY(i) - y0) / span);
   uv.needsUpdate = true;
   return g;
@@ -37,7 +38,7 @@ function shadeLights({ x = 0, z = 0, ly, yb, h, Rb, Rt = Rb, I = 1, kind = 'open
 function shadeMatFor(c, p, color) {
   const kind = String(p.shadeMaterial || p.shadeFabric || '').toLowerCase();
   if (kind.includes('paper') || String(p.shape || '').includes('paper')) return c.mat('paper-shade', { color });
-  if (kind.includes('rattan') || kind.includes('cane')) return c.mat('rattan');
+  if (kind.includes('rattan') || kind.includes('cane')) return c.mat('rattan', { open: true, scale: 0.3 });
   if (kind.includes('opal') || kind.includes('glass') || String(p.shade || '').includes('opal')) return c.mat('opal-glass');
   if (kind.includes('metal') || kind.includes('black')) return c.mat('metal-black');
   if (kind.includes('brass')) return c.mat('metal-brass');
@@ -105,10 +106,12 @@ function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null, o
       : Array.from({ length: 25 }, (_, i) => { const t = (i / 24) * Math.PI / 2; return [Math.max(0.012, R * Math.cos(t)), h * Math.sin(t)]; });
     const g = lathe(prof, seg);
     if (wave) { const pa = g.attributes.position; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), z = pa.getZ(i), y = pa.getY(i); const a = Math.atan2(z, x); const k = 1 + wave * Math.sin(a * 6) * (1 - y / h); pa.setX(i, x * k); pa.setZ(i, z * k); } g.computeVertexNormals(); }
-    b.add(shadeUV(g, R), mat, { pos: [0, yb, 0], uv: 'keep' });
+    // woven rattan (R3-08): one double-sided shell in metric UVs (6–8 mm weave, alpha gaps), no inner skin
+    const woven = /rattan/.test(mat?.name || '');
+    b.add(shadeUV(g, R, woven), mat, { pos: [0, yb, 0], uv: 'keep' });
     const gi = lathe(prof.map(([r, y]) => [r * 0.985, y - 0.002]).reverse(), seg);
     if (wave) { const pa = gi.attributes.position; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), z = pa.getZ(i), y = pa.getY(i); const a = Math.atan2(z, x); const k = 1 + wave * Math.sin(a * 6) * (1 - y / h); pa.setX(i, x * k); pa.setZ(i, z * k); } gi.computeVertexNormals(); }
-    b.add(shadeUV(gi, R), inner || c.mat('metal-white'), { pos: [0, yb, 0], uv: 'keep' });
+    if (!woven) b.add(shadeUV(gi, R), inner || c.mat('metal-white'), { pos: [0, yb, 0], uv: 'keep' });
     b.add(new THREE.TorusGeometry(R, 0.002, 6, seg).rotateX(Math.PI / 2), mat, { pos: [0, yb, 0] });
     return yb + h * 0.4;
   }
@@ -136,7 +139,15 @@ function addShade(b, c, { style = 'drum', R, h, yb, mat, rimMat, inner = null, o
   return yb + h * 0.45;
 }
 
-function spider(b, mat, { R, y, hubY }) {
+function spider(b, mat, { R, y, hubY, style = '' }) {
+  // closed-top shades (dome, bell, mushroom, globe) hang from their apex: one short stem inside the shell — arms
+  // aimed at a drum's top rim would pierce the curved shell (R3-08 "wire spikes")
+  if (/dome|bell|mushroom|globe|sphere|ball/.test(String(style))) {
+    const y0 = y - (y - hubY) * 1.35, len = Math.max(0.01, y - 0.006 - y0); // reaches down to the stem / pole top
+    b.add(new THREE.CylinderGeometry(0.004, 0.004, len, 8), mat, { pos: [0, y0 + len / 2, 0], cast: false });
+    b.add(new THREE.CylinderGeometry(0.012, 0.012, 0.012, 12), mat, { pos: [0, hubY, 0] });
+    return;
+  }
   for (let i = 0; i < 3; i++) {
     const a = (i / 3) * Math.PI * 2;
     b.add(tube([V3(0, hubY, 0), V3(Math.cos(a) * R * 0.5, (hubY + y) / 2, Math.sin(a) * R * 0.5), V3(Math.cos(a) * R, y, Math.sin(a) * R)], 0.0016, { tubular: 8, radial: 4 }), mat, {});
@@ -195,7 +206,7 @@ export function floorLamp(c) {
   }
   const rim = c.mat(/brass|gold/.test(baseKey) ? 'metal-brass' : 'metal-black');
   const ly = addShade(b, c, { style, R, h: sh, yb, mat: shade, rimMat: rim });
-  spider(b, rim, { R: style.includes('cone') ? R * 0.68 : style.includes('pleat') ? R * 0.8 : R, y: yb + sh, hubY: yb + sh * 0.55 });
+  spider(b, rim, { R: style.includes('cone') ? R * 0.68 : style.includes('pleat') ? R * 0.8 : R, y: yb + sh, hubY: yb + sh * 0.55, style });
   bulb(b, c, ly + 0.02, 0.028);
   const kind = /globe|sphere/.test(style) ? 'globe' : /dome|bell/.test(style) ? 'dome' : 'open';
   return {
@@ -261,7 +272,7 @@ function swingArmLamp(c, { b, baseMat, shade, style, R }) {
   b.add(new THREE.CylinderGeometry(0.005, 0.005, 0.06, 8), baseMat, { pos: [armL / 2, stemTop - 0.06, 0] });
   const g = new Builder(c.seed + 1);
   const ly = addShade(g, c, { style, R, h: sh, yb, mat: shade, rimMat: baseMat });
-  spider(g, baseMat, { R: style.includes('cone') ? R * 0.68 : R, y: yb + sh, hubY: yb + sh * 0.6 });
+  spider(g, baseMat, { R: style.includes('cone') ? R * 0.68 : R, y: yb + sh, hubY: yb + sh * 0.6, style });
   bulb(g, c, ly, 0.026);
   const sg = g.build('shade');
   sg.children.forEach((m) => { m.position.x += armL / 2; });
@@ -318,7 +329,7 @@ export function tableLamp(c) {
   b.add(new THREE.CylinderGeometry(0.004, 0.004, yb + sh * 0.5 - bh, 8), brass, { pos: [0, (bh + yb + sh * 0.5) / 2, 0] });
   const rim = c.mat('metal-brass');
   const ly = addShade(b, c, { style, R, h: sh, yb, mat: shade, rimMat: rim });
-  spider(b, rim, { R: style.includes('cone') ? R * 0.68 : style.includes('pleat') ? R * 0.8 : R, y: yb + sh, hubY: yb + sh * 0.6 });
+  spider(b, rim, { R: style.includes('cone') ? R * 0.68 : style.includes('pleat') ? R * 0.8 : R, y: yb + sh, hubY: yb + sh * 0.6, style });
   bulb(b, c, ly + 0.01, 0.022);
   return {
     group: b.build('table_lamp'),
@@ -337,7 +348,7 @@ export function pendantLamp(c) {
   const R = W / 2, h = H;
   let mat;
   if (shape.includes('paper') || shape.includes('lantern')) mat = c.mat('paper-shade', { color });
-  else if (shape.includes('rattan') || shape.includes('wicker') || shape.includes('hyacinth')) mat = c.mat('rattan', { color: p.shadeColor || undefined });
+  else if (shape.includes('rattan') || shape.includes('wicker') || shape.includes('hyacinth')) mat = c.mat('rattan', { color: p.shadeColor || undefined, open: true, scale: 0.3 });
   else if (shape.includes('glass') || shape.includes('opal')) mat = c.mat('opal-glass');
   else if (shape.includes('linen') || shape.includes('fabric') || shape.includes('drum') || shape.includes('pleat')) mat = c.mat('lamp-shade', { color });
   else mat = c.mat(p.material || (shape.includes('brass') ? 'metal-brass' : 'metal-black'), { color: p.material ? undefined : color === '#F3EEE4' ? undefined : color });

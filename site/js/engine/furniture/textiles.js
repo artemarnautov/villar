@@ -105,7 +105,7 @@ export function curtains(c) {
   });
   // ceiling track (one per layer)
   const metal = c.mat(p.track || 'metal-white');
-  for (let li = 0; li < nL; li++) b.add(new THREE.BoxGeometry(span, 0.022, 0.026), metal, { pos: [0, H - 0.011, nL > 1 ? (li - (nL - 1) / 2) * -0.06 : 0], cast: false });
+  for (let li = 0; li < nL; li++) b.add(softBox(span, 0.022, 0.026, { r: 0.003, seg: 2 }), metal, { pos: [0, H - 0.011, nL > 1 ? (li - (nL - 1) / 2) * -0.06 : 0], cast: false });
   return { group: b.build('curtains') };
 }
 

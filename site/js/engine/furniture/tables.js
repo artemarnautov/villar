@@ -257,12 +257,12 @@ function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat'
       const w = cw - reveal * 2, h = ch - reveal * 2;
       if (cell.type === 'open') {
         b.add(softBox(cw, 0.014, bodyD - 0.02, { r: 0.002, seg: 1 }), wood, { pos: [cx, y - ch + 0.007, bz] });
-        b.add(new THREE.BoxGeometry(cw, ch, 0.006), wood, { pos: [cx, cy, -D / 2 + 0.016] });
+        b.add(softBox(cw, ch, 0.006, { r: 0.0015, seg: 1 }), wood, { pos: [cx, cy, -D / 2 + 0.016] });
       } else {
         // dark shadow plane behind the reveals of closed fronts
         b.add(new THREE.BoxGeometry(cw, ch, 0.004), recess, { pos: [cx, cy, D / 2 - frontT - 0.015] });
         if (front === 'fluted') {
-          b.add(new THREE.BoxGeometry(w, h, frontT * 0.6), wood, { pos: [cx, cy, zf - frontT * 0.2] });
+          b.add(softBox(w, h, frontT * 0.6, { r: 0.002, seg: 2 }), wood, { pos: [cx, cy, zf - frontT * 0.2] });
           addFlutes(b, wood, { cx, cy, z: zf + frontT * 0.1, w, h, pitch: 0.026, depth: 0.007 });
         } else if (front === 'slatted' && cell.type === 'door') {
           b.add(new THREE.BoxGeometry(w, h, frontT * 0.5), dark, { pos: [cx, cy, zf - frontT * 0.25] });
@@ -277,7 +277,8 @@ function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat'
           b.add(new THREE.PlaneGeometry(w - 2 * fr + 0.004, h - 2 * fr + 0.004), c.mat('cane'), { pos: [cx, cy, zf + 0.002] });
           b.add(new THREE.BoxGeometry(w - 2 * fr, h - 2 * fr, 0.004), dark, { pos: [cx, cy, zf - frontT / 2 + 0.002] });
         } else {
-          b.add(softBox(w, h, frontT, { r: 0.0015, seg: 2 }), frontWood, { pos: [cx, cy, zf] });
+          // 2.5 mm eased edges: each front catches its own specular line (lever 3)
+          b.add(softBox(w, h, frontT, { r: 0.0025, seg: 2 }), frontWood, { pos: [cx, cy, zf] });
         }
         // handle
         const ht = handles || 'none';
@@ -292,7 +293,7 @@ function cabinet(c, { W, D, H, layout, legType, woodKey, handles, front = 'flat'
       y -= ch;
     });
     // column divider
-    if (ci < layout.length - 1) b.add(new THREE.BoxGeometry(panelT, fh, bodyD - 0.02), wood, { pos: [x + cw, fy0 + fh / 2, bz] });
+    if (ci < layout.length - 1) b.add(softBox(panelT, fh, bodyD - 0.02, { r: 0.002, seg: 1 }), wood, { pos: [x + cw, fy0 + fh / 2, bz], axis: 'y' });
     x += cw;
   });
   // legs

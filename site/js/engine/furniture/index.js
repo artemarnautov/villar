@@ -443,6 +443,13 @@ setArtRenderer((opts) => {
   const o = {}; for (const [k, v] of Object.entries(opts || {})) if (v === null || ['string', 'number', 'boolean'].includes(typeof v) || Array.isArray(v)) o[k] = v;
   return remote({ art: o }).then((r) => { if (r && r.art) return r.art; if (r && /OffscreenCanvas|getContext/.test(r.error || '')) ART_WORKER_OK = false; throw new Error(r?.error || 'art'); });
 });
+/** Unique material descriptors of a worker build tree (in tree order). */
+function matsOf(n, out = new Map()) {
+  if (n.m && n.mat) { const id = n.mat.key + '|' + JSON.stringify(n.mat.opts || {}); if (!out.has(id)) out.set(id, n.mat); }
+  for (const ch of n.c || []) matsOf(ch, out);
+  return out;
+}
+
 /** Re-assemble a worker build tree with the real materials (same materials.get calls as a direct build). */
 function fromTree(n, materials, root = true) {
   let o;
@@ -519,6 +526,14 @@ export function prebuildItems(items, ctx = {}, { budget = 8, shouldYield = null,
       //    ms per vertex) fits what is left — a big one waits for a fresh slice, and runs alone there
       let first = true;
       while (ready.length && left() > 0.3) {
+        // 0) the item's NEW materials first, one materials.get per check: a first-time material allocates its texture
+        //    bundle (up to ≈ 7 ms) — done in their own slices they never stack on top of the re-assembly
+        const head = ready[0];
+        if (head.r && head.r.tree) {
+          if (!head.mats) head.mats = [...matsOf(head.r.tree).values()];
+          while (head.mats.length && left() > 0.3) { const d = head.mats.shift(); try { ctx.materials.get(d.key, d.opts); } catch { /* fromTree reports */ } first = false; }
+          if (head.mats.length) break;
+        }
         const est = (ready[0].r?.verts || 0) * MS_PER_VERT;
         if (!first && est > left()) break;
         if (first && est > left() && left() < budget * 0.9) break; // a fresh, emptier slice comes next

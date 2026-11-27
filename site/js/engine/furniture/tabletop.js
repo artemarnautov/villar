@@ -475,8 +475,11 @@ export function addStems(b, c, { kind, n, x0, y0, z0, H, spread, r, leafColor = 
 /** Candle flame: tiny glowing lathe + its light descriptor (glows only while the lamps are on). */
 export function addFlame(b, c, x, y, z, lights) {
   b.add(new THREE.CylinderGeometry(0.0008, 0.001, 0.012, 5).translate(0, 0.006, 0), c.mat('rubber', { color: '#1d1a17' }), { pos: [x, y, z], uv: 'none', cast: false });
-  const fl = lathe(smoothProfile([[0.001, 0], [0.0035, 0.004], [0.004, 0.009], [0.002, 0.018], [0.001, 0.022]], 10), 10);
-  b.add(fl, c.mat('flame'), { pos: [x, y + 0.008, z], uv: 'none', cast: false });
+  // R3-10: a 1.4 × 3.2 cm teardrop (additive, self-lit) with a smaller hot core inside it, so it reads at evening
+  const fl = lathe(smoothProfile([[0.001, 0], [0.005, 0.006], [0.0068, 0.013], [0.0045, 0.022], [0.0016, 0.029], [0.0004, 0.032]], 14), 12);
+  b.add(fl, c.mat('flame'), { pos: [x, y + 0.006, z], uv: 'none', cast: false });
+  const core = lathe(smoothProfile([[0.001, 0], [0.0028, 0.004], [0.0034, 0.009], [0.0018, 0.016], [0.0005, 0.019]], 10), 10);
+  b.add(core, c.mat('flame', { color: '#fff0c8' }), { pos: [x, y + 0.007, z], uv: 'none', cast: false });
   lights.push({ type: 'point', position: [x, y + 0.02, z], color: '#ffb46b', intensity: 0.06, distance: 1.2, decay: 2, shadow: false, flame: true });
 }
 

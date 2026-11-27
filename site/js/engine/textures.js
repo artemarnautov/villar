@@ -250,13 +250,13 @@ const post = () => (channel ? channel.port2.postMessage(0) : setTimeout(runQueue
 
 export function setTextureSync(v) { SYNC = !!v; }
 /** Textures still generating (procedural queue + artworks being painted). */
-export function pendingTextures() { return QUEUE.length + ART_PENDING; }
+export function pendingTextures() { return QUEUE.length + ART_PENDING + SCAN_PENDING; }
 export function whenTexturesReady() {
-  if (!QUEUE.length && !ART_PENDING) return Promise.resolve();
+  if (!QUEUE.length && !ART_PENDING && !SCAN_PENDING) return Promise.resolve();
   return new Promise((res) => IDLE_WAITERS.push(res));
 }
 function settle() {
-  if (QUEUE.length || ART_PENDING || !IDLE_WAITERS.length) return;
+  if (QUEUE.length || ART_PENDING || SCAN_PENDING || !IDLE_WAITERS.length) return;
   const w = IDLE_WAITERS; IDLE_WAITERS = []; w.forEach((f) => f());
 }
 export function flushTextures() {
@@ -277,10 +277,171 @@ function runQueue() {
   if (QUEUE.length) post();
   else { RUNNING = false; settle(); }
 }
-function enqueue(job) {
+function enqueue(job, front = false) {
   if (SYNC) { while (!job.step(1e9)); job.finish(); return; }
-  QUEUE.push(job);
+  // photoscan uploads jump the queue: one short step each, and they make procedural work still queued for the same
+  // materials moot (front jobs go right after the job currently running, never interrupt it)
+  if (front && QUEUE.length) QUEUE.splice(1, 0, job); else QUEUE.push(job);
   if (!RUNNING) { RUNNING = true; post(); }
+}
+
+// ---------------------------------------------------------------- photoscanned sets (PHOTOREAL lever 2)
+//
+// CC0 scans prepared by tools/materials-prep.mjs → site/assets/materials/index.json. A set is fetched the first time
+// a material asks for it (so a style only downloads what it shows), decoded off the main thread (createImageBitmap),
+// uploaded one texture per queue slice (setScanUploader → renderer.initTexture: no upload spike in a frame), then
+// handed to the materials (bundle.onReady), which swap it in for their procedural maps — same slots, same shader.
+// The procedural maps stay the instant fallback (and the permanent one if a fetch fails or `?scans=0`).
+// After upload the bitmaps are closed; the JPEG blobs are kept so a WebGL context restore re-decodes them (T4).
+// Files are stored vertically flipped (row 0 = v 0) → flipY = false, exactly like the DataTextures.
+
+const SCAN_URL = new URL('../../assets/materials/', import.meta.url);
+let SCAN_ON = !(typeof location !== 'undefined' && /[?&]scans=0\b/.test(location.search || ''));
+let SCAN_MAX = 1024;
+let SCAN_INDEX = null;
+let SCAN_PENDING = 0;
+let UPLOAD = null;
+const SCAN_STATS = { sets: 0, files: 0, bytes: 0, decoded: 0, maxDecode: 0, failed: 0, uploads: 0, maxUpload: 0, ids: [] };
+/** Photoscans on/off (default on; `?scans=0` turns them off for A/B frames). */
+export function setScansEnabled(v) { SCAN_ON = !!v; }
+export function scansEnabled() { return SCAN_ON && typeof fetch === 'function' && typeof createImageBitmap === 'function'; }
+/** Largest scan size to load: 2048 high tier (where a 2K file exists), 1024 medium, 512 low. */
+export function setScanTier(maxSize) { SCAN_MAX = maxSize; }
+/** fn(texture) uploads a texture now (renderer.initTexture); without it textures upload at first use. */
+export function setScanUploader(fn) { UPLOAD = fn; }
+/** Download / upload counters (QA, budgets). */
+export function scanStats() { return { ...SCAN_STATS, ids: SCAN_STATS.ids.slice(), pending: SCAN_PENDING }; }
+function scanIndex() {
+  if (!SCAN_INDEX) SCAN_INDEX = fetch(new URL('index.json', SCAN_URL)).then((r) => { if (!r.ok) throw new Error('index.json ' + r.status); return r.json(); });
+  return SCAN_INDEX;
+}
+async function decodeScan(blob) {
+  try { return await createImageBitmap(blob, { premultiplyAlpha: 'none', colorSpaceConversion: 'none' }); } catch { return createImageBitmap(blob); }
+}
+function scanTexture(bmp, srgb, tile, name) {
+  const t = new THREE.Texture(bmp);
+  t.name = 'scan:' + name;
+  t.flipY = false;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.magFilter = THREE.LinearFilter;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.generateMipmaps = true;
+  t.anisotropy = MAX_ANISO;
+  t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  t.repeat.set(1 / tile[0], 1 / tile[1]);
+  t.onUpdate = healOnUpdate;
+  t.needsUpdate = true;
+  return t;
+}
+/** Upload a list of textures one per queue slice, then drop their CPU bitmaps (kept: the source JPEG blobs). */
+function uploadScans(list, done) {
+  let i = 0;
+  enqueue({
+    step(deadline) {
+      while (i < list.length) {
+        const t = list[i++];
+        if (UPLOAD) {
+          const t0 = performance.now();
+          try { UPLOAD(t); } catch (e) { console.warn('[textures] scan upload', t.name, e && e.message); }
+          const dt = performance.now() - t0;
+          SCAN_STATS.uploads++; if (dt > SCAN_STATS.maxUpload) SCAN_STATS.maxUpload = dt;
+          if (!KEEP_CPU) {
+            const img = t.image;
+            if (img && typeof img.close === 'function') { t.source.data = { width: img.width, height: img.height, data: null }; img.close(); }
+          }
+        }
+        if (performance.now() > deadline) return i >= list.length;
+      }
+      return true;
+    },
+    finish() { done(); },
+  }, true);
+}
+/**
+ * A texture that shares `t`'s GPU storage with its own repeat / offset. Unlike Texture.clone() it does not bump the
+ * shared Source's version, so the pixels are not uploaded again (and a released CPU copy is never needed).
+ */
+export function shareTexture(t, repeat = null, offset = null) {
+  const c = new THREE.Texture();
+  c.source = t.source;
+  for (const k of ['name', 'mapping', 'channel', 'wrapS', 'wrapT', 'magFilter', 'minFilter', 'anisotropy', 'format', 'internalFormat', 'type', 'colorSpace', 'premultiplyAlpha', 'flipY', 'unpackAlignment', 'generateMipmaps', 'onUpdate']) c[k] = t[k];
+  c.repeat.copy(repeat || t.repeat); c.offset.copy(offset || t.offset);
+  c.version = 1; // first bind: initTexture() finds the source's GL texture under the same cache key → no pixel upload
+  return c;
+}
+/**
+ * Photoscanned set `id` (see index.json): returns at once a bundle that fills in when the maps are on the GPU:
+ * { map, normalMap, roughnessMap, alphaMap?, tile, mean, meanRGB, roughMean, mode, done, failed, onReady(cb), ready }.
+ * onReady callbacks never run if the set fails (the procedural maps stay).
+ */
+export function scanTextures(id) {
+  const out = { id, scan: true, done: false, failed: false, tile: [1, 1], mean: 0.5, meanRGB: [0.5, 0.5, 0.5], roughMean: 0.5 };
+  const cbs = []; let resolve;
+  out.ready = new Promise((r) => { resolve = r; });
+  out.onReady = (cb) => { if (out.done) cb(out); else if (!out.failed) cbs.push(cb); };
+  const blobs = {};
+  SCAN_PENDING++;
+  let settled = false;
+  const finish = (ok, why) => {
+    if (settled) return; settled = true;
+    SCAN_PENDING--;
+    if (ok) {
+      out.done = true; SCAN_STATS.sets++; SCAN_STATS.ids.push(id + '@' + out.size);
+      for (const cb of cbs.splice(0)) { try { cb(out); } catch (e) { console.error('[textures] scan swap', id, e); } }
+    } else {
+      out.failed = true; cbs.length = 0; SCAN_STATS.failed++;
+      console.warn('[textures] scan set', id, 'unavailable — keeping the procedural maps:', why);
+    }
+    resolve(out); settle();
+  };
+  // the timeout guards the network + decode only (a busy texture queue must not fail a set that has arrived)
+  const timer = setTimeout(() => finish(false, 'timeout'), 90000);
+  (async () => {
+    const e = (await scanIndex()).sets?.[id];
+    if (!e) throw new Error('not in index.json');
+    let size = Math.min(...e.sizes);
+    for (const s of e.sizes) if (s <= SCAN_MAX && s > size) size = s;
+    const files = e.files[size];
+    Object.assign(out, { tile: e.tile || [1, 1], mean: e.mean, meanRGB: e.meanRGB, roughMean: e.roughMean, mode: e.mode, size, cells: e.cells || 1 });
+    const slots = [['map', 'albedo', true], ['normalMap', 'normal', false], ['roughnessMap', 'rough', false], ['alphaMap', 'alpha', false]].filter(([, k]) => files[k]);
+    await Promise.all(slots.map(async ([slot, k, srgb]) => {
+      const res = await fetch(new URL(files[k], SCAN_URL));
+      if (!res.ok) throw new Error(files[k] + ' ' + res.status);
+      const blob = await res.blob();
+      SCAN_STATS.files++; SCAN_STATS.bytes += blob.size;
+      blobs[slot] = blob;
+      const t0 = performance.now();
+      const bmp = await decodeScan(blob);
+      const dt = performance.now() - t0;
+      SCAN_STATS.decoded++; if (dt > SCAN_STATS.maxDecode) SCAN_STATS.maxDecode = Math.round(dt);
+      out[slot] = scanTexture(bmp, srgb, e.tile || [1, 1], files[k]);
+    }));
+    if (settled) return;
+    clearTimeout(timer);
+    await new Promise((res) => uploadScans(slots.map(([s]) => out[s]), res));
+    finish(true);
+  })().catch((err) => { clearTimeout(timer); finish(false, err && err.message); });
+  // T4: after a context restore re-decode the kept blobs (counted in pendingTextures() until uploaded again)
+  let healing = false;
+  const regen = () => {
+    if (!out.done || healing) return;
+    healing = true; SCAN_PENDING++;
+    const list = [];
+    Promise.all(Object.entries(blobs).map(async ([slot, blob]) => {
+      const t = out[slot]; const bmp = await decodeScan(blob);
+      reallocate(t); t.source.data = bmp; t.needsUpdate = true; list.push(t);
+    }))
+      .then(() => new Promise((res) => uploadScans(list, res)))
+      .catch((e) => console.warn('[textures] scan restore', id, e && e.message))
+      .finally(() => { healing = false; SCAN_PENDING--; settle(); });
+  };
+  out.ready.then(() => {
+    if (!out.done) return;
+    regen.textures = ['map', 'normalMap', 'roughnessMap', 'alphaMap'].map((s) => out[s]).filter(Boolean);
+    for (const t of regen.textures) HEAL.set(t.source, regen);
+    REGEN.add(regen);
+  });
+  return out;
 }
 
 /**
