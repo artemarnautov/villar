@@ -273,7 +273,8 @@ async function develop({ req, auth, db, st, items, frame, frameSize, frameUrl = 
   const ab = !named && tier === 'default' ? abModel(keyFor((models[0] || { id: 'none' }).id, st)) : null;
   const abCfg = ab ? modelConfig(ab) : null;
   if (abCfg && avail[abCfg.provider]) models = [abCfg, ...models.filter((m) => m.id !== ab)];
-  const fits = (m) => !m.aspects || m.aspects.includes(st.aspect);
+  // admin experiments may use a model that only answers 'auto' for this shape (it follows the input frame)
+  const fits = (m) => !m.aspects || m.aspects.includes(st.aspect) || (admin && head && m.aspects.includes('auto'));
   for (const m of models.filter((x) => !fits(x))) trace.push({ provider: m.provider, model: m.id, status: null, code: 'aspect', detail: `cannot return ${st.aspect}` });
   models = models.filter(fits);
   if (!models.length) { const e = new GatewayError('unavailable', 'no model available for this frame (keys missing, breakers open, or no model with this aspect ratio)'); e.trace = trace; throw e; }
