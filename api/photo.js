@@ -670,10 +670,13 @@ export default async function handler(req, res) {
   // every model's key is looked up (a photo from any provider is a valid hit); the first usable model's key leads
   const primary = (modelList(tier, usable(req))[0] || modelList(tier)[0]).id;
   const keys = [...new Set([primary, ...modelList(tier).map((m) => m.id)])].map((id) => keyFor(id, st));
+  // a 2K screen is served a stored 4K photo of the same view (and a 4K screen a 2K one before nothing): same picture
+  const other = { ...st, size: st.size === '4K' ? '2K' : '4K' };
+  const lookupKeys = [...keys, ...[...new Set([primary, ...modelList(tier).map((m) => m.id)])].map((id) => keyFor(id, other))];
 
   if (op === 'lookup') {
     if (lookupLimited(ipH)) return send(res, 200, { error: 'rate_limited' });
-    const found = await lookup(db, keys);
+    const found = await lookup(db, lookupKeys);
     if (found.error) return send(res, 200, { error: found.error });
     if (found.row) return send(res, 200, { hit: true, url: db.publicUrl(found.row.path), key: found.row.key, model: found.row.model, ms: Date.now() - t0, w: found.row.width, h: found.row.height });
     if (found.pending) return send(res, 200, { hit: false, pending: true, key: found.pending.key, retryAfter: 3 });
