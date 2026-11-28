@@ -336,7 +336,10 @@ export async function runLoopJob(db, job, { t0 = Date.now(), trace = [] } = {}) 
   const frame = plate ? db.publicUrl(plate.path) : 'https://example.com/plate.jpg';
   const rules = src ? LOOP_RULES.replace('Only sky, nothing enters the frame.', 'Nothing enters the frame.') : LOOP_RULES;
   const body = lm.body(frame, `${src ? ROOM_LOOP : LOOP_PROMPT[time]} ${rules}`, { duration: Number.isFinite(Number(p.duration)) ? Math.round(Number(p.duration)) : 8, mode: p.mode, resolution: p.resolution });
-  const usd = await hfEstimate(path, body, model.id).catch((e) => { trace.push(attemptOf(model, e)); throw e; });
+  // the provider answers per-second video models with a price description, not a number: use its published rates
+  const RATE = { kling_o3: { std: 0.0683, pro: 0.086 }, wan_3: { '480p': 0.0375, '720p': 0.075, '1080p': 0.15 } };
+  const fallback = () => { const r = RATE[name]?.[name === 'wan_3' ? body.resolution : body.mode]; return r ? +(r * (body.duration || 5)).toFixed(3) : null; };
+  const usd = await hfEstimate(path, body, model.id).catch((e) => { const f = fallback(); if (f != null) return f; trace.push(attemptOf(model, e)); throw e; });
   const { prompt: _p, ...shape } = body;
   if (p.dry === true) return { done: true, cost: 0, result: { dry: true, time, model: name, path, usd, body: { ...shape, ...(plate ? {} : { note: 'plate not stored yet: placeholder frame URL' }) } } };
   const limit = Number.isFinite(Number(p.maxUsd)) && Number(p.maxUsd) > 0 ? Math.min(10, Number(p.maxUsd)) : maxUsd(false);
