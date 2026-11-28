@@ -7031,7 +7031,7 @@
     "dark-walnut"
    ],
    "edition": true,
-   "image": "art/art-ed-dw-ink-field-c2.jpg",
+   "image": "art/art-ed-dw-ink-field.jpg",
    "model": {
     "archetype": "wall_art",
     "params": {
@@ -7464,7 +7464,7 @@
     "light-oak"
    ],
    "edition": true,
-   "image": "art/art-ed-lo-winter-light-c2.jpg",
+   "image": "art/art-ed-lo-winter-light.jpg",
    "model": {
     "archetype": "wall_art",
     "params": {
@@ -7649,7 +7649,7 @@
     "greige-luxe"
    ],
    "edition": true,
-   "image": "art/art-ed-gl-hush-c2.jpg",
+   "image": "art/art-ed-gl-hush.jpg",
    "model": {
     "archetype": "wall_art",
     "params": {
@@ -7788,7 +7788,7 @@
     "greige-luxe"
    ],
    "edition": true,
-   "image": "art/art-ed-gl-layers-c2.jpg",
+   "image": "art/art-ed-gl-layers.jpg",
    "model": {
     "archetype": "wall_art",
     "params": {
@@ -7942,7 +7942,7 @@
     "mediterranean"
    ],
    "edition": true,
-   "image": "art/art-ed-med-olive-grove-c2.jpg",
+   "image": "art/art-ed-med-olive-grove.jpg",
    "model": {
     "archetype": "wall_art",
     "params": {
@@ -8036,7 +8036,7 @@
     "mediterranean"
    ],
    "edition": true,
-   "image": "art/art-ed-med-arch-shade-c2.jpg",
+   "image": "art/art-ed-med-arch-shade.jpg",
    "model": {
     "archetype": "wall_art",
     "params": {

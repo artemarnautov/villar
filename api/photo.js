@@ -327,6 +327,14 @@ const jobUsd = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Math.min(5,
 async function runEditionJob(db, job, { req, t0, trace }) {
   const p = job.params || {};
   const id = typeof p.id === 'string' && /^[a-z0-9-]{3,60}$/.test(p.id) ? p.id : null;
+  // promote: make candidate N the published image art/<id>.jpg (a server-side copy, nothing is generated)
+  if (Number.isInteger(p.promote) && p.promote >= 1 && p.promote <= 4) {
+    if (!id) throw new GatewayError('rejected', 'edition promote: params.id is invalid');
+    const from = `art/${id}-c${p.promote}.jpg`;
+    if (!(await db.exists(from))) throw new GatewayError('rejected', `edition promote: ${from} does not exist`);
+    await db.copy(from, `art/${id}.jpg`);
+    return { done: true, result: { id, promoted: p.promote, image: `art/${id}.jpg`, url: db.publicUrl(`art/${id}.jpg`) }, cost: 0 };
+  }
   const style = typeof p.style === 'string' && STYLES_RE.test(p.style) ? p.style : null;
   const brief = typeof p.prompt === 'string' ? p.prompt.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 800) : '';
   const palette = (Array.isArray(p.palette) ? p.palette : []).filter((h) => /^#[0-9a-f]{6}$/i.test(h)).slice(0, 6);
