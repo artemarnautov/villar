@@ -293,18 +293,22 @@ const LOOP_RULES = 'Locked-off camera on a tripod: no camera movement, no zoom, 
 const MAX_VIDEO = 40 * 1024 * 1024;
 
 /** One step of a `loop` job: params { time, model?: 'kling_o3' | 'wan_3', duration? (8), mode?, resolution?, dry?, maxUsd?, replace? }. */
+// A living room photo: params.src is a stored photo (v1/… or preset/…); the room stays still, only air and light move.
+const ROOM_LOOP = 'The same room, alive and almost still, like a real video shot on a tripod: the sheer curtains sway very gently in a soft breeze, the leaves of the indoor tree tremble faintly, the clouds outside drift slowly, the light breathes almost imperceptibly. Every object stays exactly in place; nothing appears, disappears or changes shape; no people.';
+const SRC_RE = /^(v1|preset)\/[a-f0-9]{2}\/[a-f0-9]{64}-[a-f0-9]{8}\.jpg$/;
 export async function runLoopJob(db, job, { t0 = Date.now(), trace = [] } = {}) {
   const p = job.params || {};
-  const time = TIMES[String(p.time || '')];
-  if (!time) throw new GatewayError('rejected', 'loop: params.time must be day, sunset or evening');
+  const src = typeof p.src === 'string' && SRC_RE.test(p.src) ? p.src : null;
+  const time = src ? 'room' : TIMES[String(p.time || '')];
+  if (!time) throw new GatewayError('rejected', 'loop: params.time must be day, sunset or evening (or params.src a stored photo)');
   const name = p.model == null ? 'kling_o3' : String(p.model).replace(/^higgsfield:/, '');
   const lm = LOOP_MODELS[name];
   if (!lm) throw new GatewayError('rejected', `loop: unknown model ${String(p.model).slice(0, 40)} (kling_o3 or wan_3)`);
   const o = liveConfig().models?.[name] || {};
   const path = typeof o.path === 'string' && /^[a-zA-Z0-9._/-]{3,120}$/.test(o.path) ? o.path : lm.path;
   const model = { id: `higgsfield:${name}`, provider: 'higgsfield' };
-  const key = plateKey(time, 'loop');
-  const rows = await readRows(db, [plateKey(time), key]);
+  const key = src ? `living:${src.split('/').pop().slice(0, 64)}` : plateKey(time, 'loop');
+  const rows = await readRows(db, src ? [key] : [plateKey(time), key]);
   const have = rows.get(key);
   const store = async (st, requestId, usd) => {
     const url = st.video?.url;
@@ -313,10 +317,10 @@ export async function runLoopJob(db, job, { t0 = Date.now(), trace = [] } = {}) 
     if (!r.ok || !r.body) throw new GatewayError('gateway', `loop: video download HTTP ${r.status}`);
     const size = Number(r.headers.get('content-length')) || null;
     if (size && size > MAX_VIDEO) throw new GatewayError('rejected', `loop: the video is ${(size / 1048576).toFixed(1)} MB (limit 40 MB)`);
-    const out = `plates/${PLATE_VERSION}/${time}-loop-${randomBytes(4).toString('hex')}.mp4`;
+    const out = src ? `living/${src.split('/').pop().slice(0, 16)}-${randomBytes(4).toString('hex')}.mp4` : `plates/${PLATE_VERSION}/${time}-loop-${randomBytes(4).toString('hex')}.mp4`;
     await db.putStream(out, r.body, 'video/mp4', { upsert: true, maxAge: 31536000 });
     const cost = Number.isFinite(usd) && usd > 0 ? usd : null;
-    await db.upsertRow({ key, path: out, kind: 'plate-video', source: 'plate', status: 'ok', model: model.id, provider: 'higgsfield', request_id: requestId, prompt_version: PLATE_VERSION, time_of_day: time, bytes: size, cost_usd: cost, refs: 1, updated_at: new Date().toISOString() });
+    await db.upsertRow({ key, path: out, kind: 'plate-video', source: 'plate', status: 'ok', model: model.id, provider: 'higgsfield', request_id: requestId, prompt_version: PLATE_VERSION, time_of_day: src ? null : time, bytes: size, cost_usd: cost, refs: 1, updated_at: new Date().toISOString() });
     console.info(JSON.stringify({ ev: 'plate.loop', time, model: model.id, usd: cost, bytes: size }));
     return { done: true, cost, result: { time, url: db.publicUrl(out), model: name, usd: cost, request_id: requestId, bytes: size } };
   };
@@ -327,10 +331,11 @@ export async function runLoopJob(db, job, { t0 = Date.now(), trace = [] } = {}) 
     return { pending: true, result: { request_id: job.result.request_id, status: st?.status || null } };
   }
   if (have && !p.replace && !p.dry) return { done: true, cost: 0, result: { time, url: db.publicUrl(have.path), model: have.model, cached: true } };
-  const plate = rows.get(plateKey(time));
+  const plate = src ? { path: src } : rows.get(plateKey(time));
   if (!plate && !p.dry) throw new GatewayError('rejected', `loop: the ${time} plate is not stored yet (run the plate job first)`);
   const frame = plate ? db.publicUrl(plate.path) : 'https://example.com/plate.jpg';
-  const body = lm.body(frame, `${LOOP_PROMPT[time]} ${LOOP_RULES}`, { duration: Number.isFinite(Number(p.duration)) ? Math.round(Number(p.duration)) : 8, mode: p.mode, resolution: p.resolution });
+  const rules = src ? LOOP_RULES.replace('Only sky, nothing enters the frame.', 'Nothing enters the frame.') : LOOP_RULES;
+  const body = lm.body(frame, `${src ? ROOM_LOOP : LOOP_PROMPT[time]} ${rules}`, { duration: Number.isFinite(Number(p.duration)) ? Math.round(Number(p.duration)) : 8, mode: p.mode, resolution: p.resolution });
   const usd = await hfEstimate(path, body, model.id).catch((e) => { trace.push(attemptOf(model, e)); throw e; });
   const { prompt: _p, ...shape } = body;
   if (p.dry === true) return { done: true, cost: 0, result: { dry: true, time, model: name, path, usd, body: { ...shape, ...(plate ? {} : { note: 'plate not stored yet: placeholder frame URL' }) } } };
