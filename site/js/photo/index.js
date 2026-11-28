@@ -279,11 +279,11 @@ export async function mountPhoto({ root, store, stage }) {
     else if (++S.fails >= 3) { S.offUntil = now() + 10 * 60e3; S.fails = 0; }
   }
 
-  /** An async provider job: poll until it lands (≤ 2 min), whether or not the user is still looking. */
+  /** An async provider job: poll until it lands (≤ 6 min: a 4K re-shoot can queue for minutes), whether or not the user is still looking. */
   async function waitJob(first, rec) {
     let r = first;
     const t0 = now();
-    while (r?.pending && r.key && now() - t0 < 120000) {
+    while (r?.pending && r.key && now() - t0 < 360000) {
       await new Promise((res) => setTimeout(res, Math.max(1500, Math.min(8000, (r.retryAfter || 3) * 1000))));
       r = await transport.poll(r.key);
       rec.polls = (rec.polls || 0) + 1;
