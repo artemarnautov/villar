@@ -85,8 +85,9 @@ export function cleanState(s) {
   return { state: { style, time, pose: s.pose, aspect, size, selection, selHash } };
 }
 
-export function keyFor(modelId, st) {
-  return sha256([KEY_VERSION, modelId, PROMPT_VERSION, st.style, st.selHash, st.pose, st.time, st.size, st.aspect].join('|'));
+export function keyFor(modelId, st, exp = null) {
+  // exp: an admin experiment (prompt override) gets its own key, so it can never be served to a visitor's lookup
+  return sha256([KEY_VERSION, modelId, PROMPT_VERSION, st.style, st.selHash, st.pose, st.time, st.size, st.aspect, ...(exp ? [exp] : [])].join('|'));
 }
 
 /** Visible items: in the catalog, in the selection; ranked as sent; ≤ 24. */
@@ -116,9 +117,9 @@ function describe(it) {
  * The instruction (ART §2, prompt version v1): the fixed skeleton, then fixed style / light / grade vocabulary, then
  * one line per reference item. Supplier names never appear: names, colours and materials come from the public catalog.
  */
-export function buildPrompt({ time, style = null, refs, inline = false, closeUp = false }) {
+export function buildPrompt({ time, style = null, refs, inline = false, closeUp = false, head = null }) {
   const lens = closeUp ? '85 mm lens, f/2.8 with the room softly out of focus behind the item' : '35 mm lens, f/5.6';
-  const lines = [
+  const lines = head ? [head] : [
     `Photograph of this exact interior. Keep the camera, framing and every object exactly as shown: same shapes, colours, materials and positions; add, remove or move nothing. Make it a real architectural photograph: natural window light with soft falloff, true contact shadows, real fabric weave and wrinkles, wood grain, subtle imperfections, ${lens}, fine film grain. The view through the window stays exactly as shown.`,
     `${LIGHT_WORDS[time] || LIGHT_WORDS.day} ${STYLE_WORDS[style] || ''} ${GRADE_WORDS}`.replace(/\s+/g, ' ').trim(),
     'Do not crop, zoom, rotate or reframe; if image 1 has soft blurred bands along an edge, continue the room there.',
@@ -198,7 +199,7 @@ async function refundQuota(db, subj) {
 /** Transcode, store in Storage, write the index row + the cost line. Returns the public response. */
 async function storeResult(db, { model, key, meta, bytes, genMs, refs, admin, t0, usage = null }) {
   let img;
-  try { img = toStorableJpeg(bytes, { maxEdge: meta.size === '1K' ? 1440 : 2560, quality: 86 }); }
+  try { img = toStorableJpeg(bytes, { maxEdge: meta.size === '1K' ? 1440 : meta.size === '4K' ? 3840 : 2560, quality: meta.size === '4K' ? 90 : 86 }); }
   catch (e) { throw new GatewayError('empty', `unusable image from ${model.id}: ${e.message}`, 0, model.provider); }
   const path = objectPath(admin ? 'preset' : 'v1', key, img.type === 'image/webp' ? 'webp' : 'jpg');
   await db.put(path, img.bytes, img.type);
@@ -265,7 +266,8 @@ function webhookUrl(req) {
  * Only models that can return exactly the frame's aspect ratio are tried (another shape would fail the client's
  * structural check, and that photo would be paid for nothing).
  */
-async function develop({ req, auth, db, st, items, frame, frameSize, frameUrl = null, tier, session, ipH, t0, admin, named = null, dry = false, trace = [], limitUsd = null }) {
+async function develop({ req, auth, db, st, items, frame, frameSize, frameUrl = null, tier, session, ipH, t0, admin, named = null, dry = false, trace = [], limitUsd = null, head = null, noRefs = false }) {
+  const exp = head ? `x:${sha256(head).slice(0, 16)}${noRefs ? ':n' : ''}` : null;
   const avail = usable(req);
   let models = pickModels(tier, avail, named);
   const ab = !named && tier === 'default' ? abModel(keyFor((models[0] || { id: 'none' }).id, st)) : null;
@@ -283,11 +285,11 @@ async function develop({ req, auth, db, st, items, frame, frameSize, frameUrl = 
   const makeOpts = (model, n, lastErr) => {
     // a second try only when the first was rejected with reference photos (an unreachable image, too many inputs)
     if (n > 1 || (n === 1 && !(lastErr instanceof GatewayError && lastErr.code === 'rejected' && used.get(model.id)?.length))) return null;
-    const refs = n === 0 ? refImages(items, model, { selection: st.selection, db, ready }) : [];
+    const refs = n === 0 && !noRefs ? refImages(items, model, { selection: st.selection, db, ready }) : [];
     used.set(model.id, refs);
-    const key = keyFor(model.id, st);
+    const key = keyFor(model.id, st, exp);
     return {
-      auth, prompt: buildPrompt({ time: st.time, style: st.style, refs, inline: model.provider === 'higgsfield', closeUp: /;o:/.test(st.pose) }),
+      auth, prompt: buildPrompt({ time: st.time, style: st.style, refs, inline: model.provider === 'higgsfield', closeUp: /;o:/.test(st.pose), head }),
       images: [frameImg, ...refs], aspectRatio: model.aspects ? st.aspect : null, imageSize: bestSize(model, st.size),
       width: frameSize.width, height: frameSize.height, timeoutMs: Math.max(5000, Math.min(45_000, deadlineAt - Date.now() - 3000)),
       deadlineAt: deadlineAt - 4000, idempotencyKey: `${key.slice(0, 32)}-${n}`, webhook: webhookUrl(req), seed: parseInt(key.slice(0, 7), 16),
@@ -298,7 +300,7 @@ async function develop({ req, auth, db, st, items, frame, frameSize, frameUrl = 
   if (env('PHOTO_PROVIDER') === 'stub') return storeResult(db, { model: models[0], key: keyFor(models[0].id, st), meta, bytes: frame, genMs: 0, refs: 0, admin, t0 }); // tests, offline
   const t1 = Date.now();
   const { model, out } = await tryModels(models, makeOpts, { trace, deadlineAt });
-  const key = keyFor(model.id, st);
+  const key = keyFor(model.id, st, exp);
   const refs = used.get(model.id)?.length || 0;
   const m2 = { ...meta, size: bestSize(model, st.size), estimate: out.pending ? out.pending.estimate : out.estimate, request_id: out.pending ? out.pending.requestId : out.requestId || null };
   if (out.pending) return { ...(await storePending(db, { model, key, meta: m2, requestId: out.pending.requestId, refs, admin })), model: model.id, usd: m2.estimate ?? null, request_id: out.pending.requestId };
@@ -413,7 +415,8 @@ async function runHeroJob(db, job, { req, t0, trace }) {
   st.size = ['1K', '2K', '4K'].includes(p.size) ? p.size : meta.state.size || '2K';
   const frameSize = jpegSize(frame);
   const items = cleanItems(meta.items, st);
-  const out = await develop({ req, auth: authToken(req), db, st, items, frame, frameSize, frameUrl: db.publicUrl(`frames/${from}.jpg`), tier, session: null, ipH: null, t0, admin: true, named: p.model || null, dry: p.dry === true, trace, limitUsd: jobUsd(p.maxUsd) });
+  const head = typeof p.prompt === 'string' && p.prompt.length >= 40 && p.prompt.length <= 4000 ? p.prompt : null; // experiments only
+  const out = await develop({ req, auth: authToken(req), db, st, items, frame, frameSize, frameUrl: db.publicUrl(`frames/${from}.jpg`), tier, session: null, ipH: null, t0, admin: true, named: p.model || null, dry: p.dry === true, trace, limitUsd: jobUsd(p.maxUsd), head, noRefs: p.refs === false });
   if (out.dry) return { done: true, result: { dry: true, from, estimates: out.estimates }, cost: 0 };
   if (out.pending) return { pending: true, result: { key: out.key, model: out.model, estimate: out.usd ?? null, request_id: out.request_id || null } };
   return { done: true, result: { key: out.key, url: out.url, model: out.model, usd: out.usd ?? null, request_id: out.request_id || null }, cost: out.usd ?? null };
@@ -506,6 +509,13 @@ const PROBE_PATHS = [
   ['google/nano-banana-2/edit', 'edit'], ['google/nano-banana-2.1/edit', 'edit'], ['google/nano-banana-2.1/text-to-image', 't2i'],
   ['bytedance/seedream/v4/edit', 'edit'], ['bytedance/seedream/v4/text-to-image', 't2i'], ['bytedance/seedream/v4.5/edit', 'edit'], ['bytedance/seedream-5.0/edit', 'edit'], ['bytedance/seedream-5.5/edit', 'edit'], ['bytedance/seedream/v5.5/edit', 'edit'],
   ['openai/gpt-image-2/edit', 'edit'], ['openai/gpt-image-2.6/edit', 'edit'], ['black-forest-labs/flux/v2', 'edit'], ['bfl/flux-2/pro/edit', 'edit'], ['flux-pro/kontext/max/text-to-image', 't2i'],
+  // more guesses (the public API lists Seedream 5.0 Pro, Kling Image 4.0, Soul 2 by name; paths unknown)
+  ['bytedance/seedream-5.0-pro/edit', 'edit'], ['bytedance/seedream/v5/pro/edit', 'edit'], ['bytedance/seedream/v5-pro/edit', 'edit'], ['bytedance/seedream-5-pro/edit', 'edit'], ['bytedance/seedream/v5/edit', 'edit'], ['bytedance/seedream-5.0/pro/edit', 'edit'], ['bytedance/seedream-v5-pro/edit', 'edit'], ['bytedance/seedream-5.0-pro', 'edit'], ['bytedance/seedream/v5/pro', 'edit'], ['bytedance/seedream/v5.0/pro/edit', 'edit'], ['bytedance/seedream/v4/edit', 'edit'],
+  ['kling-image/v4.0', 'edit'], ['kling-image/v4.0/edit', 'edit'], ['kling-image/v4.0/image-to-image', 'edit'], ['kling-image/4.0', 'edit'], ['kling/image-4.0', 'edit'], ['kling/image/v4.0', 'edit'], ['kling-image/o1', 'edit'], ['kling-image/v4', 'edit'], ['kling-image/v4.0/text-to-image', 't2i'], ['kwaivgi/kling-image/v4.0', 'edit'], ['kling-ai/image/v4.0', 'edit'],
+  ['higgsfield-ai/soul/reference', 'edit'], ['higgsfield-ai/soul/v2/reference', 'edit'], ['higgsfield-ai/soul/standard', 't2i'], ['higgsfield-ai/soul/v2/edit', 'edit'],
+  ['openai/gpt-image-2', 'edit'], ['openai/gpt-image-2.6', 'edit'], ['openai/gpt-image-2.5', 'edit'], ['openai/gpt-image-2/image-to-image', 'edit'], ['gpt-image-2/edit', 'edit'], ['openai/gpt-image-1.5/edit', 'edit'],
+  ['black-forest-labs/flux-2/pro/edit', 'edit'], ['black-forest-labs/flux-3/edit', 'edit'], ['bfl/flux-3/edit', 'edit'], ['flux-2/pro/edit', 'edit'], ['flux-kontext/pro', 'edit'], ['flux-pro/kontext/max/edit', 'edit'],
+  ['xai/grok-imagine-image-2.0/edit', 'edit'], ['marketing-studio/image/4k', 'edit'],
   // 3D
   ['tripo/h3.1/multiview-to-3d', 'multi'], ['tripo/h3.1/image-to-3d', 'img1'], ['tripo3d/h3.1/multiview-to-3d', 'multi'], ['tripo/p2/image-to-3d', 'img1'],
   ['tencent/hunyuan3d/v3/image-to-3d', 'multi'], ['hunyuan3d/v3/image-to-3d', 'multi'], ['meshy/v7/image-to-3d', 'img1'], ['meshy/image-to-3d', 'img1'], ['meshy/multi-image-to-3d', 'multi'], ['meta/sam-3/3d-objects', 'img1'], ['sam-3/3d', 'img1'],
