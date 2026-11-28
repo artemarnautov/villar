@@ -132,6 +132,7 @@ export function modelConfig(id) {
     if (Array.isArray(o.sizes)) m.sizes = o.sizes.filter((x) => ['512', '1K', '2K', '4K'].includes(x));
     if (typeof o.quality === 'string' && /^[a-z]{2,10}$/.test(o.quality)) m.quality = o.quality;
     if (o.extra && typeof o.extra === 'object') m.extra = { ...(m.extra || {}), ...o.extra };
+    if (o.refAt === true) m.refAt = true; // the model addresses its inputs as @image_N (Kling Image)
   }
   const c = obj(cfg.cost[id]) || jsonEnv('PHOTO_COST')[id];
   if (c && typeof c === 'object') { m.cost = { ...m.cost, ...c }; m.estimate = false; }

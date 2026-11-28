@@ -117,7 +117,8 @@ function describe(it) {
  * The instruction (ART §2, prompt version v1): the fixed skeleton, then fixed style / light / grade vocabulary, then
  * one line per reference item. Supplier names never appear: names, colours and materials come from the public catalog.
  */
-export function buildPrompt({ time, style = null, refs, inline = false, closeUp = false, head = null }) {
+export function buildPrompt({ time, style = null, refs, inline = false, closeUp = false, head = null, at = false }) {
+  const I = (n) => (at ? `@image_${n}` : `image ${n}`);
   const lens = closeUp ? '85 mm lens, f/2.8 with the room softly out of focus behind the item' : '35 mm lens, f/5.6';
   const lines = head ? [head] : [
     `Photograph of this exact interior. Keep the camera, framing and every object exactly as shown: same shapes, colours, materials and positions; add, remove or move nothing. Make it a real architectural photograph: natural window light with soft falloff, true contact shadows, real fabric weave and wrinkles, wood grain, subtle imperfections, ${lens}, fine film grain. The view through the window stays exactly as shown.`,
@@ -125,10 +126,12 @@ export function buildPrompt({ time, style = null, refs, inline = false, closeUp 
     'Do not crop, zoom, rotate or reframe; if image 1 has soft blurred bands along an edge, continue the room there.',
   ];
   if (refs.length) {
-    lines.push(`Images 2–${refs.length + 1} are product photos of the items below, in this order, for material and detail only: keep each item's shape, size, position and colour from image 1, and ignore their backgrounds.`);
-    if (inline) for (const r of refs) lines.push(r.label);
+    lines.push(at
+      ? `${refs.map((_, i) => I(i + 2)).join(', ')} are product photos of the items below, for material and detail only: keep each item's shape, size, position and colour from ${I(1)}, and ignore their backgrounds.`
+      : `Images 2–${refs.length + 1} are product photos of the items below, in this order, for material and detail only: keep each item's shape, size, position and colour from image 1, and ignore their backgrounds.`);
+    if (inline) for (const r of refs) lines.push(at ? r.label.replace(/^Image (\d+)/, '@image_$1') : r.label);
   }
-  lines.push('Return one photograph with the same aspect ratio as image 1. No text, no watermark, no border.');
+  lines.push(`Return one photograph with the same aspect ratio as ${I(1)}. No text, no watermark, no border.`);
   return lines.join('\n');
 }
 
@@ -290,7 +293,7 @@ async function develop({ req, auth, db, st, items, frame, frameSize, frameUrl = 
     used.set(model.id, refs);
     const key = keyFor(model.id, st, exp);
     return {
-      auth, prompt: buildPrompt({ time: st.time, style: st.style, refs, inline: model.provider === 'higgsfield', closeUp: /;o:/.test(st.pose), head }),
+      auth, prompt: buildPrompt({ time: st.time, style: st.style, refs, inline: model.provider === 'higgsfield', closeUp: /;o:/.test(st.pose), head, at: model.refAt === true }),
       images: [frameImg, ...refs], aspectRatio: model.aspects ? st.aspect : null, imageSize: bestSize(model, st.size),
       width: frameSize.width, height: frameSize.height, timeoutMs: Math.max(5000, Math.min(45_000, deadlineAt - Date.now() - 3000)),
       deadlineAt: deadlineAt - 4000, idempotencyKey: `${key.slice(0, 32)}-${n}`, webhook: webhookUrl(req), seed: parseInt(key.slice(0, 7), 16),
