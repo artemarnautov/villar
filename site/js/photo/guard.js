@@ -12,8 +12,9 @@
 export const GUARD = { width: 256, keep: 0.15, minF1: 0.42, shiftMargin: 0.05, minTile: 0.22, maxShift: 10 };
 
 /** Edge map of a region of a drawable (canvas / image / bitmap). */
-export function edgeMap(src, sx, sy, sw, sh, width = GUARD.width) {
-  const w = width, h = Math.max(8, Math.round((width * sh) / sw));
+export function edgeMap(src, sx, sy, sw, sh, width = GUARD.width, height = 0) {
+  // height: force the map's height (a photo a few pixels off the frame's aspect is compared at the frame's shape)
+  const w = width, h = height > 0 ? height : Math.max(8, Math.round((width * sh) / sw));
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const ctx = c.getContext('2d', { willReadFrequently: true });

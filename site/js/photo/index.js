@@ -256,8 +256,11 @@ export async function mountPhoto({ root, store, stage }) {
     const img = entry.img;
     const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
     const { crop } = entry;
-    const b = edgeMap(img, crop.x * iw, crop.y * ih, crop.w * iw, crop.h * ih, edges.w);
-    if (b.h !== edges.h) return { ok: false, reason: 'aspect' };
+    // models return their own pixel grid (Kling 21:9 = 3840 × 1623, not 1646): up to 3 % off the frame's shape is
+    // compared and shown at the frame's shape (an invisible stretch); more than that is a different picture
+    const off = Math.abs(Math.log(((crop.w * iw) / (crop.h * ih)) / (edges.w / edges.h)));
+    if (off > 0.03) return { ok: false, reason: 'aspect' };
+    const b = edgeMap(img, crop.x * iw, crop.y * ih, crop.w * iw, crop.h * ih, edges.w, edges.h);
     const g = compare(edges, b, guardOpts);
     // ART §2: the top 5 items must not move or resize by > 4 % — needs bboxes from the engine's ID pass
     if (g.ok && entry.items?.some((x) => x.bbox)) {
