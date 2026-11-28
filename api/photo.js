@@ -40,7 +40,7 @@ const MAX_BODY = 2.6 * 1024 * 1024;
 const MAX_FRAME = 1.6 * 1024 * 1024;
 const MAX_EDGE = 2048;
 const deadlineMs = () => Math.max(5000, Number(env('PHOTO_DEADLINE_MS')) || 55_000); // vercel.json maxDuration 60
-const SIZES = ['1K', '2K'];
+const SIZES = ['1K', '2K', '4K'];
 const ASPECTS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', '2:1', '1:2', '7:9', '9:7']; // the union of every model's list
 const POSE_RE = /^[a-z0-9_:;,.|-]{8,220}$/i; // camera, plus the focused item's turn (o:slot_id:yaw)
 const REF_LIMIT = () => Math.max(0, Math.min(10, Number(env('PHOTO_REFS') || 9)));
@@ -113,17 +113,24 @@ function describe(it) {
   return `${it.nameEn || it.name}${it.colorEn ? `, ${it.colorEn.toLowerCase()}` : ''}${mats ? ` (${mats.toLowerCase()})` : ''}`;
 }
 
+// Light per time of day for the re-shoot (prompt v2): where the light falls is taken from the frame itself.
+const REAL_LIGHT = {
+  morning: 'Soft early-morning daylight from the window, gentle long shadows and soft bounce light filling the room.',
+  day: 'Bright midday sun comes through the window and draws crisp warm sun patches with soft-edged shadows on the floor and furniture, exactly where they are in image 1; soft bounce light fills the room.',
+  golden: 'Low golden-hour sun through the window: long warm sun patches and soft long shadows exactly where they are in image 1, warm highlights, the room glowing.',
+  evening: 'Blue hour: the deep blue evening sky outside; inside, warm 2700 K lamps and downlights are on and make soft pools of light exactly where they are in image 1, while walls and ceiling keep their detail.',
+};
 /**
  * The instruction (ART §2, prompt version v1): the fixed skeleton, then fixed style / light / grade vocabulary, then
  * one line per reference item. Supplier names never appear: names, colours and materials come from the public catalog.
  */
 export function buildPrompt({ time, style = null, refs, inline = false, closeUp = false, head = null, at = false }) {
   const I = (n) => (at ? `@image_${n}` : `image ${n}`);
-  const lens = closeUp ? '85 mm lens, f/2.8 with the room softly out of focus behind the item' : '35 mm lens, f/5.6';
+  const lens = closeUp ? '85 mm lens at f/2.8 with the room softly out of focus behind the item' : '24 mm lens at f/8';
   const lines = head ? [head] : [
-    `Photograph of this exact interior. Keep the camera, framing and every object exactly as shown: same shapes, colours, materials and positions; add, remove or move nothing. Make it a real architectural photograph: natural window light with soft falloff, true contact shadows, real fabric weave and wrinkles, wood grain, subtle imperfections, ${lens}, fine film grain. The view through the window stays exactly as shown.`,
-    `${LIGHT_WORDS[time] || LIGHT_WORDS.day} ${STYLE_WORDS[style] || ''} ${GRADE_WORDS}`.replace(/\s+/g, ' ').trim(),
-    'Do not crop, zoom, rotate or reframe; if image 1 has soft blurred bands along an edge, continue the room there.',
+    `${I(1)} is a 3D previsualisation of a real apartment. Re-shoot it as a real photograph of that apartment: identical camera position, lens, framing and composition; identical room, furniture, artwork, colours and layout. Every object in ${I(1)} stays exactly where it is, with the same shape, size, colour and material; add nothing (no extra paintings, cushions, plants or furniture), remove nothing, move nothing, restyle nothing. Objects cut by the edge of the frame stay cut at exactly the same place; do not enlarge or complete them. If ${I(1)} has soft blurred bands along an edge, continue the room there.`,
+    `Only the realism changes: it must look like an unretouched photograph by a professional interiors photographer, not CGI and not a render. ${(REAL_LIGHT[time] || REAL_LIGHT.day).replace(/image 1/g, I(1))} Deep natural contact shadows under every piece of furniture.`,
+    `True materials: upholstery weave and slubs, soft creases and slight sag in the cushions, wrinkled bedding, real leather with a soft sheen and natural creases, real wood grain with a satin sheen, smooth matte painted walls, translucent linen sheers with real folds, a real floor with subtle variation. Natural camera character: realistic dynamic range, gentle highlight roll-off, slight vignetting, fine grain, ${lens}. The sky outside the window stays as shown. ${STYLE_WORDS[style] || ''}`.trim(),
   ];
   if (refs.length) {
     lines.push(at
@@ -659,7 +666,7 @@ export default async function handler(req, res) {
   const { state: st, error: stErr } = cleanState(body.state);
   if (stErr) return send(res, 400, { error: stErr });
   const tier = 'default';
-  st.size = '2K';                    // ART §1: live visitor generations are T2 only (NB 2.1 at 2K)
+  st.size = st.size === '4K' ? '4K' : '2K'; // visitors: 2K, or 4K on large screens (Kling Image 4.0 costs the same)
   // every model's key is looked up (a photo from any provider is a valid hit); the first usable model's key leads
   const primary = (modelList(tier, usable(req))[0] || modelList(tier)[0]).id;
   const keys = [...new Set([primary, ...modelList(tier).map((m) => m.id)])].map((id) => keyFor(id, st));

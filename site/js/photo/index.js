@@ -185,7 +185,8 @@ export async function mountPhoto({ root, store, stage }) {
     if (!fs) return null;
     const time = v.timeOfDay || stage.time || 'day';
     const selection = { ...(store.state?.selection || {}) };
-    const size = '2K'; // docs/ART.md §1: live visitor photos are T2 (2K) on every device
+    // 4K where the screen can show it (the stage is ≥ 1800 device pixels wide), else 2K; the price is the same
+    const size = (root.clientWidth || 0) * (window.devicePixelRatio || 1) >= 1800 ? '4K' : '2K';
     // the engine's capture renders at any size: give the model 2048 px whatever the screen DPR
     const engineCapture = typeof v.capture === 'function';
     const fit = fitAspect(fs.width, fs.height, MAX_EDGE, { up: engineCapture, aspects: status.aspects });

@@ -15,7 +15,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 export const env = (k) => (process.env[k] || '').trim();
-export const PROMPT_VERSION = 'v1';     // docs/ART.md §2 skeleton. Bump only after the 3-canonical-frame test (ART §1)
+export const PROMPT_VERSION = 'v2';     // docs/ART.md §2 skeleton. Bump only after the 3-canonical-frame test (ART §1)
 export const KEY_VERSION = 'k1';        // bump to invalidate every cached photo (e.g. after a render overhaul)
 export const BUCKET = 'photos';
 const SUPABASE_URL = 'https://hdhwkvbecuzzrugogutd.supabase.co'; // same project as api/lead.js
@@ -34,6 +34,9 @@ const QWEN_ASPECTS = ['1:1', '2:3', '3:2', '3:4', '4:3', '7:9', '9:7', '9:16', '
 export const MODELS = {
   // --- Higgsfield (primary): endpoints that answered 200 for this account
   'higgsfield:grok_image_2': { provider: 'higgsfield', hf: 'grok_image_2', label: 'Grok Imagine Image 2.0', path: 'xai/grok-imagine-image-2.0', t2i: 'xai/grok-imagine-image-2.0', images: 'image_urls', maxRefs: 9, seed: false, sizes: ['1K', '2K'], aspects: ['auto', '1:1', '1:2', '2:1', '3:2', '2:3', '4:3', '3:4', '16:9', '9:16'], quality: 'medium', cost: { '1K': 0.07, '2K': 0.1 }, estimate: true },
+  // Kling Image 4.0: the most photographic re-shoot of the tested models (Nov 2026), keeps the layout at 2K and 4K for the same price;
+  // inputs are addressed as @image_N in the prompt
+  'higgsfield:kling_image_4': { provider: 'higgsfield', hf: 'kling_image_4', label: 'Kling Image 4.0', path: 'kling-image/v4.0/edit', t2i: 'kling-image/v4.0/text-to-image', images: 'image_urls', maxRefs: 9, seed: false, refAt: true, sizes: ['2K', '4K'], aspects: ['auto', '16:9', '9:16', '1:1', '4:3', '3:4', '3:2', '2:3', '21:9'], cost: { '2K': 0.094, '4K': 0.094 }, estimate: true },
   'higgsfield:qwen_image_3': { provider: 'higgsfield', hf: 'qwen_image_3', label: 'Qwen Image 3', path: 'alibaba/qwen-image-3/edit', t2i: 'alibaba/qwen-image-3/text-to-image', images: 'image_urls', maxRefs: 2, seed: true, sizes: ['1K', '2K'], aspects: QWEN_ASPECTS, extra: { prompt_extend: false, enable_thinking: false }, cost: { '1K': 0.04, '2K': 0.06 }, estimate: true },
   'higgsfield:marketing_image': { provider: 'higgsfield', hf: 'marketing_image', label: 'Marketing Studio Image', path: 'marketing-studio/image', t2i: 'marketing-studio/image', images: 'image_urls', maxRefs: 15, seed: false, sizes: ['1K', '2K', '4K'], aspects: ['auto', '1:1', '3:2', '2:3', '4:3', '3:4', '16:9', '9:16', '21:9'], quality: 'high', extra: { enhance_prompt: false, moderation: 'auto' }, explicit: true, cost: { '1K': 0.3, '2K': 0.452, '4K': 0.9 }, estimate: true },
   'higgsfield:z_image': { provider: 'higgsfield', hf: 'z_image', label: 'Z-Image Turbo (drafts)', path: '', t2i: 'z-image/turbo', images: 'image_urls', maxRefs: 0, seed: true, t2iOnly: true, maxPrompt: 800, sizes: ['1K', '2K'], aspects: QWEN_ASPECTS, extra: { prompt_extend: false }, explicit: true, cost: { '1K': 0.015, '2K': 0.03 }, estimate: true },

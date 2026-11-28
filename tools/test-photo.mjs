@@ -245,7 +245,7 @@ ok(imgParts[0].image_url.url.startsWith('data:image/jpeg;base64,'), 'image 1 is 
 ok(imgParts.length === 3, `refs: the visible sofa + the selected artwork, nothing unselected (got ${imgParts.length - 1})`);
 ok(imgParts[1].image_url.url.startsWith('https://'), 'ref is an https URL');
 const promptText = parts.filter((p) => p.type === 'text').map((p) => p.text).join('\n');
-ok(/^Photograph of this exact interior\. Keep the camera, framing and every object exactly as shown/.test(promptText) && /add, remove or move nothing/.test(promptText) && /Lansbury 3-seater sofa/.test(promptText) && /artwork on the wall/.test(promptText) && /Warm, calm, gallery-like/.test(promptText), 'ART §2 skeleton + style vocabulary + item and artwork captions');
+ok(/^image 1 is a 3D previsualisation of a real apartment\. Re-shoot it as a real photograph/.test(promptText) && /add nothing .* remove nothing, move nothing, restyle nothing/.test(promptText) && /not CGI and not a render/.test(promptText) && /Lansbury 3-seater sofa/.test(promptText) && /artwork on the wall/.test(promptText) && /Warm, calm, gallery-like/.test(promptText), 'ART §2 skeleton + style vocabulary + item and artwork captions');
 ok(!/home\s*cent|homecentre|amplience/i.test(promptText), 'no supplier name in the prompt text');
 ok(!/homecentre|amplience/i.test(JSON.stringify(r.body)), 'no supplier URL in the response');
 const stored = [...db.objects.values()].pop();
