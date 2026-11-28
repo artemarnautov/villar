@@ -43,7 +43,7 @@ const deadlineMs = () => Math.max(5000, Number(env('PHOTO_DEADLINE_MS')) || 55_0
 const SIZES = ['1K', '2K'];
 const ASPECTS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', '2:1', '1:2', '7:9', '9:7']; // the union of every model's list
 const POSE_RE = /^[a-z0-9_:;,.|-]{8,220}$/i; // camera, plus the focused item's turn (o:slot_id:yaw)
-const REF_LIMIT = () => Math.max(0, Math.min(10, Number(env('PHOTO_REFS') || 8)));
+const REF_LIMIT = () => Math.max(0, Math.min(10, Number(env('PHOTO_REFS') || 9)));
 const DAILY_IP = () => dailyCaps().perIp;       // photo_config.caps → env → ART §1 defaults (12 / 60)
 const DAILY_GLOBAL = () => dailyCaps().global;
 const SESSION_RE = /^[a-z0-9]{8,40}$/i;
@@ -165,8 +165,12 @@ function refImages(items, model, { selection = {}, db = null, ready = null } = {
     if (!url || !it || out.some((r) => r.id === id)) return;
     out.push({ id, url, label: `Image ${out.length + 2} — the ${TYPE_WORDS[it.type] || String(it.type || 'item').replace(/_/g, ' ')}: ${describe(it)}; ${pct(area)}.` });
   };
-  const art = Object.values(selection).find((id) => id && sim.items.get(id)?.type === 'wall_art');
-  for (const x of items) { if (out.length >= max - (art ? 1 : 0)) break; if (x.id !== art) add(x.id, x.area); }
+  // furniture first: a model that has no photo of an item reinvents it, and a reinvented sofa or armchair is a wrong
+  // product, while reinvented curtains or bedding are not; textiles and small decor rank lower than their area says
+  const W = { curtains: 0.3, bedding: 0.4, mattress: 0.2, cushions: 0.5, throw: 0.4, runner: 0.5, rug: 0.7, tableware: 0.5, centerpiece: 0.5, kitchen_decor: 0.4, decor_set: 0.5, nightstand_decor: 0.5 };
+  const ranked = items.filter((x) => sim.items.has(x.id)).map((x) => ({ ...x, w: x.area * (W[sim.items.get(x.id).type] ?? 1) })).sort((a, b) => b.w - a.w);
+  const art = ranked.find((x) => sim.items.get(x.id).type === 'wall_art')?.id || Object.values(selection).find((id) => id && sim.items.get(id)?.type === 'wall_art');
+  for (const x of ranked) { if (out.length >= max - (art ? 1 : 0)) break; if (x.id !== art) add(x.id, x.area); }
   if (art) add(art, items.find((x) => x.id === art)?.area ?? 0);
   return out;
 }
