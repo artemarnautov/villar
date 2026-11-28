@@ -224,6 +224,8 @@ ok(r.body.hit === false, 'PHOTO_DISABLED=generate keeps lookups');
 delete process.env.PHOTO_DISABLED;
 
 section('miss → develop → hit');
+// the selected edition's approved image exists (an edition without one is never sent as a reference)
+for (const it of JSON.parse((await import('node:fs')).readFileSync(new URL('../site/data/catalog.json', import.meta.url), 'utf8')).items || []) if (typeof it.image === 'string' && /^art\//.test(it.image)) db.objects.set(it.image, { bytes: Buffer.from('x'), type: 'image/jpeg' });
 const items = [{ id: 'sofa-lansbury-3', area: 0.21 }, { id: 'not-in-selection', area: 0.1 }, ...['armchair-emma', 'rug-x'].map((id) => ({ id, area: 0.05 }))];
 r = await call(photo, { body: { v: 1, op: 'lookup', state: STATE() } });
 ok(r.body.hit === false && /^[a-f0-9]{64}$/.test(r.body.key), 'lookup miss returns key');

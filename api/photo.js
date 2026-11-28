@@ -132,15 +132,32 @@ export function buildPrompt({ time, style = null, refs, inline = false, closeUp 
 }
 
 /** Storage URL of an art edition's image (catalog `image: "art/<id>.jpg"`), when the item is an edition. */
-const editionUrl = (db, it) => (it && typeof it.image === 'string' && /^art\/[a-z0-9-]+\.jpg$/.test(it.image) && db ? db.publicUrl(it.image) : null);
+const editionUrl = (db, it, ready) => (it && typeof it.image === 'string' && /^art\/[a-z0-9-]+\.jpg$/.test(it.image) && db && ready?.has(it.image) ? db.publicUrl(it.image) : null);
+// An edition's image exists only once its job has run and a candidate was approved: a reference URL that 404s makes
+// the provider reject the whole request ("an input file could not be downloaded"). HEAD-checked, cached 10 min.
+const EDITION_TTL_MS = 600_000;
+const editionSeen = new Map(); // image path → { ok, at }
+async function readyEditions(db, selection) {
+  const ready = new Set();
+  if (!db) return ready;
+  const paths = [...new Set(Object.values(selection || {}).map((id) => sim.items.get(id)?.image).filter((x) => typeof x === 'string' && /^art\/[a-z0-9-]+\.jpg$/.test(x)))];
+  await Promise.all(paths.map(async (path) => {
+    const c = editionSeen.get(path);
+    if (c && Date.now() - c.at < EDITION_TTL_MS) { if (c.ok) ready.add(path); return; }
+    const ok = await db.exists(path).catch(() => false);
+    editionSeen.set(path, { ok, at: Date.now() });
+    if (ok) ready.add(path);
+  }));
+  return ready;
+}
 
 /** References ranked by pixel area; the selected artwork is always among them (ART §2: the painting is the edition). */
-function refImages(items, model, { selection = {}, db = null } = {}) {
+function refImages(items, model, { selection = {}, db = null, ready = null } = {}) {
   const max = Math.min(REF_LIMIT(), model.maxRefs ?? 8);
   const out = [];
   const add = (id, area) => {
     const it = sim.items.get(id);
-    const url = editionUrl(db, it) || REFS.refs?.[id]?.[0];
+    const url = editionUrl(db, it, ready) || REFS.refs?.[id]?.[0];
     if (!url || !it || out.some((r) => r.id === id)) return;
     out.push({ id, url, label: `Image ${out.length + 2} — the ${TYPE_WORDS[it.type] || String(it.type || 'item').replace(/_/g, ' ')}: ${describe(it)}; ${pct(area)}.` });
   };
@@ -262,10 +279,11 @@ async function develop({ req, auth, db, st, items, frame, frameSize, frameUrl = 
   const meta = { style: st.style, time: st.time, size: st.size, aspect: st.aspect, session, ip_hash: ipH };
   const frameImg = { url: `data:image/jpeg;base64,${frame.toString('base64')}`, publicUrl: frameUrl, label: 'Image 1 — the render to turn into a photograph:' };
   const used = new Map(); // model id → the references of its latest try
+  const ready = await readyEditions(db, st.selection);
   const makeOpts = (model, n, lastErr) => {
     // a second try only when the first was rejected with reference photos (an unreachable image, too many inputs)
     if (n > 1 || (n === 1 && !(lastErr instanceof GatewayError && lastErr.code === 'rejected' && used.get(model.id)?.length))) return null;
-    const refs = n === 0 ? refImages(items, model, { selection: st.selection, db }) : [];
+    const refs = n === 0 ? refImages(items, model, { selection: st.selection, db, ready }) : [];
     used.set(model.id, refs);
     const key = keyFor(model.id, st);
     return {

@@ -749,14 +749,14 @@ export const LIGHT_WORDS = {
   morning: 'Soft early daylight from the window is the key light; the room is filled gently.',
   day: 'Daylight from the window is the key light, soft fill from the room; lamps are off or never the key.',
   golden: 'Low golden-hour sun from the window, long soft shadows, warm highlights.',
-  evening: 'Blue hour: warm 2700 K lamps and downlights are the key light inside; the city is lit outside.',
+  evening: 'Blue hour: warm 2700 K lamps and downlights are the key light inside; only the deep blue evening sky is outside.',
 };
 export const GRADE_WORDS = 'Gentle S-curve, neutral-warm highlights, slightly cool shadows, a trace of halation around the window and lamp shades. Never an HDR real-estate look, never oversaturated; whites stay white. The window is exposed, never a white rectangle.';
 export const TIME_WORDS = {
   morning: 'soft early-morning daylight, the low sun to the left outside the frame',
   day: 'bright midday daylight with sun patches on the floor, a clear sky with light haze',
   golden: 'golden-hour sunset light, warm low sun from the right, long soft shadows, a warm sky',
-  evening: 'blue-hour evening: lamps and downlights on, warm 2700 K pools of light, the city lit outside',
+  evening: 'blue-hour evening: lamps and downlights on, warm 2700 K pools of light, a deep blue sky outside',
 };
 export const WINDOW_WORDS = {
   morning: 'a real photograph of the open morning sky: pale blue with soft textured clouds, luminous haze low down, no buildings',
