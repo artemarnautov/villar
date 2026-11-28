@@ -1,1 +1,28 @@
-{ "approved": [] }
+{
+  "approved": [
+    "art/art-ed-dw-ink-3.jpg",
+    "art/art-ed-dw-ink-field-c2.jpg",
+    "art/art-ed-dw-rust-stroke.jpg",
+    "art/art-ed-dw-umber-1.jpg",
+    "art/art-ed-dw-umber-2.jpg",
+    "art/art-ed-dw-warm-shadow.jpg",
+    "art/art-ed-gl-champagne-field.jpg",
+    "art/art-ed-gl-hush-c2.jpg",
+    "art/art-ed-gl-layers-c2.jpg",
+    "art/art-ed-gl-mocha-2.jpg",
+    "art/art-ed-gl-stone-light.jpg",
+    "art/art-ed-gl-travertine-1.jpg",
+    "art/art-ed-lo-line-1.jpg",
+    "art/art-ed-lo-line-2.jpg",
+    "art/art-ed-lo-line-3.jpg",
+    "art/art-ed-lo-morning-mist.jpg",
+    "art/art-ed-lo-still-shore.jpg",
+    "art/art-ed-lo-winter-light-c2.jpg",
+    "art/art-ed-med-arch-shade-c2.jpg",
+    "art/art-ed-med-noon-coast.jpg",
+    "art/art-ed-med-olive-grove-c2.jpg",
+    "art/art-ed-med-quiet-cove.jpg",
+    "art/art-ed-med-steps-sea.jpg",
+    "art/art-ed-med-terracotta-roofs.jpg"
+  ]
+}
